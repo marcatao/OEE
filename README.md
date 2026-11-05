@@ -11,7 +11,13 @@ das máquinas ficam no banco do portal.
 ## O que já existe
 
 - Login e logout pelo Entra ID (OpenID Connect, authorization code + PKCE), com cada tentativa gravada no banco.
-- Perfis `operador` < `supervisor` < `admin`, definidos no portal (menu **Usuários**).
+- Cadastro automático no primeiro login pelo Entra ID: o usuário nasce **sem acesso** e vê só a página
+  "aguardando liberação" até um administrador liberar. Só `marcato@alumbra.com.br` (configurável em
+  `PORTAL_ADMINS`) nasce **administrador**.
+- Perfis: **Sem acesso**, **Operador** (vê as páginas que os grupos dele permitem) e **Administrador** (vê tudo).
+- **Grupos**: o administrador cria grupos, escolhe as páginas que cada grupo pode abrir e quem faz parte dele.
+- Menu lateral padrão: Início · Produção (Calculadora de OEE) · **Cadastros › Logins** (Usuários, Grupos, Histórico
+  de acessos) · Administração (Banco de dados). Cada usuário só vê no menu o que pode abrir.
 - Página **Banco** (admin): mostra a conexão em uso, testa e conta os registros de cada tabela.
 - Calculadora de OEE.
 - Tabelas de cadastros (plantas, linhas, máquinas, turnos, produtos, motivos de parada) e de dados das máquinas
@@ -28,7 +34,9 @@ das máquinas ficam no banco do portal.
 | `app/Services/RegistroDeLogin.php` | Grava usuário e logins no banco |
 | `app/Services/CalculadoraOee.php` | Cálculo de OEE |
 | `app/Services/InfoBanco.php` | Descrição e teste da conexão com o banco |
-| `app/Http/Middleware/` | `UsuarioAtivo` (derruba sessão de quem foi desativado) e `ExigePerfil` (`perfil:admin`) |
+| `app/Http/Middleware/` | `UsuarioAtivo` (derruba sessão de quem foi desativado), `ExigePerfil` (`perfil:admin`) e `ExigePermissao` (`permissao:calculadora`) |
+| `app/Http/Controllers/Cadastros/` | Cadastros › Logins: usuários, grupos e histórico de acessos |
+| `config/oee.php` | Quem nasce admin e o catálogo de permissões (páginas) que os grupos podem dar |
 | `app/Models/` | Modelos Eloquent (`Usuario`, `RegistroLogin`, `Planta`, `Linha`, `Maquina`, ...) |
 | `database/migrations/` | Criação das tabelas |
 | `database/seeders/DatabaseSeeder.php` | Motivos de parada padrão |
@@ -94,16 +102,31 @@ php artisan db:seed             # motivos de parada padrão
 php artisan serve               # abra http://localhost:8000
 ```
 
-Quem estiver em `PORTAL_ADMINS` entra como **admin** e vê os menus **Usuários** e **Banco**; os demais entram como
-**operador**. O perfil também pode ser mudado pelo terminal:
+Entre primeiro com `marcato@alumbra.com.br`: ele nasce **administrador**. Os demais usuários aparecem em
+**Cadastros › Logins › Usuários** depois do primeiro login, **sem acesso**. Para liberar alguém:
+
+1. Em **Cadastros › Logins › Grupos**, crie os grupos (ex.: "Operadores Linha 1") e marque as páginas que eles podem
+   abrir.
+2. Em **Cadastros › Logins › Usuários**, clique em **Editar**, escolha o perfil (**Operador** ou **Administrador**) e
+   marque os grupos.
+
+O perfil também pode ser mudado pelo terminal (útil para recuperar o acesso de administrador):
 
 ```sh
 php artisan usuarios:listar
-php artisan usuarios:perfil fulano@alumbra.com.br supervisor
+php artisan usuarios:perfil fulano@alumbra.com.br admin
 php artisan usuarios:ativar fulano@alumbra.com.br --desativar
 ```
 
 Ao mudar o `.env` com o portal em produção, rode `php artisan config:clear` (ou `config:cache`).
+
+### Se você já tinha criado o banco antes
+
+As tabelas de usuários e grupos mudaram na própria migração inicial. Num banco sem dados importantes, recrie tudo:
+
+```sh
+php artisan migrate:fresh --seed
+```
 
 ## Testes
 

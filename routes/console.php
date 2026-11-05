@@ -16,16 +16,17 @@ Artisan::command('banco:testar', function (InfoBanco $banco) {
 
 Artisan::command('usuarios:listar', function () {
     $this->table(
-        ['ID', 'Nome', 'E-mail', 'Perfil', 'Situação', 'Último login (UTC)'],
-        Usuario::orderBy('nome')->get()->map(fn ($u) => [
-            $u->id, $u->nome, $u->email, $u->perfil, $u->ativo ? 'ativo' : 'inativo', $u->ultimo_login_em,
+        ['ID', 'Nome', 'E-mail', 'Perfil', 'Grupos', 'Situação', 'Último login (UTC)'],
+        Usuario::with('grupos')->orderBy('nome')->get()->map(fn ($u) => [
+            $u->id, $u->nome, $u->email, $u->rotuloPerfil(), $u->grupos->pluck('nome')->join(', '),
+            $u->ativo ? 'ativo' : 'inativo', $u->ultimo_login_em,
         ]),
     );
 })->purpose('Lista os usuários do portal');
 
 Artisan::command('usuarios:perfil {email} {perfil}', function (string $email, string $perfil) {
-    if (! in_array($perfil, Usuario::PERFIS, true)) {
-        $this->error('Perfil inválido. Use: '.implode(', ', Usuario::PERFIS));
+    if (! array_key_exists($perfil, Usuario::PERFIS)) {
+        $this->error('Perfil inválido. Use: '.implode(', ', array_keys(Usuario::PERFIS)));
 
         return 1;
     }
@@ -37,7 +38,7 @@ Artisan::command('usuarios:perfil {email} {perfil}', function (string $email, st
     }
     $usuario->update(['perfil' => $perfil]);
     $this->info("{$email} agora é {$perfil}.");
-})->purpose('Define o perfil (operador, supervisor ou admin) de um usuário');
+})->purpose('Define o perfil (sem_acesso, operador ou admin) de um usuário — útil para recuperar o acesso de admin');
 
 Artisan::command('usuarios:ativar {email} {--desativar : Bloqueia a entrada do usuário no portal}', function (string $email) {
     $usuario = Usuario::where('email', $email)->first();

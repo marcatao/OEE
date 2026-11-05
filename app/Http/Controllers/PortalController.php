@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\CalculadoraOee;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use InvalidArgumentException;
@@ -42,6 +43,16 @@ class PortalController extends Controller
         }
 
         return view('calculadora', ['resultado' => $resultado, 'erro' => $erro]);
+    }
+
+    /** Página de quem entrou pelo Entra ID mas ainda não foi liberado por um administrador. */
+    public function aguardando(Request $request): View|RedirectResponse
+    {
+        if ($request->user()->temAcesso()) {
+            return redirect()->route('inicio');
+        }
+
+        return view('aguardando');
     }
 
     public function perfil(): View

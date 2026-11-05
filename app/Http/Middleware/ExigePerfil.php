@@ -6,12 +6,17 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Uso: ->middleware('perfil:supervisor'). Hierarquia: operador < supervisor < admin. */
+/** Uso: ->middleware('perfil:admin'). Só administradores. */
 class ExigePerfil
 {
-    public function handle(Request $request, Closure $next, string $minimo): Response
+    public function handle(Request $request, Closure $next, string $perfil): Response
     {
-        abort_unless($request->user()?->temPerfil($minimo), 403, 'Seu perfil não tem acesso a esta página.');
+        $usuario = $request->user();
+
+        if (! $usuario->temAcesso()) {
+            return redirect()->route('aguardando');
+        }
+        abort_unless($usuario->perfil === $perfil, 403, 'Só administradores podem acessar esta página.');
 
         return $next($request);
     }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ExigePerfil;
+use App\Http\Middleware\ExigePermissao;
 use App\Http\Middleware\UsuarioAtivo;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [UsuarioAtivo::class]);
-        $middleware->alias(['perfil' => ExigePerfil::class]);
+        $middleware->alias(['perfil' => ExigePerfil::class, 'permissao' => ExigePermissao::class]);
         $middleware->redirectGuestsTo(fn () => route('login'));
         // Atrás de proxy reverso/IIS com HTTPS, configure TRUSTED_PROXIES para o Laravel montar URLs https.
         $middleware->trustProxies(at: env('TRUSTED_PROXIES'));

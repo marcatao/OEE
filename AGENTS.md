@@ -5,17 +5,24 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 
 ## Regras do projeto
 
-- O **Entra ID só autentica** a entrada (`app/Services/EntraId.php`). Nome, e-mail, perfil (`operador` <
-  `supervisor` < `admin`) e histórico de logins ficam no banco (`usuarios`, `registros_login`). A chave do usuário
-  é o `entra_oid`, nunca o e-mail.
+- O **Entra ID só autentica** a entrada (`app/Services/EntraId.php`). O usuário é cadastrado no banco no primeiro
+  login (`usuarios`, chave `entra_oid`, nunca o e-mail) e nasce **sem acesso**; só os e-mails de `config('oee.admins')`
+  (padrão `marcato@alumbra.com.br`) nascem `admin`. Todo login vai para `registros_login`.
+- Acesso: perfil (`sem_acesso` | `operador` | `admin`) + **grupos**. Os grupos dão permissões de página
+  (`grupo_permissoes`, catálogo em `config('oee.permissoes')`). Admin pode tudo. Só admin cria grupos e altera
+  cadastros.
 - Banco principal: **SQL Server** (`DB_CONNECTION=sqlsrv`, configurado no `.env`). Testes rodam em SQLite em memória:
   tudo precisa funcionar nos dois. Recursos só do SQL Server ficam atrás de `DB::getDriverName() === 'sqlsrv'`.
 - Datas gravadas em **UTC** (`config/app.php` usa `UTC`) e exibidas no fuso local com `@dataHora($valor)`.
 - Tabelas e colunas em português. Modelos de cadastro usam o trait `App\Models\Concerns\Auditavel`
   (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id`). Cadastros são desativados, não excluídos.
-- Telas em Blade com `layouts.portal` e o CSS de `public/css/portal.css` (tokens de cor em `:root`, tema escuro).
-  Sem etapa de build com Node.
-- Toda rota interna fica no grupo `auth`; páginas restritas usam `->middleware('perfil:supervisor')` (perfil mínimo).
+- Nome do portal: **OEE Alumbra**, em `config('oee.nome')` (nunca escreva o nome direto nas telas).
+- Identidade visual em **tons de verde** (estilo da empresa): as cores ficam só nas variáveis do topo de
+  `public/css/portal.css` (tema claro e escuro). Nunca use cores soltas nas telas.
+- Telas em Blade com `layouts.portal` e o CSS de `public/css/portal.css`. Sem etapa de build com Node.
+- Toda rota interna fica no grupo `auth`. Página nova: registre a chave em `config/oee.php` (`permissoes`), proteja a
+  rota com `->middleware('permissao:chave')` e inclua o link no menu lateral (`layouts/portal.blade.php`) dentro de
+  `@if ($u->pode('chave'))`. Páginas só de admin usam `->middleware('perfil:admin')`.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
 
 ## Comandos
