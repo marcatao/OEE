@@ -11,7 +11,9 @@ troca de informações entre o portal OEE Alumbra e o Entra ID. Escreva em portu
 
 - O Entra ID **só autentica a entrada**. Do login, o portal usa: `oid` (identificador estável), `tid` (locatário),
   nome e e-mail (`IdentidadeEntra`).
-- Nome, e-mail, perfil (`operador`/`supervisor`/`admin`), situação e histórico de logins ficam no **banco**
+- O usuário é cadastrado no **banco** no primeiro login e nasce **sem acesso**; só os e-mails de
+  `config('oee.admins')` (padrão `marcato@alumbra.com.br`) nascem admin, e só na criação (um login seguinte nunca
+  promove ninguém). Nome, e-mail, perfil (`sem_acesso`/`operador`/`admin`), grupos, situação e histórico de logins ficam no **banco**
   (`App\Services\RegistroDeLogin`, tabelas `usuarios` e `registros_login`). A chave do usuário é o `entra_oid`,
   **nunca o e-mail**.
 - O portal não guarda tokens de acesso nem *refresh tokens*. Se um dia precisar do Microsoft Graph além do login,
@@ -39,7 +41,7 @@ troca de informações entre o portal OEE Alumbra e o Entra ID. Escreva em portu
 - **Credencial:** prefira **certificado** a segredo em produção; com segredo, validade curta (ex.: 6 meses), lembrete
   de renovação, guardado só no `.env` do servidor ou em cofre (Azure Key Vault). Nunca no git, log ou tela.
 - **Quem pode entrar:** "Atribuição necessária" no Aplicativo empresarial + acesso condicional com MFA. Permissões no
-  portal vêm do perfil no banco (`perfil:...`), não de grupos do Entra ID.
+  portal vêm do perfil e dos grupos do próprio portal (`perfil:admin`, `permissao:...`), não de grupos do Entra ID.
 - **Escopos mínimos:** `User.Read` delegado basta. Não peça permissões de aplicativo nem escopos a mais.
 - **Sessão/cookies** (`config/session.php`): `http_only`, `same_site=lax`, `secure=true` em HTTPS
   (`SESSION_SECURE_COOKIE=true`), `SESSION_LIFETIME` adequado ao uso da fábrica, `APP_KEY` forte e nunca reaproveitada.

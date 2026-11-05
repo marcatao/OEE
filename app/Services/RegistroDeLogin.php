@@ -8,7 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
- * Grava no banco o usuário que entrou (nome e e-mail vindos do Entra ID) e cada tentativa de login.
+ * Cadastra/atualiza no banco o usuário que entrou (nome e e-mail vindos do Entra ID) e grava cada tentativa de login.
+ * Usuário novo nasce "sem acesso"; só os e-mails de config('oee.admins') nascem administradores.
  */
 class RegistroDeLogin
 {
@@ -26,9 +27,9 @@ class RegistroDeLogin
             'email' => $identidade->email,
         ]);
 
-        $admins = config('oee.admins');
-        if ($identidade->email && in_array(Str::lower($identidade->email), $admins, true)) {
-            $usuario->perfil = 'admin';
+        if (! $usuario->exists) {
+            $nasceAdmin = $identidade->email && in_array(Str::lower($identidade->email), config('oee.admins'), true);
+            $usuario->perfil = $nasceAdmin ? 'admin' : 'sem_acesso';
         }
 
         if ($usuario->exists && ! $usuario->ativo) {
@@ -40,7 +41,7 @@ class RegistroDeLogin
 
         $usuario->ultimo_login_em = now();
         $usuario->save();
-        $this->gravar($usuario, $identidade->email, true, null);
+        $this->gravar($usuario, $identidade->email, true, $usuario->perfil === 'sem_acesso' ? 'aguardando liberação' : null);
 
         return $usuario;
     }

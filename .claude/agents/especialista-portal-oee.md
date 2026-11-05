@@ -19,10 +19,15 @@ mensagens de commit em português do Brasil.
 - **Laravel 13**, controladores finos em `app/Http/Controllers` (um por área: `Cadastros\MaquinaController`,
   `DashboardController`, `RelatorioController`, `Api\...`), regras em `app/Services`, validação em Form Requests
   (`php artisan make:request`) com mensagens em português.
-- **Autenticação:** o Entra ID só autentica (`AutenticacaoController`). O usuário logado é `auth()->user()`
-  (`App\Models\Usuario`, relido do banco a cada requisição). Rotas internas no grupo `auth`; restrição por perfil com
-  `->middleware('perfil:supervisor')` e, na tela, `auth()->user()->temPerfil('admin')`. Para o fluxo de login, siga
-  o agente `especialista-entra-id`.
+- **Autenticação e acesso:** o Entra ID só autentica (`AutenticacaoController`). O usuário logado é `auth()->user()`
+  (`App\Models\Usuario`, relido do banco a cada requisição); nasce `sem_acesso` e o admin libera. Acesso = perfil
+  (`sem_acesso` | `operador` | `admin`) + **grupos**, que dão permissões de página. **Toda página nova**: chave em
+  `config/oee.php` (`permissoes`), rota com `->middleware('permissao:chave')`, link no menu lateral dentro de
+  `@if ($u->pode('chave'))` e teste de que operador sem o grupo recebe 403. Páginas de administração usam
+  `->middleware('perfil:admin')`. Para o fluxo de login, siga o agente `especialista-entra-id`.
+- **Menu lateral** (`resources/views/layouts/portal.blade.php`): seções Produção, Cadastros (com subgrupos em
+  `<details>`, ex.: Cadastros › Logins), Administração. Mantenha o padrão: link ativo com `request()->routeIs()`,
+  trilha (`<p class="trilha">Cadastros › Logins</p>`) no topo de cada página.
 - **Dados:** Eloquent com os modelos existentes; cadastros com o trait `Auditavel` (preenche quem criou/alterou) e
   desativação em vez de exclusão. Para tabelas novas, índices e consultas pesadas, siga o agente
   `especialista-sql-server`; para fórmulas e indicadores, o `especialista-dados-oee`.
@@ -45,7 +50,7 @@ mensagens de commit em português do Brasil.
 ## Design de interface
 
 - Use os tokens de cor de `:root` em `public/css/portal.css` (com tema escuro). Não espalhe cores soltas.
-- Responsivo: celular do supervisor (390 px), desktop e **TV do chão de fábrica** (modo painel em tela cheia, letras
+- Responsivo: celular (390 px), desktop e **TV do chão de fábrica** (modo painel em tela cheia, letras
   grandes, alto contraste, legível a 3 metros, sem menus).
 - Faixas de OEE iguais em todo o portal: **< 60% vermelho**, **60–85% amarelo**, **≥ 85% verde** (configuráveis).
   Nunca só a cor: mostre o número e um rótulo ou ícone.

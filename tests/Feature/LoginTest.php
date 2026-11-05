@@ -22,7 +22,7 @@ class LoginTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['services.azure.tenant' => self::TENANT, 'oee.admins' => ['admin@empresa.com']]);
+        config(['services.azure.tenant' => self::TENANT, 'oee.admins' => ['marcato@alumbra.com.br']]);
     }
 
     /** Simula o retorno do Entra ID com a identidade informada. */
@@ -61,15 +61,24 @@ class LoginTest extends TestCase
         $this->get('/auth/login')->assertRedirect('https://login.microsoftonline.com/x/oauth2/v2.0/authorize');
     }
 
-    public function test_login_salva_usuario_e_registro_no_banco_e_volta_ao_destino(): void
+    public function test_primeiro_login_cadastra_usuario_sem_acesso(): void
     {
         $this->entrar(destino: '/calculadora')->assertRedirect('/calculadora');
+        $this->get('/calculadora')->assertRedirect('/aguardando-liberacao');
 
         $this->assertAuthenticated();
         $u = Usuario::sole();
-        $this->assertSame(['Fulano', 'fulano@empresa.com', 'operador', 'oid-fulano'], [$u->nome, $u->email, $u->perfil, $u->entra_oid]);
+        $this->assertSame(['Fulano', 'fulano@empresa.com', 'sem_acesso', 'oid-fulano'], [$u->nome, $u->email, $u->perfil, $u->entra_oid]);
         $this->assertNotNull($u->ultimo_login_em);
-        $this->assertTrue(RegistroLogin::sole()->sucesso);
+        $log = RegistroLogin::sole();
+        $this->assertTrue($log->sucesso);
+        $this->assertSame('aguardando liberação', $log->motivo);
+    }
+
+    public function test_admin_nasce_admin_e_usa_a_calculadora(): void
+    {
+        $this->entrar(['email' => 'marcato@alumbra.com.br', 'oid' => 'oid-marcato'], '/calculadora')->assertRedirect('/calculadora');
+        $this->assertSame('admin', Usuario::sole()->perfil);
 
         $this->post('/calculadora', [
             'tempo_planejado' => 480, 'paradas' => 47, 'ciclo_ideal' => 1, 'total_produzido' => 19271, 'pecas_boas' => 18848,
@@ -86,10 +95,22 @@ class LoginTest extends TestCase
         $this->assertSame(2, RegistroLogin::count());
     }
 
-    public function test_admin_do_env_entra_como_admin(): void
+    public function test_so_o_email_configurado_nasce_admin_e_so_no_primeiro_login(): void
     {
-        $this->entrar(['email' => 'Admin@Empresa.com', 'oid' => 'oid-admin']);
+        $this->entrar(['email' => 'Marcato@Alumbra.com.br', 'oid' => 'oid-marcato']);
         $this->assertSame('admin', Usuario::sole()->perfil);
+
+        // se outro admin mudar o perfil, o próximo login não "promove" de novo
+        Usuario::sole()->update(['perfil' => 'operador']);
+        $this->post('/auth/logout');
+        $this->entrar(['email' => 'marcato@alumbra.com.br', 'oid' => 'oid-marcato']);
+        $this->assertSame('operador', Usuario::sole()->perfil);
+    }
+
+    public function test_outros_emails_nascem_sem_acesso(): void
+    {
+        $this->entrar(['email' => 'chefe@alumbra.com.br', 'oid' => 'oid-chefe']);
+        $this->assertSame('sem_acesso', Usuario::sole()->perfil);
     }
 
     public function test_usuario_desativado_perde_a_sessao_e_nao_entra(): void
