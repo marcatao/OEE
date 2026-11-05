@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Services\EntraId;
 use App\Services\RegistroDeLogin;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Laravel\Socialite\Two\InvalidStateException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -17,8 +20,16 @@ use Throwable;
  */
 class AutenticacaoController extends Controller
 {
-    public function login(EntraId $entra): Response
+    public function login(Request $request, EntraId $entra): Response
     {
+        // O retorno do Entra ID vem para o endereço de ENTRA_REDIRECT_URI. Se o portal foi aberto por outro endereço
+        // (ex.: 127.0.0.1 em vez de localhost), o cookie da sessão não volta junto e o login falha. Então primeiro
+        // levamos o navegador para o mesmo endereço do retorno.
+        $base = $this->baseDoRetorno();
+        if ($base && $base !== $request->getSchemeAndHttpHost()) {
+            return redirect()->away($base.'/auth/login');
+        }
+
         return $entra->redirecionarParaLogin();
     }
 
@@ -33,10 +44,11 @@ class AutenticacaoController extends Controller
         try {
             $identidade = $entra->usuarioAutenticado();
         } catch (Throwable $e) {
-            Log::warning('Falha no login Entra ID', ['erro' => $e->getMessage()]);
-            $registro->falha(null, 'falha ao validar o retorno do Entra ID');
+            [$motivo, $mensagem] = $this->diagnosticar($e);
+            Log::warning('Falha no login Entra ID: '.$motivo, ['erro' => $e->getMessage(), 'tipo' => $e::class]);
+            $registro->falha(null, $motivo);
 
-            return $this->erro('Não foi possível concluir o login. Tente novamente.');
+            return $this->erro($mensagem);
         }
 
         $tenant = Str::lower((string) config('services.azure.tenant'));
@@ -61,6 +73,68 @@ class AutenticacaoController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->away($entra->urlDeLogout(route('inicio')));
+    }
+
+    /**
+     * Traduz a falha do retorno do Entra ID num motivo curto (gravado no histórico) e numa mensagem que diz o que
+     * fazer. Nunca inclui segredos: só o código AADSTS e a causa provável.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function diagnosticar(Throwable $e): array
+    {
+        if ($e instanceof InvalidStateException) {
+            return ['sessão do login perdida (state inválido)',
+                'A sessão do login se perdeu no caminho. Abra o portal sempre pelo mesmo endereço configurado em '
+                .'ENTRA_REDIRECT_URI ('.($this->baseDoRetorno() ?: 'APP_URL').'), confira se o navegador aceita cookies '
+                .'e tente de novo.'];
+        }
+
+        $corpo = $e instanceof RequestException ? (string) $e->getResponse()?->getBody() : '';
+        $retorno = json_decode($corpo, true) ?: [];
+        $descricao = (string) ($retorno['error_description'] ?? '');
+        if (preg_match('/AADSTS\d+/', $descricao, $m)) {
+            $codigo = $m[0];
+            $dica = match ($codigo) {
+                'AADSTS7000215' => 'O segredo do cliente está errado: em ENTRA_CLIENT_SECRET use o "Valor" do segredo, não o "ID do segredo".',
+                'AADSTS7000222' => 'O segredo do cliente expirou: crie um novo em Certificados e segredos e atualize ENTRA_CLIENT_SECRET.',
+                'AADSTS700016' => 'O ID do aplicativo (ENTRA_CLIENT_ID) não foi encontrado neste locatário.',
+                'AADSTS90002' => 'O locatário (ENTRA_TENANT_ID) não foi encontrado. Use o GUID do "ID do diretório (locatário)".',
+                'AADSTS50011' => 'A URI de redirecionamento não confere com a cadastrada no registro do aplicativo.',
+                'AADSTS501481' => 'O código PKCE não confere. Abra o portal pelo mesmo endereço de ENTRA_REDIRECT_URI e tente de novo.',
+                'AADSTS54005', 'AADSTS70008' => 'O código de login expirou ou já foi usado. Tente entrar de novo.',
+                default => strtok($descricao, "\r\n"),
+            };
+
+            return ["Entra ID: {$codigo}", "O Entra ID recusou o login ({$codigo}). {$dica}"];
+        }
+
+        if (str_contains($e->getMessage(), 'cURL error 60') || str_contains($e->getMessage(), 'SSL certificate')) {
+            return ['falha de certificado SSL ao falar com a Microsoft',
+                'O PHP deste servidor não conseguiu validar o certificado da Microsoft (cURL error 60). Configure '
+                .'curl.cainfo e openssl.cafile no php.ini apontando para um arquivo cacert.pem (veja o README).'];
+        }
+
+        if ($e instanceof ConnectException) {
+            return ['sem conexão com a Microsoft',
+                'O servidor do portal não conseguiu se conectar à Microsoft (login.microsoftonline.com / graph.microsoft.com). '
+                .'Verifique a internet, o proxy ou o firewall.'];
+        }
+
+        return ['falha ao validar o retorno do Entra ID',
+            'Não foi possível concluir o login. Tente novamente. Se continuar, o administrador encontra o detalhe em '
+            .'storage/logs/laravel.log.'];
+    }
+
+    /** "http://localhost:8000" a partir de ENTRA_REDIRECT_URI. */
+    private function baseDoRetorno(): ?string
+    {
+        $url = parse_url((string) config('services.azure.redirect'));
+        if (empty($url['scheme']) || empty($url['host'])) {
+            return null;
+        }
+
+        return $url['scheme'].'://'.$url['host'].(isset($url['port']) ? ':'.$url['port'] : '');
     }
 
     private function erro(string $mensagem): Response

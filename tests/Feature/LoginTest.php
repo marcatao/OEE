@@ -6,9 +6,14 @@ use App\Models\RegistroLogin;
 use App\Models\Usuario;
 use App\Services\EntraId;
 use App\Services\IdentidadeEntra;
+use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Psr7\Request as GuzzleRequest;
+use GuzzleHttp\Psr7\Response as GuzzleResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Testing\TestResponse;
+use Laravel\Socialite\Two\InvalidStateException;
 use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
@@ -22,7 +27,11 @@ class LoginTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['services.azure.tenant' => self::TENANT, 'oee.admins' => ['marcato@alumbra.com.br']]);
+        config([
+            'services.azure.tenant' => self::TENANT,
+            'services.azure.redirect' => url('/auth/callback'), // mesmo endereço das requisições de teste
+            'oee.admins' => ['marcato@alumbra.com.br'],
+        ]);
     }
 
     /** Simula o retorno do Entra ID com a identidade informada. */
@@ -155,5 +164,40 @@ class LoginTest extends TestCase
         $this->entrar();
         $this->post('/auth/logout')->assertRedirectContains('login.microsoftonline.com/'.self::TENANT.'/oauth2/v2.0/logout');
         $this->assertGuest();
+    }
+
+    public function test_login_aberto_por_outro_endereco_vai_primeiro_para_o_endereco_do_retorno(): void
+    {
+        config(['services.azure.redirect' => 'http://localhost:8000/auth/callback']);
+
+        $this->get('http://127.0.0.1:8000/auth/login')->assertRedirect('http://localhost:8000/auth/login');
+    }
+
+    public function test_state_invalido_explica_o_que_fazer(): void
+    {
+        $this->mock(EntraId::class, fn (MockInterface $m) => $m->shouldReceive('usuarioAutenticado')->andThrow(new InvalidStateException));
+
+        $this->get('/auth/callback?code=c&state=x')->assertStatus(401)->assertSee('A sessão do login se perdeu');
+        $this->assertSame('sessão do login perdida (state inválido)', RegistroLogin::sole()->motivo);
+    }
+
+    public function test_segredo_errado_mostra_o_codigo_aadsts_e_a_dica(): void
+    {
+        $corpo = json_encode(['error' => 'invalid_client', 'error_description' => "AADSTS7000215: Invalid client secret provided.\r\nTrace ID: x"]);
+        $erro = new ClientException('401', new GuzzleRequest('POST', 'https://login.microsoftonline.com/x/oauth2/v2.0/token'), new GuzzleResponse(401, [], $corpo));
+        $this->mock(EntraId::class, fn (MockInterface $m) => $m->shouldReceive('usuarioAutenticado')->andThrow($erro));
+
+        $this->get('/auth/callback?code=c&state=s')->assertStatus(401)
+            ->assertSee('AADSTS7000215')->assertSee('use o &quot;Valor&quot; do segredo', false);
+        $this->assertSame('Entra ID: AADSTS7000215', RegistroLogin::sole()->motivo);
+    }
+
+    public function test_erro_de_certificado_ssl_explica_o_que_fazer(): void
+    {
+        $erro = new ConnectException('cURL error 60: SSL certificate problem: unable to get local issuer certificate', new GuzzleRequest('POST', 'https://login.microsoftonline.com'));
+        $this->mock(EntraId::class, fn (MockInterface $m) => $m->shouldReceive('usuarioAutenticado')->andThrow($erro));
+
+        $this->get('/auth/callback?code=c&state=s')->assertStatus(401)->assertSee('cURL error 60');
+        $this->assertSame('falha de certificado SSL ao falar com a Microsoft', RegistroLogin::sole()->motivo);
     }
 }

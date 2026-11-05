@@ -128,6 +128,22 @@ As tabelas de usuários e grupos mudaram na própria migração inicial. Num ban
 php artisan migrate:fresh --seed
 ```
 
+## Problemas no login
+
+Quando o login falha, a tela mostra o motivo, e ele também fica em **Cadastros › Logins › Histórico de acessos** e
+em `storage/logs/laravel.log`.
+
+| Mensagem | O que fazer |
+|---|---|
+| "A sessão do login se perdeu" | Abra o portal pelo endereço de `ENTRA_REDIRECT_URI` (ex.: `http://localhost:8000`, não `127.0.0.1`) e confira se o navegador aceita cookies. |
+| `AADSTS7000215` | Em `ENTRA_CLIENT_SECRET` use o **Valor** do segredo, não o "ID do segredo". |
+| `AADSTS7000222` | O segredo expirou: crie outro e atualize o `.env`. |
+| `AADSTS700016` / `AADSTS90002` | `ENTRA_CLIENT_ID` ou `ENTRA_TENANT_ID` errado (use os GUIDs da página do registro do aplicativo). |
+| `AADSTS50011` | A URI de redirecionamento do registro do aplicativo precisa ser igual a `ENTRA_REDIRECT_URI`. |
+| `cURL error 60` (certificado SSL) | O PHP não tem a lista de certificados. Baixe o [cacert.pem](https://curl.se/ca/cacert.pem), salve (ex.: `C:\php\cacert.pem`) e no `php.ini` (`php --ini` mostra onde está) coloque `curl.cainfo = "C:\php\cacert.pem"` e `openssl.cafile = "C:\php\cacert.pem"`. Reinicie o `php artisan serve`. |
+
+Depois de mudar o `.env`, rode `php artisan config:clear` e reinicie o `php artisan serve`.
+
 ## Testes
 
 ```sh
