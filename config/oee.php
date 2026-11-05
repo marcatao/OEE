@@ -1,6 +1,9 @@
 <?php
 
 return [
+    // Nome do portal exibido nas telas (não depende do APP_NAME do .env).
+    'nome' => 'OEE Alumbra',
+
     // E-mails que NASCEM administradores no primeiro login. Todos os outros nascem "sem acesso" e um
     // administrador libera pelo menu Cadastros > Logins > Usuários.
     'admins' => array_values(array_filter(array_map(

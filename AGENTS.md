@@ -16,8 +16,10 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Datas gravadas em **UTC** (`config/app.php` usa `UTC`) e exibidas no fuso local com `@dataHora($valor)`.
 - Tabelas e colunas em português. Modelos de cadastro usam o trait `App\Models\Concerns\Auditavel`
   (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id`). Cadastros são desativados, não excluídos.
-- Telas em Blade com `layouts.portal` e o CSS de `public/css/portal.css` (tokens de cor em `:root`, tema escuro).
-  Sem etapa de build com Node.
+- Nome do portal: **OEE Alumbra**, em `config('oee.nome')` (nunca escreva o nome direto nas telas).
+- Identidade visual em **tons de verde** (estilo da empresa): as cores ficam só nas variáveis do topo de
+  `public/css/portal.css` (tema claro e escuro). Nunca use cores soltas nas telas.
+- Telas em Blade com `layouts.portal` e o CSS de `public/css/portal.css`. Sem etapa de build com Node.
 - Toda rota interna fica no grupo `auth`. Página nova: registre a chave em `config/oee.php` (`permissoes`), proteja a
   rota com `->middleware('permissao:chave')` e inclua o link no menu lateral (`layouts/portal.blade.php`) dentro de
   `@if ($u->pode('chave'))`. Páginas só de admin usam `->middleware('perfil:admin')`.

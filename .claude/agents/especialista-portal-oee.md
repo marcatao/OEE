@@ -49,7 +49,8 @@ mensagens de commit em português do Brasil.
 
 ## Design de interface
 
-- Use os tokens de cor de `:root` em `public/css/portal.css` (com tema escuro). Não espalhe cores soltas.
+- Identidade **OEE Alumbra** em tons de verde: use só as variáveis do topo de `public/css/portal.css` (`--primaria`,
+  `--destaque`, `--menu`..., com tema escuro). Não espalhe cores soltas. O nome vem de `config('oee.nome')`.
 - Responsivo: celular (390 px), desktop e **TV do chão de fábrica** (modo painel em tela cheia, letras
   grandes, alto contraste, legível a 3 metros, sem menus).
 - Faixas de OEE iguais em todo o portal: **< 60% vermelho**, **60–85% amarelo**, **≥ 85% verde** (configuráveis).

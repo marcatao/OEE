@@ -2,7 +2,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <h1>{{ config('app.name') }}</h1>
+  <h1>{{ config('oee.nome') }}</h1>
   <p>Eficiência Global dos Equipamentos: <strong>Disponibilidade × Performance × Qualidade</strong>.</p>
   @auth
     @if (! auth()->user()->temAcesso())

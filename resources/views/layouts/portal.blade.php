@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@yield('titulo', 'Início') · {{ config('app.name') }}</title>
+  <title>@yield('titulo', 'Início') · {{ config('oee.nome') }}</title>
   <link rel="stylesheet" href="{{ asset('css/portal.css') }}">
 </head>
 <body>
@@ -13,7 +13,7 @@
   <input type="checkbox" id="menu-aberto" class="menu-alternar" aria-hidden="true">
   <div class="estrutura">
     <aside class="menu-lateral" aria-label="Menu do sistema">
-      <a class="marca" href="{{ route('inicio') }}">{{ config('app.name') }}</a>
+      <a class="marca" href="{{ route('inicio') }}"><span class="marca-icone" aria-hidden="true"></span>{{ config('oee.nome') }}</a>
       <nav>
         <a href="{{ route('inicio') }}" @class(['ativo' => request()->routeIs('inicio')])>Início</a>
 
@@ -53,7 +53,7 @@
 @else
   {{-- Visitante ou usuário ainda sem acesso: sem menu --}}
   <header class="topo">
-    <a class="marca" href="{{ route('inicio') }}">{{ config('app.name') }}</a>
+    <a class="marca" href="{{ route('inicio') }}"><span class="marca-icone" aria-hidden="true"></span>{{ config('oee.nome') }}</a>
     <span class="topo-espaco"></span>
     @if ($u)
       @include('layouts.partials.usuario')

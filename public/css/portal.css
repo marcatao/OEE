@@ -1,17 +1,30 @@
-:root { --fundo:#f4f6f9; --cartao:#fff; --texto:#1c2430; --suave:#5b6675; --primaria:#0f6cbd; --primaria-suave:#e6f0fa; --erro:#b42318; --ok:#067647; --alerta:#b54708; --borda:#d8dee6; --menu:#132235; --menu-texto:#c9d4e2; --menu-ativo:#24496f; }
+/* ===== Identidade OEE Alumbra: tons de verde. Para ajustar a cor da empresa, mude só estas variáveis. ===== */
+:root {
+  --fundo:#f3f6f4; --cartao:#ffffff; --texto:#17241d; --suave:#56655c; --borda:#d5e0d9;
+  --primaria:#13784a; --primaria-texto:#ffffff; --primaria-suave:#e3f2ea; --destaque:#3fb37a;
+  --erro:#b42318; --ok:#067647; --alerta:#b54708;
+  --menu:#0e2a1e; --menu-texto:#c5d8cd; --menu-secao:#86a596; --menu-ativo:#1d5a3d;
+}
 @media (prefers-color-scheme: dark) {
-  :root { --fundo:#11161d; --cartao:#1a212b; --texto:#e6ebf1; --suave:#9aa6b4; --primaria:#4aa3f0; --primaria-suave:#1d3349; --erro:#f97066; --ok:#47cd89; --alerta:#fdb022; --borda:#2c3643; --menu:#0b1118; --menu-texto:#b7c3d1; --menu-ativo:#1d3349; }
+  :root {
+    --fundo:#0f1612; --cartao:#17211b; --texto:#e4ede7; --suave:#9db0a5; --borda:#29372f;
+    --primaria:#4cc38a; --primaria-texto:#0b1a12; --primaria-suave:#173a29; --destaque:#4cc38a;
+    --erro:#f97066; --ok:#47cd89; --alerta:#fdb022;
+    --menu:#0a120e; --menu-texto:#b5c9bd; --menu-secao:#7d9688; --menu-ativo:#1d4632;
+  }
+}
 }
 * { box-sizing: border-box; }
 body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; background:var(--fundo); color:var(--texto); }
 a { color:var(--primaria); }
-.topo { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:.75rem 1rem; background:var(--cartao); border-bottom:1px solid var(--borda); flex-wrap:wrap; }
+.topo { border-top:3px solid var(--destaque); display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:.75rem 1rem; background:var(--cartao); border-bottom:1px solid var(--borda); flex-wrap:wrap; }
 .topo nav { display:flex; gap:1rem; align-items:center; flex-wrap:wrap; }
 .topo form { margin:0; }
-.marca { font-weight:700; font-size:1.25rem; text-decoration:none; }
+.marca { display:inline-flex; align-items:center; gap:.5rem; font-weight:700; font-size:1.25rem; text-decoration:none; color:var(--primaria); }
+.marca-icone { width:.9rem; height:.9rem; border-radius:3px 50% 3px 50%; background:var(--destaque); flex-shrink:0; }
 main { max-width:1200px; margin:1.5rem auto; padding:0 1rem; }
 .cartao { background:var(--cartao); border:1px solid var(--borda); border-radius:8px; padding:1.5rem; }
-.botao { display:inline-block; background:var(--primaria); color:#fff; border:1px solid var(--primaria); border-radius:4px; padding:.5rem 1rem; text-decoration:none; font:inherit; cursor:pointer; }
+.botao { display:inline-block; background:var(--primaria); color:var(--primaria-texto); border:1px solid var(--primaria); border-radius:4px; padding:.5rem 1rem; text-decoration:none; font:inherit; cursor:pointer; }
 .botao.secundario { background:transparent; color:var(--primaria); }
 .botao.pequeno { padding:.25rem .75rem; }
 .formulario { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; align-items:end; }
@@ -21,7 +34,7 @@ input, select { padding:.5rem; border:1px solid var(--borda); border-radius:4px;
 .indicadores div { border:1px solid var(--borda); border-radius:8px; padding:1rem; display:flex; flex-direction:column; }
 .indicadores span { color:var(--suave); font-size:.9rem; }
 .indicadores strong { font-size:1.75rem; font-variant-numeric: tabular-nums; }
-.indicadores .destaque { border-color:var(--primaria); }
+.indicadores .destaque { border-color:var(--primaria); background:var(--primaria-suave); }
 .erro { color:var(--erro); }
 .ok { color:var(--ok); }
 .aviso { background:var(--cartao); border:1px solid currentColor; border-radius:8px; padding:.75rem 1rem; }
@@ -36,12 +49,12 @@ dd { margin:0; }
 /* ---------- Estrutura com menu lateral ---------- */
 .estrutura { display:flex; min-height:100vh; background:linear-gradient(to right, var(--menu) 250px, transparent 250px); }
 .menu-lateral { width:250px; flex-shrink:0; background:var(--menu); color:var(--menu-texto); padding:1rem .75rem; position:sticky; top:0; height:100vh; overflow-y:auto; }
-.menu-lateral .marca { display:block; color:#fff; padding:.25rem .5rem 1rem; }
+.menu-lateral .marca { display:flex; color:#fff; padding:.25rem .5rem 1rem; }
 .menu-lateral nav a { display:block; color:var(--menu-texto); text-decoration:none; padding:.5rem .75rem; border-radius:6px; }
 .menu-lateral nav a:hover { background:rgba(255,255,255,.08); color:#fff; }
-.menu-lateral nav a.ativo { background:var(--menu-ativo); color:#fff; font-weight:600; }
+.menu-lateral nav a.ativo { background:var(--menu-ativo); color:#fff; font-weight:600; box-shadow:inset 3px 0 0 var(--destaque); }
 .menu-lateral nav a:focus-visible, .menu-grupo summary:focus-visible { outline:2px solid #fff; outline-offset:2px; }
-.menu-secao { margin:1.25rem .75rem .35rem; font-size:.75rem; text-transform:uppercase; letter-spacing:.06em; color:#8193a8; }
+.menu-secao { margin:1.25rem .75rem .35rem; font-size:.75rem; text-transform:uppercase; letter-spacing:.06em; color:var(--menu-secao); }
 .menu-grupo summary { cursor:pointer; padding:.5rem .75rem; border-radius:6px; list-style:none; }
 .menu-grupo summary::-webkit-details-marker { display:none; }
 .menu-grupo summary::before { content:'▸'; display:inline-block; width:1rem; transition:transform .15s; }
@@ -75,7 +88,7 @@ h2 { margin-top:2rem; }
 .filtros label { display:flex; flex-direction:column; gap:.25rem; color:var(--suave); font-size:.9rem; }
 .tabela td.quebra { white-space:normal; min-width:8rem; }
 .etiqueta { display:inline-block; padding:.1rem .6rem; border-radius:999px; font-size:.85rem; border:1px solid currentColor; }
-.perfil-admin { color:var(--primaria); background:var(--primaria-suave); }
+.perfil-admin { color:var(--primaria-texto); background:var(--primaria); border-color:var(--primaria); }
 .perfil-operador { color:var(--ok); }
 .perfil-sem_acesso { color:var(--alerta); }
 .formulario-vertical { display:flex; flex-direction:column; gap:1.25rem; max-width:640px; margin-top:1rem; }
