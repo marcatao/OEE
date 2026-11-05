@@ -18,8 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [UsuarioAtivo::class]);
         $middleware->alias(['perfil' => ExigePerfil::class, 'permissao' => ExigePermissao::class]);
         $middleware->redirectGuestsTo(fn () => route('login'));
-        // Atrás de proxy reverso/IIS com HTTPS, configure TRUSTED_PROXIES para o Laravel montar URLs https.
-        $middleware->trustProxies(at: env('TRUSTED_PROXIES'));
+        // Proxies confiáveis (TRUSTED_PROXIES no .env) ficam em config/trustedproxy.php: aqui o .env ainda não foi lido.
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

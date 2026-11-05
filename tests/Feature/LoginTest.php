@@ -200,4 +200,19 @@ class LoginTest extends TestCase
         $this->get('/auth/callback?code=c&state=s')->assertStatus(401)->assertSee('cURL error 60');
         $this->assertSame('falha de certificado SSL ao falar com a Microsoft', RegistroLogin::sole()->motivo);
     }
+
+    public function test_acesso_de_outra_maquina_com_portal_configurado_em_localhost_explica_o_que_fazer(): void
+    {
+        config(['services.azure.redirect' => 'http://localhost:8000/auth/callback']);
+
+        $this->get('http://192.168.0.50:8000/auth/login')->assertStatus(500)
+            ->assertSee('configurado para funcionar só no próprio servidor')->assertSee('Acessar de outras máquinas');
+    }
+
+    public function test_acesso_pelo_nome_de_rede_vai_para_o_endereco_https_configurado(): void
+    {
+        config(['services.azure.redirect' => 'https://oee.alumbra.local/auth/callback']);
+
+        $this->get('http://192.168.0.50:8000/auth/login')->assertRedirect('https://oee.alumbra.local/auth/login');
+    }
 }

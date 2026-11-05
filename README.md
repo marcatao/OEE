@@ -128,6 +128,55 @@ As tabelas de usuários e grupos mudaram na própria migração inicial. Num ban
 php artisan migrate:fresh --seed
 ```
 
+## Acessar de outras máquinas
+
+`http://localhost:8000` só funciona na própria máquina onde o portal roda: em qualquer outra, "localhost" é ela
+mesma. Para a equipe acessar pela rede, o portal precisa de um **nome de rede** e de **HTTPS**, porque o Entra ID só
+aceita endereço de retorno sem HTTPS quando é `localhost`.
+
+Exemplo com o nome `oee.alumbra.local` e o [Caddy](https://caddyserver.com/download) (servidor web gratuito que cuida
+do HTTPS) na frente do portal:
+
+1. **Nome de rede**: peça à TI um registro de DNS `oee.alumbra.local` apontando para o IP do servidor do portal. Para
+   um teste rápido, dá para acrescentar a linha `192.168.0.50 oee.alumbra.local` (com o IP do servidor) no arquivo
+   `C:\Windows\System32\drivers\etc\hosts` de cada máquina.
+2. **Caddy**: no servidor, crie um arquivo `Caddyfile` (pode ser na pasta do Caddy) com:
+
+   ```
+   oee.alumbra.local {
+       tls internal
+       reverse_proxy 127.0.0.1:8000
+   }
+   ```
+
+   Se a TI fornecer um certificado da empresa, troque `tls internal` por `tls C:\certs\oee.crt C:\certs\oee.key`.
+   Com `tls internal`, o navegador avisa que o certificado não é confiável até você instalar nas máquinas o
+   certificado raiz do Caddy (no servidor: `%AppData%\Caddy\pki\authorities\local\root.crt`).
+3. **Firewall** do servidor: libere a porta **443** (entrada).
+4. **`.env`** do servidor:
+
+   ```
+   APP_URL=https://oee.alumbra.local
+   ENTRA_REDIRECT_URI="${APP_URL}/auth/callback"
+   TRUSTED_PROXIES=127.0.0.1
+   SESSION_SECURE_COOKIE=true
+   ```
+
+5. **Entra ID**: no registro do aplicativo, em **Autenticação**, acrescente a URI de redirecionamento
+   `https://oee.alumbra.local/auth/callback` (pode manter a de `localhost` para desenvolvimento).
+6. Inicie o portal e o Caddy (num terminal como administrador, por causa da porta 443):
+
+   ```sh
+   php artisan config:clear
+   php artisan serve
+   caddy run
+   ```
+
+7. Em qualquer máquina da rede, abra **https://oee.alumbra.local**.
+
+O `php artisan serve` serve para desenvolvimento e testes com poucos usuários. Para uso definitivo, instale o portal
+num servidor web (IIS com PHP FastCGI, ou Apache/Nginx) apontando para a pasta `public/`, com o mesmo `.env`.
+
 ## Problemas no login
 
 Quando o login falha, a tela mostra o motivo, e ele também fica em **Cadastros › Logins › Histórico de acessos** e
@@ -135,6 +184,7 @@ em `storage/logs/laravel.log`.
 
 | Mensagem | O que fazer |
 |---|---|
+| "configurado para funcionar só no próprio servidor" | Você abriu o portal de outra máquina, mas `ENTRA_REDIRECT_URI` aponta para `localhost`. Veja "Acessar de outras máquinas". |
 | "A sessão do login se perdeu" | Abra o portal pelo endereço de `ENTRA_REDIRECT_URI` (ex.: `http://localhost:8000`, não `127.0.0.1`) e confira se o navegador aceita cookies. |
 | `AADSTS7000215` | Em `ENTRA_CLIENT_SECRET` use o **Valor** do segredo, não o "ID do segredo". |
 | `AADSTS7000222` | O segredo expirou: crie outro e atualize o `.env`. |

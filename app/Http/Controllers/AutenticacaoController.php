@@ -27,6 +27,17 @@ class AutenticacaoController extends Controller
         // levamos o navegador para o mesmo endereço do retorno.
         $base = $this->baseDoRetorno();
         if ($base && $base !== $request->getSchemeAndHttpHost()) {
+            // Configurado só para "localhost", mas acessado por outra máquina: "localhost" lá é a própria máquina
+            // do usuário, então o redirecionamento cairia numa página que não existe. Explica o que configurar.
+            if ($this->ehLocal(parse_url($base, PHP_URL_HOST)) && ! $this->ehLocal($request->getHost())) {
+                return $this->erro(
+                    "Este portal está configurado para funcionar só no próprio servidor ({$base}). Para entrar a partir "
+                    .'de outras máquinas, o administrador precisa configurar APP_URL e ENTRA_REDIRECT_URI com o endereço '
+                    .'de rede do servidor, em HTTPS (veja a seção "Acessar de outras máquinas" do README).',
+                    500,
+                );
+            }
+
             return redirect()->away($base.'/auth/login');
         }
 
@@ -137,8 +148,13 @@ class AutenticacaoController extends Controller
         return $url['scheme'].'://'.$url['host'].(isset($url['port']) ? ':'.$url['port'] : '');
     }
 
-    private function erro(string $mensagem): Response
+    private function ehLocal(?string $host): bool
     {
-        return response()->view('erro', ['mensagem' => $mensagem], 401);
+        return in_array(strtolower((string) $host), ['localhost', '127.0.0.1', '::1', '[::1]'], true);
+    }
+
+    private function erro(string $mensagem, int $status = 401): Response
+    {
+        return response()->view('erro', ['mensagem' => $mensagem], $status);
     }
 }
