@@ -23,10 +23,20 @@
       <nav>
         @include('layouts.partials.menu-link', ['rota' => 'inicio', 'rotulo' => 'Início', 'icone' => 'inicio'])
 
-        @if ($u->pode('dashboard_maquina') || $u->pode('calculadora'))
-          <p class="menu-secao">Produção</p>
+        @if ($u->pode('dashboard_maquina') || $u->pode('timeline'))
+          <p class="menu-secao">Dashboards</p>
           @if ($u->pode('dashboard_maquina'))
             @include('layouts.partials.menu-link', ['rota' => 'dashboard.maquinas', 'rotulo' => 'Dashboard por máquina', 'icone' => 'dashboard', 'ativo' => 'dashboard.*'])
+          @endif
+          @if ($u->pode('timeline'))
+            @include('layouts.partials.menu-link', ['rota' => 'timeline', 'rotulo' => 'Timeline', 'icone' => 'timeline'])
+          @endif
+        @endif
+
+        @if ($u->pode('apontamentos') || $u->pode('calculadora'))
+          <p class="menu-secao">Produção</p>
+          @if ($u->pode('apontamentos'))
+            @include('layouts.partials.menu-link', ['rota' => 'apontamentos.index', 'rotulo' => 'Apontamentos', 'icone' => 'apontamento', 'ativo' => 'apontamentos.*'])
           @endif
           @if ($u->pode('calculadora'))
             @include('layouts.partials.menu-link', ['rota' => 'calculadora', 'rotulo' => 'Calculadora de OEE', 'icone' => 'calculadora'])
@@ -37,6 +47,7 @@
           <p class="menu-secao">Administração</p>
           @include('layouts.partials.menu-link', ['rota' => 'admin.maquinas.index', 'rotulo' => 'Máquinas', 'icone' => 'maquina', 'ativo' => 'admin.maquinas.*'])
           @include('layouts.partials.menu-link', ['rota' => 'admin.estrutura', 'rotulo' => 'Plantas e linhas', 'icone' => 'estrutura', 'ativo' => 'admin.estrutura*'])
+          @include('layouts.partials.menu-link', ['rota' => 'admin.legendas.index', 'rotulo' => 'Legendas', 'icone' => 'legenda', 'ativo' => 'admin.legendas.*'])
           @include('layouts.partials.menu-link', ['rota' => 'admin.iot.index', 'rotulo' => 'Dispositivos IoT', 'icone' => 'iot', 'ativo' => 'admin.iot.*'])
           <details class="menu-grupo" @if (request()->routeIs('cadastros.*')) open @endif>
             <summary title="Logins">@include('layouts.partials.icone', ['nome' => 'logins'])<span class="menu-rotulo">Logins</span>@include('layouts.partials.icone', ['nome' => 'seta', 'classe' => 'seta'])</summary>

@@ -3,7 +3,9 @@
 use App\Http\Controllers\Admin\BancoController;
 use App\Http\Controllers\Admin\DispositivoIotController;
 use App\Http\Controllers\Admin\EstruturaController;
+use App\Http\Controllers\Admin\LegendaController;
 use App\Http\Controllers\Admin\MaquinaController;
+use App\Http\Controllers\ApontamentoEstadoController;
 use App\Http\Controllers\AutenticacaoController;
 use App\Http\Controllers\Cadastros\AcessoController;
 use App\Http\Controllers\Cadastros\GrupoController;
@@ -11,6 +13,7 @@ use App\Http\Controllers\Cadastros\UsuarioController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PortalController;
+use App\Http\Controllers\TimelineController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PortalController::class, 'inicio'])->name('inicio');
@@ -34,6 +37,15 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permissao:dashboard_maquina')->prefix('producao/dashboard')->name('dashboard.')->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('maquinas');
         Route::get('{maquina}', [DashboardController::class, 'maquina'])->name('maquina');
+    });
+    Route::get('dashboards/timeline', TimelineController::class)->middleware('permissao:timeline')->name('timeline');
+    Route::middleware('permissao:apontamentos')->prefix('producao/apontamentos')->name('apontamentos.')->group(function () {
+        Route::get('/', [ApontamentoEstadoController::class, 'index'])->name('index');
+        Route::get('novo', [ApontamentoEstadoController::class, 'create'])->name('create');
+        Route::post('/', [ApontamentoEstadoController::class, 'store'])->name('store');
+        Route::get('{apontamento}/editar', [ApontamentoEstadoController::class, 'edit'])->name('edit');
+        Route::put('{apontamento}', [ApontamentoEstadoController::class, 'update'])->name('update');
+        Route::delete('{apontamento}', [ApontamentoEstadoController::class, 'destroy'])->name('destroy');
     });
     Route::match(['get', 'post'], 'calculadora', [PortalController::class, 'calculadora'])
         ->middleware('permissao:calculadora')->name('calculadora');
@@ -68,6 +80,12 @@ Route::middleware('auth')->group(function () {
         Route::put('plantas/{planta}', [EstruturaController::class, 'atualizarPlanta'])->name('estrutura.plantas.update');
         Route::post('linhas', [EstruturaController::class, 'salvarLinha'])->name('estrutura.linhas.store');
         Route::put('linhas/{linha}', [EstruturaController::class, 'atualizarLinha'])->name('estrutura.linhas.update');
+
+        Route::get('legendas', [LegendaController::class, 'index'])->name('legendas.index');
+        Route::get('legendas/nova', [LegendaController::class, 'create'])->name('legendas.create');
+        Route::post('legendas', [LegendaController::class, 'store'])->name('legendas.store');
+        Route::get('legendas/{legenda}/editar', [LegendaController::class, 'edit'])->name('legendas.edit');
+        Route::put('legendas/{legenda}', [LegendaController::class, 'update'])->name('legendas.update');
 
         Route::get('dispositivos-iot', [DispositivoIotController::class, 'index'])->name('iot.index');
         Route::get('dispositivos-iot/novo', [DispositivoIotController::class, 'create'])->name('iot.create');

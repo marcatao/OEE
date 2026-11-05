@@ -19,8 +19,13 @@ return [
     // e proteja a rota com ->middleware('permissao:chave'). O administrador sempre tem todas.
     'permissoes' => [
         'dashboard_maquina' => 'Dashboard por máquina',
+        'timeline' => 'Timeline das máquinas',
+        'apontamentos' => 'Apontamentos das máquinas (registrar estados)',
         'calculadora' => 'Calculadora de OEE',
     ],
+
+    // Hora em que o "dia de produção" começa na Timeline (o dia vai desta hora até a mesma hora do dia seguinte).
+    'timeline_inicio_dia' => env('TIMELINE_INICIO_DIA', '06:00'),
 
     // Dispositivo IoT sem sinal há mais que estes minutos aparece como "sem sinal".
     'iot_minutos_sem_sinal' => (int) env('IOT_MINUTOS_SEM_SINAL', 5),

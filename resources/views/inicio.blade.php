@@ -43,6 +43,8 @@
       $saudacao = $agora->hour < 12 ? 'Bom dia' : ($agora->hour < 18 ? 'Boa tarde' : 'Boa noite');
       $atalhos = array_values(array_filter([
         $u->pode('dashboard_maquina') ? ['dashboard.maquinas', 'dashboard', 'Dashboard por máquina', 'OEE, disponibilidade, performance e qualidade de cada máquina.'] : null,
+        $u->pode('timeline') ? ['timeline', 'timeline', 'Timeline', 'Estado de cada máquina ao longo do dia, nas cores das legendas.'] : null,
+        $u->pode('apontamentos') ? ['apontamentos.index', 'apontamento', 'Apontamentos', 'Registre o estado das máquinas: início, fim e legenda.'] : null,
         $u->pode('calculadora') ? ['calculadora', 'calculadora', 'Calculadora de OEE', 'Simule o OEE de um turno a partir de tempos e peças.'] : null,
         $u->ehAdmin() ? ['admin.maquinas.index', 'maquina', 'Máquinas', 'Cadastro das máquinas, linhas e ciclos ideais.'] : null,
         $u->ehAdmin() ? ['admin.iot.index', 'iot', 'Dispositivos IoT', 'Sensores, CLPs e gateways que enviam os dados.'] : null,

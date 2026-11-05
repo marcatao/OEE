@@ -8,6 +8,7 @@
   --sombra-forte:0 10px 30px rgba(16,40,28,.12);
   --heroi-inicio:#00663d; --heroi-fim:#0a8f58; --heroi-texto:#ffffff; --heroi-suave:rgba(255,255,255,.8);
   --logo-filtro:none; --trilha-medidor:#e3ebe6; --fundo-escurecido:rgba(0,0,0,.45);
+  --tl-texto-claro:#ffffff; --tl-texto-escuro:#1b2a21; --tl-vazio:#eef2ef; --tl-separador:rgba(255,255,255,.55); --tl-agora:#c62828;
   --largura-menu:232px; --largura-menu-recolhido:68px; --altura-topo:60px;
 }
 @media (prefers-color-scheme: dark) {
@@ -19,6 +20,7 @@
     --sombra:0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25); --sombra-forte:0 10px 30px rgba(0,0,0,.45);
     --heroi-inicio:#0b3d27; --heroi-fim:#106b43;
     --logo-filtro:brightness(0) invert(1); --trilha-medidor:#22302a;
+    --tl-vazio:#1c2721; --tl-separador:rgba(0,0,0,.35); --tl-agora:#ff6b6b;
   }
 }
 
@@ -266,3 +268,36 @@ a.kpi:hover { border-color:var(--primaria); }
 .perfil-cabecalho h1 { margin:0; }
 .perfil-cabecalho p { margin:.2rem 0 0; }
 .foto-campos { display:flex; flex-direction:column; gap:.5rem; }
+
+/* ---------- Timeline ---------- */
+.tl-topo { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+.tl-navegacao { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.tl-navegacao input[type=date] { padding:.45rem .6rem; }
+.tl-turnos { display:inline-flex; border:1px solid var(--borda-forte); border-radius:8px; overflow:hidden; }
+.tl-turnos a { padding:.45rem .8rem; text-decoration:none; color:var(--suave); font-size:.85rem; font-weight:600; border-right:1px solid var(--borda-forte); }
+.tl-turnos a:last-child { border-right:0; }
+.tl-turnos a.ativo { background:var(--primaria-suave); color:var(--primaria); }
+.tl-resumo { display:flex; gap:1.25rem; flex-wrap:wrap; align-items:center; padding:.75rem 1rem; border:1px solid var(--borda); border-radius:10px; background:var(--fundo); margin-top:1rem; font-size:.88rem; }
+.tl-resumo strong { font-variant-numeric:tabular-nums; }
+.tl-chip { display:inline-flex; align-items:center; gap:.4rem; }
+.tl-cor { width:12px; height:12px; border-radius:3px; flex-shrink:0; display:inline-block; }
+.tl-grade { overflow-x:auto; margin-top:1rem; }
+.tl-tabela { min-width:960px; }
+.tl-linha { display:grid; grid-template-columns:150px 1fr; align-items:center; gap:.75rem; padding:.25rem 0; }
+.tl-maquina { font-size:.88rem; font-weight:600; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--texto); text-decoration:none; }
+.tl-maquina small { display:block; font-weight:400; color:var(--suave); font-size:.72rem; }
+a.tl-maquina:hover { color:var(--primaria); }
+.tl-faixa { position:relative; height:32px; background:var(--tl-vazio); border-radius:4px; overflow:hidden; }
+.tl-bloco { position:absolute; top:0; bottom:0; display:flex; align-items:center; justify-content:center; overflow:hidden; white-space:nowrap; font-size:.66rem; font-weight:700; letter-spacing:.02em; text-decoration:none; box-shadow:inset -1px 0 0 var(--tl-separador); }
+.tl-bloco:hover { filter:brightness(1.08); outline:2px solid var(--texto); outline-offset:-2px; z-index:2; }
+.tl-bloco span { padding:0 3px; overflow:hidden; text-overflow:ellipsis; }
+.tl-bloco.aberto { background-image:repeating-linear-gradient(135deg, transparent 0 6px, var(--tl-separador) 6px 8px); }
+.tl-texto-claro { color:var(--tl-texto-claro); }
+.tl-texto-escuro { color:var(--tl-texto-escuro); }
+.tl-agora { position:absolute; top:0; bottom:0; width:2px; background:var(--tl-agora); z-index:3; pointer-events:none; }
+.tl-eixo { position:relative; height:26px; border-top:2px solid var(--borda-forte); margin-top:.35rem; }
+.tl-marca { position:absolute; top:0; transform:translateX(-50%); font-size:.7rem; color:var(--suave); padding-top:.3rem; font-variant-numeric:tabular-nums; }
+.tl-marca::before { content:''; position:absolute; top:-2px; left:50%; height:6px; border-left:1px solid var(--borda-forte); }
+.tl-marca.virada { color:var(--texto); font-weight:700; }
+.amostra-cor { width:26px; height:18px; border-radius:4px; display:inline-block; vertical-align:middle; border:1px solid var(--borda); }
+input[type=color] { width:64px; height:40px; padding:2px; cursor:pointer; }

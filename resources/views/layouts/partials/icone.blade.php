@@ -23,6 +23,11 @@
     'mais' => '<path d="M12 5v14M5 12h14"/>',
     'atualizar' => '<path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/>',
     'camera' => '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
+    'timeline' => '<path d="M3 6h7M13 6h8M3 12h4M10 12h11M3 18h10M16 18h5"/><path d="M3 3v18"/>',
+    'apontamento' => '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+    'legenda' => '<rect x="3" y="4" width="5" height="4" rx="1"/><rect x="3" y="10" width="5" height="4" rx="1"/><rect x="3" y="16" width="5" height="4" rx="1"/><path d="M11 6h10M11 12h10M11 18h10"/>',
+    'anterior' => '<path d="M15 6l-6 6 6 6"/>',
+    'lixeira' => '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
     'check' => '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   ];
 @endphp

@@ -19,6 +19,15 @@ das máquinas ficam no banco do portal.
 - Menu lateral (recolhível: o botão do topo deixa só os ícones e o navegador lembra a escolha):
   Início · **Produção** (Dashboard por máquina, Calculadora de OEE) · **Administração** (Máquinas, Plantas e linhas,
   Dispositivos IoT, Logins › Usuários/Grupos/Histórico de acessos, Banco de dados). Cada usuário só vê o que pode abrir.
+- **Timeline** (Dashboards): uma faixa por máquina ativa (do cadastro de Máquinas) com os estados do dia de produção
+  (06:00 às 06:00, configurável em `TIMELINE_INICIO_DIA`) ou de um turno, pintados com a **cor da legenda**; mostra a
+  disponibilidade e o tempo/percentual de cada legenda. Clicar numa barra abre o apontamento para corrigir.
+- **Apontamentos** (Produção): máquina, horário inicial, horário final (vazio = ainda nesse estado), legenda e
+  referência (OP/lote, aparece na barra). Ao registrar o próximo estado, o anterior em aberto é encerrado sozinho;
+  horários sobrepostos são recusados. Tabela `apontamentos_estado`.
+- **Legendas** (Administração): sigla, descrição, tipo (produzindo, parada não planejada, parada planejada,
+  desligada) e **cor** da barra na timeline. A migração já carrega as legendas padrão: PROD, DT, SETUP, WAIT, MANUT,
+  QUAL, CALIB, PREV, REF e OFF. Tabela `legendas`.
 - **Dashboard por máquina**: OEE, disponibilidade, performance e qualidade de cada máquina por período (hoje, ontem,
   7 dias, 30 dias, mês), calculados dos apontamentos e paradas (`app/Services/IndicadoresOee.php`).
 - **Meu perfil**: foto, setor, cargo, e-mail de contato e celular. No login, o portal lê esses dados no Microsoft
