@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Cadastros › Logins</p>
+  <p class="trilha">Administração › Logins</p>
   <h1>Usuários</h1>
   <p>Os usuários são cadastrados automaticamente no primeiro login pelo Entra ID e nascem <strong>sem acesso</strong>.
     Aqui você define o perfil, a situação e os grupos de cada um.</p>
@@ -32,7 +32,7 @@
     <tbody>
     @forelse ($usuarios as $usuario)
       <tr>
-        <td>{{ $usuario->nome }}</td>
+        <td><span style="display:inline-flex;align-items:center;gap:.6rem">@include('partials.avatar', ['usuario' => $usuario]) <span>{{ $usuario->nome }}@if ($usuario->cargo)<br><small class="suave">{{ $usuario->cargo }}</small>@endif</span></span></td>
         <td>{{ $usuario->email }}</td>
         <td><span class="etiqueta perfil-{{ $usuario->perfil }}">{{ $usuario->rotuloPerfil() }}</span></td>
         <td class="quebra">{{ $usuario->grupos->pluck('nome')->join(', ') ?: '-' }}</td>

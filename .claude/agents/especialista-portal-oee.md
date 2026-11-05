@@ -25,9 +25,11 @@ mensagens de commit em português do Brasil.
   `config/oee.php` (`permissoes`), rota com `->middleware('permissao:chave')`, link no menu lateral dentro de
   `@if ($u->pode('chave'))` e teste de que operador sem o grupo recebe 403. Páginas de administração usam
   `->middleware('perfil:admin')`. Para o fluxo de login, siga o agente `especialista-entra-id`.
-- **Menu lateral** (`resources/views/layouts/portal.blade.php`): seções Produção, Cadastros (com subgrupos em
-  `<details>`, ex.: Cadastros › Logins), Administração. Mantenha o padrão: link ativo com `request()->routeIs()`,
-  trilha (`<p class="trilha">Cadastros › Logins</p>`) no topo de cada página.
+- **Menu lateral** (`resources/views/layouts/portal.blade.php`, recolhível só com ícones): seções Produção e
+  Administração (com subgrupos em `<details>`, ex.: Administração › Logins). Cada link usa
+  `@include('layouts.partials.menu-link', [...])` com um ícone de `layouts/partials/icone.blade.php`. Mantenha o
+  padrão: link ativo com `request()->routeIs()`, trilha (`<p class="trilha">Administração › Logins</p>`) no topo de
+  cada página.
 - **Dados:** Eloquent com os modelos existentes; cadastros com o trait `Auditavel` (preenche quem criou/alterou) e
   desativação em vez de exclusão. Para tabelas novas, índices e consultas pesadas, siga o agente
   `especialista-sql-server`; para fórmulas e indicadores, o `especialista-dados-oee`.

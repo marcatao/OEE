@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Services\EntraId;
+use App\Services\PerfilEntra;
 use App\Services\RegistroDeLogin;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Two\InvalidStateException;
@@ -44,7 +46,7 @@ class AutenticacaoController extends Controller
         return $entra->redirecionarParaLogin();
     }
 
-    public function callback(Request $request, EntraId $entra, RegistroDeLogin $registro): Response
+    public function callback(Request $request, EntraId $entra, RegistroDeLogin $registro, PerfilEntra $perfil): Response
     {
         if ($request->filled('error')) {
             $registro->falha(null, 'Entra ID: '.$request->string('error'));
@@ -73,6 +75,14 @@ class AutenticacaoController extends Controller
 
         Auth::login($usuario);
         $request->session()->regenerate(); // nova sessão após autenticar (evita fixação de sessão)
+
+        // Preenche setor, cargo, celular, matrícula e foto com o que o Entra ID tiver (só campos vazios).
+        // O token fica na sessão, criptografado, para o botão "Atualizar com o Entra ID" do perfil.
+        $perfil->sincronizar($usuario, $identidade->token);
+        if ($identidade->token) {
+            $request->session()->put('entra_token', Crypt::encryptString($identidade->token));
+            $request->session()->put('entra_token_expira', $identidade->tokenExpiraEm ?? time() + 3000);
+        }
 
         return redirect()->intended(route('inicio')); // "intended" só aceita URLs do próprio portal
     }

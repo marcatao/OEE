@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Cadastros › Logins › <a href="{{ route('cadastros.usuarios.index') }}">Usuários</a></p>
+  <p class="trilha">Administração › Logins › <a href="{{ route('cadastros.usuarios.index') }}">Usuários</a></p>
   <h1>{{ $usuario->nome }}</h1>
 
   <dl class="dados-curtos">

@@ -1,10 +1,15 @@
 <?php
 
 use App\Http\Controllers\Admin\BancoController;
+use App\Http\Controllers\Admin\DispositivoIotController;
+use App\Http\Controllers\Admin\EstruturaController;
+use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\AutenticacaoController;
 use App\Http\Controllers\Cadastros\AcessoController;
 use App\Http\Controllers\Cadastros\GrupoController;
 use App\Http\Controllers\Cadastros\UsuarioController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PortalController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,13 +23,22 @@ Route::controller(AutenticacaoController::class)->prefix('auth')->group(function
 
 Route::middleware('auth')->group(function () {
     Route::get('aguardando-liberacao', [PortalController::class, 'aguardando'])->name('aguardando');
-    Route::get('perfil', [PortalController::class, 'perfil'])->name('perfil');
+
+    // Meu perfil (qualquer usuário logado, mesmo aguardando liberação)
+    Route::get('perfil', [PerfilController::class, 'show'])->name('perfil');
+    Route::put('perfil', [PerfilController::class, 'update'])->name('perfil.update');
+    Route::post('perfil/entra', [PerfilController::class, 'sincronizar'])->name('perfil.entra');
+    Route::get('usuarios/{usuario}/foto', [PerfilController::class, 'foto'])->name('usuarios.foto');
 
     // Produção (cada tela exige a permissão dada pelos grupos; admin pode tudo)
+    Route::middleware('permissao:dashboard_maquina')->prefix('producao/dashboard')->name('dashboard.')->group(function () {
+        Route::get('/', [DashboardController::class, 'index'])->name('maquinas');
+        Route::get('{maquina}', [DashboardController::class, 'maquina'])->name('maquina');
+    });
     Route::match(['get', 'post'], 'calculadora', [PortalController::class, 'calculadora'])
         ->middleware('permissao:calculadora')->name('calculadora');
 
-    // Cadastros > Logins (só administradores)
+    // Administração > Logins (só administradores; as URLs antigas "cadastros/logins" foram mantidas)
     Route::middleware('perfil:admin')->prefix('cadastros/logins')->name('cadastros.')->group(function () {
         Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios.index');
         Route::get('usuarios/{usuario}/editar', [UsuarioController::class, 'edit'])->name('usuarios.edit');
@@ -42,5 +56,23 @@ Route::middleware('auth')->group(function () {
     // Administração (só administradores)
     Route::middleware('perfil:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('banco', BancoController::class)->name('banco');
+
+        Route::get('maquinas', [MaquinaController::class, 'index'])->name('maquinas.index');
+        Route::get('maquinas/nova', [MaquinaController::class, 'create'])->name('maquinas.create');
+        Route::post('maquinas', [MaquinaController::class, 'store'])->name('maquinas.store');
+        Route::get('maquinas/{maquina}/editar', [MaquinaController::class, 'edit'])->name('maquinas.edit');
+        Route::put('maquinas/{maquina}', [MaquinaController::class, 'update'])->name('maquinas.update');
+
+        Route::get('plantas-e-linhas', [EstruturaController::class, 'index'])->name('estrutura');
+        Route::post('plantas', [EstruturaController::class, 'salvarPlanta'])->name('estrutura.plantas.store');
+        Route::put('plantas/{planta}', [EstruturaController::class, 'atualizarPlanta'])->name('estrutura.plantas.update');
+        Route::post('linhas', [EstruturaController::class, 'salvarLinha'])->name('estrutura.linhas.store');
+        Route::put('linhas/{linha}', [EstruturaController::class, 'atualizarLinha'])->name('estrutura.linhas.update');
+
+        Route::get('dispositivos-iot', [DispositivoIotController::class, 'index'])->name('iot.index');
+        Route::get('dispositivos-iot/novo', [DispositivoIotController::class, 'create'])->name('iot.create');
+        Route::post('dispositivos-iot', [DispositivoIotController::class, 'store'])->name('iot.store');
+        Route::get('dispositivos-iot/{dispositivo}/editar', [DispositivoIotController::class, 'edit'])->name('iot.edit');
+        Route::put('dispositivos-iot/{dispositivo}', [DispositivoIotController::class, 'update'])->name('iot.update');
     });
 });

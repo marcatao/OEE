@@ -10,5 +10,7 @@ final readonly class IdentidadeEntra
         public ?string $tenantId,
         public ?string $nome,
         public ?string $email,
+        public ?string $token = null,       // token de acesso ao Microsoft Graph (User.Read), para ler o perfil
+        public ?int $tokenExpiraEm = null,  // timestamp
     ) {}
 }

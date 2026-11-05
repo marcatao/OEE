@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Cadastros > Logins > Usuários. Os usuários são criados pelo primeiro login no Entra ID;
+ * Administração > Logins > Usuários. Os usuários são criados pelo primeiro login no Entra ID;
  * aqui o administrador define perfil, situação e grupos.
  */
 class UsuarioController extends Controller

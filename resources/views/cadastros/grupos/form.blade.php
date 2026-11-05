@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Cadastros › Logins › <a href="{{ route('cadastros.grupos.index') }}">Grupos</a></p>
+  <p class="trilha">Administração › Logins › <a href="{{ route('cadastros.grupos.index') }}">Grupos</a></p>
   <h1>{{ $grupo->exists ? $grupo->nome : 'Novo grupo' }}</h1>
 
   @if ($errors->any())<p class="aviso erro" role="alert">{{ $errors->first() }}</p>@endif
