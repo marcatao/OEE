@@ -51,7 +51,8 @@ class BancoController extends Controller
         foreach ($resultados as $chave => $r) {
             $nome = $sincronizador->itens()[$chave]['descricao'];
             if ($r->situacao === 'sucesso') {
-                $mensagens[] = "{$nome}: {$r->lidos} lidos no Protheus, {$r->novos} novos, {$r->atualizados} atualizados.";
+                $mensagens[] = "{$nome}: {$r->lidos} lidos no Protheus, {$r->novos} novos, {$r->atualizados} atualizados"
+                    .($r->excluidos ? ", {$r->excluidos} excluídos no Protheus" : '').'.';
             } else {
                 $mensagens[] = "{$nome}: falhou — {$r->mensagem}";
                 $erro = true;

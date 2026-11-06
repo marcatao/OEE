@@ -68,7 +68,7 @@ $sincronizarProtheus = function ($comando, ?string $tabela, string $disparo): in
         $comando->info("Sincronizando {$chave} a partir de {$sincronizador->origem($chave)}...");
         $r = $sincronizador->sincronizar($chave, $disparo);
         if ($r->situacao === 'sucesso') {
-            $comando->info("  OK: {$r->lidos} lidos, {$r->novos} novos, {$r->atualizados} atualizados, {$r->ignorados} ignorados.");
+            $comando->info("  OK: {$r->lidos} lidos, {$r->novos} novos, {$r->atualizados} atualizados, {$r->excluidos} excluídos no Protheus, {$r->ignorados} sem alteração.");
         } else {
             $comando->error("  Falhou: {$r->mensagem}");
             $falhou = true;

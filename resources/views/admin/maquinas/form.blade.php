@@ -8,6 +8,13 @@
   <h1>{{ $maquina->exists ? $maquina->nome : 'Nova máquina' }}</h1>
 
   @if ($errors->any())<p class="aviso erro" role="alert">{{ $errors->first() }}</p>@endif
+  @if ($maquina->excluidaNoProtheus())
+    <p class="aviso erro">Esta máquina foi <strong>excluída no Protheus</strong> (SHB) em @dataHora($maquina->excluida_protheus_em)
+      e foi desativada. Ela não pode ser ativada de novo; o histórico continua.</p>
+  @elseif ($maquina->aguardandoCadastro())
+    <p class="aviso alerta">Máquina vinda do Protheus. Escolha a <strong>linha</strong>, preencha o ciclo ideal, as paradas
+      e os canais IoT e marque <strong>Ativa</strong> para ela entrar nos painéis.</p>
+  @endif
 
   <form method="post" class="formulario-vertical" style="max-width:none"
         action="{{ $maquina->exists ? route('admin.maquinas.update', $maquina) : route('admin.maquinas.store') }}">
@@ -16,15 +23,20 @@
 
     <fieldset>
       <legend>Identificação</legend>
+      @if ($maquina->doProtheus())
+        <p class="suave"><span class="etiqueta origem-protheus">Protheus</span> Código, nome e centro de custo vêm da tabela
+          SHB do Protheus @if ($maquina->sincronizado_em) (sincronizada em @dataHora($maquina->sincronizado_em))@endif e não são
+          alterados aqui.</p>
+      @endif
       <div class="campos">
         <label>Código
-          <input name="codigo" required maxlength="30" value="{{ old('codigo', $maquina->codigo) }}" placeholder="Ex.: INJ-01">
+          <input name="codigo" required maxlength="30" value="{{ old('codigo', $maquina->codigo) }}" placeholder="Ex.: INJ-01" @disabled($maquina->doProtheus())>
         </label>
         <label>Nome
-          <input name="nome" required maxlength="120" value="{{ old('nome', $maquina->nome) }}" placeholder="Ex.: Injetora 01">
+          <input name="nome" required maxlength="120" value="{{ old('nome', $maquina->nome) }}" placeholder="Ex.: Injetora 01" @disabled($maquina->doProtheus())>
         </label>
-        <label>Linha
-          <select name="linha_id" required>
+        <label>Linha <small class="suave">(obrigatória para ativar)</small>
+          <select name="linha_id">
             <option value="">Escolha…</option>
             @foreach ($linhas as $planta => $doGrupo)
               <optgroup label="{{ $planta }}">
@@ -37,7 +49,7 @@
         </label>
         <label>Setor / centro de custo
           @php($ccAtual = old('centro_custo', $maquina->centro_custo))
-          <select name="centro_custo">
+          <select name="centro_custo" @disabled($maquina->doProtheus())>
             <option value="">Nenhum</option>
             @foreach ($centros as $cc)
               <option value="{{ $cc->codigo() }}" @selected($ccAtual === $cc->codigo())>{{ $cc->codigo() }} — {{ $cc->descricao() }}</option>
@@ -100,7 +112,7 @@
 
     <fieldset>
       <legend>Máquina ativa ou inativa</legend>
-      <label class="opcao"><input type="radio" name="ativo" value="1" @checked(old('ativo', (int) $maquina->ativo) == 1)> <span>Ativa</span></label>
+      <label class="opcao"><input type="radio" name="ativo" value="1" @disabled($maquina->excluidaNoProtheus()) @checked(old('ativo', (int) $maquina->ativo) == 1)> <span>Ativa</span></label>
       <label class="opcao"><input type="radio" name="ativo" value="0" @checked(old('ativo', (int) $maquina->ativo) == 0)> <span>Inativa <small>sai dos painéis e da timeline, mas o histórico continua</small></span></label>
     </fieldset>
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\ImportadorCentrosCusto;
+use App\Services\Protheus\ImportadorMaquinas;
 
 /*
  * Integração com o Protheus (só leitura). A conexão fica em config/database.php ("protheus").
@@ -14,6 +15,17 @@ return [
             'tabela_origem' => env('PROTHEUS_TABELA_CTT') ?: 'CTT', // tabela no banco do Protheus (ex.: CTT ou dbo.CTT)
             'tabela_destino' => 'centros_custo',                   // tabela do portal
             'importador' => ImportadorCentrosCusto::class,
+            'modo' => 'espelho', // o portal é cópia da tabela do Protheus
+        ],
+        // Depois dos centros de custo, porque a máquina usa o código do centro de custo.
+        'maquinas' => [
+            'descricao' => 'Máquinas',
+            'tabela_origem' => env('PROTHEUS_TABELA_SHB') ?: 'SHB',  // centros de trabalho
+            'tabela_destino' => 'maquinas',
+            'importador' => ImportadorMaquinas::class,
+            // Mista: código, nome e centro de custo vêm da SHB só na primeira vez; o resto é do sistema OEE.
+            // Máquina nova chega inativa; depois só a exclusão no Protheus altera o registro.
+            'modo' => 'mista',
         ],
     ],
 

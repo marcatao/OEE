@@ -33,6 +33,13 @@ class SincronizacaoProtheusTest extends TestCase
             }
             $t->integer('R_E_C_N_O_');
         });
+        // SHB (máquinas) vazia: estes testes tratam dos centros de custo; as máquinas têm teste próprio.
+        Schema::connection('protheus')->create('SHB', function (Blueprint $t) {
+            foreach (['HB_FILIAL', 'HB_COD', 'HB_NOME', 'HB_CC', 'D_E_L_E_T_'] as $c) {
+                $t->string($c)->default('');
+            }
+            $t->integer('R_E_C_N_O_');
+        });
         $this->ctt('01', '1001      ', 'USINAGEM                                ', 1);
         $this->ctt('01', '1002      ', 'MONTAGEM                                ', 2);
         $this->ctt('01', '          ', 'SEM CODIGO                              ', 3);
@@ -62,7 +69,8 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertSame(['1001', '1002'], CentroCusto::orderBy('ctt_custo')->pluck('ctt_custo')->all());
         $this->assertSame('USINAGEM', rtrim(CentroCusto::where('ctt_custo', '1001')->value('ctt_desc01')));
 
-        $s = Sincronizacao::sole();
+        $this->assertSame(['centros_custo', 'maquinas'], Sincronizacao::orderBy('id')->pluck('chave')->all());
+        $s = Sincronizacao::where('chave', 'centros_custo')->sole();
         $this->assertSame(['centros_custo', 'manual', 'sucesso', 3, 2, 0, 1, $admin->id],
             [$s->chave, $s->disparo, $s->situacao, $s->lidos, $s->novos, $s->atualizados, $s->ignorados, $s->usuario_id]);
         $this->assertNotNull($s->terminado_em);
@@ -88,7 +96,7 @@ class SincronizacaoProtheusTest extends TestCase
         $this->actingAs($this->admin())->post('/admin/banco/sincronizar')
             ->assertSessionHas('erro', fn ($m) => str_contains($m, 'Centros de custo: falhou'));
 
-        $s = Sincronizacao::sole();
+        $s = Sincronizacao::where('chave', 'centros_custo')->sole();
         $this->assertSame('erro', $s->situacao);
         $this->assertNotEmpty($s->mensagem);
         $this->get('/admin/banco')->assertOk()->assertSee('Erro');
@@ -142,6 +150,6 @@ class SincronizacaoProtheusTest extends TestCase
         $this->artisan('protheus:sincronizar centros_custo --agendado')->assertSuccessful();
         $this->artisan('protheus:sincronizar inexistente')->assertFailed();
 
-        $this->assertSame(['comando', 'agendado'], Sincronizacao::orderBy('id')->pluck('disparo')->all());
+        $this->assertSame(['comando', 'comando', 'agendado'], Sincronizacao::orderBy('id')->pluck('disparo')->all());
     }
 }

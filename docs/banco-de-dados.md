@@ -4,7 +4,8 @@
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
 - **18** tabelas do sistema e **6** de infraestrutura do Laravel.
-- Origem: **Sistema OEE** (criada e mantida pelo portal) ou **Protheus** (copiada pela sincronização, só leitura no Protheus).
+- Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
+  **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
 
 ## Diagrama
@@ -144,6 +145,11 @@ erDiagram
         nvarchar(100) iot3_id
         nvarchar(100) iot3_canal
         nvarchar(20) iot3_tipo
+        nvarchar(8) hb_filial
+        int r_e_c_n_o_
+        nchar(1) d_e_l_e_t_
+        datetime sincronizado_em
+        datetime excluida_protheus_em
     }
     motivos_parada {
         bigint id PK
@@ -213,6 +219,7 @@ erDiagram
         int atualizados
         int ignorados
         nvarchar(1000) mensagem
+        int excluidos
     }
     turnos {
         bigint id PK
@@ -277,11 +284,18 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
   índice composto `(maquina_id, inicio)`, que é o filtro de todas as telas de produção.
 - Tabelas do Protheus (`centros_custo`) mantêm os nomes e tipos da origem (`ctt_*`, `d_e_l_e_t_`, `r_e_c_n_o_`) e a
   chave natural do Protheus como índice único (`ctt_filial`, `ctt_custo`).
+- **Decisão (aplicada): `maquinas` é tabela mista com `Compras.SHB`.** Código (`HB_COD`), nome (`HB_NOME`) e centro de
+  custo (`HB_CC`) vêm do Protheus só na primeira sincronização; a máquina chega inativa e sem linha (`linha_id` passou a
+  aceitar vazio). Guarda `hb_filial`, `r_e_c_n_o_` e `d_e_l_e_t_` de origem (`r_e_c_n_o_` preenchido = veio do
+  Protheus). Depois só a exclusão no Protheus altera a máquina (marca `d_e_l_e_t_ = '*'` e desativa). Regras no SQL
+  Server: máquina ativa precisa de linha (`ck_maquinas_ativa_com_linha`) e máquina excluída no Protheus não fica ativa
+  (`ck_maquinas_ativa_nao_excluida`).
 
 **Sugestões (ainda não aplicadas)**
 
-1. `maquinas.centro_custo` guarda só o código (sem filial e sem FK). Se a CTT tiver o mesmo código em filiais
-   diferentes, a ligação fica ambígua. Sugestão: guardar também a filial, ou trocar por `centro_custo_id` → `centros_custo.id`.
+1. `maquinas.centro_custo` guarda só o código (sem filial e sem FK), como vem em `HB_CC` da SHB. Se a CTT tiver o
+   mesmo código em filiais diferentes, a ligação fica ambígua. Sugestão: usar também `maquinas.hb_filial` para achar o
+   centro de custo da mesma filial (ou o compartilhado), ou trocar por `centro_custo_id` → `centros_custo.id`.
 2. `maquinas.iot1_* .. iot3_*` repete o mesmo trio de colunas três vezes e não se liga a `dispositivos_iot`. Sugestão:
    tabela `maquina_canais_iot` (`maquina_id`, `posicao`, `dispositivo_iot_id`, `canal`, `tipo`) com PK
    (`maquina_id`, `posicao`) — permite mais de 3 canais e FK para o dispositivo.
@@ -309,14 +323,14 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
 | [`legendas`](#legendas) | Sistema | `id` | 11 | 2 |
 | [`linhas`](#linhas) | Sistema | `id` | 9 | 3 |
-| [`maquinas`](#maquinas) | Sistema | `id` | 24 | 3 |
+| [`maquinas`](#maquinas) | Mista | `id` | 29 | 3 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`plantas`](#plantas) | Sistema | `id` | 8 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
 | [`registros_login`](#registros_login) | Sistema | `id` | 8 | 1 |
 | [`sessions`](#sessions) | Infra | `id` | 6 | 0 |
-| [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 13 | 1 |
+| [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 14 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuarios`](#usuarios) | Sistema | `id` | 18 | 0 |
 
@@ -567,7 +581,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 ### maquinas
 
-**Origem:** Sistema OEE · **Chave primária:** `id`
+**Origem:** Mista — parte dos campos vem de `Compras.SHB` (Protheus), o resto é do Sistema OEE · **Chave primária:** `id`
 
 | Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
 |---|---|---|---|---|
@@ -595,10 +609,15 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `iot3_id` | `nvarchar(100)` | sim |  |  |
 | `iot3_canal` | `nvarchar(100)` | sim |  |  |
 | `iot3_tipo` | `nvarchar(20)` | sim |  |  |
+| `hb_filial` | `nvarchar(8)` | sim |  |  |
+| `r_e_c_n_o_` | `int` | sim |  |  |
+| `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+| `excluida_protheus_em` | `datetime` | sim |  |  |
 
-**Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo)
+**Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_)
 
-**Regras (CHECK, só no SQL Server):** `ck_maquinas_paradas`: `micro_parada_s IS NULL OR macro_parada_s IS NULL OR macro_parada_s > micro_parada_s` · `ck_maquinas_iot1_tipo`: `iot1_tipo IS NULL OR iot1_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot2_tipo`: `iot2_tipo IS NULL OR iot2_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot3_tipo`: `iot3_tipo IS NULL OR iot3_tipo IN ('producao', 'refugo')`
+**Regras (CHECK, só no SQL Server):** `ck_maquinas_paradas`: `micro_parada_s IS NULL OR macro_parada_s IS NULL OR macro_parada_s > micro_parada_s` · `ck_maquinas_iot1_tipo`: `iot1_tipo IS NULL OR iot1_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot2_tipo`: `iot2_tipo IS NULL OR iot2_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot3_tipo`: `iot3_tipo IS NULL OR iot3_tipo IN ('producao', 'refugo')` · `ck_maquinas_d_e_l_e_t_`: `d_e_l_e_t_ IN (' ', '*')` · `ck_maquinas_ativa_com_linha`: `ativo = 0 OR linha_id IS NOT NULL` · `ck_maquinas_ativa_nao_excluida`: `ativo = 0 OR d_e_l_e_t_ <> '*'`
 
 ### motivos_parada
 
@@ -725,6 +744,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizados` | `int` | não | `'0'` |  |
 | `ignorados` | `int` | não | `'0'` |  |
 | `mensagem` | `nvarchar(1000)` | sim |  |  |
+| `excluidos` | `int` | não | `'0'` |  |
 
 **Índices:** `sincronizacoes_chave_iniciado_em_index` (chave, iniciado_em)
 

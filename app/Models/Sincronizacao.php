@@ -13,7 +13,7 @@ class Sincronizacao extends Model
     protected $table = 'sincronizacoes';
 
     protected $fillable = ['chave', 'origem', 'disparo', 'usuario_id', 'iniciado_em', 'terminado_em', 'situacao',
-        'lidos', 'novos', 'atualizados', 'ignorados', 'mensagem'];
+        'lidos', 'novos', 'atualizados', 'ignorados', 'excluidos', 'mensagem'];
 
     protected function casts(): array
     {

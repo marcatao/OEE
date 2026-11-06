@@ -14,19 +14,28 @@ use Illuminate\View\View;
 
 /**
  * Administração > Máquinas. Só administradores. Máquinas são desativadas, nunca excluídas.
+ * Tabela mista com o Protheus (SHB): nas máquinas que vieram de lá, código, nome e centro de custo não se editam
+ * aqui; o usuário completa o resto e ativa. Para ativar é preciso ter linha.
  */
 class MaquinaController extends Controller
 {
     public function index(Request $request): View
     {
         $busca = trim((string) $request->query('busca'));
+        $situacao = (string) $request->query('situacao');
+        $aguardando = fn ($q) => $q->whereNotNull('r_e_c_n_o_')->where('ativo', false)->where('d_e_l_e_t_', '<>', '*');
 
         return view('admin.maquinas.index', [
             'busca' => $busca,
+            'situacao' => $situacao,
             'maquinas' => Maquina::with(['linha.planta', 'centroCusto'])
                 ->when($busca !== '', fn ($q) => $q->where(fn ($w) => $w
                     ->where('nome', 'like', "%{$busca}%")->orWhere('codigo', 'like', "%{$busca}%")))
+                ->when($situacao === 'aguardando', $aguardando)
+                ->when($situacao === 'ativas', fn ($q) => $q->where('ativo', true))
+                ->when($situacao === 'excluidas', fn ($q) => $q->where('d_e_l_e_t_', '*'))
                 ->orderByDesc('ativo')->orderBy('nome')->paginate(25)->withQueryString(),
+            'qtdAguardando' => Maquina::where($aguardando)->count(),
             'temLinhas' => Linha::where('ativo', true)->exists(),
         ]);
     }
@@ -72,7 +81,7 @@ class MaquinaController extends Controller
     private function salvar(Request $request, Maquina $maquina): void
     {
         $regras = [
-            'linha_id' => ['required', 'integer', Rule::exists('linhas', 'id')],
+            'linha_id' => ['nullable', 'required_if:ativo,1', 'integer', Rule::exists('linhas', 'id')],
             'codigo' => ['required', 'string', 'max:30', Rule::unique('maquinas', 'codigo')->ignore($maquina->id)],
             'nome' => ['required', 'string', 'max:120'],
             'fabricante' => ['nullable', 'string', 'max:120'],
@@ -90,7 +99,7 @@ class MaquinaController extends Controller
         }
 
         $mensagens = [
-            'linha_id.required' => 'Escolha a linha da máquina.',
+            'linha_id.required_if' => 'Para ativar a máquina, escolha a linha.',
             'linha_id.exists' => 'Linha não encontrada.',
             'codigo.required' => 'Informe o código da máquina.',
             'codigo.unique' => 'Já existe uma máquina com esse código.',
@@ -110,7 +119,15 @@ class MaquinaController extends Controller
             $mensagens["iot{$n}_tipo.in"] = "IoT {$n}: tipo de canal inválido.";
         }
 
+        // Máquina do Protheus: código, nome e centro de custo vêm da SHB e não são alterados aqui.
+        if ($maquina->doProtheus()) {
+            unset($regras['codigo'], $regras['nome'], $regras['centro_custo']);
+        }
+
         $dados = $request->validate($regras, $mensagens);
+        if ($maquina->excluidaNoProtheus() && $dados['ativo']) {
+            throw ValidationException::withMessages(['ativo' => 'Esta máquina foi excluída no Protheus e não pode ser ativada.']);
+        }
         if (isset($dados['micro_parada_s'], $dados['macro_parada_s']) && $dados['macro_parada_s'] <= $dados['micro_parada_s']) {
             throw ValidationException::withMessages(['macro_parada_s' => 'A macro parada deve ser maior que a micro parada.']);
         }

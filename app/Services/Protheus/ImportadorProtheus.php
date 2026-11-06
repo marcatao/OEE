@@ -13,7 +13,7 @@ interface ImportadorProtheus
 
     /**
      * @param  iterable<array|object>  $linhas
-     * @return array{novos: int, atualizados: int, ignorados: int}
+     * @return array{novos: int, atualizados: int, ignorados: int, excluidos?: int}
      */
     public function importar(iterable $linhas): array;
 }

@@ -57,7 +57,8 @@ class InfoBanco
     }
 
     /**
-     * De onde vem cada tabela: do próprio sistema OEE ou sincronizada do Protheus (config/protheus.php).
+     * De onde vem cada tabela: do próprio sistema OEE, sincronizada do Protheus (cópia) ou mista (parte dos campos
+     * vem do Protheus e o resto é do sistema OEE) — config/protheus.php.
      *
      * @return array<string, array{tipo: string, origem: ?string, chave: ?string}>
      */
@@ -66,7 +67,7 @@ class InfoBanco
         $doProtheus = [];
         foreach (config('protheus.sincronizacoes', []) as $chave => $item) {
             $doProtheus[$item['tabela_destino']] = [
-                'tipo' => 'protheus',
+                'tipo' => ($item['modo'] ?? 'espelho') === 'mista' ? 'mista' : 'protheus',
                 'origem' => config('database.connections.protheus.database').'.'.$item['tabela_origem'],
                 'chave' => $chave,
             ];

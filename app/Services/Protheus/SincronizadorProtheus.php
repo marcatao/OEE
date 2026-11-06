@@ -18,7 +18,7 @@ use Throwable;
  */
 class SincronizadorProtheus
 {
-    /** @return array<string, array{descricao: string, tabela_origem: string, tabela_destino: string, importador: class-string}> */
+    /** @return array<string, array{descricao: string, tabela_origem: string, tabela_destino: string, importador: class-string, modo: string}> */
     public function itens(): array
     {
         return config('protheus.sincronizacoes', []);
@@ -113,6 +113,7 @@ class SincronizadorProtheus
             'novos' => $resumo['novos'] ?? 0,
             'atualizados' => $resumo['atualizados'] ?? 0,
             'ignorados' => $resumo['ignorados'] ?? 0,
+            'excluidos' => $resumo['excluidos'] ?? 0,
             'mensagem' => $mensagem ? Str::limit($mensagem, 997) : null,
         ]);
 

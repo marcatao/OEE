@@ -132,7 +132,11 @@ class DocumentarBanco extends Command
     {
         foreach (config('protheus.sincronizacoes', []) as $item) {
             if ($item['tabela_destino'] === $tabela) {
-                return ['tipo' => 'Protheus', 'texto' => 'Protheus — sincronizada de `'.config('database.connections.protheus.database').'.'.$item['tabela_origem'].'`'];
+                $de = '`'.config('database.connections.protheus.database').'.'.$item['tabela_origem'].'`';
+
+                return ($item['modo'] ?? 'espelho') === 'mista'
+                    ? ['tipo' => 'Mista', 'texto' => "Mista — parte dos campos vem de {$de} (Protheus), o resto é do Sistema OEE"]
+                    : ['tipo' => 'Protheus', 'texto' => "Protheus — sincronizada de {$de}"];
             }
         }
 
@@ -151,7 +155,8 @@ class DocumentarBanco extends Command
         $md[] = '> seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.';
         $md[] = '';
         $md[] = '- **'.count($dominio).'** tabelas do sistema e **'.(count($tabelas) - count($dominio)).'** de infraestrutura do Laravel.';
-        $md[] = '- Origem: **Sistema OEE** (criada e mantida pelo portal) ou **Protheus** (copiada pela sincronização, só leitura no Protheus).';
+        $md[] = '- Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
+  **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).';
         $md[] = '- Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).';
         $md[] = '';
         $md[] = '## Diagrama';

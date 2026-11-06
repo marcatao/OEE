@@ -27,7 +27,27 @@ class Maquina extends Model
 
     protected function casts(): array
     {
-        return ['ativo' => 'boolean', 'ciclo_ideal_s' => 'float', 'micro_parada_s' => 'integer', 'macro_parada_s' => 'integer'];
+        return ['ativo' => 'boolean', 'ciclo_ideal_s' => 'float', 'micro_parada_s' => 'integer', 'macro_parada_s' => 'integer',
+            'r_e_c_n_o_' => 'integer', 'sincronizado_em' => 'datetime', 'excluida_protheus_em' => 'datetime'];
+    }
+
+    /**
+     * Veio do Protheus (tabela SHB)? Então código, nome e centro de custo são do Protheus e não se editam no portal.
+     */
+    public function doProtheus(): bool
+    {
+        return $this->r_e_c_n_o_ !== null;
+    }
+
+    public function excluidaNoProtheus(): bool
+    {
+        return $this->d_e_l_e_t_ === '*';
+    }
+
+    /** Veio do Protheus e ainda não foi completada/ativada no portal. */
+    public function aguardandoCadastro(): bool
+    {
+        return $this->doProtheus() && ! $this->ativo && ! $this->excluidaNoProtheus();
     }
 
     /** Centro de custo pelo código (a máquina guarda só o código, como no Protheus). */

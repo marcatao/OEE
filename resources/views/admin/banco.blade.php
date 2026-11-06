@@ -45,14 +45,16 @@
     @foreach ($sincronizacoes as $chave => $item)
       @php($u = $ultimas[$chave] ?? null)
       <tr>
-        <td><strong>{{ $item['descricao'] }}</strong><br><code class="suave">{{ $item['tabela_destino'] }}</code></td>
+        <td><strong>{{ $item['descricao'] }}</strong>
+          @if (($item['modo'] ?? 'espelho') === 'mista')<span class="etiqueta origem-mista">Mista</span>@endif
+          <br><code class="suave">{{ $item['tabela_destino'] }}</code></td>
         <td><code>{{ $conexaoProtheus['Banco'] ?? '' }}.{{ $item['tabela_origem'] }}</code></td>
         <td>@if ($u)@dataHora($u->iniciado_em)@else <span class="suave">nunca</span>@endif</td>
         <td class="resultado">
           @if ($u)
             <span class="etiqueta sinc-{{ $u->situacao }}">{{ ['sucesso' => 'Sucesso', 'erro' => 'Erro', 'executando' => 'Em andamento'][$u->situacao] ?? $u->situacao }}</span>
             @if ($u->situacao === 'sucesso')
-              <small class="suave">{{ $u->lidos }} lidos · {{ $u->novos }} novos · {{ $u->atualizados }} atualizados</small>
+              <small class="suave">{{ $u->lidos }} lidos · {{ $u->novos }} novos · {{ $u->atualizados }} atualizados @if ($u->excluidos) · {{ $u->excluidos }} excluídos @endif</small>
             @elseif ($u->mensagem)
               <br><small class="erro">{{ \Illuminate\Support\Str::limit($u->mensagem, 160) }}</small>
             @endif
@@ -73,11 +75,16 @@
   </table>
   </div>
 
+  <p class="suave"><small><strong>Centros de custo</strong>: cópia da CTT, atualizada a cada sincronização.
+    <strong>Máquinas</strong> (mista): código, nome e centro de custo vêm da SHB só na primeira vez e a máquina chega
+    <strong>inativa</strong> — complete o cadastro em Máquinas e ative. Depois disso a sincronização só mexe na máquina se
+    ela for excluída no Protheus (aí ela é desativada).</small></p>
+
   @if ($historico->isNotEmpty())
     <h3>Últimas sincronizações</h3>
     <div class="rolagem">
     <table class="tabela">
-      <thead><tr><th>Início</th><th>Tabela</th><th>Disparo</th><th>Resultado</th><th class="num">Lidos</th><th class="num">Novos</th><th class="num">Atualizados</th><th class="num">Duração</th></tr></thead>
+      <thead><tr><th>Início</th><th>Tabela</th><th>Disparo</th><th>Resultado</th><th class="num">Lidos</th><th class="num">Novos</th><th class="num">Atualizados</th><th class="num">Excluídos</th><th class="num">Duração</th></tr></thead>
       <tbody>
       @foreach ($historico as $h)
         <tr>
@@ -91,6 +98,7 @@
           <td class="num">{{ number_format($h->lidos, 0, ',', '.') }}</td>
           <td class="num">{{ number_format($h->novos, 0, ',', '.') }}</td>
           <td class="num">{{ number_format($h->atualizados, 0, ',', '.') }}</td>
+          <td class="num">{{ number_format($h->excluidos ?? 0, 0, ',', '.') }}</td>
           <td class="num">{{ $h->duracaoSegundos() !== null ? $h->duracaoSegundos().' s' : '-' }}</td>
         </tr>
       @endforeach
@@ -105,7 +113,8 @@
   <h2>Tabelas</h2>
   <div class="legenda-origens">
     <span class="etiqueta origem-sistema">Sistema OEE</span><small class="suave">criada e mantida pelo portal</small>
-    <span class="etiqueta origem-protheus">Protheus</span><small class="suave">alimentada pela sincronização com o Protheus</small>
+    <span class="etiqueta origem-protheus">Protheus</span><small class="suave">cópia de uma tabela do Protheus</small>
+    <span class="etiqueta origem-mista">Mista</span><small class="suave">alguns campos vêm do Protheus, o resto é do portal</small>
   </div>
   <div class="rolagem">
   <table class="tabela">
@@ -118,6 +127,8 @@
         <td>
           @if ($o['tipo'] === 'protheus')
             <span class="etiqueta origem-protheus">Protheus</span> <small class="suave">de <code>{{ $o['origem'] }}</code></small>
+          @elseif ($o['tipo'] === 'mista')
+            <span class="etiqueta origem-mista">Mista</span> <small class="suave">código, nome e centro de custo de <code>{{ $o['origem'] }}</code></small>
           @else
             <span class="etiqueta origem-sistema">Sistema OEE</span>
           @endif

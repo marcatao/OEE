@@ -26,7 +26,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Mudou uma migração? Rode `php artisan banco:documentar` e faça commit de `docs/banco-de-dados.md` junto.
 - Dados do Protheus são só **lidos** (conexão `protheus`, banco `Compras`): tabelas sincronizadas e importadores ficam
   em `config/protheus.php`; a sincronização (`App\Services\Protheus\SincronizadorProtheus`) grava o histórico em
-  `sincronizacoes`.
+  `sincronizacoes`. `centros_custo` é cópia da CTT; `maquinas` é **mista** com a SHB (código, nome e centro de custo
+  vêm do Protheus só na primeira vez, chegam inativas; depois só a exclusão no Protheus altera — ver
+  `ImportadorMaquinas`). Nas máquinas do Protheus esses três campos não se editam no portal.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
 
 ## Git

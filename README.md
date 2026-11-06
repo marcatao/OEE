@@ -179,12 +179,21 @@ php artisan migrate:fresh --seed
 
 ## Integração com o Protheus
 
-O portal **lê** dados do Protheus e copia para as suas próprias tabelas; nunca altera nada no Protheus. Hoje é
-sincronizada uma tabela:
+O portal **lê** dados do Protheus e copia para as suas próprias tabelas; nunca altera nada no Protheus. Hoje são
+sincronizadas duas tabelas (nesta ordem):
 
-| Tabela do portal | Origem no Protheus | O que é |
-|---|---|---|
-| `centros_custo` | `Compras.CTT` | Centros de custo (setores das máquinas) |
+| Tabela do portal | Origem no Protheus | Tipo | O que é |
+|---|---|---|---|
+| `centros_custo` | `Compras.CTT` | **Protheus** (cópia) | Centros de custo; atualizados a cada sincronização |
+| `maquinas` | `Compras.SHB` | **Mista** | Máquinas (centros de trabalho) |
+
+**Máquinas (mista)**: da SHB vêm só **código** (`HB_COD`), **descrição** (`HB_NOME`) e **centro de custo** (`HB_CC`),
+na primeira sincronização. A máquina nova chega **inativa** e sem linha; em **Administração › Máquinas** (filtro
+"Aguardando cadastro") o usuário escolhe a linha, preenche ciclo ideal, paradas e IoT e marca **Ativa**. Esses três
+campos ficam travados na tela. Depois de sincronizada, a máquina **não é mais alterada** pela sincronização, a não ser
+que seja **excluída no Protheus** (`D_E_L_E_T_ = '*'`): aí ela é marcada como excluída e desativada (e não pode ser
+reativada). Se já existir no portal uma máquina cadastrada à mão com o mesmo código, ela é vinculada ao Protheus em vez
+de duplicar.
 
 Todas as outras tabelas são do **Sistema OEE**. A tela **Administração › Banco de dados** mostra a origem de cada
 tabela, o botão **Sincronizar com o Protheus** e o histórico das últimas sincronizações (tabela `sincronizacoes`).
@@ -196,17 +205,20 @@ ler essa tabela:
 ```sql
 USE Compras;
 CREATE USER oee_app FOR LOGIN oee_app;   -- se ainda não existir neste banco
-GRANT SELECT ON dbo.CTT TO oee_app;      -- só leitura, só a CTT
+GRANT SELECT ON dbo.CTT TO oee_app;      -- só leitura
+GRANT SELECT ON dbo.SHB TO oee_app;
 ```
 
 Se um dia o Protheus estiver em outro servidor ou com outro usuário, preencha `PROTHEUS_DB_HOST`,
-`PROTHEUS_DB_USERNAME` e `PROTHEUS_DB_PASSWORD` no `.env`. O nome da tabela fica em `PROTHEUS_TABELA_CTT`.
+`PROTHEUS_DB_USERNAME` e `PROTHEUS_DB_PASSWORD` no `.env`. Os nomes das tabelas ficam em `PROTHEUS_TABELA_CTT` e
+`PROTHEUS_TABELA_SHB`.
 
 Pelo terminal:
 
 ```sh
 php artisan protheus:sincronizar                 # todas as tabelas
 php artisan protheus:sincronizar centros_custo   # só os centros de custo
+php artisan protheus:sincronizar maquinas        # só as máquinas (SHB)
 ```
 
 ### Sincronização automática com o Protheus

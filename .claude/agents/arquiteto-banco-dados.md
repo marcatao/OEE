@@ -18,8 +18,11 @@ linguagem de quem não é DBA.
   é sua: o gerador a preserva. Registre ali convenções, decisões tomadas e sugestões ainda não aplicadas (numeradas,
   dizendo o problema e a proposta). Quando uma sugestão for aplicada, mova-a para as decisões.
 - **Origem das tabelas**: `config/protheus.php` (`sincronizacoes`) diz quais tabelas do portal vêm do Protheus e de
-  qual tabela de origem (hoje `centros_custo` ← `Compras.CTT`). Todas as outras são do Sistema OEE. Tabelas do
-  Protheus mantêm nomes e tipos da origem (`ctt_*`, `d_e_l_e_t_`, `r_e_c_n_o_`) e a chave natural como índice único.
+  qual tabela de origem, e o **modo**: `espelho` (cópia, atualizada a cada sincronização — hoje `centros_custo` ←
+  `Compras.CTT`) ou `mista` (alguns campos vêm do Protheus só na primeira vez e o resto é do portal — hoje `maquinas` ←
+  `Compras.SHB`: código, nome e centro de custo; chega inativa; depois só a exclusão no Protheus altera). Todas as outras
+  são do Sistema OEE. Tabelas espelho mantêm nomes e tipos da origem (`ctt_*`, `d_e_l_e_t_`, `r_e_c_n_o_`) e a chave
+  natural como índice único; tabelas mistas guardam a filial, o `r_e_c_n_o_` e o `d_e_l_e_t_` de origem.
 
 ## Quando pedirem para ver o diagrama
 
