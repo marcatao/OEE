@@ -25,7 +25,10 @@ class Usuario extends Authenticatable
 
     protected $table = 'usuarios';
 
-    protected $fillable = ['entra_oid', 'entra_tenant_id', 'nome', 'email', 'perfil', 'ativo', 'ultimo_login_em'];
+    protected $fillable = [
+        'entra_oid', 'entra_tenant_id', 'nome', 'email', 'perfil', 'ativo', 'ultimo_login_em',
+        'setor', 'cargo', 'email_contato', 'celular', 'matricula',
+    ];
 
     // Sem senha nem "lembrar de mim": a autenticação é sempre pelo Entra ID.
     protected $rememberTokenName = '';
@@ -36,7 +39,12 @@ class Usuario extends Authenticatable
 
     protected function casts(): array
     {
-        return ['ativo' => 'boolean', 'ultimo_login_em' => 'datetime'];
+        return [
+            'ativo' => 'boolean',
+            'ultimo_login_em' => 'datetime',
+            'foto_atualizada_em' => 'datetime',
+            'perfil_entra_em' => 'datetime',
+        ];
     }
 
     public function grupos(): BelongsToMany
@@ -86,5 +94,30 @@ class Usuario extends Authenticatable
     public function rotuloPerfil(): string
     {
         return self::PERFIS[$this->perfil] ?? $this->perfil;
+    }
+
+    /** Iniciais do nome (ex.: "Marcato Silva" → "MS") para quando não há foto. */
+    public function iniciais(): string
+    {
+        $partes = preg_split('/\s+/', trim((string) ($this->nome ?: $this->email))) ?: [];
+        $primeira = $partes[0] ?? '';
+        $ultima = count($partes) > 1 ? end($partes) : '';
+
+        return mb_strtoupper(mb_substr($primeira, 0, 1).mb_substr((string) $ultima, 0, 1)) ?: '?';
+    }
+
+    /** Endereço da foto de perfil (servida pelo portal, sem link público para a pasta storage). */
+    public function urlFoto(): ?string
+    {
+        if (! $this->foto) {
+            return null;
+        }
+
+        return route('usuarios.foto', ['usuario' => $this->id, 'v' => $this->foto_atualizada_em?->timestamp]);
+    }
+
+    public function primeiroNome(): string
+    {
+        return strtok(trim((string) ($this->nome ?: $this->email)), ' @') ?: '';
     }
 }

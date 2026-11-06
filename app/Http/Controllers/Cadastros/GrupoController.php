@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Cadastros > Logins > Grupos. Só administradores. O grupo define quais telas os membros podem abrir.
+ * Administração > Logins > Grupos. Só administradores. O grupo define quais telas os membros podem abrir.
  */
 class GrupoController extends Controller
 {

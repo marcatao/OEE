@@ -7,7 +7,7 @@ use App\Models\RegistroLogin;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-/** Cadastros > Logins > Histórico de acessos: todas as tentativas de login, gravadas no banco. */
+/** Administração > Logins > Histórico de acessos: todas as tentativas de login, gravadas no banco. */
 class AcessoController extends Controller
 {
     public function __invoke(Request $request): View

@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Cadastros › Logins</p>
+  <p class="trilha">Administração › Logins</p>
   <h1>Histórico de acessos</h1>
   <p>Todas as tentativas de login pelo Entra ID, gravadas no banco.</p>
 

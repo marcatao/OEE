@@ -57,6 +57,21 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
         ],
+
+        // Banco do Protheus (só leitura), usado por "php artisan protheus:centros-custo" para importar a CTT.
+        'protheus' => [
+            'driver' => 'sqlsrv',
+            'host' => env('PROTHEUS_DB_HOST', env('DB_HOST', 'localhost')),
+            'port' => env('PROTHEUS_DB_PORT', '1433'),
+            'database' => env('PROTHEUS_DB_DATABASE', ''),
+            'username' => env('PROTHEUS_DB_USERNAME', ''),
+            'password' => env('PROTHEUS_DB_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'encrypt' => env('PROTHEUS_DB_ENCRYPT', 'yes'),
+            'trust_server_certificate' => env('PROTHEUS_DB_TRUST_SERVER_CERTIFICATE', true),
+        ],
     ],
 
     /*

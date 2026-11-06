@@ -16,8 +16,33 @@ das máquinas ficam no banco do portal.
   `PORTAL_ADMINS`) nasce **administrador**.
 - Perfis: **Sem acesso**, **Operador** (vê as páginas que os grupos dele permitem) e **Administrador** (vê tudo).
 - **Grupos**: o administrador cria grupos, escolhe as páginas que cada grupo pode abrir e quem faz parte dele.
-- Menu lateral padrão: Início · Produção (Calculadora de OEE) · **Cadastros › Logins** (Usuários, Grupos, Histórico
-  de acessos) · Administração (Banco de dados). Cada usuário só vê no menu o que pode abrir.
+- Menu lateral (recolhível: o botão do topo deixa só os ícones e o navegador lembra a escolha):
+  Início · **Produção** (Dashboard por máquina, Calculadora de OEE) · **Administração** (Máquinas, Plantas e linhas,
+  Dispositivos IoT, Logins › Usuários/Grupos/Histórico de acessos, Banco de dados). Cada usuário só vê o que pode abrir.
+- **Máquinas** (Administração): código, nome, linha, **setor / centro de custo** (grava só o código), fabricante,
+  modelo, ciclo ideal, **micro parada** e **macro parada** (segundos), **máquina ativa ou inativa** e três canais
+  **IoT 1/2/3** (ID IoT, canal IoT e tipo do canal: produção ou refugo). O mesmo ID + canal não pode ser usado duas
+  vezes (a produção seria contada em dobro).
+- **Centros de custo** (Administração): tabela `centros_custo` no formato da **CTT do Protheus** (colunas `ctt_filial`,
+  `ctt_custo`, `ctt_desc01`, `ctt_classe`, `ctt_bloq`, `ctt_ccsup`, `ctt_dtexis`, `ctt_dtexsf`, `d_e_l_e_t_`,
+  `r_e_c_n_o_`). Para importar do Protheus, preencha `PROTHEUS_DB_*` no `.env` e rode
+  `php artisan protheus:centros-custo` (lê a `CTT010`, ou a tabela de `PROTHEUS_TABELA_CTT`; pode rodar quantas vezes
+  quiser: insere os novos e atualiza os existentes pela filial + código).
+- **Timeline** (Dashboards): uma faixa por máquina ativa (do cadastro de Máquinas) com os estados do dia de produção
+  (06:00 às 06:00, configurável em `TIMELINE_INICIO_DIA`) ou de um turno, pintados com a **cor da legenda**; mostra a
+  disponibilidade e o tempo/percentual de cada legenda. Clicar numa barra abre o apontamento para corrigir.
+- **Apontamentos** (Produção): máquina, horário inicial, horário final (vazio = ainda nesse estado), legenda e
+  referência (OP/lote, aparece na barra). Ao registrar o próximo estado, o anterior em aberto é encerrado sozinho;
+  horários sobrepostos são recusados. Tabela `apontamentos_estado`.
+- **Legendas** (Administração): sigla, descrição, tipo (produzindo, parada não planejada, parada planejada,
+  desligada) e **cor** da barra na timeline. A migração já carrega as legendas padrão: PROD, DT, SETUP, WAIT, MANUT,
+  QUAL, CALIB, PREV, REF e OFF. Tabela `legendas`.
+- **Dashboard por máquina**: OEE, disponibilidade, performance e qualidade de cada máquina por período (hoje, ontem,
+  7 dias, 30 dias, mês), calculados dos apontamentos e paradas (`app/Services/IndicadoresOee.php`).
+- **Meu perfil**: foto, setor, cargo, e-mail de contato e celular. No login, o portal lê esses dados no Microsoft
+  Entra ID (Microsoft Graph `/me`, permissão delegada `User.Read`) e preenche os campos vazios; o botão
+  "Atualizar com o Entra ID" troca tudo pelo que está lá. Matrícula (`employeeId`) e IDs são só leitura. As fotos
+  ficam em `storage/app/private/fotos` e são servidas pelo próprio portal.
 - Página **Banco** (admin): mostra a conexão em uso, testa e conta os registros de cada tabela.
 - Calculadora de OEE.
 - Tabelas de cadastros (plantas, linhas, máquinas, turnos, produtos, motivos de parada) e de dados das máquinas
@@ -35,7 +60,7 @@ das máquinas ficam no banco do portal.
 | `app/Services/CalculadoraOee.php` | Cálculo de OEE |
 | `app/Services/InfoBanco.php` | Descrição e teste da conexão com o banco |
 | `app/Http/Middleware/` | `UsuarioAtivo` (derruba sessão de quem foi desativado), `ExigePerfil` (`perfil:admin`) e `ExigePermissao` (`permissao:calculadora`) |
-| `app/Http/Controllers/Cadastros/` | Cadastros › Logins: usuários, grupos e histórico de acessos |
+| `app/Http/Controllers/Cadastros/` | Administração › Logins: usuários, grupos e histórico de acessos |
 | `config/oee.php` | Quem nasce admin e o catálogo de permissões (páginas) que os grupos podem dar |
 | `app/Models/` | Modelos Eloquent (`Usuario`, `RegistroLogin`, `Planta`, `Linha`, `Maquina`, ...) |
 | `database/migrations/` | Criação das tabelas |
@@ -103,11 +128,11 @@ php artisan serve               # abra http://localhost:8000
 ```
 
 Entre primeiro com `marcato@alumbra.com.br`: ele nasce **administrador**. Os demais usuários aparecem em
-**Cadastros › Logins › Usuários** depois do primeiro login, **sem acesso**. Para liberar alguém:
+**Administração › Logins › Usuários** depois do primeiro login, **sem acesso**. Para liberar alguém:
 
-1. Em **Cadastros › Logins › Grupos**, crie os grupos (ex.: "Operadores Linha 1") e marque as páginas que eles podem
+1. Em **Administração › Logins › Grupos**, crie os grupos (ex.: "Operadores Linha 1") e marque as páginas que eles podem
    abrir.
-2. Em **Cadastros › Logins › Usuários**, clique em **Editar**, escolha o perfil (**Operador** ou **Administrador**) e
+2. Em **Administração › Logins › Usuários**, clique em **Editar**, escolha o perfil (**Operador** ou **Administrador**) e
    marque os grupos.
 
 O perfil também pode ser mudado pelo terminal (útil para recuperar o acesso de administrador):
@@ -179,7 +204,7 @@ num servidor web (IIS com PHP FastCGI, ou Apache/Nginx) apontando para a pasta `
 
 ## Problemas no login
 
-Quando o login falha, a tela mostra o motivo, e ele também fica em **Cadastros › Logins › Histórico de acessos** e
+Quando o login falha, a tela mostra o motivo, e ele também fica em **Administração › Logins › Histórico de acessos** e
 em `storage/logs/laravel.log`.
 
 | Mensagem | O que fazer |

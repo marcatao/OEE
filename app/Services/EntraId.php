@@ -7,7 +7,8 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * Conversa com o Microsoft Entra ID (OpenID Connect, authorization code + PKCE, via Socialite).
- * O Entra ID só autentica: o portal usa dele apenas oid, tenant, nome e e-mail.
+ * O Entra ID autentica; o portal usa dele oid, tenant, nome e e-mail e, com o token do login (User.Read), lê os
+ * dados de perfil do funcionário (App\Services\PerfilEntra).
  */
 class EntraId
 {
@@ -32,6 +33,8 @@ class EntraId
             tenantId: $claims['tid'] ?? null,
             nome: $usuario->getName(),
             email: $usuario->user['mail'] ?? $usuario->getEmail(),
+            token: $usuario->token ?: null,
+            tokenExpiraEm: $usuario->expiresIn ? time() + (int) $usuario->expiresIn : null,
         );
     }
 
@@ -45,7 +48,7 @@ class EntraId
 
     private function driver()
     {
-        return Socialite::driver('azure')->enablePKCE()->scopes(['openid', 'profile', 'email']);
+        return Socialite::driver('azure')->enablePKCE()->scopes(['openid', 'profile', 'email', 'User.Read']);
     }
 
     private function claimsDoIdToken(?string $idToken): array

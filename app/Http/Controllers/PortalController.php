@@ -2,7 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DispositivoIot;
+use App\Models\Maquina;
+use App\Models\Parada;
+use App\Models\Usuario;
 use App\Services\CalculadoraOee;
+use App\Services\IndicadoresOee;
+use App\Services\Periodo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -10,9 +16,24 @@ use InvalidArgumentException;
 
 class PortalController extends Controller
 {
-    public function inicio(): View
+    public function inicio(Request $request, IndicadoresOee $indicadores): View
     {
-        return view('inicio');
+        $usuario = $request->user();
+        if (! $usuario?->temAcesso()) {
+            return view('inicio');
+        }
+
+        $hoje = Periodo::de('hoje');
+
+        return view('inicio', [
+            'hoje' => $usuario->pode('dashboard_maquina') ? $indicadores->geral($hoje->inicio, $hoje->fim) : null,
+            'maquinasAtivas' => Maquina::where('ativo', true)->count(),
+            'paradasAbertas' => Parada::whereNull('fim')->count(),
+            'iotAtivos' => DispositivoIot::where('ativo', true)->count(),
+            'iotOnline' => DispositivoIot::where('ativo', true)
+                ->where('ultimo_sinal_em', '>=', now()->subMinutes(config('oee.iot_minutos_sem_sinal', 5)))->count(),
+            'aguardando' => $usuario->ehAdmin() ? Usuario::where('perfil', 'sem_acesso')->where('ativo', true)->count() : 0,
+        ]);
     }
 
     public function calculadora(Request $request, CalculadoraOee $calculadora): View
@@ -53,10 +74,5 @@ class PortalController extends Controller
         }
 
         return view('aguardando');
-    }
-
-    public function perfil(): View
-    {
-        return view('perfil');
     }
 }
