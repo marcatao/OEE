@@ -25,6 +25,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `@if ($u->pode('chave'))`. Páginas só de admin usam `->middleware('perfil:admin')`.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
 
+## Git
+
+- Trabalhe **sempre direto na branch `main`**: não crie outras branches nem pull requests. Faça commit e push em
+  `main` (`git push origin main`). Isso vale para todos os repositórios do usuário.
+- Nunca commite `.env` nem cópias dele (`.env.bak*`): têm segredos.
+
 ## Comandos
 
 ```sh
