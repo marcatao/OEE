@@ -25,21 +25,22 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Código</th><th>Nome</th><th>Linha · Planta</th><th>Fabricante / modelo</th><th class="num">Ciclo ideal (s)</th><th class="num">IoT</th><th>Situação</th><th></th></tr></thead>
+    <thead><tr><th>Código</th><th>Nome</th><th>Linha · Planta</th><th>Centro de custo</th><th class="num">Ciclo ideal (s)</th><th class="num">Micro / macro (s)</th><th>Canais IoT</th><th>Situação</th><th></th></tr></thead>
     <tbody>
     @forelse ($maquinas as $maquina)
       <tr>
         <td><code>{{ $maquina->codigo }}</code></td>
         <td>{{ $maquina->nome }}</td>
         <td>{{ $maquina->localizacao() ?: '-' }}</td>
-        <td>{{ trim($maquina->fabricante.' '.$maquina->modelo) ?: '-' }}</td>
+        <td>{{ $maquina->centro_custo ? $maquina->centro_custo.($maquina->centroCusto ? ' — '.$maquina->centroCusto->descricao() : '') : '-' }}</td>
         <td class="num">{{ $maquina->ciclo_ideal_s !== null ? number_format($maquina->ciclo_ideal_s, 1, ',', '.') : '-' }}</td>
-        <td class="num">{{ $maquina->dispositivos_count }}</td>
+        <td class="num">{{ $maquina->micro_parada_s ?? '-' }} / {{ $maquina->macro_parada_s ?? '-' }}</td>
+        <td class="quebra">@forelse ($maquina->canaisIot() as $c)<small style="display:block">{{ $c['id'] }} · {{ $c['canal'] }} · {{ \App\Models\Maquina::TIPOS_CANAL[$c['tipo']] ?? '-' }}</small>@empty - @endforelse</td>
         <td><span class="etiqueta {{ $maquina->ativo ? 'situacao-online' : 'situacao-inativo' }}">{{ $maquina->ativo ? 'Ativa' : 'Inativa' }}</span></td>
         <td><a class="botao pequeno secundario" href="{{ route('admin.maquinas.edit', $maquina) }}">Editar</a></td>
       </tr>
     @empty
-      <tr><td colspan="8" class="suave">Nenhuma máquina encontrada.</td></tr>
+      <tr><td colspan="9" class="suave">Nenhuma máquina encontrada.</td></tr>
     @endforelse
     </tbody>
   </table>

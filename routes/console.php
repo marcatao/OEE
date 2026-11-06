@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Usuario;
+use App\Services\ImportadorCentrosCusto;
 use App\Services\InfoBanco;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 
 Artisan::command('banco:testar', function (InfoBanco $banco) {
     foreach ($banco->descricao() as $rotulo => $valor) {
@@ -50,3 +52,27 @@ Artisan::command('usuarios:ativar {email} {--desativar : Bloqueia a entrada do u
     $usuario->update(['ativo' => ! $this->option('desativar')]);
     $this->info($email.($this->option('desativar') ? ' desativado.' : ' ativado.'));
 })->purpose('Ativa ou desativa um usuário do portal');
+
+Artisan::command('protheus:centros-custo {--tabela= : Tabela da CTT no Protheus (padrão: PROTHEUS_TABELA_CTT ou CTT010)}', function (ImportadorCentrosCusto $importador) {
+    $tabela = $this->option('tabela') ?: env('PROTHEUS_TABELA_CTT', 'CTT010');
+    if (! preg_match('/^[A-Za-z0-9_.]+$/', $tabela)) {
+        $this->error('Nome de tabela inválido.');
+
+        return 1;
+    }
+
+    $this->info("Lendo {$tabela} no banco do Protheus (conexão \"protheus\" do .env)...");
+    try {
+        $linhas = DB::connection('protheus')->table($tabela)
+            ->select(ImportadorCentrosCusto::CAMPOS)->orderBy('R_E_C_N_O_')->cursor();
+        $resumo = $importador->importar($linhas);
+    } catch (Throwable $e) {
+        $this->error('Falha ao importar: '.$e->getMessage());
+
+        return 1;
+    }
+
+    $this->info("Pronto: {$resumo['novos']} novos, {$resumo['atualizados']} atualizados, {$resumo['ignorados']} sem código.");
+
+    return 0;
+})->purpose('Importa/atualiza os centros de custo (CTT) do Protheus para o portal');

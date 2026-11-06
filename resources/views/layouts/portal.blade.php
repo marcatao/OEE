@@ -46,6 +46,7 @@
         @if ($u->ehAdmin())
           <p class="menu-secao">Administração</p>
           @include('layouts.partials.menu-link', ['rota' => 'admin.maquinas.index', 'rotulo' => 'Máquinas', 'icone' => 'maquina', 'ativo' => 'admin.maquinas.*'])
+          @include('layouts.partials.menu-link', ['rota' => 'admin.centros-custo.index', 'rotulo' => 'Centros de custo', 'icone' => 'centro_custo', 'ativo' => 'admin.centros-custo.*'])
           @include('layouts.partials.menu-link', ['rota' => 'admin.estrutura', 'rotulo' => 'Plantas e linhas', 'icone' => 'estrutura', 'ativo' => 'admin.estrutura*'])
           @include('layouts.partials.menu-link', ['rota' => 'admin.legendas.index', 'rotulo' => 'Legendas', 'icone' => 'legenda', 'ativo' => 'admin.legendas.*'])
           @include('layouts.partials.menu-link', ['rota' => 'admin.iot.index', 'rotulo' => 'Dispositivos IoT', 'icone' => 'iot', 'ativo' => 'admin.iot.*'])

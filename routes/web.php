@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BancoController;
+use App\Http\Controllers\Admin\CentroCustoController;
 use App\Http\Controllers\Admin\DispositivoIotController;
 use App\Http\Controllers\Admin\EstruturaController;
 use App\Http\Controllers\Admin\LegendaController;
@@ -74,6 +75,12 @@ Route::middleware('auth')->group(function () {
         Route::post('maquinas', [MaquinaController::class, 'store'])->name('maquinas.store');
         Route::get('maquinas/{maquina}/editar', [MaquinaController::class, 'edit'])->name('maquinas.edit');
         Route::put('maquinas/{maquina}', [MaquinaController::class, 'update'])->name('maquinas.update');
+
+        Route::get('centros-de-custo', [CentroCustoController::class, 'index'])->name('centros-custo.index');
+        Route::get('centros-de-custo/novo', [CentroCustoController::class, 'create'])->name('centros-custo.create');
+        Route::post('centros-de-custo', [CentroCustoController::class, 'store'])->name('centros-custo.store');
+        Route::get('centros-de-custo/{centro}/editar', [CentroCustoController::class, 'edit'])->name('centros-custo.edit');
+        Route::put('centros-de-custo/{centro}', [CentroCustoController::class, 'update'])->name('centros-custo.update');
 
         Route::get('plantas-e-linhas', [EstruturaController::class, 'index'])->name('estrutura');
         Route::post('plantas', [EstruturaController::class, 'salvarPlanta'])->name('estrutura.plantas.store');

@@ -9,46 +9,99 @@
 
   @if ($errors->any())<p class="aviso erro" role="alert">{{ $errors->first() }}</p>@endif
 
-  <form method="post" class="formulario-vertical"
+  <form method="post" class="formulario-vertical" style="max-width:none"
         action="{{ $maquina->exists ? route('admin.maquinas.update', $maquina) : route('admin.maquinas.store') }}">
     @csrf
     @if ($maquina->exists) @method('put') @endif
 
-    <div class="campos">
-      <label>Código
-        <input name="codigo" required maxlength="30" value="{{ old('codigo', $maquina->codigo) }}" placeholder="Ex.: INJ-01">
-      </label>
-      <label>Nome
-        <input name="nome" required maxlength="120" value="{{ old('nome', $maquina->nome) }}" placeholder="Ex.: Injetora 01">
-      </label>
-      <label>Linha
-        <select name="linha_id" required>
-          <option value="">Escolha…</option>
-          @foreach ($linhas as $planta => $doGrupo)
-            <optgroup label="{{ $planta }}">
-              @foreach ($doGrupo as $linha)
-                <option value="{{ $linha->id }}" @selected((int) old('linha_id', $maquina->linha_id) === $linha->id)>{{ $linha->nome }}</option>
-              @endforeach
-            </optgroup>
-          @endforeach
-        </select>
-      </label>
-      <label>Ciclo ideal (segundos por peça)
-        <input name="ciclo_ideal_s" type="number" step="any" min="0" value="{{ old('ciclo_ideal_s', $maquina->ciclo_ideal_s) }}">
-        <small>Copiado para cada apontamento; mudar aqui não altera o histórico.</small>
-      </label>
-      <label>Fabricante
-        <input name="fabricante" maxlength="120" value="{{ old('fabricante', $maquina->fabricante) }}">
-      </label>
-      <label>Modelo
-        <input name="modelo" maxlength="120" value="{{ old('modelo', $maquina->modelo) }}">
-      </label>
-    </div>
+    <fieldset>
+      <legend>Identificação</legend>
+      <div class="campos">
+        <label>Código
+          <input name="codigo" required maxlength="30" value="{{ old('codigo', $maquina->codigo) }}" placeholder="Ex.: INJ-01">
+        </label>
+        <label>Nome
+          <input name="nome" required maxlength="120" value="{{ old('nome', $maquina->nome) }}" placeholder="Ex.: Injetora 01">
+        </label>
+        <label>Linha
+          <select name="linha_id" required>
+            <option value="">Escolha…</option>
+            @foreach ($linhas as $planta => $doGrupo)
+              <optgroup label="{{ $planta }}">
+                @foreach ($doGrupo as $linha)
+                  <option value="{{ $linha->id }}" @selected((int) old('linha_id', $maquina->linha_id) === $linha->id)>{{ $linha->nome }}</option>
+                @endforeach
+              </optgroup>
+            @endforeach
+          </select>
+        </label>
+        <label>Setor / centro de custo
+          @php($ccAtual = old('centro_custo', $maquina->centro_custo))
+          <select name="centro_custo">
+            <option value="">Nenhum</option>
+            @foreach ($centros as $cc)
+              <option value="{{ $cc->codigo() }}" @selected($ccAtual === $cc->codigo())>{{ $cc->codigo() }} — {{ $cc->descricao() }}</option>
+            @endforeach
+            @if ($ccAtual && ! $centros->contains(fn ($c) => $c->codigo() === $ccAtual))
+              <option value="{{ $ccAtual }}" selected>{{ $ccAtual }} (bloqueado ou não encontrado)</option>
+            @endif
+          </select>
+          <small>Grava só o código do centro de custo (CTT_CUSTO). Cadastro em Administração › Centros de custo.</small>
+        </label>
+        <label>Fabricante
+          <input name="fabricante" maxlength="120" value="{{ old('fabricante', $maquina->fabricante) }}">
+        </label>
+        <label>Modelo
+          <input name="modelo" maxlength="120" value="{{ old('modelo', $maquina->modelo) }}">
+        </label>
+      </div>
+    </fieldset>
 
     <fieldset>
-      <legend>Situação</legend>
+      <legend>Produção e paradas</legend>
+      <div class="campos">
+        <label>Ciclo ideal (segundos por peça)
+          <input name="ciclo_ideal_s" type="number" step="any" min="0" value="{{ old('ciclo_ideal_s', $maquina->ciclo_ideal_s) }}">
+          <small>Copiado para cada apontamento; mudar aqui não altera o histórico.</small>
+        </label>
+        <label>Micro parada (segundos)
+          <input name="micro_parada_s" type="number" step="1" min="1" value="{{ old('micro_parada_s', $maquina->micro_parada_s) }}" placeholder="Ex.: 60">
+          <small>Parada de até este tempo é micro parada (perda de performance).</small>
+        </label>
+        <label>Macro parada (segundos)
+          <input name="macro_parada_s" type="number" step="1" min="1" value="{{ old('macro_parada_s', $maquina->macro_parada_s) }}" placeholder="Ex.: 300">
+          <small>Parada a partir deste tempo é macro parada (perda de disponibilidade). Deve ser maior que a micro.</small>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Canais IoT</legend>
+      <p class="suave" style="margin-top:0">De onde vêm os dados da máquina. Ex.: ID IoT <code>Teste_Alumbra</code>, canal <code>ch1_value</code>, tipo Produção.</p>
+      @foreach (\App\Models\Maquina::CANAIS_IOT as $n)
+        <div class="campos" style="margin-top:.75rem">
+          <label>IoT {{ $n }} — ID IoT
+            <input name="iot{{ $n }}_id" maxlength="100" value="{{ old("iot{$n}_id", $maquina->{"iot{$n}_id"}) }}" placeholder="Ex.: Teste_Alumbra">
+          </label>
+          <label>IoT {{ $n }} — Canal IoT
+            <input name="iot{{ $n }}_canal" maxlength="100" value="{{ old("iot{$n}_canal", $maquina->{"iot{$n}_canal"}) }}" placeholder="Ex.: ch1_value">
+          </label>
+          <label>IoT {{ $n }} — Tipo do canal
+            <select name="iot{{ $n }}_tipo">
+              <option value="">—</option>
+              @foreach (\App\Models\Maquina::TIPOS_CANAL as $chave => $rotulo)
+                <option value="{{ $chave }}" @selected(old("iot{$n}_tipo", $maquina->{"iot{$n}_tipo"}) === $chave)>{{ $rotulo }}</option>
+              @endforeach
+            </select>
+          </label>
+        </div>
+      @endforeach
+    </fieldset>
+
+    <fieldset>
+      <legend>Máquina ativa ou inativa</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @checked(old('ativo', (int) $maquina->ativo) == 1)> <span>Ativa</span></label>
-      <label class="opcao"><input type="radio" name="ativo" value="0" @checked(old('ativo', (int) $maquina->ativo) == 0)> <span>Inativa <small>sai dos painéis, mas o histórico continua</small></span></label>
+      <label class="opcao"><input type="radio" name="ativo" value="0" @checked(old('ativo', (int) $maquina->ativo) == 0)> <span>Inativa <small>sai dos painéis e da timeline, mas o histórico continua</small></span></label>
     </fieldset>
 
     <div class="acoes">

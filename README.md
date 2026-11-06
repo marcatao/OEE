@@ -19,6 +19,15 @@ das máquinas ficam no banco do portal.
 - Menu lateral (recolhível: o botão do topo deixa só os ícones e o navegador lembra a escolha):
   Início · **Produção** (Dashboard por máquina, Calculadora de OEE) · **Administração** (Máquinas, Plantas e linhas,
   Dispositivos IoT, Logins › Usuários/Grupos/Histórico de acessos, Banco de dados). Cada usuário só vê o que pode abrir.
+- **Máquinas** (Administração): código, nome, linha, **setor / centro de custo** (grava só o código), fabricante,
+  modelo, ciclo ideal, **micro parada** e **macro parada** (segundos), **máquina ativa ou inativa** e três canais
+  **IoT 1/2/3** (ID IoT, canal IoT e tipo do canal: produção ou refugo). O mesmo ID + canal não pode ser usado duas
+  vezes (a produção seria contada em dobro).
+- **Centros de custo** (Administração): tabela `centros_custo` no formato da **CTT do Protheus** (colunas `ctt_filial`,
+  `ctt_custo`, `ctt_desc01`, `ctt_classe`, `ctt_bloq`, `ctt_ccsup`, `ctt_dtexis`, `ctt_dtexsf`, `d_e_l_e_t_`,
+  `r_e_c_n_o_`). Para importar do Protheus, preencha `PROTHEUS_DB_*` no `.env` e rode
+  `php artisan protheus:centros-custo` (lê a `CTT010`, ou a tabela de `PROTHEUS_TABELA_CTT`; pode rodar quantas vezes
+  quiser: insere os novos e atualiza os existentes pela filial + código).
 - **Timeline** (Dashboards): uma faixa por máquina ativa (do cadastro de Máquinas) com os estados do dia de produção
   (06:00 às 06:00, configurável em `TIMELINE_INICIO_DIA`) ou de um turno, pintados com a **cor da legenda**; mostra a
   disponibilidade e o tempo/percentual de cada legenda. Clicar numa barra abre o apontamento para corrigir.
