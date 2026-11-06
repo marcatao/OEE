@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CentroCusto;
+use App\Services\Protheus\ImportadorProtheus;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -10,9 +11,14 @@ use Illuminate\Support\Facades\DB;
  * Chave: CTT_FILIAL + CTT_CUSTO. Registros excluídos no Protheus (D_E_L_E_T_ = '*') também vêm, marcados,
  * para o portal saber que saíram de uso. Os espaços à direita dos campos caractere são mantidos como no Protheus.
  */
-class ImportadorCentrosCusto
+class ImportadorCentrosCusto implements ImportadorProtheus
 {
     public const CAMPOS = ['CTT_FILIAL', 'CTT_CUSTO', 'CTT_DESC01', 'CTT_CLASSE', 'CTT_BLOQ', 'CTT_CCSUP', 'CTT_DTEXIS', 'CTT_DTEXSF', 'D_E_L_E_T_', 'R_E_C_N_O_'];
+
+    public function campos(): array
+    {
+        return self::CAMPOS;
+    }
 
     /**
      * @param  iterable<array|object>  $linhas  linhas da CTT (nomes de coluna como no Protheus)

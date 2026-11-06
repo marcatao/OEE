@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
     // Administração (só administradores)
     Route::middleware('perfil:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('banco', BancoController::class)->name('banco');
+        Route::post('banco/sincronizar', [BancoController::class, 'sincronizar'])->name('banco.sincronizar');
 
         Route::get('maquinas', [MaquinaController::class, 'index'])->name('maquinas.index');
         Route::get('maquinas/nova', [MaquinaController::class, 'create'])->name('maquinas.create');

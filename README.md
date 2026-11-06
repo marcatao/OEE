@@ -64,6 +64,8 @@ das máquinas ficam no banco do portal.
 | `config/oee.php` | Quem nasce admin e o catálogo de permissões (páginas) que os grupos podem dar |
 | `app/Models/` | Modelos Eloquent (`Usuario`, `RegistroLogin`, `Planta`, `Linha`, `Maquina`, ...) |
 | `database/migrations/` | Criação das tabelas |
+| `docs/banco-de-dados.md` | Documentação e diagrama do banco (gerado por `php artisan banco:documentar`) |
+| `config/protheus.php` / `app/Services/Protheus/` | Tabelas sincronizadas do Protheus e o serviço de sincronização |
 | `database/seeders/DatabaseSeeder.php` | Motivos de parada padrão |
 | `resources/views/` | Telas (Blade) |
 | `public/css/portal.css` | Estilo (sem etapa de build com Node) |
@@ -174,6 +176,56 @@ As tabelas de usuários e grupos mudaram na própria migração inicial. Num ban
 ```sh
 php artisan migrate:fresh --seed
 ```
+
+## Integração com o Protheus
+
+O portal **lê** dados do Protheus e copia para as suas próprias tabelas; nunca altera nada no Protheus. Hoje é
+sincronizada uma tabela:
+
+| Tabela do portal | Origem no Protheus | O que é |
+|---|---|---|
+| `centros_custo` | `Compras.CTT` | Centros de custo (setores das máquinas) |
+
+Todas as outras tabelas são do **Sistema OEE**. A tela **Administração › Banco de dados** mostra a origem de cada
+tabela, o botão **Sincronizar com o Protheus** e o histórico das últimas sincronizações (tabela `sincronizacoes`).
+
+**Conexão**: por padrão o Protheus está no **mesmo servidor SQL** do portal e é acessado com o **mesmo usuário**
+(`DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`), no banco **`Compras`**, tabela **`CTT`**. O usuário do portal precisa poder
+ler essa tabela:
+
+```sql
+USE Compras;
+CREATE USER oee_app FOR LOGIN oee_app;   -- se ainda não existir neste banco
+GRANT SELECT ON dbo.CTT TO oee_app;      -- só leitura, só a CTT
+```
+
+Se um dia o Protheus estiver em outro servidor ou com outro usuário, preencha `PROTHEUS_DB_HOST`,
+`PROTHEUS_DB_USERNAME` e `PROTHEUS_DB_PASSWORD` no `.env`. O nome da tabela fica em `PROTHEUS_TABELA_CTT`.
+
+Pelo terminal:
+
+```sh
+php artisan protheus:sincronizar                 # todas as tabelas
+php artisan protheus:sincronizar centros_custo   # só os centros de custo
+```
+
+### Sincronização automática com o Protheus
+
+1. No `.env`, defina quando sincronizar (formato cron) e rode `php artisan config:clear`:
+
+   ```
+   PROTHEUS_SINCRONIZAR_CRON="0 * * * *"     # de hora em hora (ex.: "*/30 * * * *" = a cada 30 min)
+   ```
+
+2. Deixe o **agendador do Laravel** rodando no servidor. No Windows, escolha um:
+   - **Agendador de Tarefas**: crie uma tarefa que roda **a cada 1 minuto**, mesmo sem usuário logado:
+     programa `C:\caminho\do\php.exe`, argumentos `artisan schedule:run`, iniciar em `C:\OEE`.
+   - **Serviço do Windows** com o [NSSM](https://nssm.cc): `nssm install OEE-Agendador C:\caminho\do\php.exe artisan schedule:work`
+     e, em *Startup directory*, `C:\OEE`.
+3. Confira com `php artisan schedule:list` e acompanhe pelo histórico na tela Banco de dados (disparo "Automática").
+
+Para acrescentar outra tabela do Protheus no futuro: crie um importador em `app/Services` que implemente
+`App\Services\Protheus\ImportadorProtheus` e registre em `config/protheus.php`.
 
 ## Acessar de outras máquinas
 

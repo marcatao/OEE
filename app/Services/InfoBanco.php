@@ -13,7 +13,7 @@ class InfoBanco
 {
     public const TABELAS = [
         'usuarios', 'grupos', 'grupo_usuario', 'grupo_permissoes', 'registros_login', 'plantas', 'linhas', 'maquinas', 'turnos', 'produtos',
-        'motivos_parada', 'apontamentos', 'paradas', 'dispositivos_iot', 'legendas', 'apontamentos_estado', 'centros_custo',
+        'motivos_parada', 'apontamentos', 'paradas', 'dispositivos_iot', 'legendas', 'apontamentos_estado', 'centros_custo', 'sincronizacoes',
     ];
 
     public function descricao(?string $conexao = null): array
@@ -54,6 +54,30 @@ class InfoBanco
         } catch (Throwable $e) {
             return [false, $e->getMessage()];
         }
+    }
+
+    /**
+     * De onde vem cada tabela: do próprio sistema OEE ou sincronizada do Protheus (config/protheus.php).
+     *
+     * @return array<string, array{tipo: string, origem: ?string, chave: ?string}>
+     */
+    public function origens(): array
+    {
+        $doProtheus = [];
+        foreach (config('protheus.sincronizacoes', []) as $chave => $item) {
+            $doProtheus[$item['tabela_destino']] = [
+                'tipo' => 'protheus',
+                'origem' => config('database.connections.protheus.database').'.'.$item['tabela_origem'],
+                'chave' => $chave,
+            ];
+        }
+
+        $origens = [];
+        foreach (self::TABELAS as $tabela) {
+            $origens[$tabela] = $doProtheus[$tabela] ?? ['tipo' => 'sistema', 'origem' => null, 'chave' => null];
+        }
+
+        return $origens;
     }
 
     /** @return array<string, int|null> null = tabela ainda não criada */

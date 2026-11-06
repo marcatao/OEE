@@ -23,6 +23,10 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Toda rota interna fica no grupo `auth`. Página nova: registre a chave em `config/oee.php` (`permissoes`), proteja a
   rota com `->middleware('permissao:chave')` e inclua o link no menu lateral (`layouts/portal.blade.php`) dentro de
   `@if ($u->pode('chave'))`. Páginas só de admin usam `->middleware('perfil:admin')`.
+- Mudou uma migração? Rode `php artisan banco:documentar` e faça commit de `docs/banco-de-dados.md` junto.
+- Dados do Protheus são só **lidos** (conexão `protheus`, banco `Compras`): tabelas sincronizadas e importadores ficam
+  em `config/protheus.php`; a sincronização (`App\Services\Protheus\SincronizadorProtheus`) grava o histórico em
+  `sincronizacoes`.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
 
 ## Git
@@ -45,6 +49,8 @@ php artisan test           # testes (sempre antes de terminar)
 vendor/bin/pint            # formatação do código
 php artisan migrate        # aplica migrações
 php artisan banco:testar   # confere a conexão com o banco
+php artisan banco:documentar      # gera docs/banco-de-dados.md (diagrama e tabelas)
+php artisan protheus:sincronizar  # sincroniza os dados do Protheus (centros de custo)
 ```
 
 ## Agentes especialistas (`.claude/agents/`)
@@ -53,3 +59,5 @@ php artisan banco:testar   # confere a conexão com o banco
 - `especialista-sql-server`: tabelas, migrações, consultas, índices, permissões e desempenho no SQL Server.
 - `especialista-entra-id`: login, sessão, segredos e segurança da integração com o Entra ID.
 - `especialista-dados-oee`: regras de cálculo, agregações e análises de OEE.
+- `arquiteto-banco-dados`: estrutura do banco (tabelas, relacionamentos, PK/FK, índices), sugestões de modelagem e
+  diagrama do banco (`docs/banco-de-dados.md`).

@@ -1,10 +1,10 @@
 <?php
 
 use App\Models\Usuario;
-use App\Services\ImportadorCentrosCusto;
 use App\Services\InfoBanco;
+use App\Services\Protheus\SincronizadorProtheus;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('banco:testar', function (InfoBanco $banco) {
     foreach ($banco->descricao() as $rotulo => $valor) {
@@ -53,26 +53,41 @@ Artisan::command('usuarios:ativar {email} {--desativar : Bloqueia a entrada do u
     $this->info($email.($this->option('desativar') ? ' desativado.' : ' ativado.'));
 })->purpose('Ativa ou desativa um usuário do portal');
 
-Artisan::command('protheus:centros-custo {--tabela= : Tabela da CTT no Protheus (padrão: PROTHEUS_TABELA_CTT ou CTT010)}', function (ImportadorCentrosCusto $importador) {
-    $tabela = $this->option('tabela') ?: env('PROTHEUS_TABELA_CTT', 'CTT010');
-    if (! preg_match('/^[A-Za-z0-9_.]+$/', $tabela)) {
-        $this->error('Nome de tabela inválido.');
+// Sincronização com o Protheus (só leitura). Mesmo serviço do botão em Administração > Banco de dados.
+$sincronizarProtheus = function ($comando, ?string $tabela, string $disparo): int {
+    $sincronizador = app(SincronizadorProtheus::class);
+    $chaves = $tabela ? [$tabela] : array_keys($sincronizador->itens());
+    $falhou = false;
 
-        return 1;
+    foreach ($chaves as $chave) {
+        if (! array_key_exists($chave, $sincronizador->itens())) {
+            $comando->error("Tabela desconhecida: {$chave}. Use: ".implode(', ', array_keys($sincronizador->itens())));
+
+            return 1;
+        }
+        $comando->info("Sincronizando {$chave} a partir de {$sincronizador->origem($chave)}...");
+        $r = $sincronizador->sincronizar($chave, $disparo);
+        if ($r->situacao === 'sucesso') {
+            $comando->info("  OK: {$r->lidos} lidos, {$r->novos} novos, {$r->atualizados} atualizados, {$r->ignorados} ignorados.");
+        } else {
+            $comando->error("  Falhou: {$r->mensagem}");
+            $falhou = true;
+        }
     }
 
-    $this->info("Lendo {$tabela} no banco do Protheus (conexão \"protheus\" do .env)...");
-    try {
-        $linhas = DB::connection('protheus')->table($tabela)
-            ->select(ImportadorCentrosCusto::CAMPOS)->orderBy('R_E_C_N_O_')->cursor();
-        $resumo = $importador->importar($linhas);
-    } catch (Throwable $e) {
-        $this->error('Falha ao importar: '.$e->getMessage());
+    return $falhou ? 1 : 0;
+};
 
-        return 1;
-    }
+Artisan::command('protheus:sincronizar {tabela? : Só esta tabela (ex.: centros_custo); vazio = todas} {--agendado : Marca a execução como automática no histórico}', function (?string $tabela = null) use ($sincronizarProtheus) {
+    return $sincronizarProtheus($this, $tabela, $this->option('agendado') ? 'agendado' : 'comando');
+})->purpose('Sincroniza as tabelas do Protheus (hoje: centros de custo da CTT) com o portal');
 
-    $this->info("Pronto: {$resumo['novos']} novos, {$resumo['atualizados']} atualizados, {$resumo['ignorados']} sem código.");
+Artisan::command('protheus:centros-custo', function () use ($sincronizarProtheus) {
+    return $sincronizarProtheus($this, 'centros_custo', 'comando');
+})->purpose('Atalho de "protheus:sincronizar centros_custo"');
 
-    return 0;
-})->purpose('Importa/atualiza os centros de custo (CTT) do Protheus para o portal');
+// Sincronização automática: liga com PROTHEUS_SINCRONIZAR_CRON no .env e o agendador do Laravel rodando
+// ("php artisan schedule:work" como serviço, ou "php artisan schedule:run" a cada minuto no Agendador de Tarefas).
+if ($agenda = config('protheus.agenda')) {
+    Schedule::command('protheus:sincronizar --agendado')->cron($agenda)->withoutOverlapping();
+}

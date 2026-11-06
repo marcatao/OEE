@@ -64,19 +64,21 @@ return [
             'trust_server_certificate' => $opcaoSqlServer(env('DB_TRUST_SERVER_CERTIFICATE')),
         ],
 
-        // Banco do Protheus (só leitura), usado por "php artisan protheus:centros-custo" para importar a CTT.
+        // Banco do Protheus (só leitura), usado pela sincronização (botão em Administração > Banco de dados e
+        // "php artisan protheus:sincronizar"). Por padrão fica no MESMO servidor e usa o MESMO usuário do portal,
+        // no banco "Compras"; preencha PROTHEUS_DB_* no .env só se for diferente.
         'protheus' => [
             'driver' => 'sqlsrv',
             'host' => env('PROTHEUS_DB_HOST') ?: env('DB_HOST', 'localhost'),
-            'port' => env('PROTHEUS_DB_PORT') ?: null,
-            'database' => env('PROTHEUS_DB_DATABASE', ''),
-            'username' => env('PROTHEUS_DB_USERNAME', ''),
-            'password' => env('PROTHEUS_DB_PASSWORD', ''),
+            'port' => env('PROTHEUS_DB_HOST') ? (env('PROTHEUS_DB_PORT') ?: null) : (env('DB_PORT') ?: null),
+            'database' => env('PROTHEUS_DB_DATABASE') ?: 'Compras',
+            'username' => env('PROTHEUS_DB_USERNAME') ?: env('DB_USERNAME', ''),
+            'password' => env('PROTHEUS_DB_USERNAME') ? env('PROTHEUS_DB_PASSWORD', '') : env('DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'encrypt' => $opcaoSqlServer(env('PROTHEUS_DB_ENCRYPT', 'yes')),
-            'trust_server_certificate' => $opcaoSqlServer(env('PROTHEUS_DB_TRUST_SERVER_CERTIFICATE', true)),
+            'encrypt' => $opcaoSqlServer(env('PROTHEUS_DB_ENCRYPT') ?? env('DB_ENCRYPT')),
+            'trust_server_certificate' => $opcaoSqlServer(env('PROTHEUS_DB_TRUST_SERVER_CERTIFICATE') ?? env('DB_TRUST_SERVER_CERTIFICATE')),
         ],
     ],
 

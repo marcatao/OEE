@@ -3,6 +3,7 @@
   --fundo:#f2f5f3; --cartao:#ffffff; --texto:#16231c; --suave:#5b6b62; --borda:#dde6e0; --borda-forte:#c6d4cb;
   --primaria:#008650; --primaria-escura:#006a3f; --primaria-texto:#ffffff; --primaria-suave:#e4f3eb; --destaque:#3fb37a;
   --erro:#b42318; --erro-suave:#fdecea; --ok:#067647; --ok-suave:#e3f6ec; --alerta:#b54708; --alerta-suave:#fef3e2;
+  --protheus:#1d5fa8; --protheus-suave:#e6eef8; /* dados que vêm do Protheus */
   --menu:#0c2419; --menu-borda:#173a29; --menu-texto:#bfd4c7; --menu-secao:#7f9c8c; --menu-ativo:#13472f; --menu-hover:#123323;
   --branco:#ffffff; --sombra:0 1px 2px rgba(16,40,28,.06), 0 4px 16px rgba(16,40,28,.06);
   --sombra-forte:0 10px 30px rgba(16,40,28,.12);
@@ -16,6 +17,7 @@
     --fundo:#0e1511; --cartao:#151f19; --texto:#e4ede7; --suave:#9db0a5; --borda:#243229; --borda-forte:#2f4136;
     --primaria:#3fbf82; --primaria-escura:#2fa56e; --primaria-texto:#07150e; --primaria-suave:#163828; --destaque:#4cc38a;
     --erro:#f97066; --erro-suave:#3a1714; --ok:#47cd89; --ok-suave:#12301f; --alerta:#fdb022; --alerta-suave:#33240b;
+    --protheus:#7cb2ee; --protheus-suave:#14263a;
     --menu:#08110c; --menu-borda:#16251c; --menu-texto:#b2c7ba; --menu-secao:#6f8a7b; --menu-ativo:#17402c; --menu-hover:#10231a;
     --sombra:0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25); --sombra-forte:0 10px 30px rgba(0,0,0,.45);
     --heroi-inicio:#0b3d27; --heroi-fim:#106b43;
@@ -301,3 +303,14 @@ a.tl-maquina:hover { color:var(--primaria); }
 .tl-marca.virada { color:var(--texto); font-weight:700; }
 .amostra-cor { width:26px; height:18px; border-radius:4px; display:inline-block; vertical-align:middle; border:1px solid var(--borda); }
 input[type=color] { width:64px; height:40px; padding:2px; cursor:pointer; }
+
+/* ---------- Banco de dados: origem das tabelas e sincronização com o Protheus ---------- */
+.origem-sistema { color:var(--primaria); background:var(--primaria-suave); border-color:transparent; }
+.origem-protheus { color:var(--protheus); background:var(--protheus-suave); border-color:transparent; }
+.sinc-sucesso { color:var(--ok); background:var(--ok-suave); border-color:transparent; }
+.sinc-erro { color:var(--erro); background:var(--erro-suave); border-color:transparent; }
+.sinc-executando { color:var(--alerta); background:var(--alerta-suave); border-color:transparent; }
+.legenda-origens { display:flex; gap:1rem; flex-wrap:wrap; align-items:center; margin:.25rem 0 .75rem; }
+.bloco-protheus { border-left:4px solid var(--protheus); padding-left:1rem; }
+.bloco-protheus h3 { margin-top:1.5rem; }
+.tabela td.resultado { white-space:normal; min-width:14rem; max-width:28rem; }
