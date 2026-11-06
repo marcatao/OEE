@@ -136,7 +136,8 @@ Para testar sem SQL Server, use `DB_CONNECTION=sqlite` e apague as outras linhas
 
 ## 3. Rodar
 
-Requisitos: PHP 8.3 ou mais novo e [Composer](https://getcomposer.org).
+Requisitos: **PHP 8.4.1 ou mais novo** (a equipe usa o PHP 8.5; o `composer.lock` exige 8.4.1+) e
+[Composer](https://getcomposer.org). A pasta `php8.5/` tem o `php.ini` e as DLLs do SQL Server usados pela equipe.
 
 ```sh
 composer install

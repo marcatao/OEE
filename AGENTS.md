@@ -1,6 +1,6 @@
 # OEE Alumbra — instruções para o Claude
 
-Portal Laravel 13 (PHP 8.3+) de dashboards de produção e cálculos de OEE. Login pelo Microsoft Entra ID, dados no
+Portal Laravel 13 (PHP 8.4.1+; a equipe usa PHP 8.5) de dashboards de produção e cálculos de OEE. Login pelo Microsoft Entra ID, dados no
 SQL Server. Escreva código, textos de tela, comentários e mensagens de commit em português do Brasil.
 
 ## Regras do projeto
@@ -24,6 +24,19 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   rota com `->middleware('permissao:chave')` e inclua o link no menu lateral (`layouts/portal.blade.php`) dentro de
   `@if ($u->pode('chave'))`. Páginas só de admin usam `->middleware('perfil:admin')`.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
+
+## Git
+
+- Trabalhe **sempre direto na branch `main`**: não crie outras branches nem pull requests. Faça commit e push em
+  `main` (`git push origin main`). Isso vale para todos os repositórios do usuário.
+- Nunca commite `.env` nem cópias dele (`.env.bak*`): têm segredos.
+
+## Ambiente
+
+- O `composer.lock` exige **PHP 8.4.1+**. Se o ambiente só tiver PHP 8.3, o `composer install` falha: diga isso ao
+  usuário em vez de mexer no `composer.lock` ou forçar versões.
+- A pasta `php8.5/` (php.ini e DLLs do SQL Server para Windows) fica versionada de propósito, para a equipe
+  compartilhar a configuração do PHP. Nunca coloque segredos nela.
 
 ## Comandos
 
