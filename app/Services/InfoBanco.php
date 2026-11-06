@@ -34,7 +34,7 @@ class InfoBanco
             'Usuário' => $cfg['username'] ?: '-',
         ];
         if ($driver === 'sqlsrv') {
-            $descricao['Criptografia'] = ($cfg['encrypt'] ?? 'yes').' (confiar no certificado: '.($cfg['trust_server_certificate'] ?? 'false').')';
+            $descricao['Criptografia'] = ($cfg['encrypt'] ?? 'padrão do driver').' (confiar no certificado: '.($cfg['trust_server_certificate'] ?? 'padrão do driver').')';
         }
 
         return $descricao;

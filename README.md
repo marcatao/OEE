@@ -105,10 +105,31 @@ das máquinas ficam no banco do portal.
    ALTER ROLE db_ddladmin  ADD MEMBER oee_app;  -- para "php artisan migrate" criar as tabelas
    ```
 
+   Se o `migrate` reclamar de permissão (ex.: `REFERENCES` ao criar chaves estrangeiras), use
+   `ALTER ROLE db_owner ADD MEMBER oee_app;` só neste banco.
+
    Para autenticação do Windows, crie o login da conta que roda o portal
    (`CREATE LOGIN [DOMINIO\conta] FROM WINDOWS`) e deixe `DB_USERNAME` e `DB_PASSWORD` vazios.
 3. Preencha a seção **Banco de dados** do `.env` (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`,
    `DB_PASSWORD`, `DB_ENCRYPT`, `DB_TRUST_SERVER_CERTIFICATE`).
+
+### Trocar de servidor ou instância do SQL Server
+
+O portal não guarda nada do servidor fora do `.env`. Para começar do zero num banco novo (ex.: instância `TERRA\SOLO`):
+
+1. Na instância nova: TCP/IP habilitado (SQL Server Configuration Manager), serviço **SQL Server Browser** rodando
+   (necessário para `SERVIDOR\INSTANCIA`), autenticação **SQL Server e Windows** e o firewall liberando a instância
+   e a porta UDP 1434 do Browser. Crie o banco e o login como no passo 2 acima.
+2. `php artisan down` (manutenção), ajuste no `.env` `DB_HOST=TERRA\SOLO`, `DB_PORT=` (vazio), `DB_DATABASE`,
+   `DB_USERNAME`, `DB_PASSWORD`, `DB_ENCRYPT=yes` e `DB_TRUST_SERVER_CERTIFICATE=true`.
+3. `php artisan config:clear` (senão o cache continua apontando para o banco antigo) e `php artisan banco:testar`.
+4. `php artisan migrate --force` (cria todas as tabelas e as legendas padrão) e `php artisan db:seed --force`
+   (motivos de parada).
+5. `php artisan optimize:clear`, `php artisan optimize` e `php artisan up`.
+
+Todos entram de novo pelo Entra ID: os usuários são recriados no primeiro login (sem acesso, menos os de
+`PORTAL_ADMINS`), e grupos, máquinas e demais cadastros precisam ser refeitos. Para levar os dados junto, faça backup do
+banco antigo e restaure na instância nova em vez do passo 4 (depois rode só `php artisan migrate --force`).
 
 Para testar sem SQL Server, use `DB_CONNECTION=sqlite` e apague as outras linhas `DB_*` (o banco vira o arquivo
 `database/database.sqlite`).

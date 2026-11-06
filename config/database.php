@@ -2,6 +2,10 @@
 
 use Illuminate\Support\Str;
 
+// Opções do driver SQL Server (Encrypt / TrustServerCertificate): "true"/"false" do .env viram texto, porque um
+// false booleano entraria vazio na conexão ("TrustServerCertificate=") e o driver recusaria. Vazio = padrão do driver.
+$opcaoSqlServer = static fn ($valor) => is_bool($valor) ? ($valor ? 'true' : 'false') : ($valor === '' ? null : $valor);
+
 return [
 
     /*
@@ -41,36 +45,38 @@ return [
             'journal_mode' => null,
             'synchronous' => null,
             'transaction_mode' => 'DEFERRED',
-            // 'encrypt' => env('DB_ENCRYPT', 'yes'),
-            // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),
+            // Instância nomeada: DB_HOST=SERVIDOR\INSTANCIA com DB_PORT vazio (o SQL Browser informa a porta).
+            // Com porta preenchida o driver ignora o nome da instância e conecta direto em SERVIDOR,PORTA.
             'host' => env('DB_HOST', 'localhost'),
-            'port' => env('DB_PORT', '1433'),
+            'port' => env('DB_PORT') ?: null, // vazio = 1433 na instância padrão
             'database' => env('DB_DATABASE', 'laravel'),
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
+            'encrypt' => $opcaoSqlServer(env('DB_ENCRYPT')),
+            'trust_server_certificate' => $opcaoSqlServer(env('DB_TRUST_SERVER_CERTIFICATE')),
         ],
 
         // Banco do Protheus (só leitura), usado por "php artisan protheus:centros-custo" para importar a CTT.
         'protheus' => [
             'driver' => 'sqlsrv',
-            'host' => env('PROTHEUS_DB_HOST', env('DB_HOST', 'localhost')),
-            'port' => env('PROTHEUS_DB_PORT', '1433'),
+            'host' => env('PROTHEUS_DB_HOST') ?: env('DB_HOST', 'localhost'),
+            'port' => env('PROTHEUS_DB_PORT') ?: null,
             'database' => env('PROTHEUS_DB_DATABASE', ''),
             'username' => env('PROTHEUS_DB_USERNAME', ''),
             'password' => env('PROTHEUS_DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'encrypt' => env('PROTHEUS_DB_ENCRYPT', 'yes'),
-            'trust_server_certificate' => env('PROTHEUS_DB_TRUST_SERVER_CERTIFICATE', true),
+            'encrypt' => $opcaoSqlServer(env('PROTHEUS_DB_ENCRYPT', 'yes')),
+            'trust_server_certificate' => $opcaoSqlServer(env('PROTHEUS_DB_TRUST_SERVER_CERTIFICATE', true)),
         ],
     ],
 
