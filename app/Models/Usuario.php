@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Usuário do portal. Cadastrado no primeiro login pelo Entra ID (nome e e-mail vêm do login) e nasce SEM ACESSO.
@@ -106,10 +107,19 @@ class Usuario extends Authenticatable
         return mb_strtoupper(mb_substr($primeira, 0, 1).mb_substr((string) $ultima, 0, 1)) ?: '?';
     }
 
+    /**
+     * Tem foto e o arquivo existe neste servidor? (Ao trocar de servidor com o mesmo banco, o caminho fica gravado mas o
+     * arquivo pode ter ficado na pasta storage do servidor antigo.)
+     */
+    public function temFoto(): bool
+    {
+        return (bool) $this->foto && Storage::disk('local')->exists($this->foto);
+    }
+
     /** Endereço da foto de perfil (servida pelo portal, sem link público para a pasta storage). */
     public function urlFoto(): ?string
     {
-        if (! $this->foto) {
+        if (! $this->temFoto()) {
             return null;
         }
 

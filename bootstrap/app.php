@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\ExigePerfil;
 use App\Http\Middleware\ExigePermissao;
+use App\Http\Middleware\RaizDaSubpasta;
 use App\Http\Middleware\UsuarioAtivo;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Antes do roteamento: ".../oee" (sem barra) vira ".../oee/" quando o portal está numa subpasta.
+        $middleware->prepend(RaizDaSubpasta::class);
         $middleware->web(append: [UsuarioAtivo::class]);
         $middleware->alias(['perfil' => ExigePerfil::class, 'permissao' => ExigePermissao::class]);
         $middleware->redirectGuestsTo(fn () => route('login'));

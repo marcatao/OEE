@@ -48,7 +48,7 @@
     <div class="foto-campos">
       <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" aria-label="Escolher foto">
       <small class="suave">JPG, PNG ou WEBP, até 3 MB. Se você não escolher uma foto, usamos a do Microsoft 365 (quando houver).</small>
-      @if ($u->foto)
+      @if ($u->temFoto())
         <label class="opcao"><input type="checkbox" name="remover_foto" value="1"> <span>Remover a foto atual</span></label>
       @endif
     </div>

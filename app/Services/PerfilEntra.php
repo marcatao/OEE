@@ -59,7 +59,8 @@ class PerfilEntra
                 $alterados[] = 'matricula';
             }
 
-            if ($sobrescrever || ! $usuario->foto) {
+            // Busca a foto se não houver, ou se o arquivo sumiu (ex.: troca de servidor mantendo o banco).
+            if ($sobrescrever || ! $usuario->temFoto()) {
                 $foto = $this->foto($token);
                 if ($foto !== null) {
                     $this->guardarFoto($usuario, $foto, 'jpg');

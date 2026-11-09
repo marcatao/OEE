@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Usuario;
 use App\Services\EntraId;
 use App\Services\IdentidadeEntra;
+use App\Services\PerfilEntra;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -126,5 +127,37 @@ class PerfilTest extends TestCase
     public function test_botao_do_entra_sem_token_pede_novo_login(): void
     {
         $this->actingAs($this->usuario())->post('/perfil/entra')->assertRedirect('/perfil')->assertSessionHas('erro');
+    }
+
+    public function test_foto_registrada_mas_sem_arquivo_neste_servidor_e_buscada_de_novo_no_login(): void
+    {
+        // Troca de servidor com o mesmo banco: o caminho da foto ficou, o arquivo não.
+        Storage::fake('local');
+        $usuario = Usuario::create(['entra_oid' => 'oid-maria', 'nome' => 'Maria', 'email' => 'maria@empresa.com', 'perfil' => 'operador',
+            'foto' => 'fotos/usuario-antigo.jpg']);
+        $this->assertFalse($usuario->temFoto());
+        $this->assertNull($usuario->urlFoto());
+
+        Http::fake([
+            'https://graph.microsoft.com/v1.0/me?*' => Http::response(['department' => 'Produção']),
+            'https://graph.microsoft.com/v1.0/me/photos/*' => Http::response(base64_decode(self::PNG_1X1), 200, ['Content-Type' => 'image/jpeg']),
+        ]);
+        app(PerfilEntra::class)->sincronizar($usuario, 'token-graph');
+
+        $usuario->refresh();
+        $this->assertTrue($usuario->temFoto());
+        $this->assertNotSame('fotos/usuario-antigo.jpg', $usuario->foto);
+        $this->actingAs($usuario)->get($usuario->urlFoto())->assertOk();
+    }
+
+    public function test_avatar_sem_arquivo_mostra_as_iniciais(): void
+    {
+        Storage::fake('local');
+        $usuario = Usuario::create(['entra_oid' => 'o', 'nome' => 'Lucas Machado', 'email' => 'l@empresa.com', 'perfil' => 'operador',
+            'foto' => 'fotos/sumiu.jpg']);
+
+        $html = $this->actingAs($usuario)->get('/perfil')->assertOk()->getContent();
+        $this->assertStringContainsString('LM', $html);
+        $this->assertStringNotContainsString('/foto?v=', $html);
     }
 }

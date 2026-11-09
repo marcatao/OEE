@@ -110,4 +110,18 @@ class EnderecoPublicoTest extends TestCase
         $this->naSubpasta('POST', self::PORTAL.'/auth/logout')
             ->assertRedirectContains('post_logout_redirect_uri='.urlencode(self::PORTAL.'/'));
     }
+
+    public function test_endereco_sem_barra_no_final_vai_para_a_subpasta_com_barra(): void
+    {
+        // No IIS, ".../oee" sem a barra chega sem a subpasta detectada: antes dava "Página não encontrada".
+        $this->naSubpasta('GET', self::PORTAL)->assertRedirect(self::PORTAL.'/')->assertStatus(301);
+        $this->naSubpasta('GET', self::PORTAL.'?x=1')->assertRedirect(self::PORTAL.'/?x=1');
+    }
+
+    public function test_depois_do_login_o_usuario_novo_vai_para_o_inicio_sem_erro(): void
+    {
+        // route('inicio') sai sem a barra (".../oee"); o redirecionamento acima completa o caminho.
+        $this->assertSame(self::PORTAL, route('inicio'));
+        $this->naSubpasta('GET', route('inicio'))->assertRedirect(self::PORTAL.'/');
+    }
 }
