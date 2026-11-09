@@ -328,7 +328,7 @@ em `storage/logs/laravel.log`.
 | `AADSTS7000222` | O segredo expirou: crie outro e atualize o `.env`. |
 | `AADSTS700016` / `AADSTS90002` | `ENTRA_CLIENT_ID` ou `ENTRA_TENANT_ID` errado (use os GUIDs da página do registro do aplicativo). |
 | `AADSTS50011` | A URI de redirecionamento do registro do aplicativo precisa ser igual a `ENTRA_REDIRECT_URI`. |
-| `cURL error 60` (certificado SSL) | O PHP não tem a lista de certificados. Baixe o [cacert.pem](https://curl.se/ca/cacert.pem), salve (ex.: `C:\php\cacert.pem`) e no `php.ini` (`php --ini` mostra onde está) coloque `curl.cainfo = "C:\php\cacert.pem"` e `openssl.cafile = "C:\php\cacert.pem"`. Reinicie o `php artisan serve`. |
+| `cURL error 60` (certificado SSL) | O PHP não tem a lista de certificados. Baixe o [cacert.pem](https://curl.se/ca/cacert.pem) para `C:\OEE\php8.3\extras\ssl\cacert.pem` (o `php8.3/php.ini` já aponta `curl.cainfo` e `openssl.cafile` para esse arquivo) e rode `iisreset`. Se a rede da empresa inspeciona HTTPS (firewall/proxy), acrescente ao fim do `cacert.pem` o certificado raiz da empresa. |
 
 Depois de mudar o `.env`, rode `php artisan config:clear` e reinicie o `php artisan serve`.
 
