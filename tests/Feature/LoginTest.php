@@ -209,10 +209,13 @@ class LoginTest extends TestCase
             ->assertSee('configurado para funcionar só no próprio servidor')->assertSee('Acessar de outras máquinas');
     }
 
-    public function test_acesso_pelo_nome_de_rede_vai_para_o_endereco_https_configurado(): void
+    public function test_em_producao_nao_redireciona_para_o_endereco_configurado(): void
     {
-        config(['services.azure.redirect' => 'https://oee.alumbra.local/auth/callback']);
+        // Atrás de proxy o nome que chega ao servidor pode ser outro: segue direto para a Microsoft.
+        config(['services.azure.redirect' => 'https://oee.alumbra.local/auth/callback', 'services.azure.tenant' => self::TENANT]);
 
-        $this->get('http://192.168.0.50:8000/auth/login')->assertRedirect('https://oee.alumbra.local/auth/login?redirecionado=1');
+        $destino = $this->get('http://192.168.0.50:8000/auth/login')->assertRedirect()->headers->get('Location');
+        $this->assertStringStartsWith('https://login.microsoftonline.com/', $destino);
+        $this->assertStringContainsString(urlencode('https://oee.alumbra.local/auth/callback'), $destino);
     }
 }

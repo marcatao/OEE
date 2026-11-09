@@ -60,13 +60,13 @@ class EnderecoPublicoTest extends TestCase
     {
         URL::forceRootUrl(null);
         URL::forceScheme(null);
-        config(['app.url' => 'http://localhost:8000', 'services.azure.redirect' => 'http://localhost:8000/auth/callback']);
+        config(['app.url' => 'https://oee.alumbra.local', 'services.azure.redirect' => 'https://oee.alumbra.local/auth/callback']);
         AppServiceProvider::aplicarEnderecoPublico();
         $this->mock(EntraId::class, fn (MockInterface $m) => $m->shouldReceive('redirecionarParaLogin')
             ->andReturnUsing(fn () => redirect()->to(route('inicio'))));
 
         // Os links continuam seguindo o endereço da própria requisição.
-        $this->get('http://servidor-interno/auth/login?redirecionado=1')->assertRedirect('http://servidor-interno');
+        $this->get('http://servidor-interno/auth/login')->assertRedirect('http://servidor-interno');
     }
 
     public function test_iis_na_subpasta_encontra_as_rotas(): void
@@ -75,10 +75,13 @@ class EnderecoPublicoTest extends TestCase
         $this->naSubpasta('GET', self::PORTAL.'/perfil')->assertRedirect(self::PORTAL.'/auth/login');
     }
 
-    public function test_login_por_outro_nome_vai_para_o_endereco_publico_com_a_subpasta(): void
+    public function test_login_por_outro_nome_segue_para_a_microsoft_com_retorno_no_endereco_publico(): void
     {
-        $this->naSubpasta('GET', 'https://alumbra.com.br/oee/auth/login')
-            ->assertRedirect(self::PORTAL.'/auth/login?redirecionado=1');
+        // Ex.: proxy na frente do IIS entrega o nome interno do servidor. Não redireciona (antes ficava preso).
+        $destino = $this->naSubpasta('GET', 'https://servidor-interno/oee/auth/login')->assertRedirect()->headers->get('Location');
+
+        $this->assertStringStartsWith('https://login.microsoftonline.com/', $destino);
+        $this->assertStringContainsString('redirect_uri='.urlencode(self::PORTAL.'/auth/callback'), $destino);
     }
 
     public function test_depois_de_redirecionado_nao_redireciona_de_novo(): void

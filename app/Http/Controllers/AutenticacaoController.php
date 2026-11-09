@@ -24,17 +24,16 @@ class AutenticacaoController extends Controller
 {
     public function login(Request $request, EntraId $entra): Response
     {
-        // O retorno do Entra ID vem para o endereço de ENTRA_REDIRECT_URI. Se o portal foi aberto por outro endereço
-        // (ex.: 127.0.0.1 em vez de localhost), o cookie da sessão não volta junto e o login falha. Então primeiro
-        // levamos o navegador para o mesmo endereço do retorno.
-        // Compara só o nome (host): atrás de proxy a porta e o http/https da requisição podem ser outros. O parâmetro
-        // "redirecionado" evita voltar aqui em laço se o proxy ainda entregar outro nome.
+        // Só no computador de desenvolvimento: 127.0.0.1 e localhost são "sites" diferentes para o navegador, o
+        // cookie da sessão não volta junto e o login falha. Aí levamos o navegador para o endereço do retorno.
+        // Em produção (endereço público, ex.: https://www.alumbra.com.br/oee) NÃO redirecionamos: atrás de proxy o
+        // nome que chega ao servidor pode ser outro, e o redirecionamento cairia num endereço que não responde.
         $base = $this->baseDoRetorno();
         $hostDoRetorno = strtolower((string) parse_url((string) $base, PHP_URL_HOST));
-        if ($base && $hostDoRetorno !== strtolower($request->getHost()) && ! $request->boolean('redirecionado')) {
-            // Configurado só para "localhost", mas acessado por outra máquina: "localhost" lá é a própria máquina
-            // do usuário, então o redirecionamento cairia numa página que não existe. Explica o que configurar.
-            if ($this->ehLocal(parse_url($base, PHP_URL_HOST)) && ! $this->ehLocal($request->getHost())) {
+        $hostDaRequisicao = strtolower($request->getHost());
+        if ($base && $hostDoRetorno !== $hostDaRequisicao) {
+            if ($this->ehLocal($hostDoRetorno) && ! $this->ehLocal($hostDaRequisicao)) {
+                // Configurado só para "localhost", mas acessado por outra máquina: explica o que configurar.
                 return $this->erro(
                     "Este portal está configurado para funcionar só no próprio servidor ({$base}). Para entrar a partir "
                     .'de outras máquinas, o administrador precisa configurar APP_URL e ENTRA_REDIRECT_URI com o endereço '
@@ -42,8 +41,9 @@ class AutenticacaoController extends Controller
                     500,
                 );
             }
-
-            return redirect()->away($base.'/auth/login?redirecionado=1');
+            if ($this->ehLocal($hostDoRetorno) && ! $request->boolean('redirecionado')) {
+                return redirect()->away($base.'/auth/login?redirecionado=1');
+            }
         }
 
         return $entra->redirecionarParaLogin();
