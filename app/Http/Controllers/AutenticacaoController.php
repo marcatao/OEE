@@ -27,8 +27,11 @@ class AutenticacaoController extends Controller
         // O retorno do Entra ID vem para o endereço de ENTRA_REDIRECT_URI. Se o portal foi aberto por outro endereço
         // (ex.: 127.0.0.1 em vez de localhost), o cookie da sessão não volta junto e o login falha. Então primeiro
         // levamos o navegador para o mesmo endereço do retorno.
+        // Compara só o nome (host): atrás de proxy a porta e o http/https da requisição podem ser outros. O parâmetro
+        // "redirecionado" evita voltar aqui em laço se o proxy ainda entregar outro nome.
         $base = $this->baseDoRetorno();
-        if ($base && $base !== $request->getSchemeAndHttpHost()) {
+        $hostDoRetorno = strtolower((string) parse_url((string) $base, PHP_URL_HOST));
+        if ($base && $hostDoRetorno !== strtolower($request->getHost()) && ! $request->boolean('redirecionado')) {
             // Configurado só para "localhost", mas acessado por outra máquina: "localhost" lá é a própria máquina
             // do usuário, então o redirecionamento cairia numa página que não existe. Explica o que configurar.
             if ($this->ehLocal(parse_url($base, PHP_URL_HOST)) && ! $this->ehLocal($request->getHost())) {
@@ -40,7 +43,7 @@ class AutenticacaoController extends Controller
                 );
             }
 
-            return redirect()->away($base.'/auth/login');
+            return redirect()->away($base.'/auth/login?redirecionado=1');
         }
 
         return $entra->redirecionarParaLogin();
@@ -93,7 +96,9 @@ class AutenticacaoController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->away($entra->urlDeLogout(route('inicio')));
+        // Volta para a página inicial com barra no final (ex.: https://www.alumbra.com.br/oee/): esse endereço precisa
+        // estar cadastrado igualzinho nas URIs de redirecionamento do registro do aplicativo no Entra ID.
+        return redirect()->away($entra->urlDeLogout(rtrim(url('/'), '/').'/'));
     }
 
     /**
@@ -147,15 +152,19 @@ class AutenticacaoController extends Controller
             .'storage/logs/laravel.log.'];
     }
 
-    /** "http://localhost:8000" a partir de ENTRA_REDIRECT_URI. */
+    /**
+     * Endereço do portal a partir de ENTRA_REDIRECT_URI, mantendo a subpasta:
+     * "https://www.alumbra.com.br/oee/auth/callback" → "https://www.alumbra.com.br/oee".
+     */
     private function baseDoRetorno(): ?string
     {
         $url = parse_url((string) config('services.azure.redirect'));
         if (empty($url['scheme']) || empty($url['host'])) {
             return null;
         }
+        $caminho = preg_replace('#/auth/callback/?$#', '', rtrim($url['path'] ?? '', '/'));
 
-        return $url['scheme'].'://'.$url['host'].(isset($url['port']) ? ':'.$url['port'] : '');
+        return $url['scheme'].'://'.$url['host'].(isset($url['port']) ? ':'.$url['port'] : '').$caminho;
     }
 
     private function ehLocal(?string $host): bool

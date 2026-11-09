@@ -138,8 +138,9 @@ Para testar sem SQL Server, use `DB_CONNECTION=sqlite` e apague as outras linhas
 
 ## 3. Rodar
 
-Requisitos: **PHP 8.4.1 ou mais novo** (a equipe usa o PHP 8.5; o `composer.lock` exige 8.4.1+) e
-[Composer](https://getcomposer.org). A pasta `php8.5/` tem o `php.ini` e as DLLs do SQL Server usados pela equipe.
+Requisitos: **PHP 8.3** (versão do servidor; o `composer.lock` é gerado nela) e [Composer](https://getcomposer.org).
+A pasta `php8.3/` tem o PHP do servidor, com o `php.ini` e as DLLs do SQL Server (`php_sqlsrv_83_nts_x64`,
+`php_pdo_sqlsrv_83_nts_x64`).
 
 ```sh
 composer install
@@ -238,6 +239,32 @@ php artisan protheus:sincronizar maquinas        # só as máquinas (SHB)
 
 Para acrescentar outra tabela do Protheus no futuro: crie um importador em `app/Services` que implemente
 `App\Services\Protheus\ImportadorProtheus` e registre em `config/protheus.php`.
+
+## Publicação no servidor (IIS, em https://www.alumbra.com.br/oee/)
+
+O portal roda como **aplicação do IIS na subpasta `/oee`** do site, com PHP 8.3 próprio (`C:\OEE\php8.3`).
+
+1. **IIS**: no site que atende `www.alumbra.com.br` (com o certificado HTTPS), **Adicionar Aplicativo** com alias
+   `oee` e caminho físico `C:\OEE\public`. O `public/web.config` já traz a reescrita para o `index.php` (relativa à
+   aplicação) e o handler do PHP 8.3; o `php-cgi.exe` precisa estar liberado em **Configurações do FastCGI** do
+   servidor. A conta do pool de aplicativos precisa poder **gravar** em `C:\OEE\storage` e
+   `C:\OEE\bootstrap\cache`.
+2. **`.env`** do servidor:
+
+   ```
+   APP_ENV=production
+   APP_DEBUG=false
+   APP_URL=https://www.alumbra.com.br/oee
+   ENTRA_REDIRECT_URI="${APP_URL}/auth/callback"
+   SESSION_SECURE_COOKIE=true
+   ```
+
+   Com subpasta no `APP_URL`, todos os links, o retorno do login e a volta da saída usam esse endereço.
+3. **Entra ID** (registro do aplicativo › **Autenticação** › plataforma **Web**), URIs de redirecionamento:
+   - `https://www.alumbra.com.br/oee/auth/callback` (retorno do login — obrigatória);
+   - `https://www.alumbra.com.br/oee/` (para onde a Microsoft volta depois de **Sair**).
+4. No servidor: `php artisan config:clear` (ou `php artisan config:cache`), `php artisan migrate --force` e reinicie o
+   pool de aplicativos.
 
 ## Acessar de outras máquinas
 

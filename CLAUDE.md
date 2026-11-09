@@ -1,6 +1,6 @@
 # OEE Alumbra — instruções para o Claude
 
-Portal Laravel 13 (PHP 8.4.1+; a equipe usa PHP 8.5) de dashboards de produção e cálculos de OEE. Login pelo Microsoft Entra ID, dados no
+Portal Laravel 13 (PHP 8.3, versão do servidor) de dashboards de produção e cálculos de OEE. Login pelo Microsoft Entra ID, dados no
 SQL Server. Escreva código, textos de tela, comentários e mensagens de commit em português do Brasil.
 
 ## Regras do projeto
@@ -39,9 +39,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 
 ## Ambiente
 
-- O `composer.lock` exige **PHP 8.4.1+**. Se o ambiente só tiver PHP 8.3, o `composer install` falha: diga isso ao
-  usuário em vez de mexer no `composer.lock` ou forçar versões.
-- A pasta `php8.5/` (php.ini e DLLs do SQL Server para Windows) fica versionada de propósito, para a equipe
+- O servidor usa **PHP 8.3** e o `composer.lock` é gerado nele: não atualize pacotes para versões que exijam PHP 8.4+.
+- Publicação: aplicação do IIS na subpasta `/oee` de `https://www.alumbra.com.br` (`public/web.config` é do
+  servidor; não troque as regras sem pedido). Com subpasta no `APP_URL`, `AppServiceProvider::aplicarEnderecoPublico()`
+  força esse endereço em links e no login; teste rotas na subpasta como em `tests/Feature/EnderecoPublicoTest.php`.
+- Nunca deixe em `public/` arquivos de diagnóstico como `phpinfo()`: o portal é público.
+- A pasta `php8.3/` (PHP do servidor, php.ini e DLLs do SQL Server) fica versionada de propósito, para a equipe
   compartilhar a configuração do PHP. Nunca coloque segredos nela.
 
 ## Comandos

@@ -170,7 +170,7 @@ class LoginTest extends TestCase
     {
         config(['services.azure.redirect' => 'http://localhost:8000/auth/callback']);
 
-        $this->get('http://127.0.0.1:8000/auth/login')->assertRedirect('http://localhost:8000/auth/login');
+        $this->get('http://127.0.0.1:8000/auth/login')->assertRedirect('http://localhost:8000/auth/login?redirecionado=1');
     }
 
     public function test_state_invalido_explica_o_que_fazer(): void
@@ -213,6 +213,6 @@ class LoginTest extends TestCase
     {
         config(['services.azure.redirect' => 'https://oee.alumbra.local/auth/callback']);
 
-        $this->get('http://192.168.0.50:8000/auth/login')->assertRedirect('https://oee.alumbra.local/auth/login');
+        $this->get('http://192.168.0.50:8000/auth/login')->assertRedirect('https://oee.alumbra.local/auth/login?redirecionado=1');
     }
 }
