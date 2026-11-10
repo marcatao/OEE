@@ -24,6 +24,11 @@ class ImportadorProdutos extends ImportadorEspelho
         return ['b1_filial', 'b1_cod'];
     }
 
+    protected function colunaBusca(): string
+    {
+        return 'b1_cod';
+    }
+
     protected function linhaDestino(array $l): ?array
     {
         $codigo = self::texto($l, 'B1_COD', 30);

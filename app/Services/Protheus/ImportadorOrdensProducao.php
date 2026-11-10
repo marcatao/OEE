@@ -42,6 +42,11 @@ class ImportadorOrdensProducao extends ImportadorEspelho
         return ['c2_filial', 'c2_num', 'c2_item', 'c2_sequen'];
     }
 
+    protected function colunaBusca(): string
+    {
+        return 'numero';
+    }
+
     protected function linhaDestino(array $l): ?array
     {
         $num = self::texto($l, 'C2_NUM', 10);

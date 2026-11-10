@@ -10,6 +10,7 @@ use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\Planta;
 use App\Models\ProdutoProtheus;
+use App\Models\Sincronizacao;
 use App\Models\Usuario;
 use App\Services\Protheus\ImportadorOrdensProducao;
 use App\Services\Protheus\ImportadorProdutos;
@@ -213,5 +214,58 @@ class OrdensProducaoTest extends TestCase
             ->assertSee('03/11/2026 a 10/11/2026');
         $this->get('/producao/ordens-de-producao?status[]=fechada')->assertSee('50986101001')->assertDontSee('50985901001');
         $this->get('/producao/ordens-de-producao?busca=frasco')->assertSee('50986001001')->assertDontSee('50985901001');
+    }
+
+    public function test_sincroniza_em_lotes_lendo_o_protheus_em_paginas(): void
+    {
+        config(['protheus.lote' => 50]);
+        foreach (range(1, 230) as $i) {
+            $this->sc2((string) (700000 + $i), 'PA001', 100 + $i);
+        }
+
+        DB::connection('protheus')->enableQueryLog();
+        $r = $this->sincronizar('ordens_producao');
+        $consultas = count(DB::connection('protheus')->getQueryLog());
+
+        $this->assertSame(['sucesso', 234, 234], [$r->situacao, $r->lidos, $r->novos]);
+        $this->assertSame(234, OrdemProducao::count());
+        $this->assertSame(5, $consultas); // 234 linhas em páginas de 50 = 5 consultas ao Protheus
+
+        $r = $this->sincronizar('ordens_producao');
+        $this->assertSame([0, 0], [$r->novos, $r->atualizados]); // nada mudou
+    }
+
+    public function test_excluida_e_recriada_em_lotes_diferentes_fica_a_versao_ativa(): void
+    {
+        config(['protheus.lote' => 50]);
+        foreach (range(1, 120) as $i) {
+            $this->sc2((string) (800000 + $i), 'PA001', 100 + $i);
+        }
+        // A OP 509859 (R_E_C_N_O_ 1, primeiro lote) foi excluída e recriada (R_E_C_N_O_ 500, último lote).
+        DB::connection('protheus')->table('SC2')->where('R_E_C_N_O_', 1)->update(['D_E_L_E_T_' => '*']);
+        $this->sc2('509859', 'PA001', 500, ['C2_QUANT' => 3000]);
+
+        $this->sincronizar('ordens_producao');
+        $op = OrdemProducao::where('c2_num', '509859')->sole();
+        $this->assertSame([' ', 3000.0, 500], [$op->d_e_l_e_t_, $op->c2_quant, $op->r_e_c_n_o_]);
+
+        // Na próxima sincronização, a linha antiga excluída (primeiro lote) não marca a OP como excluída.
+        $r = $this->sincronizar('ordens_producao');
+        $this->assertSame(0, $r->excluidos);
+        $this->assertSame(' ', $op->fresh()->d_e_l_e_t_);
+    }
+
+    public function test_sincronizacao_interrompida_nao_fica_presa_em_andamento(): void
+    {
+        $presa = Sincronizacao::create(['chave' => 'ordens_producao', 'origem' => 'Compras.SC2', 'disparo' => 'manual',
+            'iniciado_em' => now()->subMinutes(30), 'situacao' => 'executando']);
+        $recente = Sincronizacao::create(['chave' => 'produtos', 'origem' => 'Compras.SB1', 'disparo' => 'manual',
+            'iniciado_em' => now()->subMinute(), 'situacao' => 'executando']);
+
+        app(SincronizadorProtheus::class)->ultimas();
+
+        $this->assertSame('erro', $presa->fresh()->situacao);
+        $this->assertStringContainsString('Interrompida', $presa->fresh()->mensagem);
+        $this->assertSame('executando', $recente->fresh()->situacao); // ainda dentro do tempo máximo
     }
 }

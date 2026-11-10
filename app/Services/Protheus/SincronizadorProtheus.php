@@ -44,6 +44,7 @@ class SincronizadorProtheus
     public function sincronizar(string $chave, string $disparo, ?Usuario $usuario = null): Sincronizacao
     {
         $item = $this->item($chave);
+        $this->encerrarInterrompidas();
         $registro = Sincronizacao::create([
             'chave' => $chave,
             'origem' => Str::limit($this->origem($chave), 157),
@@ -67,16 +68,27 @@ class SincronizadorProtheus
             /** @var ImportadorProtheus $importador */
             $importador = app($item['importador']);
             $lidos = 0;
-            $linhas = (function () use ($importador, $tabela, &$lidos) {
-                $consulta = DB::connection('protheus')->table($tabela)->select($importador->campos());
-                if (method_exists($importador, 'filtrar')) {
-                    $consulta = $importador->filtrar($consulta); // ex.: só OPs a partir de uma data
-                }
-                $cursor = $consulta->orderBy('R_E_C_N_O_')->cursor();
-                foreach ($cursor as $linha) {
-                    $lidos++;
-                    yield $linha;
-                }
+            $porPagina = max(50, (int) config('protheus.lote', 1000));
+            // Lê o Protheus em páginas (ordem de R_E_C_N_O_): nunca carrega a tabela inteira na memória.
+            $linhas = (function () use ($importador, $tabela, $porPagina, &$lidos) {
+                $ultimo = null;
+                do {
+                    $consulta = DB::connection('protheus')->table($tabela)->select($importador->campos());
+                    if (method_exists($importador, 'filtrar')) {
+                        $consulta = $importador->filtrar($consulta); // ex.: só OPs a partir de uma data
+                    }
+                    if ($ultimo !== null) {
+                        $consulta->where('R_E_C_N_O_', '>', $ultimo);
+                    }
+                    $pagina = $consulta->orderBy('R_E_C_N_O_')->limit($porPagina)->get();
+                    foreach ($pagina as $linha) {
+                        $lidos++;
+                        $ultimo = array_change_key_case((array) $linha, CASE_UPPER)['R_E_C_N_O_'];
+                        yield $linha;
+                    }
+                    $quantos = $pagina->count();
+                    unset($pagina);
+                } while ($quantos === $porPagina);
             })();
 
             $resumo = $importador->importar($linhas);
@@ -91,9 +103,25 @@ class SincronizadorProtheus
         }
     }
 
+    /**
+     * Execuções que ficaram "executando" além do tempo máximo: o processo parou sem conseguir registrar o fim
+     * (falta de memória, tempo esgotado, servidor reiniciado). Marca como erro para o histórico não ficar preso.
+     */
+    public function encerrarInterrompidas(): int
+    {
+        return Sincronizacao::where('situacao', 'executando')
+            ->where('iniciado_em', '<', now()->subSeconds((int) config('protheus.tempo_maximo', 600)))
+            ->update([
+                'situacao' => 'erro',
+                'terminado_em' => now(),
+                'mensagem' => 'Interrompida: o processo parou antes de terminar (falta de memória, tempo esgotado ou servidor reiniciado). Rode de novo.',
+            ]);
+    }
+
     /** Última execução de cada tabela sincronizada. @return array<string, Sincronizacao|null> */
     public function ultimas(): array
     {
+        $this->encerrarInterrompidas();
         $ultimas = [];
         foreach (array_keys($this->itens()) as $chave) {
             $ultimas[$chave] = Sincronizacao::where('chave', $chave)->latest('iniciado_em')->latest('id')->first();

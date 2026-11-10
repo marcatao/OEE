@@ -54,6 +54,10 @@ return [
     // Ordens de produção: só as emitidas a partir desta data (AAAAMMDD). Vazio = todas.
     'sc2_desde' => env('PROTHEUS_SC2_DESDE', ''),
 
+    // Linhas por lote: o Protheus é lido e gravado de tantas em tantas linhas, para a memória não crescer com o
+    // tamanho da tabela (ex.: SC2 com anos de OPs).
+    'lote' => (int) env('PROTHEUS_SINCRONIZAR_LOTE', 1000),
+
     // Tempo máximo (segundos) de uma sincronização; evita duas rodando ao mesmo tempo.
     'tempo_maximo' => (int) env('PROTHEUS_SINCRONIZAR_TEMPO_MAXIMO', 600),
 ];
