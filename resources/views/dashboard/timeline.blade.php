@@ -8,11 +8,23 @@
   <p class="trilha">Dashboards</p>
   <div class="tl-topo">
     <h1>Timeline</h1>
-    @if ($u->pode('apontamentos'))
-      <a class="botao" href="{{ route('apontamentos.create', ['voltar' => 'timeline']) }}">@include('layouts.partials.icone', ['nome' => 'mais']) Novo apontamento</a>
-    @endif
+    <div class="tl-topo-acoes">
+      <button type="button" id="tl-alternar-filtros" class="botao secundario pequeno" aria-expanded="true" aria-controls="tl-painel-filtros"
+              title="Esconder ou mostrar os filtros (se recolhem sozinhos após 3 minutos sem mexer na tela)">
+        @include('layouts.partials.icone', ['nome' => 'filtro']) <span data-rotulo>Esconder filtros</span>
+      </button>
+      @if ($u->pode('apontamentos'))
+        <a class="botao" href="{{ route('apontamentos.create', ['voltar' => 'timeline']) }}">@include('layouts.partials.icone', ['nome' => 'mais']) Novo apontamento</a>
+      @endif
+    </div>
   </div>
 
+  {{-- Com os filtros escondidos, uma linha mostra o que está aplicado (clique para mostrar os filtros). --}}
+  <button type="button" id="tl-resumo-filtros" class="tl-resumo-filtros" hidden title="Mostrar filtros">
+    @include('layouts.partials.icone', ['nome' => 'filtro']) <span data-texto></span>
+  </button>
+
+  <div id="tl-painel-filtros" class="tl-painel-filtros">
   {{-- Filtros: qualquer mudança atualiza só os dados (sem recarregar a página). --}}
   <form id="tl-filtros" class="tl-filtros" method="get" action="{{ route('timeline') }}"
         data-hoje-de="{{ $hoje->de->format('Y-m-d\TH:i') }}" data-hoje-ate="{{ $hoje->ate->format('Y-m-d\TH:i') }}">
@@ -79,9 +91,13 @@
         <button class="botao secundario pequeno" type="submit">Excluir filtro "{{ $escolhido->nome }}"</button>
       </form>
     @endif
+  </div>
+  </div>{{-- fim do painel de filtros --}}
+
+  <p class="tl-avisos">
     <span id="tl-carregando" class="suave" hidden>Atualizando…</span>
     <span id="tl-falha" class="erro" hidden>Não foi possível atualizar. Tentando de novo em instantes.</span>
-  </div>
+  </p>
 
   <div id="tl-resultado" aria-live="polite">
     @include('dashboard.timeline._resultado')
@@ -203,6 +219,47 @@
     if (vivo && document.visibilityState === 'visible') atualizar();
   }, 60000);
 
+  // Esconder/mostrar filtros. A escolha manual fica lembrada neste navegador; sem mexer na tela por 3 minutos, os
+  // filtros se recolhem sozinhos (para o gráfico ganhar espaço, ex.: na TV da fábrica).
+  var painel = document.getElementById('tl-painel-filtros');
+  var alternar = document.getElementById('tl-alternar-filtros');
+  var resumoFiltros = document.getElementById('tl-resumo-filtros');
+  var RECOLHER_APOS = 3 * 60 * 1000, ociosidade = null;
+
+  function textoResumo() {
+    function dataHora(v) { return v ? v.substring(8, 10) + '/' + v.substring(5, 7) + ' ' + v.substring(11, 16) : ''; }
+    var partes = [dataHora(de.value) + ' até ' + dataHora(ate.value)];
+    form.querySelectorAll('[data-multi]').forEach(function (bloco) {
+      partes.push(bloco.querySelector('.multi-rotulo').textContent + ': ' + bloco.querySelector('[data-resumo]').textContent);
+    });
+    if (salvos && salvos.value) partes.push('Filtro: ' + salvos.options[salvos.selectedIndex].text);
+    return partes.join(' · ');
+  }
+
+  function mostrarFiltros(mostrar, lembrar) {
+    painel.hidden = !mostrar;
+    resumoFiltros.hidden = mostrar;
+    alternar.setAttribute('aria-expanded', String(mostrar));
+    alternar.querySelector('[data-rotulo]').textContent = mostrar ? 'Esconder filtros' : 'Mostrar filtros';
+    if (!mostrar) {
+      paineis.forEach(function (d) { d.open = false; });
+      resumoFiltros.querySelector('[data-texto]').textContent = textoResumo();
+    }
+    if (lembrar) { try { localStorage.setItem('oee-timeline-filtros', mostrar ? 'aberto' : 'recolhido'); } catch (e) {} }
+    contarOciosidade();
+  }
+
+  function contarOciosidade() {
+    clearTimeout(ociosidade);
+    if (!painel.hidden) ociosidade = setTimeout(function () { mostrarFiltros(false, false); }, RECOLHER_APOS);
+  }
+
+  alternar.addEventListener('click', function () { mostrarFiltros(painel.hidden, true); });
+  resumoFiltros.addEventListener('click', function () { mostrarFiltros(true, true); });
+  ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart', 'focusin'].forEach(function (evento) {
+    document.addEventListener(evento, function () { if (!painel.hidden) contarOciosidade(); }, { passive: true });
+  });
+
   // Painéis de seleção: fecha ao clicar fora, ao apertar Esc e ao abrir outro.
   var paineis = form.querySelectorAll('details.multi');
   document.addEventListener('click', function (e) {
@@ -216,6 +273,9 @@
   });
 
   cascata();
+  var preferencia = null;
+  try { preferencia = localStorage.getItem('oee-timeline-filtros'); } catch (e) {}
+  mostrarFiltros(preferencia !== 'recolhido', false);
 })();
 </script>
 @endsection

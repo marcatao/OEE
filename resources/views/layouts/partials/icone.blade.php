@@ -30,6 +30,7 @@
     'lixeira' => '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
     'centro_custo' => '<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 9h3a1 1 0 0 1 1 1v11"/><path d="M8 7h4M8 11h4M8 15h4M2 21h20"/>',
     'check' => '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    'filtro' => '<path d="M4 5h16l-6 7.5V19l-4 2v-8.5z"/>',
   ];
 @endphp
 <svg class="icone {{ $classe ?? '' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">{!! $tracos[$nome] ?? '' !!}</svg>

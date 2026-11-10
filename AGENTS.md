@@ -36,7 +36,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `ImportadorMaquinas`). Nas máquinas do Protheus esses três campos não se editam no portal.
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
   Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
-  área de resultado é trocada sem recarregar a página (`?parcial=1`). Novos relatórios seguem o mesmo padrão.
+  área de resultado é trocada sem recarregar a página (`?parcial=1`). Os filtros podem ser escondidos (botão +
+  linha de resumo; escolha lembrada no navegador) e se recolhem sozinhos após 3 minutos sem mexer na tela. Novos
+  relatórios seguem o mesmo padrão.
 - Canais IoT da máquina usam `iotN_dispositivo_id` (FK para `dispositivos_iot`). As colunas antigas `iotN_id`
   (texto) só são lidas, para mostrar o valor antigo; não grave nelas.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
