@@ -34,6 +34,45 @@ final class Formato
         return number_format($valor, 0, ',', '.');
     }
 
+    /** 1234.5 → "R$ 1.234,50"; null → "—". */
+    public static function moeda(?float $valor, int $casas = 2): string
+    {
+        return $valor === null ? '—' : 'R$ '.number_format($valor, $casas, ',', '.');
+    }
+
+    /** Quantidade com casas só quando tem fração: 1500 → "1.500"; 12.5 → "12,50". */
+    public static function quantidade(?float $valor): string
+    {
+        if ($valor === null) {
+            return '—';
+        }
+
+        return number_format($valor, abs($valor - round($valor)) < 0.00001 ? 0 : 2, ',', '.');
+    }
+
+    /** Divergência do custo com a meta: 0.123 → "+12,3%"; -0.05 → "−5,0%". */
+    public static function divergencia(?float $valor): string
+    {
+        if ($valor === null) {
+            return '—';
+        }
+
+        return ($valor > 0 ? '+' : ($valor < 0 ? '−' : '')).number_format(abs($valor) * 100, 1, ',', '.').'%';
+    }
+
+    /** Classe da divergência: acima da meta além da tolerância (ruim), abaixo (bom) ou dentro. */
+    public static function nivelDivergencia(?float $valor): string
+    {
+        $tolerancia = (float) config('oee.custo_tolerancia', 0.05);
+
+        return match (true) {
+            $valor === null => 'div-sem',
+            $valor > $tolerancia => 'div-acima',
+            $valor < -$tolerancia => 'div-abaixo',
+            default => 'div-dentro',
+        };
+    }
+
     /** 135.5 → "2 h 16 min"; 40 → "40 min". */
     public static function minutos(float $minutos): string
     {

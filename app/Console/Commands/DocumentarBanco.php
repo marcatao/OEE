@@ -29,6 +29,10 @@ class DocumentarBanco extends Command
         'maquinas.centro_custo' => 'centros_custo.ctt_custo',
         'ordens_producao.c2_produto' => 'produtos_protheus.b1_cod',
         'ordens_producao.c2_cc' => 'centros_custo.ctt_custo',
+        'movimentos_producao.op_numero' => 'ordens_producao.numero',
+        'movimentos_producao.d3_cod' => 'produtos_protheus.b1_cod',
+        'notas_fiscais_op.op_numero' => 'ordens_producao.numero',
+        'notas_fiscais_op.d2_cod' => 'produtos_protheus.b1_cod',
     ];
 
     private const MARCA_INICIO = '<!-- manual:inicio -->';

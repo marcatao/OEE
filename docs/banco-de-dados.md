@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **21** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **23** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -177,6 +177,48 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
     }
+    movimentos_producao {
+        bigint id PK
+        nvarchar(8) d3_filial
+        nvarchar(3) d3_tm
+        nvarchar(3) d3_cf
+        nvarchar(30) d3_cod
+        nvarchar(2) d3_um
+        float(53) d3_quant
+        nvarchar(4) d3_local
+        nvarchar(20) d3_doc
+        nchar(8) d3_emissao
+        nvarchar(10) d3_numseq
+        float(53) d3_custo1
+        nchar(1) d3_estorno
+        nvarchar(20) op
+        nvarchar(20) op_numero
+        nvarchar(20) tipo
+        nchar(1) d_e_l_e_t_
+        int r_e_c_n_o_ UK
+        datetime sincronizado_em
+    }
+    notas_fiscais_op {
+        bigint id PK
+        nvarchar(8) d2_filial
+        nvarchar(20) d2_doc
+        nvarchar(3) d2_serie
+        nvarchar(4) d2_item
+        nvarchar(30) d2_cod
+        nvarchar(2) d2_um
+        float(53) d2_quant
+        nvarchar(4) d2_local
+        nchar(8) d2_emissao
+        float(53) d2_custo1
+        nvarchar(5) d2_cf
+        nvarchar(10) d2_cliente
+        nvarchar(4) d2_loja
+        nvarchar(20) op
+        nvarchar(20) op_numero
+        nchar(1) d_e_l_e_t_
+        int r_e_c_n_o_ UK
+        datetime sincronizado_em
+    }
     ordens_producao {
         bigint id PK
         nvarchar(8) c2_filial
@@ -203,6 +245,7 @@ erDiagram
         nvarchar(20) status
         datetime status_em
         datetime sincronizado_em
+        float(53) custo_meta
     }
     paradas {
         bigint id PK
@@ -330,6 +373,10 @@ erDiagram
     centros_custo |o..o{ maquinas : "centro_custo (código)"
     produtos_protheus |o..o{ ordens_producao : "c2_produto (código)"
     centros_custo |o..o{ ordens_producao : "c2_cc (código)"
+    ordens_producao |o..o{ movimentos_producao : "op_numero (código)"
+    produtos_protheus |o..o{ movimentos_producao : "d3_cod (código)"
+    ordens_producao |o..o{ notas_fiscais_op : "op_numero (código)"
+    produtos_protheus |o..o{ notas_fiscais_op : "d2_cod (código)"
 ```
 
 ## Decisões e sugestões de modelagem
@@ -388,7 +435,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`linhas`](#linhas) | Sistema | `id` | 9 | 3 |
 | [`maquinas`](#maquinas) | Mista | `id` | 32 | 6 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
-| [`ordens_producao`](#ordens_producao) | Protheus | `id` | 25 | 0 |
+| [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 19 | 0 |
+| [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 19 | 0 |
+| [`ordens_producao`](#ordens_producao) | Protheus | `id` | 26 | 0 |
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`plantas`](#plantas) | Sistema | `id` | 8 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
@@ -724,6 +773,62 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `motivos_parada_codigo_unique` único (codigo)
 
+### movimentos_producao
+
+**Origem:** Protheus — sincronizada de `Compras.SD3` · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `d3_filial` | `nvarchar(8)` | não | `''` |  |
+| `d3_tm` | `nvarchar(3)` | não | `''` |  |
+| `d3_cf` | `nvarchar(3)` | não | `''` |  |
+| `d3_cod` | `nvarchar(30)` | não | `''` | código → `produtos_protheus.b1_cod` (sem FK) |
+| `d3_um` | `nvarchar(2)` | não | `''` |  |
+| `d3_quant` | `float(53)` | não | `'0'` |  |
+| `d3_local` | `nvarchar(4)` | não | `''` |  |
+| `d3_doc` | `nvarchar(20)` | não | `''` |  |
+| `d3_emissao` | `nchar(8)` | não | `''` |  |
+| `d3_numseq` | `nvarchar(10)` | não | `''` |  |
+| `d3_custo1` | `float(53)` | não | `'0'` |  |
+| `d3_estorno` | `nchar(1)` | não | `''` |  |
+| `op` | `nvarchar(20)` | não | `''` |  |
+| `op_numero` | `nvarchar(20)` | não | `''` | código → `ordens_producao.numero` (sem FK) |
+| `tipo` | `nvarchar(20)` | não | `'outro'` |  |
+| `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
+| `r_e_c_n_o_` | `int` | não |  |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `movimentos_producao_r_e_c_n_o__unique` único (r_e_c_n_o_) · `movimentos_producao_op_numero_d3_filial_index` (op_numero, d3_filial) · `movimentos_producao_d3_emissao_index` (d3_emissao)
+
+### notas_fiscais_op
+
+**Origem:** Protheus — sincronizada de `Compras.SD2` · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `d2_filial` | `nvarchar(8)` | não | `''` |  |
+| `d2_doc` | `nvarchar(20)` | não | `''` |  |
+| `d2_serie` | `nvarchar(3)` | não | `''` |  |
+| `d2_item` | `nvarchar(4)` | não | `''` |  |
+| `d2_cod` | `nvarchar(30)` | não | `''` | código → `produtos_protheus.b1_cod` (sem FK) |
+| `d2_um` | `nvarchar(2)` | não | `''` |  |
+| `d2_quant` | `float(53)` | não | `'0'` |  |
+| `d2_local` | `nvarchar(4)` | não | `''` |  |
+| `d2_emissao` | `nchar(8)` | não | `''` |  |
+| `d2_custo1` | `float(53)` | não | `'0'` |  |
+| `d2_cf` | `nvarchar(5)` | não | `''` |  |
+| `d2_cliente` | `nvarchar(10)` | não | `''` |  |
+| `d2_loja` | `nvarchar(4)` | não | `''` |  |
+| `op` | `nvarchar(20)` | não | `''` |  |
+| `op_numero` | `nvarchar(20)` | não | `''` | código → `ordens_producao.numero` (sem FK) |
+| `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
+| `r_e_c_n_o_` | `int` | não |  |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `notas_fiscais_op_r_e_c_n_o__unique` único (r_e_c_n_o_) · `notas_fiscais_op_op_numero_d2_filial_index` (op_numero, d2_filial) · `notas_fiscais_op_d2_emissao_index` (d2_emissao)
+
 ### ordens_producao
 
 **Origem:** Protheus — sincronizada de `Compras.SC2` · **Chave primária:** `id`
@@ -755,6 +860,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `status` | `nvarchar(20)` | não | `'aberta'` |  |
 | `status_em` | `datetime` | sim |  |  |
 | `sincronizado_em` | `datetime` | sim |  |  |
+| `custo_meta` | `float(53)` | sim |  |  |
 
 **Índices:** `ordens_producao_c2_filial_c2_num_c2_item_c2_sequen_unique` único (c2_filial, c2_num, c2_item, c2_sequen) · `ordens_producao_numero_index` (numero) · `ordens_producao_status_c2_datprf_index` (status, c2_datprf) · `ordens_producao_c2_produto_index` (c2_produto)
 

@@ -32,6 +32,7 @@
     'check' => '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
     'ordem_producao' => '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 3v3h8V3"/><path d="M8 11h8M8 15h5"/><path d="M15.5 17.5l1.5 1.5 3-3"/>',
     'filtro' => '<path d="M4 5h16l-6 7.5V19l-4 2v-8.5z"/>',
+    'movimento' => '<path d="M7 4v13"/><path d="M3.5 13.5L7 17l3.5-3.5"/><path d="M17 20V7"/><path d="M13.5 10.5L17 7l3.5 3.5"/>',
   ];
 @endphp
 <svg class="icone {{ $classe ?? '' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">{!! $tracos[$nome] ?? '' !!}</svg>

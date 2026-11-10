@@ -1,6 +1,6 @@
 @extends('layouts.portal')
 
-@section('titulo', 'Apontamentos')
+@section('titulo', 'Apontamento real')
 
 @use('App\Support\Formato')
 
@@ -8,7 +8,7 @@
 <section class="cartao">
   <p class="trilha">Produção</p>
   <div class="titulo-com-acao">
-    <h1>Apontamentos das máquinas</h1>
+    <h1>Apontamento real</h1>
     <div class="acoes">
       @if (auth()->user()->pode('timeline'))
         <a class="botao secundario" href="{{ route('timeline') }}">@include('layouts.partials.icone', ['nome' => 'timeline']) Ver timeline</a>

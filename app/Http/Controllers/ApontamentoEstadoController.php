@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
- * Produção > Apontamentos: registra em que estado (legenda) cada máquina ficou, com horário inicial e final.
+ * Produção > Apontamento real: registra em que estado (legenda) cada máquina ficou, com horário inicial e final.
  * São os dados da Timeline. Horários digitados no fuso local e gravados em UTC.
  */
 class ApontamentoEstadoController extends Controller

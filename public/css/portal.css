@@ -368,3 +368,25 @@ input:disabled, select:disabled, textarea:disabled { background:var(--fundo); co
 .op-filtro-status { display:flex; gap:.75rem; flex-wrap:wrap; padding:.35rem .75rem; }
 .op-filtro-status legend { font-size:.85rem; color:var(--suave); font-weight:400; }
 .filtros label.opcao { flex-direction:row; align-items:center; color:var(--texto); font-size:.9rem; }
+
+/* Custos das OPs e movimentos do Protheus */
+.mov-producao { color:var(--ok); background:var(--ok-suave); border-color:transparent; }
+.mov-consumo { color:var(--alerta); background:var(--alerta-suave); border-color:transparent; }
+.mov-devolucao { color:var(--primaria); background:var(--primaria-suave); border-color:transparent; }
+.mov-nota_fiscal { color:var(--protheus); background:var(--protheus-suave); border-color:transparent; }
+.mov-outro { color:var(--suave); border-color:var(--borda-forte); }
+.div-acima { color:var(--erro); font-weight:600; }
+.div-abaixo { color:var(--ok); font-weight:600; }
+.div-dentro, .div-sem { color:var(--suave); }
+.legendas-mov { display:flex; flex-wrap:wrap; gap:.35rem .9rem; margin:.75rem 0 0; padding:0; list-style:none; font-size:.85rem; }
+.legendas-mov li { display:flex; align-items:center; gap:.35rem; }
+.legendas-mov code { font-size:.8rem; }
+.custo-resumo { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:.75rem; margin-top:1rem; }
+.custo-resumo > div { border:1px solid var(--borda); border-radius:10px; padding:.8rem 1rem; background:var(--fundo); }
+.custo-resumo span { display:block; font-size:.78rem; color:var(--suave); text-transform:uppercase; letter-spacing:.03em; }
+.custo-resumo strong { display:block; font-size:1.25rem; font-variant-numeric:tabular-nums; }
+.custo-resumo small { color:var(--suave); font-size:.8rem; }
+.custo-resumo .destaque { border-color:var(--primaria); background:var(--primaria-suave); }
+.tabela tfoot td { font-weight:600; border-top:2px solid var(--borda-forte); }
+.tabela .kx-entrada { color:var(--ok); }
+.tabela .kx-saida { color:var(--erro); }

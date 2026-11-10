@@ -3,13 +3,15 @@
 namespace App\Services\Protheus;
 
 use App\Models\OrdemProducao;
+use App\Services\CustoOrdemProducao;
 use App\Services\StatusOrdemProducao;
 use Illuminate\Database\Query\Builder;
 
 /**
  * Ordens de produção do Protheus: cópia da SC2 (banco Compras) em ordens_producao.
  * Chave: C2_FILIAL + C2_NUM + C2_ITEM + C2_SEQUEN. O "status" (aberta, andamento, fechada, parada) é calculado
- * pelo portal (StatusOrdemProducao) para todas as OPs de cada lote, a cada sincronização.
+ * pelo portal (StatusOrdemProducao) para todas as OPs de cada lote, a cada sincronização. O "custo_meta" (custo unitário
+ * do fechamento mais recente do produto na SB9) também é preenchido a cada sincronização (CustoOrdemProducao).
  */
 class ImportadorOrdensProducao extends ImportadorEspelho
 {
@@ -17,7 +19,7 @@ class ImportadorOrdensProducao extends ImportadorEspelho
         'C2_QUANT', 'C2_QUJE', 'C2_PERDA', 'C2_EMISSAO', 'C2_DATPRI', 'C2_DATPRF', 'C2_DATRF', 'C2_TPOP', 'C2_STATUS', 'C2_OBS',
         'D_E_L_E_T_', 'R_E_C_N_O_'];
 
-    public function __construct(private StatusOrdemProducao $status) {}
+    public function __construct(private StatusOrdemProducao $status, private CustoOrdemProducao $custo) {}
 
     public function campos(): array
     {
@@ -90,10 +92,13 @@ class ImportadorOrdensProducao extends ImportadorEspelho
 
     /**
      * A cada lote, recalcula o status de TODAS as OPs do lote (não só das que mudaram no Protheus): assim o status
-     * acompanha também os apontamentos e mudanças de regra. Só grava as que mudaram.
+     * acompanha também os apontamentos e mudanças de regra. Também grava o custo meta (SB9). Só grava as que mudaram.
      */
     protected function depoisDoLote(array $idsDoLote, array $alterados): array
     {
-        return $this->status->atualizarLote($idsDoLote);
+        return array_values(array_unique([
+            ...$this->status->atualizarLote($idsDoLote),
+            ...$this->custo->atualizarMetas($idsDoLote),
+        ]));
     }
 }

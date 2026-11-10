@@ -40,6 +40,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `C2_DATRF` preenchido; vazio = aberta/andamento/parada). Toda sincronização atualiza qualquer campo da OP que mudou
   no Protheus e recalcula o status de TODAS as OPs, por lote (`StatusOrdemProducao::atualizarLote`, autorizado pelo
   usuário); recalcule também ao gravar/excluir apontamentos com OP. A tabela antiga `produtos` (Sistema OEE) não é a do Protheus.
+- Custo das OPs (`App\Services\CustoOrdemProducao`, com `ResumoCustoOp` e `TiposMovimento`): `movimentos_producao`
+  (SD3 com OP, campo `protheus.sd3_campo_op` = D3_ORDEM) e `notas_fiscais_op` (SD2 com OP, `protheus.sd2_campo_op`)
+  são cópias por R_E_C_N_O_; as telas só usam os não excluídos e, na SD3, não estornados (`D3_ESTORNO = 'S'`). O
+  `tipo` vem do D3_CF (PR produção, RE baixa/consumo, DE devolução; legendas em `config/protheus.php`); SD2 = "Nota
+  fiscal". Valor = D3_CUSTO1 / D2_CUSTO1. Custo atual = (baixas − devoluções) ÷ produzido; `ordens_producao.custo_meta`
+  = custo do fechamento mais recente do produto na SB9, gravado a cada sincronização das OPs (a SB9 NÃO é copiada).
+  A tela "Apontamento real" é a antiga "Apontamentos" (permissão `apontamentos`, a chave não muda).
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
   Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
   área de resultado é trocada sem recarregar a página (`?parcial=1`). Os filtros podem ser escondidos (botão +

@@ -20,10 +20,15 @@ return [
     'permissoes' => [
         'dashboard_maquina' => 'Dashboard por máquina',
         'timeline' => 'Timeline das máquinas',
-        'apontamentos' => 'Apontamentos das máquinas (registrar estados)',
-        'ordens_producao' => 'Ordens de produção (consulta)',
+        'apontamentos' => 'Apontamento real (registrar estados das máquinas)',
+        'apontamentos_producao' => 'Apontamentos de produção (produções, baixas e notas do Protheus)',
+        'ordens_producao' => 'Ordens de produção (consulta, custos e kardex)',
         'calculadora' => 'Calculadora de OEE',
     ],
+
+    // Custo da OP × custo meta (SB9): divergência dentro desta faixa (0,05 = ±5%) fica neutra; acima, em vermelho;
+    // abaixo, em verde.
+    'custo_tolerancia' => (float) env('OEE_CUSTO_TOLERANCIA', 0.05),
 
     // Hora em que o "dia de produção" começa na Timeline (o dia vai desta hora até a mesma hora do dia seguinte).
     'timeline_inicio_dia' => env('TIMELINE_INICIO_DIA', '06:00'),

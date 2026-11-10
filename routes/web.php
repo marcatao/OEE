@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\EstruturaController;
 use App\Http\Controllers\Admin\LegendaController;
 use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\ApontamentoEstadoController;
+use App\Http\Controllers\ApontamentoProducaoController;
 use App\Http\Controllers\AutenticacaoController;
 use App\Http\Controllers\Cadastros\AcessoController;
 use App\Http\Controllers\Cadastros\GrupoController;
@@ -54,8 +55,12 @@ Route::middleware('auth')->group(function () {
         Route::put('{apontamento}', [ApontamentoEstadoController::class, 'update'])->name('update');
         Route::delete('{apontamento}', [ApontamentoEstadoController::class, 'destroy'])->name('destroy');
     });
-    Route::get('producao/ordens-de-producao', [OrdemProducaoController::class, 'index'])
-        ->middleware('permissao:ordens_producao')->name('ordens-producao.index');
+    Route::get('producao/apontamentos-de-producao', [ApontamentoProducaoController::class, 'index'])
+        ->middleware('permissao:apontamentos_producao')->name('apontamentos-producao.index');
+    Route::middleware('permissao:ordens_producao')->prefix('producao/ordens-de-producao')->name('ordens-producao.')->group(function () {
+        Route::get('/', [OrdemProducaoController::class, 'index'])->name('index');
+        Route::get('{ordem}', [OrdemProducaoController::class, 'show'])->whereNumber('ordem')->name('show'); // kardex da OP
+    });
     Route::match(['get', 'post'], 'calculadora', [PortalController::class, 'calculadora'])
         ->middleware('permissao:calculadora')->name('calculadora');
 

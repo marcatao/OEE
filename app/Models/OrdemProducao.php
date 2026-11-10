@@ -27,7 +27,7 @@ class OrdemProducao extends Model
 
     protected function casts(): array
     {
-        return ['c2_quant' => 'float', 'c2_quje' => 'float', 'c2_perda' => 'float', 'r_e_c_n_o_' => 'integer',
+        return ['c2_quant' => 'float', 'c2_quje' => 'float', 'c2_perda' => 'float', 'custo_meta' => 'float', 'r_e_c_n_o_' => 'integer',
             'status_em' => 'datetime', 'sincronizado_em' => 'datetime'];
     }
 

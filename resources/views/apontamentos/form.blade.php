@@ -6,7 +6,7 @@
 @php($E = \App\Models\ApontamentoEstado::class)
 <section class="cartao">
   <p class="trilha">Produção ›
-    @if ($voltar === 'timeline')<a href="{{ route('timeline') }}">Timeline</a>@else<a href="{{ route('apontamentos.index') }}">Apontamentos</a>@endif</p>
+    @if ($voltar === 'timeline')<a href="{{ route('timeline') }}">Timeline</a>@else<a href="{{ route('apontamentos.index') }}">Apontamento real</a>@endif</p>
   <h1>{{ $apontamento->exists ? 'Editar apontamento' : 'Novo apontamento' }}</h1>
 
   @if ($errors->any())<p class="aviso erro" role="alert">{{ $errors->first() }}</p>@endif

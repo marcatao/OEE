@@ -12,6 +12,9 @@ use App\Models\Planta;
 use App\Models\ProdutoProtheus;
 use App\Models\Sincronizacao;
 use App\Models\Usuario;
+use App\Services\CustoOrdemProducao;
+use App\Services\Protheus\ImportadorMovimentosProducao;
+use App\Services\Protheus\ImportadorNotasFiscaisOp;
 use App\Services\Protheus\ImportadorOrdensProducao;
 use App\Services\Protheus\ImportadorProdutos;
 use App\Services\Protheus\SincronizadorProtheus;
@@ -40,10 +43,13 @@ class OrdensProducaoTest extends TestCase
         config(['oee.fuso_exibicao' => 'America/Sao_Paulo']);
         config(['database.connections.protheus' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']]);
         DB::purge('protheus');
-        foreach (['SB1' => ImportadorProdutos::CAMPOS, 'SC2' => ImportadorOrdensProducao::CAMPOS] as $tabela => $campos) {
-            Schema::connection('protheus')->create($tabela, function (Blueprint $t) use ($campos) {
+        $sb9 = ['B9_FILIAL', 'B9_COD', 'B9_LOCAL', 'B9_DATA', 'B9_QINI', 'B9_VINI1', 'B9_CM1', 'D_E_L_E_T_', 'R_E_C_N_O_'];
+        $numericos = ['R_E_C_N_O_', 'C2_QUANT', 'C2_QUJE', 'C2_PERDA', 'D3_QUANT', 'D3_CUSTO1', 'D2_QUANT', 'D2_CUSTO1', 'B9_QINI', 'B9_VINI1', 'B9_CM1'];
+        foreach (['SB1' => ImportadorProdutos::CAMPOS, 'SC2' => ImportadorOrdensProducao::CAMPOS, 'SB9' => $sb9,
+            'SD3' => [...ImportadorMovimentosProducao::CAMPOS, 'D3_ORDEM'], 'SD2' => [...ImportadorNotasFiscaisOp::CAMPOS, 'D2_OP']] as $tabela => $campos) {
+            Schema::connection('protheus')->create($tabela, function (Blueprint $t) use ($campos, $numericos) {
                 foreach ($campos as $c) {
-                    in_array($c, ['R_E_C_N_O_', 'C2_QUANT', 'C2_QUJE', 'C2_PERDA'], true) ? $t->float($c)->default(0) : $t->string($c)->default('');
+                    in_array($c, $numericos, true) ? $t->float($c)->default(0) : $t->string($c)->default('');
                 }
             });
         }
@@ -235,6 +241,131 @@ class OrdensProducaoTest extends TestCase
             ->assertSeeInOrder(['50986201001', '50986001001', '50985901001']);          // parada, andamento, aberta
     }
 
+    private function sd3(int $recno, string $op, string $cf, string $produto, float $quant, float $custo, array $extra = []): void
+    {
+        DB::connection('protheus')->table('SD3')->insert($extra + ['D3_FILIAL' => '01', 'D3_TM' => str_starts_with($cf, 'RE') ? '999' : '001',
+            'D3_CF' => $cf, 'D3_COD' => $produto, 'D3_UM' => 'UN', 'D3_QUANT' => $quant, 'D3_LOCAL' => '01', 'D3_DOC' => 'DOC'.$recno,
+            'D3_EMISSAO' => '20261104', 'D3_NUMSEQ' => str_pad((string) $recno, 6, '0', STR_PAD_LEFT), 'D3_CUSTO1' => $custo,
+            'D3_ESTORNO' => '', 'D3_ORDEM' => $op, 'D_E_L_E_T_' => ' ', 'R_E_C_N_O_' => $recno]);
+    }
+
+    private function sb9(string $produto, string $data, float $qtd, float $valor, float $cm, int $recno, string $local = '01', string $filial = '01'): void
+    {
+        DB::connection('protheus')->table('SB9')->insert(['B9_FILIAL' => $filial, 'B9_COD' => $produto, 'B9_LOCAL' => $local, 'B9_DATA' => $data,
+            'B9_QINI' => $qtd, 'B9_VINI1' => $valor, 'B9_CM1' => $cm, 'D_E_L_E_T_' => ' ', 'R_E_C_N_O_' => $recno]);
+    }
+
+    /** OP 509860 (PA002): produziu 100, consumiu 2 componentes, devolveu um pouco e teve uma NF. Meta SB9 = 2,00. */
+    private function cenarioDeCusto(): void
+    {
+        $this->sb1('MP001', 'RESINA PET', 3);
+        $this->sb1('MP002', 'TAMPA', 4);
+        $this->sb9('PA002', '20260930', 50, 90, 1.8, 1);                  // fechamento antigo: não vale
+        $this->sb9('PA002', '20261031', 100, 180, 1.8, 2, '01');          // mais recente, dois armazéns:
+        $this->sb9('PA002', '20261031', 50, 120, 2.4, 3, '02');           // (180 + 120) ÷ 150 = 2,00
+        $this->sb9('PA001', '20261031', 10, 15, 1.5, 4, '01', '02');      // outra filial (sem fechamento na filial 01)
+
+        $op = '50986001001   ';
+        $this->sd3(1, $op, 'RE1', 'MP001', 10, 150);
+        $this->sd3(2, $op, 'RE0', 'MP002', 100, 80);
+        $this->sd3(3, $op, 'DE0', 'MP001', 1, 15);
+        $this->sd3(4, $op, 'PR0', 'PA002', 100, 215, ['D3_EMISSAO' => '20261105']);
+        $this->sd3(5, $op, 'RE1', 'MP001', 50, 999, ['D3_ESTORNO' => 'S']);    // estornado: fica de fora
+        $this->sd3(6, $op, 'RE1', 'MP001', 50, 999, ['D_E_L_E_T_' => '*']);    // excluído: fica de fora
+        $this->sd3(7, '', 'RE0', 'MP001', 5, 50);                              // sem OP: não vem
+        $this->sd3(8, '50985901001', 'PR0', 'PA001', 10, 20);                  // outra OP
+        DB::connection('protheus')->table('SD2')->insert(['D2_FILIAL' => '01', 'D2_DOC' => '000123', 'D2_SERIE' => '1', 'D2_ITEM' => '01',
+            'D2_COD' => 'PA002', 'D2_UM' => 'UN', 'D2_QUANT' => 40, 'D2_LOCAL' => '01', 'D2_EMISSAO' => '20261106', 'D2_CUSTO1' => 86,
+            'D2_CF' => '5101', 'D2_CLIENTE' => 'C001', 'D2_LOJA' => '01', 'D2_OP' => $op, 'D_E_L_E_T_' => ' ', 'R_E_C_N_O_' => 1]);
+        DB::connection('protheus')->table('SD2')->insert(['D2_FILIAL' => '01', 'D2_DOC' => '000124', 'D2_COD' => 'PA002', 'D2_QUANT' => 5,
+            'D2_EMISSAO' => '20261106', 'D2_CUSTO1' => 10, 'D2_OP' => '', 'D_E_L_E_T_' => ' ', 'R_E_C_N_O_' => 2]);  // sem OP
+
+        foreach (['produtos', 'ordens_producao', 'movimentos_producao', 'notas_fiscais_op'] as $chave) {
+            $this->sincronizar($chave);
+        }
+    }
+
+    public function test_sincroniza_movimentos_da_sd3_e_notas_da_sd2_com_op(): void
+    {
+        $this->cenarioDeCusto();
+
+        // Só as linhas com OP; excluída nunca vista é ignorada; estornada vem marcada (e as telas a escondem).
+        $this->assertSame([1, 2, 3, 4, 5, 8], DB::table('movimentos_producao')->orderBy('r_e_c_n_o_')->pluck('r_e_c_n_o_')->map(fn ($v) => (int) $v)->all());
+        $this->assertSame(['consumo', 'consumo', 'devolucao', 'producao'],
+            DB::table('movimentos_producao')->whereIn('r_e_c_n_o_', [1, 2, 3, 4])->orderBy('r_e_c_n_o_')->pluck('tipo')->all());
+        $this->assertSame('50986001001', DB::table('movimentos_producao')->where('r_e_c_n_o_', 1)->value('op_numero'));
+        $this->assertSame(1, DB::table('notas_fiscais_op')->count());
+
+        // Movimento excluído depois no Protheus: fica marcado, não some.
+        DB::connection('protheus')->table('SD3')->where('R_E_C_N_O_', 2)->update(['D_E_L_E_T_' => '*']);
+        $this->sincronizar('movimentos_producao');
+        $this->assertSame('*', DB::table('movimentos_producao')->where('r_e_c_n_o_', 2)->value('d_e_l_e_t_'));
+    }
+
+    public function test_custo_meta_vem_do_fechamento_mais_recente_da_sb9(): void
+    {
+        $this->cenarioDeCusto();
+
+        $meta = fn (string $numero) => OrdemProducao::where('numero', $numero)->value('custo_meta');
+        $this->assertEqualsWithDelta(2.0, $meta('50986001001'), 0.0001);  // PA002: média ponderada dos armazéns
+        $this->assertEqualsWithDelta(1.5, $meta('50985901001'), 0.0001);  // PA001: só há fechamento em outra filial
+
+        // Novo fechamento no Protheus: a próxima sincronização das OPs atualiza a meta (sem mudar nada na SC2).
+        $this->sb9('PA002', '20261130', 10, 25, 2.5, 5);
+        $r = $this->sincronizar('ordens_producao');
+        $this->assertEqualsWithDelta(2.5, $meta('50986001001'), 0.0001);
+        $this->assertGreaterThanOrEqual(2, $r->atualizados);
+
+        // Produto sem fechamento na SB9: meta vazia.
+        $this->sc2('509870', 'PA999', 70);
+        $this->sincronizar('ordens_producao');
+        $this->assertNull($meta('50987001001'));
+    }
+
+    public function test_custo_atual_e_divergencia_na_lista_e_kardex_da_op(): void
+    {
+        $this->cenarioDeCusto();
+        $op = OrdemProducao::where('numero', '50986001001')->sole();
+
+        // Custo líquido = 150 + 80 − 15 = 215; produzido 100 → 2,15 por unidade; meta 2,00 → +7,5%.
+        $resumo = app(CustoOrdemProducao::class)->resumos([$op])[$op->id];
+        $this->assertEqualsWithDelta(215, $resumo->custoLiquido(), 0.001);
+        $this->assertEqualsWithDelta(2.15, $resumo->custoUnitario(), 0.0001);
+        $this->assertEqualsWithDelta(0.075, $resumo->divergencia(), 0.0001);
+        $this->assertEqualsWithDelta(40, $resumo->notaQtd, 0.001);
+
+        $this->actingAs($this->usuario(['ordens_producao']));
+        $this->get('/producao/ordens-de-producao?busca=50986001001')->assertOk()
+            ->assertSee('Custo meta')->assertSee('R$ 2,1500')->assertSee('R$ 2,0000')->assertSee('+7,5%')->assertSee('div-acima', false)
+            ->assertSee(route('ordens-producao.show', $op), false);
+
+        $this->get(route('ordens-producao.show', $op))->assertOk()
+            ->assertSee('Kardex da OP')->assertSee('Consumo por componente')->assertSee('RESINA PET')
+            ->assertSee('Baixa automática (empenho)')->assertSee('Nota fiscal')->assertSee('000123')
+            ->assertSee('R$ 215,00')->assertSee('+7,5%')
+            ->assertDontSee('R$ 999,00');                                          // estornado e excluído fora
+        $this->get('/producao/ordens-de-producao/999999')->assertNotFound();
+
+        $this->actingAs($this->usuario(['apontamentos'], 'sem@empresa.com'))->get(route('ordens-producao.show', $op))->assertForbidden();
+    }
+
+    public function test_tela_apontamentos_de_producao(): void
+    {
+        $this->cenarioDeCusto();
+
+        $this->actingAs($this->usuario(['ordens_producao'], 'sem@empresa.com'))->get('/producao/apontamentos-de-producao')->assertForbidden();
+
+        $this->actingAs($this->usuario(['apontamentos_producao']));
+        $this->get('/producao/apontamentos-de-producao')->assertOk()
+            ->assertSee('Apontamentos de produção')->assertSee('Legendas do D3_CF')
+            ->assertSee('DOC1')->assertSee('DOC4')->assertSee('000123')->assertSee('Nota fiscal')
+            ->assertSee('mov-producao', false)->assertSee('mov-consumo', false)->assertSee('mov-nota_fiscal', false)
+            ->assertDontSee('DOC5')->assertDontSee('DOC6')->assertDontSee('DOC7')->assertDontSee('000124');
+        $this->get('/producao/apontamentos-de-producao?tipo[]=producao')->assertSee('DOC4')->assertDontSee('DOC1');
+        $this->get('/producao/apontamentos-de-producao?busca=resina')->assertSee('DOC1')->assertDontSee('DOC4');
+        $this->get('/producao/apontamentos-de-producao?de=2026-11-06')->assertSee('000123')->assertDontSee('DOC4');
+    }
+
     public function test_sincroniza_em_lotes_lendo_o_protheus_em_paginas(): void
     {
         config(['protheus.lote' => 50]);
@@ -244,11 +375,13 @@ class OrdensProducaoTest extends TestCase
 
         DB::connection('protheus')->enableQueryLog();
         $r = $this->sincronizar('ordens_producao');
-        $consultas = count(DB::connection('protheus')->getQueryLog());
+        $log = collect(DB::connection('protheus')->getQueryLog())->pluck('query');
+        $consultas = $log->filter(fn ($q) => str_contains($q, '"SC2"'))->count();
 
         $this->assertSame(['sucesso', 234, 234], [$r->situacao, $r->lidos, $r->novos]);
         $this->assertSame(234, OrdemProducao::count());
         $this->assertSame(5, $consultas); // 234 linhas em páginas de 50 = 5 consultas ao Protheus
+        $this->assertSame(5, $log->filter(fn ($q) => str_contains($q, '"SB9"'))->count()); // custo meta: 1 consulta por lote
 
         $r = $this->sincronizar('ordens_producao');
         $this->assertSame([0, 0], [$r->novos, $r->atualizados]); // nada mudou

@@ -186,7 +186,9 @@ sincronizadas duas tabelas (nesta ordem):
 | `centros_custo` | `Compras.CTT` | **Protheus** (cópia) | Centros de custo; atualizados a cada sincronização |
 | `maquinas` | `Compras.SHB` | **Mista** | Máquinas (centros de trabalho) |
 | `produtos_protheus` | `Compras.SB1` | **Protheus** (cópia) | Produtos (itens das OPs) |
-| `ordens_producao` | `Compras.SC2` | **Protheus** (cópia) + `status` do portal | Ordens de produção |
+| `ordens_producao` | `Compras.SC2` | **Protheus** (cópia) + `status` e `custo_meta` do portal | Ordens de produção |
+| `movimentos_producao` | `Compras.SD3` | **Protheus** (cópia, só com OP) | Produções, baixas/consumos e devoluções das OPs |
+| `notas_fiscais_op` | `Compras.SD2` | **Protheus** (cópia, só com OP) | Itens de nota fiscal que citam uma OP |
 
 **Ordens de produção**: cópia da SC2 com o campo **status**, calculado pelo portal: **fechada** (encerrada no Protheus,
 `C2_DATRF` preenchido — é ele que diz se a OP está aberta ou fechada), **parada** (suspensa no Protheus, `C2_STATUS = 'U'`, ou com apontamento de parada
@@ -196,7 +198,22 @@ datas, encerramento…) e tem o status recalculado. A tela **Produção › Orde
 **apontamentos** dá para informar a OP. Para não trazer anos de histórico, use `PROTHEUS_SC2_DESDE` (AAAAMMDD).
 A tabela antiga `produtos` (do Sistema OEE) continua como estava.
 
-**Sincronização em lotes**: as tabelas grandes (SB1, SC2) são lidas do Protheus e gravadas de 1.000 em 1.000 linhas
+**Apontamentos de produção e custo das OPs**: a tela **Produção › Apontamentos de produção** mostra os movimentos do
+Protheus ligados a uma OP: da **SD3**, as linhas com o campo da OP preenchido (`D3_ORDEM`, ou o campo de
+`PROTHEUS_SD3_CAMPO_OP`) que não estão excluídas nem estornadas (`D3_ESTORNO = 'S'`); da **SD2**, os itens de nota
+fiscal com OP (`D2_OP`, ou `PROTHEUS_SD2_CAMPO_OP`), com a legenda **Nota fiscal**. O valor de cada movimento é o
+`D3_CUSTO1` / `D2_CUSTO1`. As legendas do `D3_CF` (PR = produção, RE = baixa/consumo, DE = devolução, com a descrição
+de cada código) ficam em `config/protheus.php` (`legendas_d3_cf`) e podem ser ajustadas. Na lista de OPs:
+- **Custo atual** = (baixas − devoluções) ÷ quantidade produzida (PR);
+- **Custo meta** = custo unitário do **fechamento mais recente** do produto na **SB9** (maior `B9_DATA`, de preferência
+  da filial da OP; com vários armazéns, soma de `B9_VINI1` ÷ soma de `B9_QINI`; sem saldo, `B9_CM1`). A SB9 não é
+  copiada: só esse valor é gravado em `ordens_producao.custo_meta`, a cada sincronização das OPs;
+- **Divergência** = (atual − meta) ÷ meta. Acima da meta além de ±5% (`OEE_CUSTO_TOLERANCIA`) fica em vermelho, abaixo em verde.
+
+Clicando na OP abre o **kardex**: resumo de custo, consumo por componente e todos os movimentos em ordem de data, com
+produzido, custo e custo unitário acumulados. A tela antiga de apontamentos agora se chama **Apontamento real**.
+
+**Sincronização em lotes**: as tabelas grandes (SB1, SC2, SD3, SD2) são lidas do Protheus e gravadas de 1.000 em 1.000 linhas
 (`PROTHEUS_SINCRONIZAR_LOTE`), então a memória do PHP não cresce com o tamanho da tabela (60 mil OPs usam cerca de
 35 MB). Cada lote é gravado à parte: se a sincronização parar no meio, o que já foi gravado fica. A execução em
 andamento dá sinal de vida a cada lote; sem sinal por 3 minutos (`PROTHEUS_SINCRONIZAR_SEM_SINAL`), ela aparece no
@@ -224,11 +241,15 @@ GRANT SELECT ON dbo.CTT TO oee_app;      -- só leitura
 GRANT SELECT ON dbo.SHB TO oee_app;
 GRANT SELECT ON dbo.SB1 TO oee_app;
 GRANT SELECT ON dbo.SC2 TO oee_app;
+GRANT SELECT ON dbo.SD3 TO oee_app;      -- apontamentos de produção (movimentos com OP)
+GRANT SELECT ON dbo.SD2 TO oee_app;      -- notas fiscais com OP
+GRANT SELECT ON dbo.SB9 TO oee_app;      -- custo meta (fechamento mais recente)
 ```
 
 Se um dia o Protheus estiver em outro servidor ou com outro usuário, preencha `PROTHEUS_DB_HOST`,
-`PROTHEUS_DB_USERNAME` e `PROTHEUS_DB_PASSWORD` no `.env`. Os nomes das tabelas ficam em `PROTHEUS_TABELA_CTT` e
-`PROTHEUS_TABELA_SHB`.
+`PROTHEUS_DB_USERNAME` e `PROTHEUS_DB_PASSWORD` no `.env`. Os nomes das tabelas ficam em `PROTHEUS_TABELA_CTT`,
+`PROTHEUS_TABELA_SHB`, `PROTHEUS_TABELA_SB1`, `PROTHEUS_TABELA_SC2`, `PROTHEUS_TABELA_SD3`, `PROTHEUS_TABELA_SD2` e
+`PROTHEUS_TABELA_SB9`.
 
 Pelo terminal:
 

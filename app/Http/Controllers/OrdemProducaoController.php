@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\OrdemProducao;
 use App\Models\ProdutoProtheus;
 use App\Models\Sincronizacao;
+use App\Services\CustoOrdemProducao;
+use App\Services\TiposMovimento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -15,7 +17,7 @@ use Illuminate\View\View;
  */
 class OrdemProducaoController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, CustoOrdemProducao $custo): View
     {
         $busca = trim((string) $request->query('busca'));
         $status = array_values(array_intersect((array) $request->query('status', []), array_keys(OrdemProducao::STATUS)));
@@ -39,8 +41,19 @@ class OrdemProducaoController extends Controller
             // Descrição só dos produtos desta página.
             'produtos' => ProdutoProtheus::whereIn('b1_cod', $ordens->pluck('c2_produto')->unique()->values())
                 ->get()->keyBy(fn ($p) => $p->codigo()),
+            // Custo atual (baixas − devoluções ÷ produzido) e divergência com o custo meta, só das OPs desta página.
+            'custos' => $custo->resumos($ordens->getCollection()),
             'ultimaSincronizacao' => Sincronizacao::where('chave', 'ordens_producao')->where('situacao', 'sucesso')
                 ->latest('iniciado_em')->value('iniciado_em'),
         ]);
+    }
+
+    /** Detalhes da OP: kardex com os movimentos (SD3 e SD2), resumos e comparação com o custo meta (SB9). */
+    public function show(OrdemProducao $ordem, CustoOrdemProducao $custo, TiposMovimento $tipos): View
+    {
+        abort_if($ordem->d_e_l_e_t_ === '*', 404);
+
+        return view('ordens-producao.show', ['op' => $ordem, 'tipos' => $tipos, 'apontamentos' => $ordem->apontamentos()->count()]
+            + $custo->kardex($ordem));
     }
 }
