@@ -168,7 +168,8 @@ class SincronizacaoProtheusTest extends TestCase
             ->assertSee('Compras.CTT')
             ->assertSee('Sistema OEE')
             ->assertSee('origem-protheus', false)
-            ->assertSee('Últimas sincronizações');
+            ->assertSee('Últimas sincronizações')
+            ->assertSee('PHP do servidor')->assertSee('php.ini carregado')->assertSee('max_execution_time');
     }
 
     public function test_sincroniza_so_a_tabela_escolhida_e_rejeita_tabela_desconhecida(): void

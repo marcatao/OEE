@@ -4,6 +4,7 @@ namespace App\Services\Protheus;
 
 use App\Models\Sincronizacao;
 use App\Models\Usuario;
+use App\Support\Cronometro;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -122,6 +123,10 @@ class SincronizadorProtheus
                 return $registro;
             }
         }
+        // Se o PHP morrer no meio (tempo limite, memória), a trava é liberada mesmo assim: a próxima etapa continua
+        // na hora do último lote gravado, sem esperar.
+        register_shutdown_function(fn () => rescue(fn () => $passo->release(), report: false));
+        Cronometro::zerar();
         try {
             $registro->refresh();
             if ($registro->situacao !== 'executando') {
@@ -155,7 +160,7 @@ class SincronizadorProtheus
                     if ($ultimo !== null) {
                         $consulta->where('R_E_C_N_O_', '>', $ultimo);
                     }
-                    $pagina = $consulta->orderBy('R_E_C_N_O_')->limit($porPagina)->get();
+                    $pagina = Cronometro::medir('Protheus', fn () => $consulta->orderBy('R_E_C_N_O_')->limit($porPagina)->get());
                     foreach ($pagina as $linha) {
                         $lidos++;
                         $ultimo = (int) array_change_key_case((array) $linha, CASE_UPPER)['R_E_C_N_O_'];
@@ -169,7 +174,7 @@ class SincronizadorProtheus
                         + ($quantos === $porPagina ? ['ultimo_recno' => $ultimo] : []));
                     $duracao = microtime(true) - $relogio;
                     if ($duracao > 10) {
-                        Log::info(sprintf('Sincronização %s: lote de %d linhas levou %.1f s (até R_E_C_N_O_ %s).',
+                        Log::warning(sprintf('Sincronização %s: lote de %d linhas levou %.1f s (até R_E_C_N_O_ %s).',
                             $registro->chave, $quantos, $duracao, $ultimo));
                     }
                     $relogio = microtime(true);

@@ -5,6 +5,7 @@ namespace App\Services\Protheus;
 use App\Models\OrdemProducao;
 use App\Services\CustoOrdemProducao;
 use App\Services\StatusOrdemProducao;
+use App\Support\Cronometro;
 use Illuminate\Database\Query\Builder;
 
 /**
@@ -102,8 +103,8 @@ class ImportadorOrdensProducao extends ImportadorEspelho
     protected function depoisDoLote(array $idsDoLote, array $alterados): array
     {
         return array_values(array_unique([
-            ...$this->status->atualizarLote($idsDoLote),
-            ...$this->custo->atualizarMetas($idsDoLote),
+            ...Cronometro::medir('status', fn () => $this->status->atualizarLote($idsDoLote)),
+            ...Cronometro::medir('custo meta', fn () => $this->custo->atualizarMetas($idsDoLote)),
         ]));
     }
 }

@@ -14,6 +14,13 @@
     @endforeach
   </dl>
   <p class="{{ $ok ? 'ok' : 'erro' }}"><strong>{{ $ok ? 'Conexão OK' : 'Falha na conexão' }}:</strong> {{ $mensagem }}</p>
+
+  <h3>PHP do servidor</h3>
+  <dl class="dados-curtos">
+    @foreach ($php as $rotulo => $valor)
+      <div><dt>{{ $rotulo }}</dt><dd><code>{{ $valor }}</code></dd></div>
+    @endforeach
+  </dl>
 </section>
 
 <section class="cartao bloco-protheus">
@@ -197,6 +204,12 @@
     }
   }
 
+  // "· última etapa 22 s: SB9 12 s, portal 5 s, Protheus 3 s"
+  function tempos(r) {
+    var partes = Object.keys(r.tempos || {}).map(function (k) { return k + ' ' + String(r.tempos[k]).replace('.', ',') + ' s'; });
+    return r.segundos ? ' · última etapa ' + String(r.segundos).replace('.', ',') + ' s' + (partes.length ? ': ' + partes.join(', ') : '') : '';
+  }
+
   async function executar(chaves, token) {
     painel.hidden = false;
     lista.innerHTML = '';
@@ -215,10 +228,10 @@
           anterior = r.lidos;
           r = await etapa(chaves[i], r.id, token);
           if (!r.terminou) item.textContent = r.descricao + ': ' + numero(r.lidos) + ' lidos, ' + numero(r.novos) + ' novos, '
-            + numero(r.atualizados) + ' atualizados… (em andamento)';
+            + numero(r.atualizados) + ' atualizados… (em andamento)' + tempos(r);
         }
         var texto = r.descricao + ': ' + numero(r.lidos) + ' lidos, ' + numero(r.novos) + ' novos, ' + numero(r.atualizados) + ' atualizados'
-          + (r.excluidos ? ', ' + numero(r.excluidos) + ' excluídos' : '');
+          + (r.excluidos ? ', ' + numero(r.excluidos) + ' excluídos' : '') + tempos(r);
         if (r.situacao === 'sucesso') {
           item.textContent = '✓ ' + texto + '.' + (r.mensagem ? ' ' + r.mensagem : '');
           item.className = r.mensagem ? 'texto-alerta' : 'ok';

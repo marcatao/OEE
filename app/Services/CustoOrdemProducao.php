@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\OrdemProducao;
 use App\Models\ProdutoProtheus;
+use App\Support\Cronometro;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,9 @@ use Illuminate\Support\Facades\DB;
  */
 class CustoOrdemProducao
 {
+    /** Custo do último fechamento já consultado na SB9, por "filial|produto" (null = sem fechamento). Vale por etapa. */
+    private array $cacheSb9 = [];
+
     public function __construct(private TiposMovimento $tipos) {}
 
     /** Movimentos válidos das duas origens, com as mesmas colunas (consulta "m"). */
@@ -140,15 +144,12 @@ class CustoOrdemProducao
         $alterados = [];
         foreach (array_chunk($ids, 1000) as $bloco) {
             $ops = OrdemProducao::whereIn('id', $bloco)->get(['id', 'c2_filial', 'c2_produto', 'custo_meta']);
-            $custos = $this->custosSb9(
-                $ops->pluck('c2_produto')->map(fn ($p) => rtrim($p))->filter()->unique()->values()->all(),
-                $ops->pluck('c2_filial')->map(fn ($f) => rtrim($f))->push('')->unique()->values()->all(),
-            );
+            $this->carregarSb9($ops);
             $porValor = [];
             foreach ($ops as $op) {
-                $porFilial = $custos[rtrim($op->c2_produto)] ?? [];
-                $escolhido = $porFilial[rtrim($op->c2_filial)] ?? $porFilial[''] ?? null;
-                $novo = $escolhido !== null ? round($escolhido['valor'], 6) : null;
+                $produto = rtrim($op->c2_produto);
+                $valor = $this->cacheSb9[rtrim($op->c2_filial).'|'.$produto] ?? $this->cacheSb9['|'.$produto] ?? null;
+                $novo = $valor !== null ? round($valor, 6) : null;
                 $atual = $op->custo_meta !== null ? round((float) $op->custo_meta, 6) : null;
                 if ($novo !== $atual && ($novo === null || $atual === null || abs($novo - $atual) > 0.000001)) {
                     $porValor[$novo === null ? 'nulo' : (string) $novo][] = $op->id;
@@ -165,50 +166,70 @@ class CustoOrdemProducao
     }
 
     /**
-     * Custo do fechamento mais recente de cada produto e filial na SB9.
-     *
-     * A filial vem na condição para o SQL Server usar o índice da SB9 (B9_FILIAL + B9_COD + ...): sem ela, cada
-     * lote varria a SB9 inteira e a sincronização das OPs ficava lenta.
-     *
-     * @param  list<string>  $produtos
-     * @param  list<string>  $filiais
-     * @return array<string, array<string, array{data: string, valor: float}>> produto → filial → custo
+     * Busca na SB9 o custo do fechamento mais recente dos produtos dessas OPs que ainda não estão no cache (por filial
+     * da OP e filial em branco). Duas consultas simples, que usam o índice da SB9 (B9_FILIAL + B9_COD + ...):
+     * 1) a maior B9_DATA de cada filial + produto; 2) as linhas desse fechamento (vários armazéns).
+     * Custo = soma de B9_VINI1 ÷ soma de B9_QINI; sem saldo, o maior B9_CM1.
      */
-    private function custosSb9(array $produtos, array $filiais): array
+    private function carregarSb9(Collection $ops): void
     {
-        if (! $produtos) {
-            return [];
+        $faltam = [];
+        foreach ($ops as $op) {
+            $produto = rtrim($op->c2_produto);
+            if ($produto === '') {
+                continue;
+            }
+            foreach (array_unique([rtrim($op->c2_filial), '']) as $filial) {
+                if (! array_key_exists("{$filial}|{$produto}", $this->cacheSb9)) {
+                    $faltam[$filial][$produto] = true;
+                }
+            }
+        }
+        if (! $faltam) {
+            return;
         }
         $tabela = (string) config('protheus.tabela_sb9', 'SB9');
         if (! preg_match('/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?$/', $tabela)) {
             throw new \InvalidArgumentException("Nome de tabela SB9 inválido: {$tabela}");
         }
-        $linhas = DB::connection('protheus')->table("{$tabela} as b")
-            ->select('b.B9_FILIAL', 'b.B9_COD', 'b.B9_DATA', 'b.B9_QINI', 'b.B9_VINI1', 'b.B9_CM1')
-            ->whereIn('b.B9_FILIAL', $filiais)
-            ->whereIn('b.B9_COD', $produtos)
-            ->where('b.D_E_L_E_T_', '<>', '*')
-            ->where('b.B9_DATA', '=', fn ($q) => $q->from("{$tabela} as x")->selectRaw('max(x.B9_DATA)')
-                ->whereColumn('x.B9_COD', 'b.B9_COD')->whereColumn('x.B9_FILIAL', 'b.B9_FILIAL')->where('x.D_E_L_E_T_', '<>', '*'))
-            ->get();
+        $sb9 = fn () => DB::connection('protheus')->table($tabela)->where('D_E_L_E_T_', '<>', '*');
 
-        $grupos = [];
-        foreach ($linhas as $l) {
-            $l = array_change_key_case((array) $l, CASE_UPPER);
-            $g = &$grupos[rtrim((string) $l['B9_COD'])][rtrim((string) $l['B9_FILIAL'])];
-            $g ??= ['data' => (string) $l['B9_DATA'], 'qtd' => 0.0, 'valor' => 0.0, 'cm' => 0.0];
-            $g['qtd'] += (float) $l['B9_QINI'];
-            $g['valor'] += (float) $l['B9_VINI1'];
-            $g['cm'] = max($g['cm'], (float) $l['B9_CM1']);
-            unset($g);
-        }
-        $custos = [];
-        foreach ($grupos as $produto => $filiais) {
-            foreach ($filiais as $filial => $g) {
-                $custos[$produto][$filial] = ['data' => $g['data'], 'valor' => $g['qtd'] > 0 ? $g['valor'] / $g['qtd'] : $g['cm']];
+        foreach ($faltam as $filial => $produtos) {
+            foreach (array_chunk(array_keys($produtos), 1000) as $bloco) {
+                foreach ($bloco as $produto) {
+                    $this->cacheSb9["{$filial}|{$produto}"] = null; // sem fechamento, até achar
+                }
+                Cronometro::medir('SB9', function () use ($sb9, $filial, $bloco) {
+                    $ultimas = [];
+                    foreach ($sb9()->where('B9_FILIAL', $filial)->whereIn('B9_COD', $bloco)
+                        ->groupBy('B9_COD')->select('B9_COD', DB::raw('max(B9_DATA) as ULTIMA'))->get() as $l) {
+                        $l = array_change_key_case((array) $l, CASE_UPPER);
+                        $ultimas[rtrim((string) $l['B9_COD'])] = (string) $l['ULTIMA'];
+                    }
+                    if (! $ultimas) {
+                        return;
+                    }
+                    $somas = [];
+                    foreach ($sb9()->where('B9_FILIAL', $filial)->whereIn('B9_COD', array_keys($ultimas))
+                        ->where('B9_DATA', '>=', min($ultimas))
+                        ->select('B9_COD', 'B9_DATA', 'B9_QINI', 'B9_VINI1', 'B9_CM1')->get() as $l) {
+                        $l = array_change_key_case((array) $l, CASE_UPPER);
+                        $produto = rtrim((string) $l['B9_COD']);
+                        if ((string) $l['B9_DATA'] !== ($ultimas[$produto] ?? null)) {
+                            continue; // fechamento anterior de outro produto
+                        }
+                        $g = &$somas[$produto];
+                        $g ??= ['qtd' => 0.0, 'valor' => 0.0, 'cm' => 0.0];
+                        $g['qtd'] += (float) $l['B9_QINI'];
+                        $g['valor'] += (float) $l['B9_VINI1'];
+                        $g['cm'] = max($g['cm'], (float) $l['B9_CM1']);
+                        unset($g);
+                    }
+                    foreach ($somas as $produto => $g) {
+                        $this->cacheSb9["{$filial}|{$produto}"] = $g['qtd'] > 0 ? $g['valor'] / $g['qtd'] : $g['cm'];
+                    }
+                });
             }
         }
-
-        return $custos;
     }
 }

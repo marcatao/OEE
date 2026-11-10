@@ -2,6 +2,7 @@
 
 namespace App\Services\Protheus;
 
+use App\Support\Cronometro;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -134,12 +135,14 @@ abstract class ImportadorEspelho implements ImportadorProtheus
         $colunas = array_keys(reset($porChave));
         $busca = $this->colunaBusca();
         $existentes = [];
-        foreach (array_chunk(array_values(array_unique(array_column($porChave, $busca))), 1000) as $valores) {
-            foreach (DB::table($this->tabela())->select(array_merge(['id'], $colunas))->whereIn($busca, $valores)->get() as $r) {
-                $r = (array) $r;
-                $existentes[$this->chave($r, $chaves)] = [$r['id'], $this->assinatura($r, $colunas), $r];
+        Cronometro::medir('portal', function () use ($porChave, $busca, $colunas, $chaves, &$existentes) {
+            foreach (array_chunk(array_values(array_unique(array_column($porChave, $busca))), 1000) as $valores) {
+                foreach (DB::table($this->tabela())->select(array_merge(['id'], $colunas))->whereIn($busca, $valores)->get() as $r) {
+                    $r = (array) $r;
+                    $existentes[$this->chave($r, $chaves)] = [$r['id'], $this->assinatura($r, $colunas), $r];
+                }
             }
-        }
+        });
 
         // 3) Grava o lote: novos em blocos (limite de parâmetros do SQL Server), alterados um a um.
         DB::transaction(function () use ($porChave, $existentes, $colunas, &$resumo) {
@@ -166,7 +169,7 @@ abstract class ImportadorEspelho implements ImportadorProtheus
                     continue;
                 }
                 if ($assinatura !== $this->assinatura($destino, $colunas)) {
-                    DB::table($this->tabela())->where('id', $id)->update($destino + ['sincronizado_em' => $agora]);
+                    Cronometro::medir('portal', fn () => DB::table($this->tabela())->where('id', $id)->update($destino + ['sincronizado_em' => $agora]));
                     $alterados[] = $id;
                     $resumo[$destino['d_e_l_e_t_'] === '*' ? 'excluidos' : 'atualizados']++;
                 }
@@ -174,9 +177,11 @@ abstract class ImportadorEspelho implements ImportadorProtheus
 
             if ($novas) {
                 $porBloco = max(1, intdiv(2000, count($novas[0]))); // SQL Server: até 2.100 parâmetros por comando
-                foreach (array_chunk($novas, $porBloco) as $bloco) {
-                    DB::table($this->tabela())->insert($bloco);
-                }
+                Cronometro::medir('portal', function () use ($novas, $porBloco) {
+                    foreach (array_chunk($novas, $porBloco) as $bloco) {
+                        DB::table($this->tabela())->insert($bloco);
+                    }
+                });
                 $resumo['novos'] += count($novas);
             }
 
@@ -185,9 +190,11 @@ abstract class ImportadorEspelho implements ImportadorProtheus
             }
             // Ids de todas as linhas do lote no portal (para recalcular campos do portal, ex.: status da OP).
             $idsDoLote = [];
-            foreach (array_chunk(array_values(array_unique(array_column($porChave, $this->colunaBusca()))), 1000) as $valores) {
-                array_push($idsDoLote, ...DB::table($this->tabela())->whereIn($this->colunaBusca(), $valores)->pluck('id')->all());
-            }
+            Cronometro::medir('portal', function () use ($porChave, &$idsDoLote) {
+                foreach (array_chunk(array_values(array_unique(array_column($porChave, $this->colunaBusca()))), 1000) as $valores) {
+                    array_push($idsDoLote, ...DB::table($this->tabela())->whereIn($this->colunaBusca(), $valores)->pluck('id')->all());
+                }
+            });
             $extras = array_diff($this->depoisDoLote($idsDoLote, $alterados), $alterados);
             $resumo['atualizados'] += count($extras);
         });

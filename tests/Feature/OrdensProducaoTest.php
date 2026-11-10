@@ -322,6 +322,11 @@ class OrdensProducaoTest extends TestCase
         $this->sc2('509870', 'PA999', 70);
         $this->sincronizar('ordens_producao');
         $this->assertNull($meta('50987001001'));
+
+        // Fechamento na filial em branco (compartilhada) vale quando a filial da OP não tem.
+        $this->sb9('PA999', '20261031', 4, 10, 2.5, 6, '01', '');
+        $this->sincronizar('ordens_producao');
+        $this->assertEqualsWithDelta(2.5, $meta('50987001001'), 0.0001);
     }
 
     public function test_custo_atual_e_divergencia_na_lista_e_kardex_da_op(): void
@@ -409,7 +414,8 @@ class OrdensProducaoTest extends TestCase
         $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'produtos'])
             ->assertOk()->assertJson(['id' => $aberta->id, 'retomada' => true, 'terminou' => false]);
         $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'produtos', 'id' => $aberta->id])
-            ->assertOk()->assertJson(['id' => $aberta->id, 'situacao' => 'sucesso', 'novos' => 2]);
+            ->assertOk()->assertJson(['id' => $aberta->id, 'situacao' => 'sucesso', 'novos' => 2])
+            ->assertJsonStructure(['segundos', 'tempos' => ['Protheus', 'portal']]);
         $this->assertSame(0, Sincronizacao::where('situacao', 'erro')->count());
 
         $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'usuarios'])->assertUnprocessable();
@@ -511,7 +517,8 @@ class OrdensProducaoTest extends TestCase
         $this->assertSame(['sucesso', 234, 234], [$r->situacao, $r->lidos, $r->novos]);
         $this->assertSame(234, OrdemProducao::count());
         $this->assertSame(5, $consultas); // 234 linhas em páginas de 50 = 5 consultas ao Protheus
-        $this->assertSame(5, $log->filter(fn ($q) => str_contains($q, '"SB9"'))->count()); // custo meta: 1 consulta por lote
+        // Custo meta: o produto (PA001) é consultado na SB9 uma vez só (filial 01 e filial em branco), não a cada lote.
+        $this->assertSame(2, $log->filter(fn ($q) => str_contains($q, '"SB9"'))->count());
 
         $r = $this->sincronizar('ordens_producao');
         $this->assertSame([0, 0], [$r->novos, $r->atualizados]); // nada mudou

@@ -218,8 +218,12 @@ depois do `activityTimeout` do FastCGI, 70 s por padrão: "The FastCGI process e
 Cada etapa trabalha no máximo 25 s (`PROTHEUS_SEGUNDOS_POR_ETAPA`), grava até onde chegou (último `R_E_C_N_O_`, em
 `sincronizacoes.ultimo_recno`) e a tela chama a próxima, mostrando o andamento de cada tabela. Mantenha a página
 aberta até terminar. Se uma etapa for cortada (ou a página for fechada), clicar de novo **retoma** a execução em
-andamento do último lote gravado, em vez de dar erro. Lotes que levam mais de 10 s ficam registrados em
-`storage/logs/laravel.log`, para achar o que está lento. Se a SD3 ou a SD2 terminarem com 0 linhas, o resultado diz
+andamento do último lote gravado, em vez de dar erro. Cada etapa mostra na tela onde gastou o tempo
+(Protheus, portal, status, SB9…) e lotes que levam mais de 10 s ficam em `storage/logs/laravel.log`. A etapa pede ao
+PHP um tempo limite folgado para si; mesmo assim, confira em **Administração › Banco de dados › PHP do servidor** se o
+IIS está usando o `php.ini` certo (`C:\OEE\php8.3\php.ini`): se aparecer outro arquivo ou "nenhum", o PHP está com os
+limites padrão (30 s e 128 MB). No IIS, o `php.ini` usado é o da pasta do `php-cgi.exe` configurado no mapeamento
+FastCGI, ou o indicado pela variável `PHPRC` da aplicação FastCGI. Se a SD3 ou a SD2 terminarem com 0 linhas, o resultado diz
 o motivo (ex.: o campo da OP está vazio e qual outro campo de OP tem dados). O comando `php artisan protheus:sincronizar` e o agendamento rodam tudo de uma vez (no PHP de
 linha de comando não há esse limite).
 
