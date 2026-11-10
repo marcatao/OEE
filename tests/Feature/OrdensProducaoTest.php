@@ -217,6 +217,24 @@ class OrdensProducaoTest extends TestCase
         $this->get('/producao/ordens-de-producao?busca=frasco')->assertSee('50986001001')->assertDontSee('50985901001');
     }
 
+    public function test_inicio_mostra_ops_em_andamento_e_lista_as_abertas(): void
+    {
+        $this->sincronizar('produtos');
+        $this->sincronizar('ordens_producao');
+
+        // Sem a permissão da tela de OPs: nada de OPs na página inicial.
+        $this->actingAs($this->usuario(['apontamentos'], 'sem@empresa.com'))->get('/')->assertOk()
+            ->assertDontSee('OPs em andamento')->assertDontSee('50985901001');
+
+        $this->actingAs($this->usuario(['ordens_producao']))->get('/')->assertOk()
+            ->assertSee('OPs em andamento')->assertSee('3 abertas')->assertSee('1 parada')
+            ->assertSee('Ordens de produção abertas')
+            ->assertSee('50985901001')->assertSee('50986001001')->assertSee('50986201001') // aberta, andamento e parada
+            ->assertDontSee('50986101001')                                               // fechada fica de fora
+            ->assertSee('TAMPA 50MM')->assertSee('op-andamento', false)
+            ->assertSeeInOrder(['50986201001', '50986001001', '50985901001']);          // parada, andamento, aberta
+    }
+
     public function test_sincroniza_em_lotes_lendo_o_protheus_em_paginas(): void
     {
         config(['protheus.lote' => 50]);

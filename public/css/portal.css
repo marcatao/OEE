@@ -121,6 +121,10 @@ main.sozinho { max-width:980px; }
 /* ---------- Cartões, botões e formulários ---------- */
 .cartao { background:var(--cartao); border:1px solid var(--borda); border-radius:12px; padding:1.5rem; box-shadow:var(--sombra); }
 .cartao + .cartao, .cartao + .grade, .grade + .cartao, .grade + .grade { margin-top:1.25rem; }
+.cartao-titulo { display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap; }
+.cartao-titulo h3 { margin:0; }
+.ops-inicio { max-height:28rem; overflow-y:auto; }
+.ops-inicio thead th { position:sticky; top:0; background:var(--cartao); }
 .botao { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; background:var(--primaria); color:var(--primaria-texto); border:1px solid var(--primaria); border-radius:8px; padding:.55rem 1.05rem; text-decoration:none; font:inherit; font-weight:600; font-size:.9rem; cursor:pointer; transition:background .15s, border-color .15s; }
 .botao:hover { background:var(--primaria-escura); border-color:var(--primaria-escura); }
 .botao.secundario { background:transparent; color:var(--primaria); border-color:var(--borda-forte); }

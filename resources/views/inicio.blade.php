@@ -86,6 +86,17 @@
         <div class="kpi-icone">@include('layouts.partials.icone', ['nome' => 'sinal'])</div>
         <div><span>Dispositivos IoT online</span><strong>{{ $iotOnline }}<small> / {{ $iotAtivos }}</small></strong></div>
       </div>
+      @if ($opsAbertas !== null)
+        @php
+          $opsAndamento = $opsAbertas->where('status', 'andamento')->count();
+          $opsParadas = $opsAbertas->where('status', 'parada')->count();
+        @endphp
+        <a class="kpi" href="{{ route('ordens-producao.index', ['status' => ['andamento']]) }}">
+          <div @class(['kpi-icone', 'alerta' => $opsParadas > 0])>@include('layouts.partials.icone', ['nome' => 'ordem_producao'])</div>
+          <div><span>OPs em andamento</span><strong>{{ Formato::inteiro($opsAndamento) }}<small> / {{ Formato::inteiro($opsAbertas->count()) }} abertas</small></strong>
+            @if ($opsParadas > 0)<small>{{ $opsParadas }} {{ $opsParadas === 1 ? 'parada' : 'paradas' }}</small>@endif</div>
+        </a>
+      @endif
       @if ($u->ehAdmin() && $aguardando > 0)
         <a class="kpi" href="{{ route('cadastros.usuarios.index') }}">
           <div class="kpi-icone alerta">@include('layouts.partials.icone', ['nome' => 'usuarios'])</div>
@@ -93,6 +104,37 @@
         </a>
       @endif
     </div>
+
+    @if ($opsAbertas !== null)
+      <section class="cartao" style="margin-top:1.5rem">
+        <div class="cartao-titulo">
+          <h3>Ordens de produção abertas <small class="suave">({{ Formato::inteiro($opsAbertas->count()) }})</small></h3>
+          <a href="{{ route('ordens-producao.index', ['status' => ['aberta', 'andamento', 'parada']]) }}">Ver na tela de OPs @include('layouts.partials.icone', ['nome' => 'seta'])</a>
+        </div>
+        @if ($opsAbertas->isEmpty())
+          <p class="suave">Nenhuma OP aberta. As OPs vêm do Protheus (sincronização em Administração › Banco de dados).</p>
+        @else
+          <div class="rolagem ops-inicio">
+          <table class="tabela">
+            <thead><tr><th>OP</th><th>Status</th><th>Produto</th><th class="num">Quantidade</th><th class="num">Produzido</th><th>Previsão</th></tr></thead>
+            <tbody>
+            @foreach ($opsAbertas as $op)
+              <tr>
+                <td><code>{{ $op->numero }}</code></td>
+                <td><span class="etiqueta op-{{ $op->status }}">{{ $op->rotuloStatus() }}</span></td>
+                <td class="quebra"><code>{{ $op->c2_produto }}</code> <small>{{ ($produtosOps[$op->c2_produto] ?? null)?->descricao() }}</small></td>
+                <td class="num">{{ number_format($op->c2_quant, 0, ',', '.') }} <small class="suave">{{ $op->c2_um ?: ($produtosOps[$op->c2_produto] ?? null)?->b1_um }}</small></td>
+                <td class="num">{{ number_format($op->c2_quje, 0, ',', '.') }}
+                  @if ($op->c2_quant > 0)<small class="suave">({{ number_format(min($op->c2_quje / $op->c2_quant, 9.99) * 100, 0, ',', '.') }}%)</small>@endif</td>
+                <td>{{ \App\Models\OrdemProducao::data($op->c2_datpri) }} a {{ \App\Models\OrdemProducao::data($op->c2_datprf) }}</td>
+              </tr>
+            @endforeach
+            </tbody>
+          </table>
+          </div>
+        @endif
+      </section>
+    @endif
 
     <h2>Acesso rápido</h2>
     <div class="grade cartoes">

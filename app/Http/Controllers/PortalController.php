@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\DispositivoIot;
 use App\Models\Maquina;
+use App\Models\OrdemProducao;
 use App\Models\Parada;
+use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
 use App\Services\CalculadoraOee;
 use App\Services\IndicadoresOee;
@@ -25,7 +27,22 @@ class PortalController extends Controller
 
         $hoje = Periodo::de('hoje');
 
+        // OPs abertas (não fechadas e não excluídas no Protheus): só para quem vê a tela de ordens de produção.
+        $opsAbertas = null;
+        $produtosOps = collect();
+        if ($usuario->pode('ordens_producao')) {
+            $opsAbertas = OrdemProducao::apontaveis()
+                ->orderByRaw("CASE status WHEN 'parada' THEN 0 WHEN 'andamento' THEN 1 ELSE 2 END")
+                ->orderBy('c2_datprf')->orderBy('numero')
+                ->get(['id', 'numero', 'c2_filial', 'c2_produto', 'c2_um', 'c2_quant', 'c2_quje', 'c2_datpri', 'c2_datprf', 'status']);
+            // Descrição só dos produtos dessas OPs (subconsulta: sem limite de parâmetros no SQL Server).
+            $produtosOps = ProdutoProtheus::whereIn('b1_cod', OrdemProducao::apontaveis()->select('c2_produto'))
+                ->get()->keyBy(fn ($p) => $p->codigo());
+        }
+
         return view('inicio', [
+            'opsAbertas' => $opsAbertas,
+            'produtosOps' => $produtosOps,
             'hoje' => $usuario->pode('dashboard_maquina') ? $indicadores->geral($hoje->inicio, $hoje->fim) : null,
             'maquinasAtivas' => Maquina::where('ativo', true)->count(),
             'paradasAbertas' => Parada::whereNull('fim')->count(),
