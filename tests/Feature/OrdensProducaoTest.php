@@ -283,4 +283,34 @@ class OrdensProducaoTest extends TestCase
         $this->assertSame('andamento', $status->calcular($op(['c2_quje' => 5])));
         $this->assertSame('fechada', $status->calcular($op(['c2_datrf' => '20261105', 'c2_status' => 'U', 'c2_quje' => 5])));
     }
+
+    public function test_toda_sincronizacao_recalcula_o_status_e_atualiza_as_quantidades(): void
+    {
+        $this->sincronizar('ordens_producao');
+        // Status gravado pela regra antiga (sem mudança nenhuma no Protheus): a sincronização corrige.
+        OrdemProducao::where('c2_num', '509859')->update(['status' => 'fechada']);
+        // Quantidades mudaram no Protheus.
+        DB::connection('protheus')->table('SC2')->where('C2_NUM', '509860')->update(['C2_QUANT' => 650, 'C2_QUJE' => 300, 'C2_PERDA' => 7]);
+
+        $r = $this->sincronizar('ordens_producao');
+
+        $this->assertSame(2, $r->atualizados); // 1 status corrigido + 1 OP com quantidades novas
+        $this->assertSame('aberta', OrdemProducao::where('c2_num', '509859')->value('status'));
+        $op = OrdemProducao::where('c2_num', '509860')->sole();
+        $this->assertSame([650.0, 300.0, 7.0, 'andamento'], [$op->c2_quant, $op->c2_quje, $op->c2_perda, $op->status]);
+
+        $this->assertSame(0, $this->sincronizar('ordens_producao')->atualizados); // nada mais a mudar
+    }
+
+    public function test_status_em_lote_considera_os_apontamentos(): void
+    {
+        $this->sincronizar('ordens_producao');
+        $op = OrdemProducao::where('c2_num', '509859')->sole();
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => Legenda::where('codigo', 'DT')->sole()->id,
+            'ordem_producao_id' => $op->id, 'inicio' => now()->subHour()]);
+        $op->update(['status' => 'aberta']); // como se o recálculo não tivesse rodado
+
+        $this->sincronizar('ordens_producao');
+        $this->assertSame('parada', $op->fresh()->status);
+    }
 }

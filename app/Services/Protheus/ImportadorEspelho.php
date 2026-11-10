@@ -34,8 +34,16 @@ abstract class ImportadorEspelho implements ImportadorProtheus
      */
     abstract protected function linhaDestino(array $l): ?array;
 
-    /** Depois de gravar um lote: ids das linhas alteradas (ex.: recalcular status). As novas passam por completarNova(). */
-    protected function depoisDeGravar(array $alterados): void {}
+    /**
+     * Depois de gravar um lote: ids de TODAS as linhas do lote no portal (novas, alteradas e sem mudança) e os ids
+     * alterados. Devolve os ids que este passo alterou (ex.: status recalculado), para contar como atualizados.
+     *
+     * @return list<int>
+     */
+    protected function depoisDoLote(array $idsDoLote, array $alterados): array
+    {
+        return [];
+    }
 
     /** Ajustes na linha nova antes de inserir (ex.: status inicial). */
     protected function completarNova(array $linha): array
@@ -135,7 +143,13 @@ abstract class ImportadorEspelho implements ImportadorProtheus
                 $resumo['novos'] += count($novas);
             }
 
-            $this->depoisDeGravar($alterados);
+            // Ids de todas as linhas do lote no portal (para recalcular campos do portal, ex.: status da OP).
+            $idsDoLote = [];
+            foreach (array_chunk(array_values(array_unique(array_column($porChave, $this->colunaBusca()))), 1000) as $valores) {
+                array_push($idsDoLote, ...DB::table($this->tabela())->whereIn($this->colunaBusca(), $valores)->pluck('id')->all());
+            }
+            $extras = array_diff($this->depoisDoLote($idsDoLote, $alterados), $alterados);
+            $resumo['atualizados'] += count($extras);
         });
     }
 

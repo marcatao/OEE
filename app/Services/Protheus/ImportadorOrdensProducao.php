@@ -9,7 +9,7 @@ use Illuminate\Database\Query\Builder;
 /**
  * Ordens de produção do Protheus: cópia da SC2 (banco Compras) em ordens_producao.
  * Chave: C2_FILIAL + C2_NUM + C2_ITEM + C2_SEQUEN. O "status" (aberta, andamento, fechada, parada) é calculado
- * pelo portal (StatusOrdemProducao) a cada OP nova ou alterada.
+ * pelo portal (StatusOrdemProducao) para todas as OPs de cada lote, a cada sincronização.
  */
 class ImportadorOrdensProducao extends ImportadorEspelho
 {
@@ -88,10 +88,12 @@ class ImportadorOrdensProducao extends ImportadorEspelho
         return $linha + ['status' => $this->status->calcular(new OrdemProducao($linha)), 'status_em' => now()];
     }
 
-    protected function depoisDeGravar(array $alterados): void
+    /**
+     * A cada lote, recalcula o status de TODAS as OPs do lote (não só das que mudaram no Protheus): assim o status
+     * acompanha também os apontamentos e mudanças de regra. Só grava as que mudaram.
+     */
+    protected function depoisDoLote(array $idsDoLote, array $alterados): array
     {
-        foreach (array_chunk($alterados, 500) as $ids) {
-            OrdemProducao::whereIn('id', $ids)->get()->each(fn ($op) => $this->status->atualizar($op));
-        }
+        return $this->status->atualizarLote($idsDoLote);
     }
 }
