@@ -197,8 +197,9 @@ A tabela antiga `produtos` (do Sistema OEE) continua como estava.
 
 **Sincronização em lotes**: as tabelas grandes (SB1, SC2) são lidas do Protheus e gravadas de 1.000 em 1.000 linhas
 (`PROTHEUS_SINCRONIZAR_LOTE`), então a memória do PHP não cresce com o tamanho da tabela (60 mil OPs usam cerca de
-35 MB). Cada lote é gravado à parte: se a sincronização parar no meio, o que já foi gravado fica, e a execução presa
-aparece no histórico como "Interrompida" depois do tempo máximo (`PROTHEUS_SINCRONIZAR_TEMPO_MAXIMO`, 600 s).
+35 MB). Cada lote é gravado à parte: se a sincronização parar no meio, o que já foi gravado fica. A execução em
+andamento dá sinal de vida a cada lote; sem sinal por 3 minutos (`PROTHEUS_SINCRONIZAR_SEM_SINAL`), ela aparece no
+histórico como "Interrompida" e libera a próxima sincronização da mesma tabela.
 
 **Máquinas (mista)**: da SHB vêm só **código** (`HB_COD`), **descrição** (`HB_NOME`) e **centro de custo** (`HB_CC`),
 na primeira sincronização. A máquina nova chega **inativa** e sem linha; em **Administração › Máquinas** (filtro

@@ -13,11 +13,11 @@ class Sincronizacao extends Model
     protected $table = 'sincronizacoes';
 
     protected $fillable = ['chave', 'origem', 'disparo', 'usuario_id', 'iniciado_em', 'terminado_em', 'situacao',
-        'lidos', 'novos', 'atualizados', 'ignorados', 'excluidos', 'mensagem'];
+        'lidos', 'novos', 'atualizados', 'ignorados', 'excluidos', 'mensagem', 'sinal_em'];
 
     protected function casts(): array
     {
-        return ['iniciado_em' => 'datetime', 'terminado_em' => 'datetime'];
+        return ['iniciado_em' => 'datetime', 'terminado_em' => 'datetime', 'sinal_em' => 'datetime'];
     }
 
     public function usuario(): BelongsTo

@@ -114,15 +114,32 @@ class SincronizacaoProtheusTest extends TestCase
 
     public function test_nao_roda_duas_sincronizacoes_ao_mesmo_tempo(): void
     {
-        $trava = Cache::lock('protheus-sincronizar-centros_custo', 60);
-        $trava->get();
+        // Uma em andamento, com sinal de vida recente.
+        Sincronizacao::create(['chave' => 'centros_custo', 'origem' => 'Compras.CTT', 'disparo' => 'manual',
+            'iniciado_em' => now()->subMinutes(5), 'sinal_em' => now()->subSeconds(20), 'situacao' => 'executando', 'lidos' => 3000]);
 
         $r = app(SincronizadorProtheus::class)->sincronizar('centros_custo', 'agendado');
         $this->assertSame('erro', $r->situacao);
         $this->assertStringContainsString('em andamento', $r->mensagem);
+        $this->assertStringContainsString('3000 linhas lidas', $r->mensagem);
         $this->assertSame(0, CentroCusto::count());
+    }
 
-        $trava->release();
+    public function test_sincronizacao_que_morreu_nao_trava_a_proxima(): void
+    {
+        // O processo anterior morreu (ex.: falta de memória): ficou "executando", sem sinal há 4 minutos,
+        // e a trava antiga de cache ficou presa.
+        $morta = Sincronizacao::create(['chave' => 'centros_custo', 'origem' => 'Compras.CTT', 'disparo' => 'manual',
+            'iniciado_em' => now()->subMinutes(6), 'sinal_em' => now()->subMinutes(4), 'situacao' => 'executando']);
+        Cache::lock('protheus-sincronizar-centros_custo', 600)->get();
+
+        $r = app(SincronizadorProtheus::class)->sincronizar('centros_custo', 'manual');
+
+        $this->assertSame('sucesso', $r->situacao);
+        $this->assertSame(2, CentroCusto::count());
+        $this->assertSame('erro', $morta->fresh()->situacao);
+        $this->assertStringContainsString('Interrompida', $morta->fresh()->mensagem);
+        $this->assertNotNull($r->sinal_em);
     }
 
     public function test_tela_mostra_tabelas_do_sistema_e_do_protheus(): void

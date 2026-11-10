@@ -58,6 +58,8 @@ return [
     // tamanho da tabela (ex.: SC2 com anos de OPs).
     'lote' => (int) env('PROTHEUS_SINCRONIZAR_LOTE', 1000),
 
-    // Tempo máximo (segundos) de uma sincronização; evita duas rodando ao mesmo tempo.
-    'tempo_maximo' => (int) env('PROTHEUS_SINCRONIZAR_TEMPO_MAXIMO', 600),
+    // Uma sincronização em andamento dá sinal de vida a cada lote. Sem sinal por este tempo (segundos), ela é dada
+    // como interrompida (o processo morreu) e libera a próxima.
+    'sem_sinal' => (int) env('PROTHEUS_SINCRONIZAR_SEM_SINAL', 180),
+
 ];

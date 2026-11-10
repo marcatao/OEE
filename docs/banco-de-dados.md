@@ -274,6 +274,7 @@ erDiagram
         int ignorados
         nvarchar(1000) mensagem
         int excluidos
+        datetime sinal_em
     }
     turnos {
         bigint id PK
@@ -394,7 +395,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 11 | 0 |
 | [`registros_login`](#registros_login) | Sistema | `id` | 8 | 1 |
 | [`sessions`](#sessions) | Infra | `id` | 6 | 0 |
-| [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 14 | 1 |
+| [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 15 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuarios`](#usuarios) | Sistema | `id` | 18 | 0 |
 
@@ -888,6 +889,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `ignorados` | `int` | não | `'0'` |  |
 | `mensagem` | `nvarchar(1000)` | sim |  |  |
 | `excluidos` | `int` | não | `'0'` |  |
+| `sinal_em` | `datetime` | sim |  |  |
 
 **Índices:** `sincronizacoes_chave_iniciado_em_index` (chave, iniciado_em)
 

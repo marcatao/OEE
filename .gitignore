@@ -28,3 +28,6 @@ Thumbs.db
 
 # Cópias do .env (têm segredos)
 .env.bak*
+
+# Diagnóstico do PHP: nunca na pasta pública (o portal é aberto na internet)
+/public/phpinfo.php
