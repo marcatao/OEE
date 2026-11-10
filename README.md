@@ -170,13 +170,11 @@ php artisan usuarios:ativar fulano@alumbra.com.br --desativar
 
 Ao mudar o `.env` com o portal em produção, rode `php artisan config:clear` (ou `config:cache`).
 
-### Se você já tinha criado o banco antes
+### Atualizar o banco
 
-As tabelas de usuários e grupos mudaram na própria migração inicial. Num banco sem dados importantes, recrie tudo:
-
-```sh
-php artisan migrate:fresh --seed
-```
+Depois de baixar uma versão nova, rode só `php artisan migrate --force`: as migrações apenas **acrescentam** tabelas e
+colunas, nunca apagam nem alteram os registros existentes. **Nunca use `php artisan migrate:fresh`** no servidor: ele
+apaga o banco inteiro.
 
 ## Integração com o Protheus
 

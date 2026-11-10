@@ -89,11 +89,29 @@
 
     <fieldset>
       <legend>Canais IoT</legend>
-      <p class="suave" style="margin-top:0">De onde vêm os dados da máquina. Ex.: ID IoT <code>Teste_Alumbra</code>, canal <code>ch1_value</code>, tipo Produção.</p>
+      <p class="suave" style="margin-top:0">De onde vêm os dados da máquina: o dispositivo (cadastro em
+        <a href="{{ route('admin.iot.index') }}">Dispositivos IoT</a>, só os ativos), o canal (ex.: <code>ch1_value</code>) e o tipo.</p>
+      @if ($dispositivos->isEmpty())
+        <p class="aviso alerta">Nenhum dispositivo IoT ativo. Cadastre em <a href="{{ route('admin.iot.index') }}">Dispositivos IoT</a>.</p>
+      @endif
       @foreach (\App\Models\Maquina::CANAIS_IOT as $n)
+        {{-- Valor antigo (texto livre): sugere o dispositivo de mesmo código, mas só grava se o usuário salvar. --}}
+        @php($textoAntigo = (string) $maquina->{"iot{$n}_id"})
+        @php($semDispositivo = ! $maquina->{"iot{$n}_dispositivo_id"} && $textoAntigo !== '')
+        @php($sugerido = $semDispositivo ? $dispositivos->first(fn ($d) => mb_strtolower($d->codigo) === mb_strtolower($textoAntigo))?->id : null)
+        @php($atual = (int) old("iot{$n}_dispositivo_id", $maquina->{"iot{$n}_dispositivo_id"} ?: $sugerido))
         <div class="campos" style="margin-top:.75rem">
-          <label>IoT {{ $n }} — ID IoT
-            <input name="iot{{ $n }}_id" maxlength="100" value="{{ old("iot{$n}_id", $maquina->{"iot{$n}_id"}) }}" placeholder="Ex.: Teste_Alumbra">
+          <label>IoT {{ $n }} — Dispositivo IoT
+            <select name="iot{{ $n }}_dispositivo_id">
+              <option value="">—</option>
+              @foreach ($dispositivos as $d)
+                <option value="{{ $d->id }}" @selected($atual === $d->id)>{{ $d->nome }} ({{ $d->codigo }}){{ $d->ativo ? '' : ' — inativo' }}</option>
+              @endforeach
+            </select>
+            @if ($semDispositivo)
+              <small class="erro">Antes era o texto <code>{{ $textoAntigo }}</code>.
+                {{ $sugerido ? 'Sugerimos o dispositivo de mesmo código: confira e salve.' : 'Escolha o dispositivo correspondente e salve.' }}</small>
+            @endif
           </label>
           <label>IoT {{ $n }} — Canal IoT
             <input name="iot{{ $n }}_canal" maxlength="100" value="{{ old("iot{$n}_canal", $maquina->{"iot{$n}_canal"}) }}" placeholder="Ex.: ch1_value">

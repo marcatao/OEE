@@ -39,7 +39,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('maquinas');
         Route::get('{maquina}', [DashboardController::class, 'maquina'])->name('maquina');
     });
-    Route::get('dashboards/timeline', TimelineController::class)->middleware('permissao:timeline')->name('timeline');
+    Route::middleware('permissao:timeline')->group(function () {
+        Route::get('dashboards/timeline', TimelineController::class)->name('timeline');
+        // Filtros salvos pelo usuário na Timeline (tabela filtros_usuarios)
+        Route::post('dashboards/timeline/filtros', [TimelineController::class, 'salvarFiltro'])->name('timeline.filtros.salvar');
+        Route::delete('dashboards/timeline/filtros/{filtro}', [TimelineController::class, 'excluirFiltro'])->name('timeline.filtros.excluir');
+    });
     Route::middleware('permissao:apontamentos')->prefix('producao/apontamentos')->name('apontamentos.')->group(function () {
         Route::get('/', [ApontamentoEstadoController::class, 'index'])->name('index');
         Route::get('novo', [ApontamentoEstadoController::class, 'create'])->name('create');

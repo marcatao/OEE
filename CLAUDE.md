@@ -23,12 +23,22 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Toda rota interna fica no grupo `auth`. Página nova: registre a chave em `config/oee.php` (`permissoes`), proteja a
   rota com `->middleware('permissao:chave')` e inclua o link no menu lateral (`layouts/portal.blade.php`) dentro de
   `@if ($u->pode('chave'))`. Páginas só de admin usam `->middleware('perfil:admin')`.
+- **Dados existentes são intocáveis**: migrações NUNCA apagam nem alteram registros (nada de `DELETE`, `UPDATE`,
+  `truncate`, `migrate:fresh`, nem trocar o significado de uma coluna com dados). Mudança de estrutura só ACRESCENTA
+  (coluna nova, tabela nova). Se for preciso mexer em registros (converter, copiar, limpar), **pare e avise o
+  usuário**, explicando o que mudaria, e só faça depois que ele decidir (de preferência num comando separado, nunca
+  escondido numa migração).
 - Mudou uma migração? Rode `php artisan banco:documentar` e faça commit de `docs/banco-de-dados.md` junto.
 - Dados do Protheus são só **lidos** (conexão `protheus`, banco `Compras`): tabelas sincronizadas e importadores ficam
   em `config/protheus.php`; a sincronização (`App\Services\Protheus\SincronizadorProtheus`) grava o histórico em
   `sincronizacoes`. `centros_custo` é cópia da CTT; `maquinas` é **mista** com a SHB (código, nome e centro de custo
   vêm do Protheus só na primeira vez, chegam inativas; depois só a exclusão no Protheus altera — ver
   `ImportadorMaquinas`). Nas máquinas do Protheus esses três campos não se editam no portal.
+- Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
+  Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
+  área de resultado é trocada sem recarregar a página (`?parcial=1`). Novos relatórios seguem o mesmo padrão.
+- Canais IoT da máquina usam `iotN_dispositivo_id` (FK para `dispositivos_iot`). As colunas antigas `iotN_id`
+  (texto) só são lidas, para mostrar o valor antigo; não grave nelas.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
 
 ## Git

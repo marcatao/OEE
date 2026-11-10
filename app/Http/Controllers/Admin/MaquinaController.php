@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CentroCusto;
+use App\Models\DispositivoIot;
 use App\Models\Linha;
 use App\Models\Maquina;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +29,7 @@ class MaquinaController extends Controller
         return view('admin.maquinas.index', [
             'busca' => $busca,
             'situacao' => $situacao,
-            'maquinas' => Maquina::with(['linha.planta', 'centroCusto'])
+            'maquinas' => Maquina::with(['linha.planta', 'centroCusto', 'iot1Dispositivo', 'iot2Dispositivo', 'iot3Dispositivo'])
                 ->when($busca !== '', fn ($q) => $q->where(fn ($w) => $w
                     ->where('nome', 'like', "%{$busca}%")->orWhere('codigo', 'like', "%{$busca}%")))
                 ->when($situacao === 'aguardando', $aguardando)
@@ -75,6 +76,10 @@ class MaquinaController extends Controller
             // Mesmo código pode existir em mais de uma filial: a lista mostra um por código.
             'centros' => CentroCusto::selecionaveis()->orderBy('ctt_custo')->get()
                 ->unique(fn ($c) => $c->codigo())->values(),
+            // Combo dos canais IoT: dispositivos ativos + os que a máquina já usa (mesmo se desativados depois).
+            'dispositivos' => DispositivoIot::where(fn ($q) => $q->where('ativo', true)
+                ->orWhereIn('id', array_filter(array_map(fn ($n) => $maquina->{"iot{$n}_dispositivo_id"}, Maquina::CANAIS_IOT))))
+                ->orderBy('nome')->get(),
         ]);
     }
 
@@ -93,9 +98,12 @@ class MaquinaController extends Controller
             'ativo' => ['required', 'boolean'],
         ];
         foreach (Maquina::CANAIS_IOT as $n) {
-            $regras["iot{$n}_id"] = ['nullable', 'string', 'max:100', "required_with:iot{$n}_canal,iot{$n}_tipo"];
-            $regras["iot{$n}_canal"] = ['nullable', 'string', 'max:100', "required_with:iot{$n}_id,iot{$n}_tipo"];
-            $regras["iot{$n}_tipo"] = ['nullable', Rule::in(array_keys(Maquina::TIPOS_CANAL)), "required_with:iot{$n}_id,iot{$n}_canal"];
+            // Dispositivo ativo do cadastro (ou o que a máquina já usa, mesmo que tenha sido desativado depois).
+            $regras["iot{$n}_dispositivo_id"] = ['nullable', 'integer', "required_with:iot{$n}_canal,iot{$n}_tipo",
+                Rule::exists('dispositivos_iot', 'id')->where(fn ($q) => $q->where('ativo', true)
+                    ->orWhere('id', (int) $maquina->{"iot{$n}_dispositivo_id"}))];
+            $regras["iot{$n}_canal"] = ['nullable', 'string', 'max:100', "required_with:iot{$n}_dispositivo_id,iot{$n}_tipo"];
+            $regras["iot{$n}_tipo"] = ['nullable', Rule::in(array_keys(Maquina::TIPOS_CANAL)), "required_with:iot{$n}_dispositivo_id,iot{$n}_canal"];
         }
 
         $mensagens = [
@@ -113,7 +121,8 @@ class MaquinaController extends Controller
             '*.max' => 'Texto ou número muito grande.',
         ];
         foreach (Maquina::CANAIS_IOT as $n) {
-            $mensagens["iot{$n}_id.required_with"] = "IoT {$n}: informe o ID IoT.";
+            $mensagens["iot{$n}_dispositivo_id.required_with"] = "IoT {$n}: escolha o dispositivo IoT.";
+            $mensagens["iot{$n}_dispositivo_id.exists"] = "IoT {$n}: dispositivo IoT não encontrado ou inativo.";
             $mensagens["iot{$n}_canal.required_with"] = "IoT {$n}: informe o canal IoT.";
             $mensagens["iot{$n}_tipo.required_with"] = "IoT {$n}: escolha o tipo do canal.";
             $mensagens["iot{$n}_tipo.in"] = "IoT {$n}: tipo de canal inválido.";
@@ -132,9 +141,7 @@ class MaquinaController extends Controller
             throw ValidationException::withMessages(['macro_parada_s' => 'A macro parada deve ser maior que a micro parada.']);
         }
         foreach (Maquina::CANAIS_IOT as $n) {
-            foreach (['id', 'canal'] as $campo) {
-                $dados["iot{$n}_{$campo}"] = isset($dados["iot{$n}_{$campo}"]) ? trim($dados["iot{$n}_{$campo}"]) : null;
-            }
+            $dados["iot{$n}_canal"] = isset($dados["iot{$n}_canal"]) ? trim($dados["iot{$n}_canal"]) : null;
         }
         $this->conferirCanaisRepetidos($dados, $maquina);
 
@@ -148,20 +155,21 @@ class MaquinaController extends Controller
     {
         $usados = [];
         foreach (Maquina::CANAIS_IOT as $n) {
-            if (empty($dados["iot{$n}_id"])) {
+            if (empty($dados["iot{$n}_dispositivo_id"])) {
                 continue;
             }
-            $chave = mb_strtolower($dados["iot{$n}_id"]).'|'.mb_strtolower($dados["iot{$n}_canal"]);
+            $chave = $dados["iot{$n}_dispositivo_id"].'|'.mb_strtolower($dados["iot{$n}_canal"]);
             if (isset($usados[$chave])) {
                 throw ValidationException::withMessages(["iot{$n}_canal" => "IoT {$n} repete o canal do IoT {$usados[$chave]}."]);
             }
             $usados[$chave] = $n;
 
             foreach (Maquina::CANAIS_IOT as $m) {
-                $outra = Maquina::where("iot{$m}_id", $dados["iot{$n}_id"])->where("iot{$m}_canal", $dados["iot{$n}_canal"])
+                $outra = Maquina::where("iot{$m}_dispositivo_id", $dados["iot{$n}_dispositivo_id"])->where("iot{$m}_canal", $dados["iot{$n}_canal"])
                     ->when($maquina->exists, fn ($q) => $q->whereKeyNot($maquina->id))->first(['id', 'nome']);
                 if ($outra) {
-                    throw ValidationException::withMessages(["iot{$n}_canal" => "IoT {$n}: o canal {$dados["iot{$n}_id"]} / {$dados["iot{$n}_canal"]} já está na máquina {$outra->nome}."]);
+                    $nomeDispositivo = DispositivoIot::whereKey($dados["iot{$n}_dispositivo_id"])->value('nome');
+                    throw ValidationException::withMessages(["iot{$n}_canal" => "IoT {$n}: o canal {$nomeDispositivo} / {$dados["iot{$n}_canal"]} já está na máquina {$outra->nome}."]);
                 }
             }
         }

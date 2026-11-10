@@ -22,7 +22,10 @@ class Maquina extends Model
     protected $fillable = [
         'linha_id', 'codigo', 'nome', 'fabricante', 'modelo', 'ciclo_ideal_s', 'ativo',
         'centro_custo', 'micro_parada_s', 'macro_parada_s',
-        'iot1_id', 'iot1_canal', 'iot1_tipo', 'iot2_id', 'iot2_canal', 'iot2_tipo', 'iot3_id', 'iot3_canal', 'iot3_tipo',
+        // Canais IoT: dispositivo (FK para dispositivos_iot), canal e tipo. As colunas antigas iotN_id (texto livre)
+        // ficam só para consulta: não são mais gravadas pelo portal.
+        'iot1_dispositivo_id', 'iot1_canal', 'iot1_tipo', 'iot2_dispositivo_id', 'iot2_canal', 'iot2_tipo',
+        'iot3_dispositivo_id', 'iot3_canal', 'iot3_tipo',
     ];
 
     protected function casts(): array
@@ -65,12 +68,37 @@ class Maquina extends Model
     {
         $canais = [];
         foreach (self::CANAIS_IOT as $n) {
-            if ($this->{"iot{$n}_id"} || $this->{"iot{$n}_canal"}) {
-                $canais[] = ['numero' => $n, 'id' => (string) $this->{"iot{$n}_id"}, 'canal' => (string) $this->{"iot{$n}_canal"}, 'tipo' => $this->{"iot{$n}_tipo"}];
+            $dispositivo = $this->{"iot{$n}Dispositivo"};
+            $textoAntigo = (string) $this->{"iot{$n}_id"};
+            if ($dispositivo || $textoAntigo !== '' || $this->{"iot{$n}_canal"}) {
+                $canais[] = [
+                    'numero' => $n,
+                    'dispositivo' => $dispositivo,
+                    // Descrição exibida: nome do dispositivo; sem dispositivo, o texto antigo (anterior ao cadastro).
+                    'id' => $dispositivo ? $dispositivo->nome : $textoAntigo,
+                    'antigo' => $dispositivo === null && $textoAntigo !== '',
+                    'canal' => (string) $this->{"iot{$n}_canal"},
+                    'tipo' => $this->{"iot{$n}_tipo"},
+                ];
             }
         }
 
         return $canais;
+    }
+
+    public function iot1Dispositivo(): BelongsTo
+    {
+        return $this->belongsTo(DispositivoIot::class, 'iot1_dispositivo_id');
+    }
+
+    public function iot2Dispositivo(): BelongsTo
+    {
+        return $this->belongsTo(DispositivoIot::class, 'iot2_dispositivo_id');
+    }
+
+    public function iot3Dispositivo(): BelongsTo
+    {
+        return $this->belongsTo(DispositivoIot::class, 'iot3_dispositivo_id');
     }
 
     public function linha(): BelongsTo

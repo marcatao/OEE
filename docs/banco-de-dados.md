@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **18** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **19** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -78,6 +78,16 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
     }
+    filtros_usuarios {
+        bigint id PK
+        bigint usuario_id FK
+        nvarchar(40) tela
+        nvarchar(80) nome
+        nvarchar(max) filtros
+        bit padrao
+        datetime criado_em
+        datetime atualizado_em
+    }
     grupo_permissoes {
         bigint grupo_id PK, FK
         nvarchar(60) permissao PK
@@ -150,6 +160,9 @@ erDiagram
         nchar(1) d_e_l_e_t_
         datetime sincronizado_em
         datetime excluida_protheus_em
+        bigint iot1_dispositivo_id FK
+        bigint iot2_dispositivo_id FK
+        bigint iot3_dispositivo_id FK
     }
     motivos_parada {
         bigint id PK
@@ -258,11 +271,15 @@ erDiagram
     maquinas ||--o{ apontamentos_estado : "maquina_id"
     legendas ||--o{ apontamentos_estado : "legenda_id"
     maquinas |o--o{ dispositivos_iot : "maquina_id"
+    usuarios ||--o{ filtros_usuarios : "usuario_id"
     grupos ||--o{ grupo_permissoes : "grupo_id"
     grupos ||--o{ grupo_usuario : "grupo_id"
     usuarios ||--o{ grupo_usuario : "usuario_id"
     plantas ||--o{ linhas : "planta_id"
     linhas ||--o{ maquinas : "linha_id"
+    dispositivos_iot |o--o{ maquinas : "iot1_dispositivo_id"
+    dispositivos_iot |o--o{ maquinas : "iot2_dispositivo_id"
+    dispositivos_iot |o--o{ maquinas : "iot3_dispositivo_id"
     maquinas ||--o{ paradas : "maquina_id"
     motivos_parada |o--o{ paradas : "motivo_id"
     usuarios |o--o{ registros_login : "usuario_id"
@@ -316,6 +333,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`centros_custo`](#centros_custo) | Protheus | `id` | 15 | 2 |
 | [`dispositivos_iot`](#dispositivos_iot) | Sistema | `id` | 16 | 3 |
 | [`failed_jobs`](#failed_jobs) | Infra | `id` | 7 | 0 |
+| [`filtros_usuarios`](#filtros_usuarios) | Sistema | `id` | 8 | 1 |
 | [`grupo_permissoes`](#grupo_permissoes) | Sistema | `grupo_id, permissao` | 2 | 1 |
 | [`grupo_usuario`](#grupo_usuario) | Sistema | `grupo_id, usuario_id` | 2 | 2 |
 | [`grupos`](#grupos) | Sistema | `id` | 8 | 2 |
@@ -323,7 +341,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
 | [`legendas`](#legendas) | Sistema | `id` | 11 | 2 |
 | [`linhas`](#linhas) | Sistema | `id` | 9 | 3 |
-| [`maquinas`](#maquinas) | Mista | `id` | 29 | 3 |
+| [`maquinas`](#maquinas) | Mista | `id` | 32 | 6 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`plantas`](#plantas) | Sistema | `id` | 8 | 2 |
@@ -471,6 +489,23 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `failed_jobs_uuid_unique` único (uuid) · `failed_jobs_connection_queue_failed_at_index` (connection, queue, failed_at)
 
+### filtros_usuarios
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `usuario_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `tela` | `nvarchar(40)` | não |  |  |
+| `nome` | `nvarchar(80)` | não |  |  |
+| `filtros` | `nvarchar(max)` | não |  |  |
+| `padrao` | `bit` | não | `'0'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `atualizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `filtros_usuarios_usuario_id_tela_nome_unique` único (usuario_id, tela, nome)
+
 ### grupo_permissoes
 
 **Origem:** Sistema OEE · **Chave primária:** `grupo_id, permissao`
@@ -614,6 +649,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
 | `sincronizado_em` | `datetime` | sim |  |  |
 | `excluida_protheus_em` | `datetime` | sim |  |  |
+| `iot1_dispositivo_id` | `bigint` | sim |  | FK → `dispositivos_iot.id` |
+| `iot2_dispositivo_id` | `bigint` | sim |  | FK → `dispositivos_iot.id` |
+| `iot3_dispositivo_id` | `bigint` | sim |  | FK → `dispositivos_iot.id` |
 
 **Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_)
 

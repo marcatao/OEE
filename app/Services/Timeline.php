@@ -82,27 +82,41 @@ class Timeline
     }
 
     /**
-     * Marcas de hora do eixo (uma por hora cheia dentro da janela).
+     * Marcas do eixo. O espaçamento acompanha o tamanho do período: de hora em hora até ~1 dia, depois de 3, 6 ou
+     * 12 horas, e de dia em dia em períodos longos. Na virada do dia a marca mostra a data (dd/mm).
      *
-     * @return list<array{rotulo: string, esquerda: float}>
+     * @return list<array{rotulo: string, esquerda: float, virada: bool}>
      */
     public function marcas(CarbonInterface $inicio, CarbonInterface $fim): array
     {
         $fuso = config('oee.fuso_exibicao');
         $duracao = max($fim->getTimestamp() - $inicio->getTimestamp(), 1);
+        $horas = $duracao / 3600;
+        $passo = match (true) {
+            $horas <= 26 => 1,
+            $horas <= 3 * 24 => 3,
+            $horas <= 7 * 24 => 6,
+            $horas <= 14 * 24 => 12,
+            default => 24,
+        };
+
         $hora = $inicio->copy()->setTimezone($fuso);
         if ($hora->minute || $hora->second) {
             $hora = $hora->addHour()->startOfHour();
         }
+        while ($hora->hour % $passo !== 0) {
+            $hora = $hora->addHour();
+        }
 
         $marcas = [];
         while ($hora->getTimestamp() < $fim->getTimestamp()) {
+            $virada = $hora->format('H:i') === '00:00';
             $marcas[] = [
-                'rotulo' => $hora->format('H:i'),
+                'rotulo' => $virada && $horas > 26 ? $hora->format('d/m') : $hora->format('H:i'),
                 'esquerda' => round(($hora->getTimestamp() - $inicio->getTimestamp()) / $duracao * 100, 4),
-                'virada' => $hora->format('H:i') === '00:00',
+                'virada' => $virada,
             ];
-            $hora = $hora->addHour();
+            $hora = $hora->addHours($passo);
         }
 
         return $marcas;

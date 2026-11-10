@@ -61,7 +61,7 @@
         <td>{{ $maquina->centro_custo ? $maquina->centro_custo.($maquina->centroCusto ? ' — '.$maquina->centroCusto->descricao() : '') : '-' }}</td>
         <td class="num">{{ $maquina->ciclo_ideal_s !== null ? number_format($maquina->ciclo_ideal_s, 1, ',', '.') : '-' }}</td>
         <td class="num">{{ $maquina->micro_parada_s ?? '-' }} / {{ $maquina->macro_parada_s ?? '-' }}</td>
-        <td class="quebra">@forelse ($maquina->canaisIot() as $c)<small style="display:block">{{ $c['id'] }} · {{ $c['canal'] }} · {{ \App\Models\Maquina::TIPOS_CANAL[$c['tipo']] ?? '-' }}</small>@empty - @endforelse</td>
+        <td class="quebra">@forelse ($maquina->canaisIot() as $c)<small style="display:block" @if ($c['antigo']) class="erro" title="Texto antigo: escolha o dispositivo na edição da máquina" @endif>{{ $c['id'] }}{{ $c['antigo'] ? ' (antigo)' : '' }} · {{ $c['canal'] }} · {{ \App\Models\Maquina::TIPOS_CANAL[$c['tipo']] ?? '-' }}</small>@empty - @endforelse</td>
         <td><a class="botao pequeno {{ $maquina->aguardandoCadastro() ? '' : 'secundario' }}" href="{{ route('admin.maquinas.edit', $maquina) }}">{{ $maquina->aguardandoCadastro() ? 'Completar' : 'Editar' }}</a></td>
       </tr>
     @empty

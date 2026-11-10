@@ -56,6 +56,9 @@ linguagem de quem não é DBA.
 - **Auditoria**: cadastros usam o trait `Auditavel` (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id`).
 - **Nomes**: tabelas e colunas em português, minúsculas, `snake_case`, tabela no plural.
 - **Migrações**: nunca edite migração já aplicada em produção; crie outra. Escreva o `down()`.
+- **Registros existentes são intocáveis**: migração nunca apaga nem altera dados. Se uma mudança exigir converter
+  ou limpar registros, crie colunas/tabelas novas, deixe as antigas como estão e **avise o usuário** propondo a
+  conversão (comando separado), que só roda quando ele decidir.
 
 ## Tabelas vindas do Protheus
 
