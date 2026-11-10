@@ -194,8 +194,11 @@ class CustoOrdemProducao
         }
         $sb9 = fn () => DB::connection('protheus')->table($tabela)->where('D_E_L_E_T_', '<>', '*');
 
+        // Cuidado: chave de array do PHP só com números (produto "85301", filial "10") vira inteiro, e o SQL Server,
+        // recebendo um inteiro, tenta converter a coluna inteira para número e falha ("2CL4N..."). Tudo como texto.
         foreach ($faltam as $filial => $produtos) {
-            foreach (array_chunk(array_keys($produtos), 1000) as $bloco) {
+            $filial = (string) $filial;
+            foreach (array_chunk(array_map('strval', array_keys($produtos)), 1000) as $bloco) {
                 foreach ($bloco as $produto) {
                     $this->cacheSb9["{$filial}|{$produto}"] = null; // sem fechamento, até achar
                 }
@@ -210,7 +213,7 @@ class CustoOrdemProducao
                         return;
                     }
                     $somas = [];
-                    foreach ($sb9()->where('B9_FILIAL', $filial)->whereIn('B9_COD', array_keys($ultimas))
+                    foreach ($sb9()->where('B9_FILIAL', $filial)->whereIn('B9_COD', array_map('strval', array_keys($ultimas)))
                         ->where('B9_DATA', '>=', min($ultimas))
                         ->select('B9_COD', 'B9_DATA', 'B9_QINI', 'B9_VINI1', 'B9_CM1')->get() as $l) {
                         $l = array_change_key_case((array) $l, CASE_UPPER);

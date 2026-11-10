@@ -329,6 +329,29 @@ class OrdensProducaoTest extends TestCase
         $this->assertEqualsWithDelta(2.5, $meta('50987001001'), 0.0001);
     }
 
+    public function test_codigos_so_com_numeros_vao_como_texto_para_a_sb9(): void
+    {
+        // Produto "85301" e filial "10": como chave de array do PHP viram inteiros; no SQL Server, um parâmetro
+        // inteiro faz a coluna B9_COD inteira ser convertida para número e a consulta falha.
+        $this->sb1('85301', 'PRODUTO NUMERICO', 9);
+        $this->sb9('85301', '20261031', 10, 30, 3, 9, '01', '10');
+        DB::connection('protheus')->table('SC2')->insert(['C2_FILIAL' => '10', 'C2_NUM' => '600001', 'C2_ITEM' => '01', 'C2_SEQUEN' => '001',
+            'C2_PRODUTO' => '85301', 'C2_QUANT' => 10, 'C2_EMISSAO' => '20261101', 'D_E_L_E_T_' => ' ', 'R_E_C_N_O_' => 90]);
+
+        $parametros = [];
+        DB::connection('protheus')->listen(function ($q) use (&$parametros) {
+            if (str_contains($q->sql, '"SB9"')) {
+                array_push($parametros, ...$q->bindings);
+            }
+        });
+        $this->assertSame('sucesso', $this->sincronizar('ordens_producao')->situacao);
+
+        $this->assertContains('85301', $parametros);
+        $this->assertContains('10', $parametros);
+        $this->assertSame([], array_values(array_filter($parametros, fn ($p) => is_int($p))));
+        $this->assertEqualsWithDelta(3.0, OrdemProducao::where('numero', '60000101001')->value('custo_meta'), 0.0001);
+    }
+
     public function test_custo_atual_e_divergencia_na_lista_e_kardex_da_op(): void
     {
         $this->cenarioDeCusto();
