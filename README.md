@@ -189,7 +189,7 @@ sincronizadas duas tabelas (nesta ordem):
 | `ordens_producao` | `Compras.SC2` | **Protheus** (cópia) + `status` do portal | Ordens de produção |
 
 **Ordens de produção**: cópia da SC2 com o campo **status**, calculado pelo portal: **fechada** (encerrada no Protheus,
-`C2_DATRF` preenchido, ou excluída), **parada** (suspensa no Protheus, `C2_STATUS = 'U'`, ou com apontamento de parada
+`C2_DATRF` preenchido — é ele que diz se a OP está aberta ou fechada), **parada** (suspensa no Protheus, `C2_STATUS = 'U'`, ou com apontamento de parada
 em aberto no portal), **andamento** (apontamento de produção em aberto, produção no Protheus `C2_QUJE > 0` ou
 apontamentos) ou **aberta**. A tela **Produção › Ordens de produção** mostra as OPs com o produto (SB1); nos
 **apontamentos** dá para informar a OP. Para não trazer anos de histórico, use `PROTHEUS_SC2_DESDE` (AAAAMMDD).

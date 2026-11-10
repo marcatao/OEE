@@ -15,6 +15,7 @@ use App\Models\Usuario;
 use App\Services\Protheus\ImportadorOrdensProducao;
 use App\Services\Protheus\ImportadorProdutos;
 use App\Services\Protheus\SincronizadorProtheus;
+use App\Services\StatusOrdemProducao;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -267,5 +268,19 @@ class OrdensProducaoTest extends TestCase
         $this->assertSame('erro', $presa->fresh()->situacao);
         $this->assertStringContainsString('Interrompida', $presa->fresh()->mensagem);
         $this->assertSame('executando', $recente->fresh()->situacao); // ainda dentro do tempo máximo
+    }
+
+    public function test_aberta_ou_fechada_e_decidido_so_pelo_c2_datrf(): void
+    {
+        $status = app(StatusOrdemProducao::class);
+        $op = fn (array $campos) => new OrdemProducao($campos + ['c2_datrf' => '', 'c2_status' => 'N', 'c2_quje' => 0, 'd_e_l_e_t_' => ' ']);
+
+        $this->assertSame('fechada', $status->calcular($op(['c2_datrf' => '20261105'])));
+        $this->assertSame('aberta', $status->calcular($op([])));
+        $this->assertSame('aberta', $status->calcular($op(['c2_datrf' => '        ']))); // vazio no Protheus vem com espaços
+        $this->assertSame('aberta', $status->calcular($op(['d_e_l_e_t_' => '*']))); // excluída, mas sem data de fim
+        $this->assertSame('parada', $status->calcular($op(['c2_status' => 'U'])));
+        $this->assertSame('andamento', $status->calcular($op(['c2_quje' => 5])));
+        $this->assertSame('fechada', $status->calcular($op(['c2_datrf' => '20261105', 'c2_status' => 'U', 'c2_quje' => 5])));
     }
 }

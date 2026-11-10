@@ -10,7 +10,7 @@
   <h1>Ordens de produção</h1>
   <p class="suave">OPs do Protheus (tabela SC2), só para consulta.
     @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizadas. @endif
-    O <strong>status</strong> é calculado pelo portal: <em>fechada</em> (encerrada no Protheus), <em>parada</em> (suspensa no
+    O <strong>status</strong> é calculado pelo portal: <em>fechada</em> (com data de encerramento, C2_DATRF, no Protheus), <em>parada</em> (suspensa no
     Protheus ou com apontamento de parada em aberto), <em>andamento</em> (com produção ou apontamentos) ou <em>aberta</em>.</p>
 
   <div class="op-totais">

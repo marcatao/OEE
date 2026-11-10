@@ -8,7 +8,10 @@ use App\Models\OrdemProducao;
 /**
  * Status de fácil visualização da OP, calculado pelo portal a partir do Protheus e dos apontamentos:
  *
- * 1. fechada   — encerrada no Protheus (C2_DATRF preenchido) ou excluída lá (D_E_L_E_T_ = '*');
+ * Quem diz se a OP está aberta ou fechada é o C2_DATRF (data real de fim): preenchido = fechada (a data é o
+ * encerramento); vazio = aberta, e então o portal detalha em aberta, andamento ou parada.
+ *
+ * 1. fechada   — C2_DATRF preenchido;
  * 2. parada    — suspensa no Protheus (C2_STATUS = 'U') ou o apontamento EM ABERTO da OP no portal não é "produzindo";
  * 3. andamento — o apontamento em aberto é "produzindo", ou já tem produção no Protheus (C2_QUJE > 0) ou apontamentos;
  * 4. aberta    — nenhum dos casos acima.
@@ -17,7 +20,7 @@ class StatusOrdemProducao
 {
     public function calcular(OrdemProducao $op): string
     {
-        if (trim((string) $op->c2_datrf) !== '' || $op->d_e_l_e_t_ === '*') {
+        if (trim((string) $op->c2_datrf) !== '') {
             return 'fechada';
         }
 
