@@ -46,13 +46,14 @@
                     .\Carbon\Carbon::createFromTimestamp($b['inicio'], $fuso)->format('d/m H:i').'–'
                     .($b['aberto'] && $b['fim'] >= now()->getTimestamp() - 60 ? 'agora' : \Carbon\Carbon::createFromTimestamp($b['fim'], $fuso)->format('H:i'))
                     .' ('.Formato::minutos(($b['fim'] - $b['inicio']) / 60).')'
+                    .($b['apontamento']->ordemProducao ? ' · OP '.$b['apontamento']->ordemProducao->numero : '')
                     .($b['apontamento']->referencia ? ' · '.$b['apontamento']->referencia : ''))
                 @php($estilo = 'left: '.$b['esquerda'].'%; width: '.$b['largura'].'%; background-color: '.$legenda->cor)
                 @if ($podeApontar)
                   <a class="tl-bloco {{ $legenda->classeTexto() }} {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="{{ $dica }}"
-                     href="{{ route('apontamentos.edit', ['apontamento' => $b['apontamento'], 'voltar' => 'timeline']) }}"><span>{{ $b['apontamento']->referencia ?: $legenda->codigo }}</span></a>
+                     href="{{ route('apontamentos.edit', ['apontamento' => $b['apontamento'], 'voltar' => 'timeline']) }}"><span>{{ $b['apontamento']->rotuloBarra() }}</span></a>
                 @else
-                  <div class="tl-bloco {{ $legenda->classeTexto() }} {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="{{ $dica }}"><span>{{ $b['apontamento']->referencia ?: $legenda->codigo }}</span></div>
+                  <div class="tl-bloco {{ $legenda->classeTexto() }} {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="{{ $dica }}"><span>{{ $b['apontamento']->rotuloBarra() }}</span></div>
                 @endif
               @endforeach
               @if ($agora !== null)<i class="tl-agora" style="left: {{ $agora }}%" title="Agora"></i>@endif

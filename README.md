@@ -185,6 +185,15 @@ sincronizadas duas tabelas (nesta ordem):
 |---|---|---|---|
 | `centros_custo` | `Compras.CTT` | **Protheus** (cópia) | Centros de custo; atualizados a cada sincronização |
 | `maquinas` | `Compras.SHB` | **Mista** | Máquinas (centros de trabalho) |
+| `produtos_protheus` | `Compras.SB1` | **Protheus** (cópia) | Produtos (itens das OPs) |
+| `ordens_producao` | `Compras.SC2` | **Protheus** (cópia) + `status` do portal | Ordens de produção |
+
+**Ordens de produção**: cópia da SC2 com o campo **status**, calculado pelo portal: **fechada** (encerrada no Protheus,
+`C2_DATRF` preenchido, ou excluída), **parada** (suspensa no Protheus, `C2_STATUS = 'U'`, ou com apontamento de parada
+em aberto no portal), **andamento** (apontamento de produção em aberto, produção no Protheus `C2_QUJE > 0` ou
+apontamentos) ou **aberta**. A tela **Produção › Ordens de produção** mostra as OPs com o produto (SB1); nos
+**apontamentos** dá para informar a OP. Para não trazer anos de histórico, use `PROTHEUS_SC2_DESDE` (AAAAMMDD).
+A tabela antiga `produtos` (do Sistema OEE) continua como estava.
 
 **Máquinas (mista)**: da SHB vêm só **código** (`HB_COD`), **descrição** (`HB_NOME`) e **centro de custo** (`HB_CC`),
 na primeira sincronização. A máquina nova chega **inativa** e sem linha; em **Administração › Máquinas** (filtro
@@ -206,6 +215,8 @@ USE Compras;
 CREATE USER oee_app FOR LOGIN oee_app;   -- se ainda não existir neste banco
 GRANT SELECT ON dbo.CTT TO oee_app;      -- só leitura
 GRANT SELECT ON dbo.SHB TO oee_app;
+GRANT SELECT ON dbo.SB1 TO oee_app;
+GRANT SELECT ON dbo.SC2 TO oee_app;
 ```
 
 Se um dia o Protheus estiver em outro servidor ou com outro usuário, preencha `PROTHEUS_DB_HOST`,

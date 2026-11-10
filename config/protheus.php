@@ -2,6 +2,8 @@
 
 use App\Services\ImportadorCentrosCusto;
 use App\Services\Protheus\ImportadorMaquinas;
+use App\Services\Protheus\ImportadorOrdensProducao;
+use App\Services\Protheus\ImportadorProdutos;
 
 /*
  * Integração com o Protheus (só leitura). A conexão fica em config/database.php ("protheus").
@@ -27,12 +29,30 @@ return [
             // Máquina nova chega inativa; depois só a exclusão no Protheus altera o registro.
             'modo' => 'mista',
         ],
+        'produtos' => [
+            'descricao' => 'Produtos',
+            'tabela_origem' => env('PROTHEUS_TABELA_SB1') ?: 'SB1',
+            'tabela_destino' => 'produtos_protheus',
+            'importador' => ImportadorProdutos::class,
+            'modo' => 'espelho',
+        ],
+        // Depois dos produtos: a OP mostra o produto (SB1) pelo código.
+        'ordens_producao' => [
+            'descricao' => 'Ordens de produção',
+            'tabela_origem' => env('PROTHEUS_TABELA_SC2') ?: 'SC2',
+            'tabela_destino' => 'ordens_producao',
+            'importador' => ImportadorOrdensProducao::class,
+            'modo' => 'espelho', // cópia da SC2 + o campo "status" calculado pelo portal
+        ],
     ],
 
     // Sincronização automática (expressão cron). Vazio = desligada. Exemplos: "0 * * * *" (de hora em hora),
     // "*/30 * * * *" (a cada 30 minutos), "0 6 * * *" (todo dia às 6h). Precisa do agendador do Laravel rodando
     // como serviço (veja o README, "Sincronização automática com o Protheus").
     'agenda' => env('PROTHEUS_SINCRONIZAR_CRON', ''),
+
+    // Ordens de produção: só as emitidas a partir desta data (AAAAMMDD). Vazio = todas.
+    'sc2_desde' => env('PROTHEUS_SC2_DESDE', ''),
 
     // Tempo máximo (segundos) de uma sincronização; evita duas rodando ao mesmo tempo.
     'tempo_maximo' => (int) env('PROTHEUS_SINCRONIZAR_TEMPO_MAXIMO', 600),

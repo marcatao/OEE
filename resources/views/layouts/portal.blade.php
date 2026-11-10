@@ -33,10 +33,13 @@
           @endif
         @endif
 
-        @if ($u->pode('apontamentos') || $u->pode('calculadora'))
+        @if ($u->pode('apontamentos') || $u->pode('ordens_producao') || $u->pode('calculadora'))
           <p class="menu-secao">Produção</p>
           @if ($u->pode('apontamentos'))
             @include('layouts.partials.menu-link', ['rota' => 'apontamentos.index', 'rotulo' => 'Apontamentos', 'icone' => 'apontamento', 'ativo' => 'apontamentos.*'])
+          @endif
+          @if ($u->pode('ordens_producao'))
+            @include('layouts.partials.menu-link', ['rota' => 'ordens-producao.index', 'rotulo' => 'Ordens de produção', 'icone' => 'ordem_producao', 'ativo' => 'ordens-producao.*'])
           @endif
           @if ($u->pode('calculadora'))
             @include('layouts.partials.menu-link', ['rota' => 'calculadora', 'rotulo' => 'Calculadora de OEE', 'icone' => 'calculadora'])

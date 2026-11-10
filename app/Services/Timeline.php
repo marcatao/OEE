@@ -28,7 +28,7 @@ class Timeline
         $agora = now()->getTimestamp();
         $duracao = max($fimJanela - $ini, 1);
 
-        $apontamentos = ApontamentoEstado::with('legenda')
+        $apontamentos = ApontamentoEstado::with(['legenda', 'ordemProducao'])
             ->whereIn('maquina_id', $maquinas->modelKeys())
             ->where('inicio', '<', $fim)
             ->where(fn ($q) => $q->whereNull('fim')->orWhere('fim', '>', $inicio))

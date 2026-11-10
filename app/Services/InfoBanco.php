@@ -13,7 +13,7 @@ class InfoBanco
 {
     public const TABELAS = [
         'usuarios', 'grupos', 'grupo_usuario', 'grupo_permissoes', 'registros_login', 'plantas', 'linhas', 'maquinas', 'turnos', 'produtos',
-        'motivos_parada', 'apontamentos', 'paradas', 'dispositivos_iot', 'legendas', 'apontamentos_estado', 'centros_custo', 'sincronizacoes',
+        'motivos_parada', 'apontamentos', 'paradas', 'dispositivos_iot', 'legendas', 'apontamentos_estado', 'centros_custo', 'sincronizacoes', 'filtros_usuarios', 'produtos_protheus', 'ordens_producao',
     ];
 
     public function descricao(?string $conexao = null): array

@@ -21,6 +21,7 @@ return [
         'dashboard_maquina' => 'Dashboard por máquina',
         'timeline' => 'Timeline das máquinas',
         'apontamentos' => 'Apontamentos das máquinas (registrar estados)',
+        'ordens_producao' => 'Ordens de produção (consulta)',
         'calculadora' => 'Calculadora de OEE',
     ],
 

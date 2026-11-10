@@ -12,6 +12,7 @@ use App\Http\Controllers\Cadastros\AcessoController;
 use App\Http\Controllers\Cadastros\GrupoController;
 use App\Http\Controllers\Cadastros\UsuarioController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OrdemProducaoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\TimelineController;
@@ -53,6 +54,8 @@ Route::middleware('auth')->group(function () {
         Route::put('{apontamento}', [ApontamentoEstadoController::class, 'update'])->name('update');
         Route::delete('{apontamento}', [ApontamentoEstadoController::class, 'destroy'])->name('destroy');
     });
+    Route::get('producao/ordens-de-producao', [OrdemProducaoController::class, 'index'])
+        ->middleware('permissao:ordens_producao')->name('ordens-producao.index');
     Route::match(['get', 'post'], 'calculadora', [PortalController::class, 'calculadora'])
         ->middleware('permissao:calculadora')->name('calculadora');
 

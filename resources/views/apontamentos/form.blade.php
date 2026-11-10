@@ -41,6 +41,16 @@
         <input type="datetime-local" name="fim" value="{{ old('fim', $E::paraHoraLocal($apontamento->fim)) }}">
         <small>Deixe vazio se a máquina ainda está nesse estado.</small>
       </label>
+      <label>Ordem de produção
+        <input name="ordem_producao" maxlength="20" list="ordens-producao" autocomplete="off"
+               value="{{ old('ordem_producao', $apontamento->ordemProducao?->numero) }}" placeholder="Digite ou escolha o número da OP">
+        <datalist id="ordens-producao">
+          @foreach ($ordens as $op)
+            <option value="{{ $op->numero }}">{{ $descricoes[$op->c2_produto] ?? $op->c2_produto }} · {{ $op->rotuloStatus() }}</option>
+          @endforeach
+        </datalist>
+        <small>OPs do Protheus que não estão fechadas. Opcional.</small>
+      </label>
       <label>Referência
         <input name="referencia" maxlength="40" value="{{ old('referencia', $apontamento->referencia) }}" placeholder="Ex.: OP 509859">
         <small>Aparece dentro da barra na timeline (ordem de produção, lote ou produto).</small>

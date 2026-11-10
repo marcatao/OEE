@@ -18,7 +18,7 @@ class ApontamentoEstado extends Model
 
     protected $table = 'apontamentos_estado';
 
-    protected $fillable = ['maquina_id', 'legenda_id', 'inicio', 'fim', 'referencia', 'observacao'];
+    protected $fillable = ['maquina_id', 'legenda_id', 'ordem_producao_id', 'inicio', 'fim', 'referencia', 'observacao'];
 
     protected function casts(): array
     {
@@ -33,6 +33,17 @@ class ApontamentoEstado extends Model
     public function legenda(): BelongsTo
     {
         return $this->belongsTo(Legenda::class);
+    }
+
+    public function ordemProducao(): BelongsTo
+    {
+        return $this->belongsTo(OrdemProducao::class, 'ordem_producao_id');
+    }
+
+    /** Texto dentro da barra da Timeline: referência digitada, senão o número da OP, senão a legenda. */
+    public function rotuloBarra(): string
+    {
+        return $this->referencia ?: ($this->ordemProducao ? 'OP '.$this->ordemProducao->numero : (string) $this->legenda?->codigo);
     }
 
     /** "2026-11-05T08:30" digitado no fuso local → UTC. */

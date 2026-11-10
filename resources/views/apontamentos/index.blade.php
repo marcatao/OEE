@@ -33,7 +33,7 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Máquina</th><th>Legenda</th><th>Início</th><th>Fim</th><th class="num">Duração</th><th>Referência</th><th>Registrado por</th><th></th></tr></thead>
+    <thead><tr><th>Máquina</th><th>Legenda</th><th>Início</th><th>Fim</th><th class="num">Duração</th><th>Ordem de produção</th><th>Referência</th><th>Registrado por</th><th></th></tr></thead>
     <tbody>
     @forelse ($apontamentos as $a)
       <tr>
@@ -42,12 +42,13 @@
         <td>@dataHora($a->inicio)</td>
         <td>{!! $a->fim ? e(\App\Providers\AppServiceProvider::dataHora($a->fim)) : '<span class="etiqueta situacao-online">em andamento</span>' !!}</td>
         <td class="num">{{ Formato::minutos($a->duracaoMin()) }}</td>
+        <td>@if ($a->ordemProducao)<code>{{ $a->ordemProducao->numero }}</code> <span class="etiqueta op-{{ $a->ordemProducao->status }}">{{ $a->ordemProducao->rotuloStatus() }}</span>@else - @endif</td>
         <td>{{ $a->referencia ?? '-' }}</td>
         <td>{{ $a->criadoPor?->nome ?? '-' }}</td>
         <td><a class="botao pequeno secundario" href="{{ route('apontamentos.edit', $a) }}">Editar</a></td>
       </tr>
     @empty
-      <tr><td colspan="8" class="suave">Nenhum apontamento encontrado.</td></tr>
+      <tr><td colspan="9" class="suave">Nenhum apontamento encontrado.</td></tr>
     @endforelse
     </tbody>
   </table>

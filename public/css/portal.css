@@ -352,3 +352,15 @@ input:disabled, select:disabled, textarea:disabled { background:var(--fundo); co
 .tl-resumo-filtros:hover { border-color:var(--primaria); color:var(--primaria); }
 .tl-resumo-filtros[hidden] { display:none; }
 .tl-avisos { margin:0; min-height:0; }
+
+/* ---------- Ordens de produção ---------- */
+.op-aberta { color:var(--suave); border-color:var(--borda-forte); }
+.op-andamento { color:var(--ok); background:var(--ok-suave); border-color:transparent; }
+.op-parada { color:var(--erro); background:var(--erro-suave); border-color:transparent; }
+.op-fechada { color:var(--protheus); background:var(--protheus-suave); border-color:transparent; }
+.op-totais { display:flex; gap:.75rem; flex-wrap:wrap; margin:.75rem 0; }
+.op-total { display:inline-flex; gap:.5rem; align-items:center; padding:.4rem .75rem; border:1px solid var(--borda); border-radius:10px; text-decoration:none; color:var(--texto); }
+.op-total:hover, .op-total.ativo { border-color:var(--primaria); }
+.op-filtro-status { display:flex; gap:.75rem; flex-wrap:wrap; padding:.35rem .75rem; }
+.op-filtro-status legend { font-size:.85rem; color:var(--suave); font-weight:400; }
+.filtros label.opcao { flex-direction:row; align-items:center; color:var(--texto); font-size:.9rem; }

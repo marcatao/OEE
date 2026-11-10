@@ -68,8 +68,11 @@ class SincronizadorProtheus
             $importador = app($item['importador']);
             $lidos = 0;
             $linhas = (function () use ($importador, $tabela, &$lidos) {
-                $cursor = DB::connection('protheus')->table($tabela)
-                    ->select($importador->campos())->orderBy('R_E_C_N_O_')->cursor();
+                $consulta = DB::connection('protheus')->table($tabela)->select($importador->campos());
+                if (method_exists($importador, 'filtrar')) {
+                    $consulta = $importador->filtrar($consulta); // ex.: só OPs a partir de uma data
+                }
+                $cursor = $consulta->orderBy('R_E_C_N_O_')->cursor();
                 foreach ($cursor as $linha) {
                     $lidos++;
                     yield $linha;

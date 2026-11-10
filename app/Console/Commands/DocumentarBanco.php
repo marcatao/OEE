@@ -27,6 +27,8 @@ class DocumentarBanco extends Command
     /** Ligações por código, sem chave estrangeira no banco (tabela.coluna => tabela.coluna). */
     private const LIGACOES_LOGICAS = [
         'maquinas.centro_custo' => 'centros_custo.ctt_custo',
+        'ordens_producao.c2_produto' => 'produtos_protheus.b1_cod',
+        'ordens_producao.c2_cc' => 'centros_custo.ctt_custo',
     ];
 
     private const MARCA_INICIO = '<!-- manual:inicio -->';
