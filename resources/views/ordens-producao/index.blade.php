@@ -13,8 +13,10 @@
     @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizadas. @endif
     O <strong>status</strong> é calculado pelo portal: <em>fechada</em> (com data de encerramento, C2_DATRF, no Protheus), <em>parada</em> (suspensa no
     Protheus ou com apontamento de parada em aberto), <em>andamento</em> (com produção ou apontamentos) ou <em>aberta</em>.
-    <strong>Custo atual</strong> = (baixas − devoluções da SD3, pelo D3_CUSTO1) ÷ quantidade produzida; <strong>custo meta</strong> = custo unitário
-    do fechamento mais recente do produto (SB9). Clique na OP para ver o kardex.</p>
+    <strong>Custo unit. atual</strong> = custo de <strong>1 peça</strong> nesta OP: consumos da OP (baixas da SD3 + notas com OP da SD2 −
+    devoluções) ÷ quantidade produzida na própria OP. Cada consumo vale o custo do Protheus (D3_CUSTO1 / D2_CUSTO1) ou, enquanto ele
+    estiver zerado, quantidade × custo médio de estoque (SB2). <strong>Custo unit. meta</strong> = custo de 1 peça no fechamento mais recente
+    do produto (SB9). Clique na OP para ver o kardex.</p>
 
   <div class="op-totais">
     @foreach (OrdemProducao::STATUS as $chave => $rotulo)
@@ -39,7 +41,7 @@
   <div class="rolagem">
   <table class="tabela">
     <thead><tr><th>OP</th><th>Status</th><th>Produto</th><th class="num">Quantidade</th><th class="num">Produzido</th><th class="num">Perda</th>
-      <th class="num">Custo atual</th><th class="num">Custo meta</th><th class="num">Divergência</th>
+      <th class="num">Custo unit. atual</th><th class="num">Custo unit. meta</th><th class="num">Divergência</th>
       <th>Emissão</th><th>Previsão</th><th>Encerrada em</th><th class="num">Apontamentos</th></tr></thead>
     <tbody>
     @forelse ($ordens as $op)
@@ -52,9 +54,10 @@
         <td class="num">{{ number_format($op->c2_quje, 0, ',', '.') }}
           @if ($op->c2_quant > 0)<br><small class="suave">{{ number_format(min($op->c2_quje / $op->c2_quant, 9.99) * 100, 0, ',', '.') }}%</small>@endif</td>
         <td class="num">{{ number_format($op->c2_perda, 0, ',', '.') }}</td>
-        <td class="num">{{ Formato::moeda($custos[$op->id]->custoUnitario(), 4) }}
-          @if ($custos[$op->id]->temMovimentos())<br><small class="suave">{{ Formato::moeda($custos[$op->id]->custoLiquido()) }} no total</small>@endif</td>
-        <td class="num">{{ Formato::moeda($op->custo_meta, 4) }}</td>
+        <td class="num">{{ Formato::moeda($custos[$op->id]->custoUnitario(), 4) }} <small class="suave">/{{ $op->c2_um ?: 'un' }}</small>
+          @if ($custos[$op->id]->pelaMedia > 0)<br><small class="suave" title="Consumos que o Protheus ainda não valorizou: usado o custo médio de estoque (SB2)">{{ $custos[$op->id]->pelaMedia }} pelo custo médio</small>@endif
+          @if ($custos[$op->id]->semCusto > 0)<br><small class="texto-alerta">{{ $custos[$op->id]->semCusto }} sem custo</small>@endif</td>
+        <td class="num">{{ Formato::moeda($op->custo_meta, 4) }} <small class="suave">/{{ $op->c2_um ?: 'un' }}</small></td>
         <td class="num {{ Formato::nivelDivergencia($custos[$op->id]->divergencia()) }}">{{ Formato::divergencia($custos[$op->id]->divergencia()) }}</td>
         <td>{{ OrdemProducao::data($op->c2_emissao) }}</td>
         <td>{{ OrdemProducao::data($op->c2_datpri) }} a {{ OrdemProducao::data($op->c2_datprf) }}</td>

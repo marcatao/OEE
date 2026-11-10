@@ -3,9 +3,9 @@
 namespace App\Services;
 
 /**
- * Totais dos movimentos de uma OP e o custo calculado:
- * custo líquido = baixas (RE) − devoluções (DE); custo unitário atual = custo líquido ÷ quantidade produzida (PR).
- * A divergência compara o custo unitário atual com o custo meta (fechamento mais recente do produto na SB9).
+ * Totais dos movimentos de uma OP e o custo calculado (o que importa é o custo de 1 peça):
+ * consumos = baixas (RE, SD3) + notas com OP (SD2) − devoluções (DE); custo unitário atual = consumos ÷ quantidade
+ * produzida (PR) na própria OP. A divergência compara com o custo meta unitário (último fechamento do produto, SB9).
  */
 class ResumoCustoOp
 {
@@ -29,6 +29,12 @@ class ResumoCustoOp
 
     public int $movimentos = 0;
 
+    /** Consumos valorizados pelo custo médio de estoque (o Protheus ainda não gravou o custo). */
+    public int $pelaMedia = 0;
+
+    /** Consumos sem custo nem no Protheus nem no estoque (entram com zero). */
+    public int $semCusto = 0;
+
     public function __construct(public ?float $meta = null) {}
 
     public function somar(string $tipo, float $quantidade, float $valor, int $linhas = 1): void
@@ -48,10 +54,10 @@ class ResumoCustoOp
         return $this->movimentos > 0;
     }
 
-    /** Baixas − devoluções (R$). */
+    /** Consumos da OP (R$): baixas + notas com OP − devoluções. */
     public function custoLiquido(): float
     {
-        return $this->consumoValor - $this->devolucaoValor;
+        return $this->consumoValor + $this->notaValor - $this->devolucaoValor;
     }
 
     /** Custo por unidade produzida; null sem produção. */

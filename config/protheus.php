@@ -48,7 +48,7 @@ return [
         ],
         // Movimentos internos (SD3) que têm OP: produções e consumos (baixas) das ordens de produção.
         'movimentos_producao' => [
-            'descricao' => 'Apontamentos de produção',
+            'descricao' => 'Apontamentos OP',
             'tabela_origem' => env('PROTHEUS_TABELA_SD3') ?: 'SD3',
             'tabela_destino' => 'movimentos_producao',
             'importador' => ImportadorMovimentosProducao::class,
@@ -70,6 +70,10 @@ return [
 
     // Saldos de fechamento (SB9): só lidos para preencher ordens_producao.custo_meta. A SB9 não é copiada.
     'tabela_sb9' => env('PROTHEUS_TABELA_SB9') ?: 'SB9',
+
+    // Saldos atuais em estoque (SB2): só lidos para o custo médio do item (B2_CM1), que valoriza o movimento da OP
+    // quando o Protheus ainda não gravou o custo (D3_CUSTO1 / D2_CUSTO1 zerado). A SB2 não é copiada.
+    'tabela_sb2' => env('PROTHEUS_TABELA_SB2') ?: 'SB2',
 
     // Legendas do D3_CF (tipo de movimento da SD3). O tipo decide o cálculo do custo da OP:
     // producao (PR) = quantidade produzida; consumo (RE) = soma no custo; devolucao (DE) = abate do custo.

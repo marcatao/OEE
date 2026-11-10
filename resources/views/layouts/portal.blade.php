@@ -39,7 +39,7 @@
             @include('layouts.partials.menu-link', ['rota' => 'apontamentos.index', 'rotulo' => 'Apontamento real', 'icone' => 'apontamento', 'ativo' => 'apontamentos.*'])
           @endif
           @if ($u->pode('apontamentos_producao'))
-            @include('layouts.partials.menu-link', ['rota' => 'apontamentos-producao.index', 'rotulo' => 'Apontamentos de produção', 'icone' => 'movimento', 'ativo' => 'apontamentos-producao.*'])
+            @include('layouts.partials.menu-link', ['rota' => 'apontamentos-producao.index', 'rotulo' => 'Apontamentos OP', 'icone' => 'movimento', 'ativo' => 'apontamentos-producao.*'])
           @endif
           @if ($u->pode('ordens_producao'))
             @include('layouts.partials.menu-link', ['rota' => 'ordens-producao.index', 'rotulo' => 'Ordens de produção', 'icone' => 'ordem_producao', 'ativo' => 'ordens-producao.*'])

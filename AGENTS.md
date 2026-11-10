@@ -44,9 +44,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (SD3 com OP, campo `protheus.sd3_campo_op` = D3_ORDEM) e `notas_fiscais_op` (SD2 com OP, `protheus.sd2_campo_op`)
   são cópias por R_E_C_N_O_; as telas só usam os não excluídos e, na SD3, não estornados (`D3_ESTORNO = 'S'`). O
   `tipo` vem do D3_CF (PR produção, RE baixa/consumo, DE devolução; legendas em `config/protheus.php`); SD2 = "Nota
-  fiscal". Valor = D3_CUSTO1 / D2_CUSTO1. Custo atual = (baixas − devoluções) ÷ produzido; `ordens_producao.custo_meta`
-  = custo do fechamento mais recente do produto na SB9, gravado a cada sincronização das OPs (a SB9 NÃO é copiada).
-  A tela "Apontamento real" é a antiga "Apontamentos" (permissão `apontamentos`, a chave não muda).
+  fiscal". O objetivo é o custo de **1 peça**. Valor do movimento = D3_CUSTO1 / D2_CUSTO1 quando > 0; senão quantidade ×
+  custo médio de estoque (`custo_medio`, B2_CM1 da SB2, gravado a cada sincronização; a SB2 NÃO é copiada). Custo unit.
+  atual = (baixas + notas SD2 − devoluções) ÷ produzido na OP; `ordens_producao.custo_meta` = custo unitário do
+  fechamento mais recente do produto na SB9, gravado a cada sincronização das OPs (a SB9 NÃO é copiada).
+  A tela "Apontamento real" é a antiga "Apontamentos" (permissão `apontamentos`, a chave não muda); "Apontamentos OP" é a
+  tela dos movimentos do Protheus (permissão `apontamentos_producao`).
 - Sincronização sem estourar o tempo do IIS: o botão da tela Banco de dados usa `SincronizadorProtheus::iniciar()` +
   `continuar($registro, segundos)` em etapas (rota `admin.banco.sincronizar.etapa`, JSON; `protheus.segundos_por_etapa`),
   retomando de `sincronizacoes.ultimo_recno` (gravado a cada lote; a 1ª chamada só abre ou retoma a execução e devolve o
@@ -98,5 +101,6 @@ php artisan protheus:sincronizar  # sincroniza os dados do Protheus (centros de 
 - `especialista-sql-server`: tabelas, migrações, consultas, índices, permissões e desempenho no SQL Server.
 - `especialista-entra-id`: login, sessão, segredos e segurança da integração com o Entra ID.
 - `especialista-dados-oee`: regras de cálculo, agregações e análises de OEE.
+- `especialista-custos-producao`: custo por OP e por peça (SD3, SD2, SB2, SB9), custo real × meta, divergências.
 - `arquiteto-banco-dados`: estrutura do banco (tabelas, relacionamentos, PK/FK, índices), sugestões de modelagem e
   diagrama do banco (`docs/banco-de-dados.md`).

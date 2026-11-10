@@ -197,6 +197,7 @@ erDiagram
         nchar(1) d_e_l_e_t_
         int r_e_c_n_o_ UK
         datetime sincronizado_em
+        float(53) custo_medio
     }
     notas_fiscais_op {
         bigint id PK
@@ -218,6 +219,7 @@ erDiagram
         nchar(1) d_e_l_e_t_
         int r_e_c_n_o_ UK
         datetime sincronizado_em
+        float(53) custo_medio
     }
     ordens_producao {
         bigint id PK
@@ -436,8 +438,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`linhas`](#linhas) | Sistema | `id` | 9 | 3 |
 | [`maquinas`](#maquinas) | Mista | `id` | 32 | 6 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
-| [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 19 | 0 |
-| [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 19 | 0 |
+| [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
+| [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
 | [`ordens_producao`](#ordens_producao) | Protheus | `id` | 26 | 0 |
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`plantas`](#plantas) | Sistema | `id` | 8 | 2 |
@@ -799,6 +801,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
 | `r_e_c_n_o_` | `int` | não |  |  |
 | `sincronizado_em` | `datetime` | sim |  |  |
+| `custo_medio` | `float(53)` | sim |  |  |
 
 **Índices:** `movimentos_producao_r_e_c_n_o__unique` único (r_e_c_n_o_) · `movimentos_producao_op_numero_d3_filial_index` (op_numero, d3_filial) · `movimentos_producao_d3_emissao_index` (d3_emissao)
 
@@ -827,6 +830,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
 | `r_e_c_n_o_` | `int` | não |  |  |
 | `sincronizado_em` | `datetime` | sim |  |  |
+| `custo_medio` | `float(53)` | sim |  |  |
 
 **Índices:** `notas_fiscais_op_r_e_c_n_o__unique` único (r_e_c_n_o_) · `notas_fiscais_op_op_numero_d2_filial_index` (op_numero, d2_filial) · `notas_fiscais_op_d2_emissao_index` (d2_emissao)
 

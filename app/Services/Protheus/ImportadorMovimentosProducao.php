@@ -6,7 +6,7 @@ use App\Services\TiposMovimento;
 use Illuminate\Database\Query\Builder;
 
 /**
- * Apontamentos de produção do Protheus: cópia da SD3 (movimentos internos) em movimentos_producao, só das linhas
+ * Apontamentos OP (movimentos de produção) do Protheus: cópia da SD3 (movimentos internos) em movimentos_producao, só das linhas
  * com o campo da OP preenchido (config protheus.sd3_campo_op, padrão D3_ORDEM). Chave: R_E_C_N_O_.
  * As linhas excluídas ou estornadas também são lidas, para marcar no portal o que já tinha vindo; as telas mostram só
  * as válidas (não excluídas e não estornadas). O "tipo" (produção, consumo, devolução) sai do D3_CF.
@@ -14,6 +14,9 @@ use Illuminate\Database\Query\Builder;
 class ImportadorMovimentosProducao extends ImportadorEspelho
 {
     use DiagnosticoCampoOp;
+    use ValorizaPorCustoMedio;
+
+    private ?CustoMedioEstoque $custoMedioEstoque = null;
 
     public const CAMPOS = ['D3_FILIAL', 'D3_TM', 'D3_CF', 'D3_COD', 'D3_UM', 'D3_QUANT', 'D3_LOCAL', 'D3_DOC', 'D3_EMISSAO',
         'D3_NUMSEQ', 'D3_CUSTO1', 'D3_ESTORNO', 'D_E_L_E_T_', 'R_E_C_N_O_'];
@@ -43,6 +46,11 @@ class ImportadorMovimentosProducao extends ImportadorEspelho
     protected function campoDataIncremental(): ?string
     {
         return 'D3_EMISSAO';
+    }
+
+    protected function colunasDoItem(): array
+    {
+        return ['d3_filial', 'd3_cod', 'd3_local'];
     }
 
     protected function tabela(): string

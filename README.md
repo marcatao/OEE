@@ -187,8 +187,8 @@ sincronizadas duas tabelas (nesta ordem):
 | `maquinas` | `Compras.SHB` | **Mista** | Máquinas (centros de trabalho) |
 | `produtos_protheus` | `Compras.SB1` | **Protheus** (cópia) | Produtos (itens das OPs) |
 | `ordens_producao` | `Compras.SC2` | **Protheus** (cópia) + `status` e `custo_meta` do portal | Ordens de produção |
-| `movimentos_producao` | `Compras.SD3` | **Protheus** (cópia, só com OP) | Produções, baixas/consumos e devoluções das OPs |
-| `notas_fiscais_op` | `Compras.SD2` | **Protheus** (cópia, só com OP) | Itens de nota fiscal que citam uma OP |
+| `movimentos_producao` | `Compras.SD3` | **Protheus** (cópia, só com OP) + `custo_medio` (SB2) | Produções, baixas/consumos e devoluções das OPs |
+| `notas_fiscais_op` | `Compras.SD2` | **Protheus** (cópia, só com OP) + `custo_medio` (SB2) | Itens de nota fiscal que citam uma OP |
 
 **Ordens de produção**: cópia da SC2 com o campo **status**, calculado pelo portal: **fechada** (encerrada no Protheus,
 `C2_DATRF` preenchido — é ele que diz se a OP está aberta ou fechada), **parada** (suspensa no Protheus, `C2_STATUS = 'U'`, ou com apontamento de parada
@@ -198,20 +198,27 @@ datas, encerramento…) e tem o status recalculado. A tela **Produção › Orde
 **apontamentos** dá para informar a OP. Para não trazer anos de histórico, use `PROTHEUS_SC2_DESDE` (AAAAMMDD).
 A tabela antiga `produtos` (do Sistema OEE) continua como estava.
 
-**Apontamentos de produção e custo das OPs**: a tela **Produção › Apontamentos de produção** mostra os movimentos do
-Protheus ligados a uma OP: da **SD3**, as linhas com o campo da OP preenchido (`D3_ORDEM`, ou o campo de
-`PROTHEUS_SD3_CAMPO_OP`) que não estão excluídas nem estornadas (`D3_ESTORNO = 'S'`); da **SD2**, os itens de nota
-fiscal com OP (`D2_OP`, ou `PROTHEUS_SD2_CAMPO_OP`), com a legenda **Nota fiscal**. O valor de cada movimento é o
-`D3_CUSTO1` / `D2_CUSTO1`. As legendas do `D3_CF` (PR = produção, RE = baixa/consumo, DE = devolução, com a descrição
-de cada código) ficam em `config/protheus.php` (`legendas_d3_cf`) e podem ser ajustadas. Na lista de OPs:
-- **Custo atual** = (baixas − devoluções) ÷ quantidade produzida (PR);
-- **Custo meta** = custo unitário do **fechamento mais recente** do produto na **SB9** (maior `B9_DATA`, na filial
-  da OP ou, se não houver, na filial em branco/compartilhada; com vários armazéns, soma de `B9_VINI1` ÷ soma de `B9_QINI`; sem saldo, `B9_CM1`). A SB9 não é
-  copiada: só esse valor é gravado em `ordens_producao.custo_meta`, a cada sincronização das OPs;
+**Apontamentos OP e custo por peça**: a tela **Produção › Apontamentos OP** mostra os movimentos do Protheus ligados
+a uma OP: da **SD3**, as linhas com o campo da OP preenchido (`D3_ORDEM`, ou o campo de `PROTHEUS_SD3_CAMPO_OP`) que não
+estão excluídas nem estornadas (`D3_ESTORNO = 'S'`); da **SD2**, os itens de nota fiscal com OP (`D2_OP`, ou
+`PROTHEUS_SD2_CAMPO_OP`), com a legenda **Nota fiscal**. As legendas do `D3_CF` (PR = produção, RE = baixa/consumo,
+DE = devolução) ficam em `config/protheus.php` (`legendas_d3_cf`).
+
+O que se controla é o custo de **1 peça**:
+- **Valor de cada movimento** = o custo gravado pelo Protheus (`D3_CUSTO1` / `D2_CUSTO1`). Enquanto ele estiver zerado
+  (o Protheus só valoriza as baixas no recálculo do custo médio), vale **quantidade × custo médio de estoque** do item
+  (`B2_CM1` da **SB2**, mesma filial e armazém; sem o armazém, a média ponderada dos armazéns). A SB2 não é copiada: só
+  o custo médio é gravado no movimento, a cada sincronização.
+- **Custo unit. atual** = consumos da OP (baixas da SD3 + notas com OP da SD2 − devoluções) ÷ quantidade produzida
+  (PR) na própria OP.
+- **Custo unit. meta** = custo de 1 peça no **fechamento mais recente** do produto na **SB9** (maior `B9_DATA`, na
+  filial da OP ou, se não houver, na filial em branco/compartilhada; com vários armazéns, soma de `B9_VINI1` ÷ soma de
+  `B9_QINI`; sem saldo, `B9_CM1`). A SB9 não é copiada: só esse valor é gravado em `ordens_producao.custo_meta`.
 - **Divergência** = (atual − meta) ÷ meta. Acima da meta além de ±5% (`OEE_CUSTO_TOLERANCIA`) fica em vermelho, abaixo em verde.
 
-Clicando na OP abre o **kardex**: resumo de custo, consumo por componente e todos os movimentos em ordem de data, com
-produzido, custo e custo unitário acumulados. A tela antiga de apontamentos agora se chama **Apontamento real**.
+Clicando na OP abre o **kardex**: custo por peça (atual × meta), consumo por componente e todos os movimentos em ordem
+de data, com a valorização de cada um (Protheus ou custo médio) e os acumulados. A tela antiga de apontamentos se chama
+**Apontamento real**.
 
 **Botão em etapas**: o botão **Sincronizar com o Protheus** não roda tudo numa requisição só (o IIS corta o PHP
 depois do `activityTimeout` do FastCGI, 70 s por padrão: "The FastCGI process exceeded configured activity timeout").
@@ -263,12 +270,13 @@ GRANT SELECT ON dbo.SC2 TO oee_app;
 GRANT SELECT ON dbo.SD3 TO oee_app;      -- apontamentos de produção (movimentos com OP)
 GRANT SELECT ON dbo.SD2 TO oee_app;      -- notas fiscais com OP
 GRANT SELECT ON dbo.SB9 TO oee_app;      -- custo meta (fechamento mais recente)
+GRANT SELECT ON dbo.SB2 TO oee_app;      -- custo médio de estoque (movimentos ainda sem custo no Protheus)
 ```
 
 Se um dia o Protheus estiver em outro servidor ou com outro usuário, preencha `PROTHEUS_DB_HOST`,
 `PROTHEUS_DB_USERNAME` e `PROTHEUS_DB_PASSWORD` no `.env`. Os nomes das tabelas ficam em `PROTHEUS_TABELA_CTT`,
 `PROTHEUS_TABELA_SHB`, `PROTHEUS_TABELA_SB1`, `PROTHEUS_TABELA_SC2`, `PROTHEUS_TABELA_SD3`, `PROTHEUS_TABELA_SD2` e
-`PROTHEUS_TABELA_SB9`.
+`PROTHEUS_TABELA_SB9` e `PROTHEUS_TABELA_SB2`.
 
 Pelo terminal:
 

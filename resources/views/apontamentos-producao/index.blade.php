@@ -1,6 +1,6 @@
 @extends('layouts.portal')
 
-@section('titulo', 'Apontamentos de produção')
+@section('titulo', 'Apontamentos OP')
 
 @use('App\Models\OrdemProducao')
 @use('App\Support\Formato')
@@ -8,9 +8,10 @@
 @section('conteudo')
 <section class="cartao">
   <p class="trilha">Produção</p>
-  <h1>Apontamentos de produção</h1>
+  <h1>Apontamentos OP</h1>
   <p class="suave">Movimentos do Protheus ligados a uma OP, só para consulta: produções e baixas/consumos da SD3 (sem os excluídos e
-    os estornados) e itens de nota fiscal da SD2 que citam a OP. O valor é o custo do movimento (D3_CUSTO1 / D2_CUSTO1).
+    os estornados) e itens de nota fiscal da SD2 que citam a OP. O valor é o custo do movimento (D3_CUSTO1 / D2_CUSTO1) ou, enquanto o
+    Protheus não o valorizou, quantidade × custo médio de estoque (SB2).
     @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizados. @endif</p>
 
   <div class="op-totais">
@@ -58,7 +59,7 @@
           <small class="suave">@if ($m->tipo !== 'nota_fiscal'){{ $m->cf }} · @endif{{ $tipos->descricao($m->tipo === 'nota_fiscal' ? 'NF' : $m->cf) }}</small></td>
         <td class="quebra"><code>{{ $m->produto }}</code><br><small>{{ ($produtos[rtrim($m->produto)] ?? null)?->descricao() ?? 'produto não sincronizado' }}</small></td>
         <td class="num">{{ Formato::quantidade((float) $m->quantidade) }} <small class="suave">{{ $m->um }}</small></td>
-        <td class="num">{{ Formato::moeda((float) $m->custo) }}</td>
+        <td class="num">{{ Formato::moeda((float) $m->custo) }}@if ($m->tipo !== 'producao' && $m->valorizacao === 'medio')<br><small class="suave">custo médio</small>@elseif ($m->tipo !== 'producao' && $m->valorizacao === 'sem')<br><small class="texto-alerta">sem custo</small>@endif</td>
         <td>{{ $m->documento }}@if (trim($m->serie) !== '') <small class="suave">série {{ $m->serie }}</small>@endif</td>
         <td>{{ $m->armazem }}</td>
       </tr>

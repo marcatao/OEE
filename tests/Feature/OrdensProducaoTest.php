@@ -46,8 +46,10 @@ class OrdensProducaoTest extends TestCase
         config(['database.connections.protheus' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']]);
         DB::purge('protheus');
         $sb9 = ['B9_FILIAL', 'B9_COD', 'B9_LOCAL', 'B9_DATA', 'B9_QINI', 'B9_VINI1', 'B9_CM1', 'D_E_L_E_T_', 'R_E_C_N_O_'];
-        $numericos = ['R_E_C_N_O_', 'C2_QUANT', 'C2_QUJE', 'C2_PERDA', 'D3_QUANT', 'D3_CUSTO1', 'D2_QUANT', 'D2_CUSTO1', 'B9_QINI', 'B9_VINI1', 'B9_CM1'];
-        foreach (['SB1' => ImportadorProdutos::CAMPOS, 'SC2' => ImportadorOrdensProducao::CAMPOS, 'SB9' => $sb9,
+        $sb2 = ['B2_FILIAL', 'B2_COD', 'B2_LOCAL', 'B2_QATU', 'B2_VATU1', 'B2_CM1', 'D_E_L_E_T_', 'R_E_C_N_O_'];
+        $numericos = ['R_E_C_N_O_', 'C2_QUANT', 'C2_QUJE', 'C2_PERDA', 'D3_QUANT', 'D3_CUSTO1', 'D2_QUANT', 'D2_CUSTO1', 'B9_QINI', 'B9_VINI1', 'B9_CM1',
+            'B2_QATU', 'B2_VATU1', 'B2_CM1'];
+        foreach (['SB1' => ImportadorProdutos::CAMPOS, 'SC2' => ImportadorOrdensProducao::CAMPOS, 'SB9' => $sb9, 'SB2' => $sb2,
             'SD3' => [...ImportadorMovimentosProducao::CAMPOS, 'D3_ORDEM'], 'SD2' => [...ImportadorNotasFiscaisOp::CAMPOS, 'D2_OP']] as $tabela => $campos) {
             Schema::connection('protheus')->create($tabela, function (Blueprint $t) use ($campos, $numericos) {
                 foreach ($campos as $c) {
@@ -276,6 +278,12 @@ class OrdensProducaoTest extends TestCase
         $this->sd3(6, $op, 'RE1', 'MP001', 50, 999, ['D_E_L_E_T_' => '*']);    // excluído: fica de fora
         $this->sd3(7, '', 'RE0', 'MP001', 5, 50);                              // sem OP: não vem
         $this->sd3(8, '50985901001', 'PR0', 'PA001', 10, 20);                  // outra OP
+        $this->sd3(9, $op, 'RE1', 'MP002', 10, 0, ['D3_LOCAL' => '02']);       // Protheus ainda não valorizou: custo médio
+        // Custo médio de estoque (SB2) da MP002: armazém 02 = 0,90 por unidade (o 01 não importa para esta baixa).
+        foreach ([['01', 1000, 1100, 1.1, 1], ['02', 500, 450, 0.9, 2]] as [$local, $q, $v, $cm, $rec]) {
+            DB::connection('protheus')->table('SB2')->insert(['B2_FILIAL' => '01', 'B2_COD' => 'MP002', 'B2_LOCAL' => $local,
+                'B2_QATU' => $q, 'B2_VATU1' => $v, 'B2_CM1' => $cm, 'D_E_L_E_T_' => ' ', 'R_E_C_N_O_' => $rec]);
+        }
         DB::connection('protheus')->table('SD2')->insert(['D2_FILIAL' => '01', 'D2_DOC' => '000123', 'D2_SERIE' => '1', 'D2_ITEM' => '01',
             'D2_COD' => 'PA002', 'D2_UM' => 'UN', 'D2_QUANT' => 40, 'D2_LOCAL' => '01', 'D2_EMISSAO' => '20261106', 'D2_CUSTO1' => 86,
             'D2_CF' => '5101', 'D2_CLIENTE' => 'C001', 'D2_LOJA' => '01', 'D2_OP' => $op, 'D_E_L_E_T_' => ' ', 'R_E_C_N_O_' => 1]);
@@ -292,7 +300,7 @@ class OrdensProducaoTest extends TestCase
         $this->cenarioDeCusto();
 
         // Só as linhas com OP; excluída nunca vista é ignorada; estornada vem marcada (e as telas a escondem).
-        $this->assertSame([1, 2, 3, 4, 5, 8], DB::table('movimentos_producao')->orderBy('r_e_c_n_o_')->pluck('r_e_c_n_o_')->map(fn ($v) => (int) $v)->all());
+        $this->assertSame([1, 2, 3, 4, 5, 8, 9], DB::table('movimentos_producao')->orderBy('r_e_c_n_o_')->pluck('r_e_c_n_o_')->map(fn ($v) => (int) $v)->all());
         $this->assertSame(['consumo', 'consumo', 'devolucao', 'producao'],
             DB::table('movimentos_producao')->whereIn('r_e_c_n_o_', [1, 2, 3, 4])->orderBy('r_e_c_n_o_')->pluck('tipo')->all());
         $this->assertSame('50986001001', DB::table('movimentos_producao')->where('r_e_c_n_o_', 1)->value('op_numero'));
@@ -357,22 +365,25 @@ class OrdensProducaoTest extends TestCase
         $this->cenarioDeCusto();
         $op = OrdemProducao::where('numero', '50986001001')->sole();
 
-        // Custo líquido = 150 + 80 − 15 = 215; produzido 100 → 2,15 por unidade; meta 2,00 → +7,5%.
+        // Consumos = baixas 150 + 80 + (10 × 0,90 pelo custo médio) + nota 86 − devolução 15 = 310;
+        // produzido 100 → 3,10 por peça; meta 2,00 por peça → +55%.
         $resumo = app(CustoOrdemProducao::class)->resumos([$op])[$op->id];
-        $this->assertEqualsWithDelta(215, $resumo->custoLiquido(), 0.001);
-        $this->assertEqualsWithDelta(2.15, $resumo->custoUnitario(), 0.0001);
-        $this->assertEqualsWithDelta(0.075, $resumo->divergencia(), 0.0001);
+        $this->assertEqualsWithDelta(310, $resumo->custoLiquido(), 0.001);
+        $this->assertEqualsWithDelta(3.10, $resumo->custoUnitario(), 0.0001);
+        $this->assertEqualsWithDelta(0.55, $resumo->divergencia(), 0.0001);
         $this->assertEqualsWithDelta(40, $resumo->notaQtd, 0.001);
+        $this->assertSame([1, 0], [$resumo->pelaMedia, $resumo->semCusto]);
+        $this->assertEqualsWithDelta(0.9, DB::table('movimentos_producao')->where('r_e_c_n_o_', 9)->value('custo_medio'), 0.0001);
 
         $this->actingAs($this->usuario(['ordens_producao']));
         $this->get('/producao/ordens-de-producao?busca=50986001001')->assertOk()
-            ->assertSee('Custo meta')->assertSee('R$ 2,1500')->assertSee('R$ 2,0000')->assertSee('+7,5%')->assertSee('div-acima', false)
+            ->assertSee('Custo unit. meta')->assertSee('R$ 3,1000')->assertSee('R$ 2,0000')->assertSee('+55,0%')->assertSee('div-acima', false)
             ->assertSee(route('ordens-producao.show', $op), false);
 
         $this->get(route('ordens-producao.show', $op))->assertOk()
             ->assertSee('Kardex da OP')->assertSee('Consumo por componente')->assertSee('RESINA PET')
             ->assertSee('Baixa automática (empenho)')->assertSee('Nota fiscal')->assertSee('000123')
-            ->assertSee('R$ 215,00')->assertSee('+7,5%')
+            ->assertSee('R$ 310,00')->assertSee('+55,0%')->assertSee('custo médio')
             ->assertDontSee('R$ 999,00');                                          // estornado e excluído fora
         $this->get('/producao/ordens-de-producao/999999')->assertNotFound();
 
@@ -387,7 +398,7 @@ class OrdensProducaoTest extends TestCase
 
         $this->actingAs($this->usuario(['apontamentos_producao']));
         $this->get('/producao/apontamentos-de-producao')->assertOk()
-            ->assertSee('Apontamentos de produção')->assertSee('Legendas do D3_CF')
+            ->assertSee('Apontamentos OP')->assertSee('Legendas do D3_CF')
             ->assertSee('DOC1')->assertSee('DOC4')->assertSee('000123')->assertSee('Nota fiscal')
             ->assertSee('mov-producao', false)->assertSee('mov-consumo', false)->assertSee('mov-nota_fiscal', false)
             ->assertDontSee('DOC5')->assertDontSee('DOC6')->assertDontSee('DOC7')->assertDontSee('000124');

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
- * Produção > Apontamentos de produção: movimentos do Protheus com OP, só para consulta.
+ * Produção > Apontamentos OP: movimentos do Protheus com OP, só para consulta.
  * SD3 (produções e baixas/consumos, não excluídos nem estornados) e SD2 (notas fiscais com OP), valorizados pelo
  * D3_CUSTO1 / D2_CUSTO1. Os dados vêm da sincronização (Administração > Banco de dados).
  */

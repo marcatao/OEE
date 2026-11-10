@@ -13,6 +13,9 @@ use Illuminate\Database\Query\Builder;
 class ImportadorNotasFiscaisOp extends ImportadorEspelho
 {
     use DiagnosticoCampoOp;
+    use ValorizaPorCustoMedio;
+
+    private ?CustoMedioEstoque $custoMedioEstoque = null;
 
     public const CAMPOS = ['D2_FILIAL', 'D2_DOC', 'D2_SERIE', 'D2_ITEM', 'D2_COD', 'D2_UM', 'D2_QUANT', 'D2_LOCAL', 'D2_EMISSAO',
         'D2_CUSTO1', 'D2_CF', 'D2_CLIENTE', 'D2_LOJA', 'D_E_L_E_T_', 'R_E_C_N_O_'];
@@ -40,6 +43,11 @@ class ImportadorNotasFiscaisOp extends ImportadorEspelho
     protected function campoDataIncremental(): ?string
     {
         return 'D2_EMISSAO';
+    }
+
+    protected function colunasDoItem(): array
+    {
+        return ['d2_filial', 'd2_cod', 'd2_local'];
     }
 
     protected function tabela(): string

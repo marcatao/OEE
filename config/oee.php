@@ -21,7 +21,7 @@ return [
         'dashboard_maquina' => 'Dashboard por máquina',
         'timeline' => 'Timeline das máquinas',
         'apontamentos' => 'Apontamento real (registrar estados das máquinas)',
-        'apontamentos_producao' => 'Apontamentos de produção (produções, baixas e notas do Protheus)',
+        'apontamentos_producao' => 'Apontamentos OP (produções, baixas e notas das OPs no Protheus)',
         'ordens_producao' => 'Ordens de produção (consulta, custos e kardex)',
         'calculadora' => 'Calculadora de OEE',
     ],
