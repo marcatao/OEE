@@ -366,6 +366,74 @@ class OrdensProducaoTest extends TestCase
         $this->get('/producao/apontamentos-de-producao?de=2026-11-06')->assertSee('000123')->assertDontSee('DOC4');
     }
 
+    public function test_sincronizacao_em_etapas_continua_de_onde_parou(): void
+    {
+        config(['protheus.lote' => 50]);
+        foreach (range(1, 230) as $i) {
+            $this->sc2((string) (700000 + $i), 'PA001', 100 + $i);
+        }
+        $sincronizador = app(SincronizadorProtheus::class);
+
+        $registro = $sincronizador->iniciar('ordens_producao', 'manual');
+        $etapas = 0;
+        while ($registro->situacao === 'executando') {
+            $registro = $sincronizador->continuar($registro, 0); // tempo zero: uma página por etapa
+            $etapas++;
+            $this->assertLessThan(10, $etapas);
+        }
+
+        $this->assertSame(5, $etapas);                 // 234 OPs em páginas de 50
+        $this->assertSame(['sucesso', 234, 234, 330], [$registro->situacao, $registro->lidos, $registro->novos, $registro->ultimo_recno]);
+        $this->assertSame(234, OrdemProducao::count());
+        $this->assertSame(1, Sincronizacao::count());  // uma execução só, com os totais somados
+    }
+
+    public function test_botao_sincroniza_pela_etapa_em_json(): void
+    {
+        $admin = Usuario::create(['entra_oid' => 'oid-adm', 'nome' => 'Adm', 'email' => 'adm@empresa.com', 'perfil' => 'admin']);
+
+        $r = $this->actingAs($admin)->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'ordens_producao'])->assertOk()
+            ->assertJson(['tabela' => 'ordens_producao', 'situacao' => 'sucesso', 'terminou' => true, 'lidos' => 4, 'novos' => 4]);
+
+        // Continuar uma execução que já terminou só devolve o resultado.
+        $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'ordens_producao', 'id' => $r->json('id')])
+            ->assertOk()->assertJson(['id' => $r->json('id'), 'terminou' => true]);
+
+        // Execução aberta (por exemplo, pela etapa anterior) continua pelo id.
+        $aberta = app(SincronizadorProtheus::class)->iniciar('produtos', 'manual', $admin);
+        $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'produtos', 'id' => $aberta->id])
+            ->assertOk()->assertJson(['id' => $aberta->id, 'situacao' => 'sucesso', 'novos' => 2]);
+
+        $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'usuarios'])->assertUnprocessable();
+        $this->actingAs($this->usuario(['ordens_producao']))->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'produtos'])->assertForbidden();
+        $this->get('/admin/banco')->assertForbidden();
+    }
+
+    public function test_movimentos_sao_lidos_de_forma_incremental(): void
+    {
+        $op = '50986001001';
+        $this->sd3(1, $op, 'RE0', 'MP001', 1, 10, ['D3_EMISSAO' => '20260105']);   // antigos (fora da janela de 45 dias)
+        $this->sd3(2, $op, 'RE0', 'MP001', 1, 10, ['D3_EMISSAO' => '20260106']);
+        $this->sd3(10, $op, 'RE0', 'MP001', 1, 10, ['D3_EMISSAO' => '20261101']);  // recentes
+        $this->sd3(11, $op, 'RE0', 'MP001', 1, 10, ['D3_EMISSAO' => '20261102']);
+        $this->assertSame(4, $this->sincronizar('movimentos_producao')->lidos);  // primeira vez: tudo
+
+        DB::connection('protheus')->table('SD3')->where('R_E_C_N_O_', 2)->update(['D3_CUSTO1' => 99]);       // mudança antiga
+        DB::connection('protheus')->table('SD3')->where('R_E_C_N_O_', 11)->update(['D3_ESTORNO' => 'S']);     // estorno recente
+        $this->sd3(12, $op, 'PR0', 'PA002', 5, 50, ['D3_EMISSAO' => '20261105']);                              // novo
+
+        $r = $this->sincronizar('movimentos_producao');
+        $this->assertSame([3, 1, 1], [$r->lidos, $r->novos, $r->atualizados]);    // relê só a janela (10, 11) e o novo (12)
+        $this->assertSame('S', DB::table('movimentos_producao')->where('r_e_c_n_o_', 11)->value('d3_estorno'));
+        $this->assertEqualsWithDelta(10, DB::table('movimentos_producao')->where('r_e_c_n_o_', 2)->value('d3_custo1'), 0.001);
+
+        $r = app(SincronizadorProtheus::class)->sincronizar('movimentos_producao', 'comando', completa: true);
+        $this->assertSame([5, 1], [$r->lidos, $r->atualizados]);                  // a completa pega a mudança antiga
+        $this->assertEqualsWithDelta(99, DB::table('movimentos_producao')->where('r_e_c_n_o_', 2)->value('d3_custo1'), 0.001);
+
+        $this->artisan('protheus:sincronizar movimentos_producao --completa')->assertSuccessful();
+    }
+
     public function test_sincroniza_em_lotes_lendo_o_protheus_em_paginas(): void
     {
         config(['protheus.lote' => 50]);

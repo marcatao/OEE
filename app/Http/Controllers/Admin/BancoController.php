@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Sincronizacao;
 use App\Services\InfoBanco;
 use App\Services\Protheus\SincronizadorProtheus;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -60,5 +61,39 @@ class BancoController extends Controller
         }
 
         return redirect()->route('admin.banco')->with($erro ? 'erro' : 'ok', 'Sincronização com o Protheus. '.implode(' ', $mensagens));
+    }
+
+    /**
+     * Uma etapa da sincronização pelo botão: sem "id", abre a execução da tabela; com "id", continua a execução de onde
+     * parou. Cada etapa trabalha no máximo protheus.segundos_por_etapa segundos; a tela chama de novo até "terminou".
+     */
+    public function etapa(Request $request, SincronizadorProtheus $sincronizador): JsonResponse
+    {
+        $dados = $request->validate([
+            'tabela' => ['required', Rule::in(array_keys($sincronizador->itens()))],
+            'id' => ['nullable', 'integer'],
+        ]);
+
+        if (isset($dados['id'])) {
+            $registro = Sincronizacao::where('chave', $dados['tabela'])->findOrFail($dados['id']);
+        } else {
+            $registro = $sincronizador->iniciar($dados['tabela'], 'manual', $request->user());
+        }
+        if ($registro->situacao === 'executando') {
+            $registro = $sincronizador->continuar($registro, max(5, (int) config('protheus.segundos_por_etapa', 25)));
+        }
+
+        return response()->json([
+            'id' => $registro->id,
+            'tabela' => $registro->chave,
+            'descricao' => $sincronizador->itens()[$registro->chave]['descricao'],
+            'situacao' => $registro->situacao,
+            'terminou' => $registro->situacao !== 'executando',
+            'lidos' => (int) $registro->lidos,
+            'novos' => (int) $registro->novos,
+            'atualizados' => (int) $registro->atualizados,
+            'excluidos' => (int) $registro->excluidos,
+            'mensagem' => $registro->mensagem,
+        ]);
     }
 }

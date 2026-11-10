@@ -213,6 +213,18 @@ de cada código) ficam em `config/protheus.php` (`legendas_d3_cf`) e podem ser a
 Clicando na OP abre o **kardex**: resumo de custo, consumo por componente e todos os movimentos em ordem de data, com
 produzido, custo e custo unitário acumulados. A tela antiga de apontamentos agora se chama **Apontamento real**.
 
+**Botão em etapas**: o botão **Sincronizar com o Protheus** não roda tudo numa requisição só (o IIS corta o PHP
+depois do `activityTimeout` do FastCGI, 70 s por padrão: "The FastCGI process exceeded configured activity timeout").
+Cada etapa trabalha no máximo 25 s (`PROTHEUS_SEGUNDOS_POR_ETAPA`), grava até onde chegou (último `R_E_C_N_O_`, em
+`sincronizacoes.ultimo_recno`) e a tela chama a próxima, mostrando o andamento de cada tabela. Mantenha a página
+aberta até terminar. O comando `php artisan protheus:sincronizar` e o agendamento rodam tudo de uma vez (no PHP de
+linha de comando não há esse limite).
+
+**Leitura incremental dos movimentos** (SD3 e SD2, que só crescem): depois da primeira vez, cada sincronização lê só os
+registros novos e os dos últimos 45 dias (`PROTHEUS_RELER_DIAS`), para pegar estornos e exclusões recentes. Uma vez
+por semana (domingo 03:17, `PROTHEUS_SINCRONIZAR_CRON_COMPLETA`, se a sincronização automática estiver ligada) roda a
+leitura **completa**; à mão: `php artisan protheus:sincronizar --completa`.
+
 **Sincronização em lotes**: as tabelas grandes (SB1, SC2, SD3, SD2) são lidas do Protheus e gravadas de 1.000 em 1.000 linhas
 (`PROTHEUS_SINCRONIZAR_LOTE`), então a memória do PHP não cresce com o tamanho da tabela (60 mil OPs usam cerca de
 35 MB). Cada lote é gravado à parte: se a sincronização parar no meio, o que já foi gravado fica. A execução em

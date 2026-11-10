@@ -47,6 +47,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   fiscal". Valor = D3_CUSTO1 / D2_CUSTO1. Custo atual = (baixas − devoluções) ÷ produzido; `ordens_producao.custo_meta`
   = custo do fechamento mais recente do produto na SB9, gravado a cada sincronização das OPs (a SB9 NÃO é copiada).
   A tela "Apontamento real" é a antiga "Apontamentos" (permissão `apontamentos`, a chave não muda).
+- Sincronização sem estourar o tempo do IIS: o botão da tela Banco de dados usa `SincronizadorProtheus::iniciar()` +
+  `continuar($registro, segundos)` em etapas (rota `admin.banco.sincronizar.etapa`, JSON; `protheus.segundos_por_etapa`),
+  retomando de `sincronizacoes.ultimo_recno`. Nunca rode uma sincronização inteira dentro de uma requisição web.
+  SD3/SD2 são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
+  `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
   Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
   área de resultado é trocada sem recarregar a página (`?parcial=1`). Os filtros podem ser escondidos (botão +

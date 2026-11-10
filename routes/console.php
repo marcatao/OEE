@@ -54,7 +54,7 @@ Artisan::command('usuarios:ativar {email} {--desativar : Bloqueia a entrada do u
 })->purpose('Ativa ou desativa um usuário do portal');
 
 // Sincronização com o Protheus (só leitura). Mesmo serviço do botão em Administração > Banco de dados.
-$sincronizarProtheus = function ($comando, ?string $tabela, string $disparo): int {
+$sincronizarProtheus = function ($comando, ?string $tabela, string $disparo, bool $completa = false): int {
     $sincronizador = app(SincronizadorProtheus::class);
     $chaves = $tabela ? [$tabela] : array_keys($sincronizador->itens());
     $falhou = false;
@@ -66,7 +66,7 @@ $sincronizarProtheus = function ($comando, ?string $tabela, string $disparo): in
             return 1;
         }
         $comando->info("Sincronizando {$chave} a partir de {$sincronizador->origem($chave)}...");
-        $r = $sincronizador->sincronizar($chave, $disparo);
+        $r = $sincronizador->sincronizar($chave, $disparo, completa: $completa);
         if ($r->situacao === 'sucesso') {
             $comando->info("  OK: {$r->lidos} lidos, {$r->novos} novos, {$r->atualizados} atualizados, {$r->excluidos} excluídos no Protheus, {$r->ignorados} sem alteração.");
         } else {
@@ -78,9 +78,9 @@ $sincronizarProtheus = function ($comando, ?string $tabela, string $disparo): in
     return $falhou ? 1 : 0;
 };
 
-Artisan::command('protheus:sincronizar {tabela? : Só esta tabela (ex.: centros_custo); vazio = todas} {--agendado : Marca a execução como automática no histórico}', function (?string $tabela = null) use ($sincronizarProtheus) {
-    return $sincronizarProtheus($this, $tabela, $this->option('agendado') ? 'agendado' : 'comando');
-})->purpose('Sincroniza as tabelas do Protheus (hoje: centros de custo da CTT) com o portal');
+Artisan::command('protheus:sincronizar {tabela? : Só esta tabela (ex.: centros_custo); vazio = todas} {--agendado : Marca a execução como automática no histórico} {--completa : Relê as tabelas de movimento (SD3, SD2) inteiras, não só as novidades}', function (?string $tabela = null) use ($sincronizarProtheus) {
+    return $sincronizarProtheus($this, $tabela, $this->option('agendado') ? 'agendado' : 'comando', (bool) $this->option('completa'));
+})->purpose('Sincroniza as tabelas do Protheus (config/protheus.php) com o portal');
 
 Artisan::command('protheus:centros-custo', function () use ($sincronizarProtheus) {
     return $sincronizarProtheus($this, 'centros_custo', 'comando');
@@ -90,4 +90,7 @@ Artisan::command('protheus:centros-custo', function () use ($sincronizarProtheus
 // ("php artisan schedule:work" como serviço, ou "php artisan schedule:run" a cada minuto no Agendador de Tarefas).
 if ($agenda = config('protheus.agenda')) {
     Schedule::command('protheus:sincronizar --agendado')->cron($agenda)->withoutOverlapping();
+    if ($completa = config('protheus.agenda_completa')) {
+        Schedule::command('protheus:sincronizar --agendado --completa')->cron($completa)->withoutOverlapping();
+    }
 }

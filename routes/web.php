@@ -83,6 +83,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('perfil:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('banco', BancoController::class)->name('banco');
         Route::post('banco/sincronizar', [BancoController::class, 'sincronizar'])->name('banco.sincronizar');
+        // Botão da tela: sincroniza em etapas curtas (JSON), sem estourar o tempo limite do IIS.
+        Route::post('banco/sincronizar/etapa', [BancoController::class, 'etapa'])->name('banco.sincronizar.etapa');
 
         Route::get('maquinas', [MaquinaController::class, 'index'])->name('maquinas.index');
         Route::get('maquinas/nova', [MaquinaController::class, 'create'])->name('maquinas.create');

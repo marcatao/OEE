@@ -45,6 +45,43 @@ abstract class ImportadorEspelho implements ImportadorProtheus
         return [];
     }
 
+    /** true = o importador usa depoisDoLote() (ex.: OPs); evita buscar os ids do lote à toa nas outras tabelas. */
+    protected function recalculaLote(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Campo de data da origem (AAAAMMDD) para a leitura incremental, ex.: D3_EMISSAO. null = sempre lê a tabela toda.
+     */
+    protected function campoDataIncremental(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Leitura incremental (tabelas de movimento, que só crescem): em vez de reler a tabela toda, começa no menor entre
+     * (a) o R_E_C_N_O_ seguinte ao maior já copiado e (b) o primeiro R_E_C_N_O_ dos últimos protheus.reler_dias dias
+     * (para pegar estornos e exclusões recentes). Na primeira vez, ou com $completa, lê tudo (devolve null).
+     */
+    public function primeiroRecno(string $tabelaOrigem, bool $completa): ?int
+    {
+        $campoData = $this->campoDataIncremental();
+        if ($completa || $campoData === null) {
+            return null;
+        }
+        $maior = DB::table($this->tabela())->max('r_e_c_n_o_');
+        if ($maior === null) {
+            return null; // primeira sincronização: tudo
+        }
+        $dias = max(1, (int) config('protheus.reler_dias', 45));
+        $primeiroDaJanela = DB::connection('protheus')->table($tabelaOrigem)
+            ->where($campoData, '>=', now(config('oee.fuso_exibicao'))->subDays($dias)->format('Ymd'))
+            ->min('R_E_C_N_O_');
+
+        return min((int) $maior + 1, $primeiroDaJanela !== null ? (int) $primeiroDaJanela : (int) $maior + 1);
+    }
+
     /** Ajustes na linha nova antes de inserir (ex.: status inicial). */
     protected function completarNova(array $linha): array
     {
@@ -143,6 +180,9 @@ abstract class ImportadorEspelho implements ImportadorProtheus
                 $resumo['novos'] += count($novas);
             }
 
+            if (! $this->recalculaLote()) {
+                return;
+            }
             // Ids de todas as linhas do lote no portal (para recalcular campos do portal, ex.: status da OP).
             $idsDoLote = [];
             foreach (array_chunk(array_values(array_unique(array_column($porChave, $this->colunaBusca()))), 1000) as $valores) {

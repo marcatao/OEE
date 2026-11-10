@@ -20,15 +20,20 @@
   <div class="titulo-com-acao">
     <h2>Integração com o Protheus</h2>
     @if ($sincronizacoes)
-      <form method="post" action="{{ route('admin.banco.sincronizar') }}"
-            onsubmit="this.querySelector('button').disabled = true; this.querySelector('button span').textContent = 'Sincronizando...';">
+      <form method="post" action="{{ route('admin.banco.sincronizar') }}" data-sincronizar>
         @csrf
         <button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'atualizar']) <span>Sincronizar com o Protheus</span></button>
       </form>
     @endif
   </div>
   <p class="suave">Os dados do Protheus são só <strong>lidos</strong>: a sincronização copia para o portal e nunca
-    altera nada no Protheus. Pode rodar quantas vezes quiser; ela só grava o que mudou.</p>
+    altera nada no Protheus. Pode rodar quantas vezes quiser; ela só grava o que mudou. Pelo botão, ela roda em
+    etapas curtas e mostra o andamento aqui: mantenha a página aberta até terminar.</p>
+
+  <div id="sinc-progresso" class="sinc-progresso" aria-live="polite" hidden>
+    <strong>Sincronizando com o Protheus…</strong>
+    <ul></ul>
+  </div>
 
   <dl class="dados-curtos">
     <div><dt>Servidor</dt><dd><code>{{ $conexaoProtheus['Servidor'] ?? '-' }}</code></dd></div>
@@ -63,7 +68,7 @@
           @endif
         </td>
         <td>
-          <form method="post" action="{{ route('admin.banco.sincronizar') }}">
+          <form method="post" action="{{ route('admin.banco.sincronizar') }}" data-sincronizar data-tabela="{{ $chave }}">
             @csrf
             <input type="hidden" name="tabela" value="{{ $chave }}">
             <button class="botao secundario pequeno" type="submit">Sincronizar só esta</button>
@@ -143,5 +148,86 @@
     <p class="erro">Há tabelas não criadas: rode <code>php artisan migrate</code> no servidor.</p>
   @endif
 </section>
+@endif
+
+@if ($sincronizacoes)
+<script>
+(function () {
+  var url = @json(route('admin.banco.sincronizar.etapa'));
+  var tabelas = @json(array_keys($sincronizacoes));
+  var nomes = @json(collect($sincronizacoes)->map(fn ($i) => $i['descricao']));
+  var painel = document.getElementById('sinc-progresso');
+  var lista = painel.querySelector('ul');
+  var rodando = false;
+  var numero = function (n) { return Number(n || 0).toLocaleString('pt-BR'); };
+  var espera = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+
+  window.addEventListener('beforeunload', function (e) { if (rodando) { e.preventDefault(); e.returnValue = ''; } });
+
+  document.querySelectorAll('form[data-sincronizar]').forEach(function (form) {
+    form.addEventListener('submit', function (ev) {
+      if (!window.fetch) return; // sem fetch: envia o formulário do jeito antigo
+      ev.preventDefault();
+      if (rodando) return;
+      rodando = true;
+      document.querySelectorAll('form[data-sincronizar] button').forEach(function (b) { b.disabled = true; });
+      var token = form.querySelector('input[name="_token"]').value;
+      executar(form.dataset.tabela ? [form.dataset.tabela] : tabelas, token);
+    });
+  });
+
+  // Uma etapa no servidor; tenta de novo se a rede ou o servidor falharem (a etapa seguinte continua de onde parou).
+  async function etapa(tabela, id, token) {
+    for (var tentativa = 1; ; tentativa++) {
+      try {
+        var corpo = new FormData();
+        corpo.append('_token', token);
+        corpo.append('tabela', tabela);
+        if (id) corpo.append('id', id);
+        var r = await fetch(url, { method: 'POST', body: corpo, credentials: 'same-origin',
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+        if (r.ok) return await r.json();
+        if (r.status === 419) throw new Error('A sessão expirou. Atualize a página e tente de novo.');
+        if (tentativa >= 4) throw new Error('O servidor respondeu ' + r.status + '.');
+      } catch (e) {
+        if (tentativa >= 4 || /sessão/.test(e.message)) throw e;
+      }
+      await espera(3000 * tentativa);
+    }
+  }
+
+  async function executar(chaves, token) {
+    painel.hidden = false;
+    lista.innerHTML = '';
+    var falhou = false;
+    for (var i = 0; i < chaves.length; i++) {
+      var item = document.createElement('li');
+      item.textContent = nomes[chaves[i]] + ': começando…';
+      lista.appendChild(item);
+      var id = null;
+      try {
+        for (;;) {
+          var r = await etapa(chaves[i], id, token);
+          id = r.id;
+          var texto = r.descricao + ': ' + numero(r.lidos) + ' lidos, ' + numero(r.novos) + ' novos, ' + numero(r.atualizados) + ' atualizados'
+            + (r.excluidos ? ', ' + numero(r.excluidos) + ' excluídos' : '');
+          if (!r.terminou) { item.textContent = texto + '… (em andamento)'; continue; }
+          if (r.situacao === 'sucesso') { item.textContent = '✓ ' + texto + '.'; item.className = 'ok'; }
+          else { item.textContent = '✗ ' + r.descricao + ': ' + (r.mensagem || 'falhou'); item.className = 'erro'; falhou = true; }
+          break;
+        }
+      } catch (e) {
+        item.textContent = '✗ ' + nomes[chaves[i]] + ': ' + e.message; item.className = 'erro'; falhou = true;
+      }
+    }
+    rodando = false;
+    var fim = document.createElement('li');
+    fim.innerHTML = '<strong>' + (falhou ? 'Terminou com erros.' : 'Sincronização concluída.') + '</strong> Atualizando a página…';
+    lista.appendChild(fim);
+    await espera(falhou ? 6000 : 2500);
+    location.reload();
+  }
+})();
+</script>
 @endif
 @endsection

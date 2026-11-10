@@ -94,6 +94,11 @@ class ImportadorOrdensProducao extends ImportadorEspelho
      * A cada lote, recalcula o status de TODAS as OPs do lote (não só das que mudaram no Protheus): assim o status
      * acompanha também os apontamentos e mudanças de regra. Também grava o custo meta (SB9). Só grava as que mudaram.
      */
+    protected function recalculaLote(): bool
+    {
+        return true;
+    }
+
     protected function depoisDoLote(array $idsDoLote, array $alterados): array
     {
         return array_values(array_unique([

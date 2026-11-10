@@ -37,6 +37,12 @@ class ImportadorMovimentosProducao extends ImportadorEspelho
         return strlen($desde) === 8 ? $consulta->where('D3_EMISSAO', '>=', $desde) : $consulta;
     }
 
+    /** Movimentos só crescem: lê os novos e relê os últimos dias (estornos e exclusões). Ver primeiroRecno(). */
+    protected function campoDataIncremental(): ?string
+    {
+        return 'D3_EMISSAO';
+    }
+
     protected function tabela(): string
     {
         return 'movimentos_producao';

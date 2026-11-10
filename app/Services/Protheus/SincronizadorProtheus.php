@@ -31,17 +31,32 @@ class SincronizadorProtheus
     }
 
     /** @return array<string, Sincronizacao> uma execução por tabela */
-    public function sincronizarTudo(string $disparo, ?Usuario $usuario = null): array
+    public function sincronizarTudo(string $disparo, ?Usuario $usuario = null, bool $completa = false): array
     {
         $resultado = [];
         foreach (array_keys($this->itens()) as $chave) {
-            $resultado[$chave] = $this->sincronizar($chave, $disparo, $usuario);
+            $resultado[$chave] = $this->sincronizar($chave, $disparo, $usuario, $completa);
         }
 
         return $resultado;
     }
 
-    public function sincronizar(string $chave, string $disparo, ?Usuario $usuario = null): Sincronizacao
+    /**
+     * Sincronização inteira de uma tabela, de uma vez (comando e agendamento: no PHP de linha de comando não há tempo
+     * limite). Com $completa = false, as tabelas incrementais (SD3, SD2) leem só o que é novo e a janela de releitura.
+     */
+    public function sincronizar(string $chave, string $disparo, ?Usuario $usuario = null, bool $completa = false): Sincronizacao
+    {
+        $registro = $this->iniciar($chave, $disparo, $usuario, $completa);
+
+        return $registro->situacao === 'executando' ? $this->continuar($registro) : $registro;
+    }
+
+    /**
+     * Abre uma execução (situação "executando") sem processar nada ainda. Recusa (situação "erro") se outra execução
+     * da mesma tabela estiver em andamento. Depois, chame continuar() quantas vezes for preciso.
+     */
+    public function iniciar(string $chave, string $disparo, ?Usuario $usuario = null, bool $completa = false): Sincronizacao
     {
         $item = $this->item($chave);
         $dados = ['chave' => $chave, 'origem' => Str::limit($this->origem($chave), 157), 'disparo' => $disparo,
@@ -69,19 +84,58 @@ class SincronizadorProtheus
         }
 
         try {
-            $tabela = $item['tabela_origem'];
-            if (! preg_match('/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?$/', $tabela)) {
-                throw new InvalidArgumentException("Nome de tabela de origem inválido: {$tabela}");
+            $tabela = $this->tabelaOrigem($item);
+            $importador = app($item['importador']);
+            // Leitura incremental (SD3, SD2): começa no primeiro R_E_C_N_O_ que precisa ser relido.
+            $primeiro = $importador instanceof ImportadorEspelho ? $importador->primeiroRecno($tabela, $completa) : null;
+            if ($primeiro !== null) {
+                $registro->update(['ultimo_recno' => $primeiro - 1]);
             }
+        } catch (Throwable $e) {
+            Log::warning("Falha ao sincronizar {$chave} com o Protheus", ['erro' => $e->getMessage()]);
+
+            return $this->terminar($registro, 'erro', mensagem: $e->getMessage());
+        }
+
+        return $registro;
+    }
+
+    /**
+     * Processa a execução a partir do último R_E_C_N_O_ gravado. Com $segundos, para depois do lote em que o tempo
+     * acabar e deixa a execução "executando" para a próxima etapa (o botão da tela chama de novo); sem, vai até o fim.
+     * Tabelas que não são cópia em lotes (centros de custo, máquinas) sempre vão até o fim de uma vez (são pequenas).
+     */
+    public function continuar(Sincronizacao $registro, ?float $segundos = null): Sincronizacao
+    {
+        $passo = Cache::lock("protheus-passo-{$registro->id}", 900);
+        if (! $passo->get()) {
+            return $registro->fresh(); // outra etapa desta execução ainda está rodando
+        }
+        try {
+            $registro->refresh();
+            if ($registro->situacao !== 'executando') {
+                return $registro;
+            }
+            $item = $this->item($registro->chave);
+            $tabela = $this->tabelaOrigem($item);
 
             /** @var ImportadorProtheus $importador */
             $importador = app($item['importador']);
+            if (! $importador instanceof ImportadorEspelho) {
+                $segundos = null;
+            }
+            $limite = $segundos !== null ? microtime(true) + $segundos : null;
+            $base = (int) $registro->lidos;
             $lidos = 0;
+            $ultimo = $registro->ultimo_recno;
+            $terminou = false;
             $porPagina = max(50, (int) config('protheus.lote', 1000));
             // Lê o Protheus em páginas (ordem de R_E_C_N_O_): nunca carrega a tabela inteira na memória.
-            $linhas = (function () use ($importador, $tabela, $porPagina, $registro, &$lidos) {
-                $ultimo = null;
+            $linhas = (function () use ($importador, $tabela, $porPagina, $registro, $base, $limite, &$lidos, &$ultimo, &$terminou) {
                 do {
+                    if ($limite !== null && $lidos > 0 && microtime(true) >= $limite) {
+                        return; // tempo desta etapa acabou: a próxima continua do último R_E_C_N_O_
+                    }
                     $consulta = DB::connection('protheus')->table($tabela)->select($importador->campos());
                     if (method_exists($importador, 'filtrar')) {
                         $consulta = $importador->filtrar($consulta); // ex.: só OPs a partir de uma data
@@ -92,23 +146,49 @@ class SincronizadorProtheus
                     $pagina = $consulta->orderBy('R_E_C_N_O_')->limit($porPagina)->get();
                     foreach ($pagina as $linha) {
                         $lidos++;
-                        $ultimo = array_change_key_case((array) $linha, CASE_UPPER)['R_E_C_N_O_'];
+                        $ultimo = (int) array_change_key_case((array) $linha, CASE_UPPER)['R_E_C_N_O_'];
                         yield $linha;
                     }
                     $quantos = $pagina->count();
                     unset($pagina);
-                    $registro->update(['lidos' => $lidos, 'sinal_em' => now()]); // sinal de vida a cada página
+                    $registro->update(['lidos' => $base + $lidos, 'sinal_em' => now()]); // sinal de vida a cada página
                 } while ($quantos === $porPagina);
+                $terminou = true;
             })();
 
             $resumo = $importador->importar($linhas);
 
-            return $this->terminar($registro, 'sucesso', $resumo + ['lidos' => $lidos]);
-        } catch (Throwable $e) {
-            Log::warning("Falha ao sincronizar {$chave} com o Protheus", ['erro' => $e->getMessage()]);
+            // Soma desta etapa com as anteriores.
+            $totais = ['lidos' => $base + $lidos];
+            foreach (['novos', 'atualizados', 'ignorados', 'excluidos'] as $campo) {
+                $totais[$campo] = (int) $registro->{$campo} + (int) ($resumo[$campo] ?? 0);
+            }
+            if (! $terminou) {
+                $registro->update($totais + ['ultimo_recno' => $ultimo, 'sinal_em' => now()]);
 
-            return $this->terminar($registro, 'erro', mensagem: $e->getMessage());
+                return $registro;
+            }
+
+            return $this->terminar($registro, 'sucesso', $totais + ['ultimo_recno' => $ultimo]);
+        } catch (Throwable $e) {
+            Log::warning("Falha ao sincronizar {$registro->chave} com o Protheus", ['erro' => $e->getMessage()]);
+
+            return $this->terminar($registro, 'erro', ['lidos' => $registro->lidos, 'novos' => $registro->novos,
+                'atualizados' => $registro->atualizados, 'ignorados' => $registro->ignorados, 'excluidos' => $registro->excluidos],
+                $e->getMessage());
+        } finally {
+            $passo->release();
         }
+    }
+
+    private function tabelaOrigem(array $item): string
+    {
+        $tabela = $item['tabela_origem'];
+        if (! preg_match('/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?$/', $tabela)) {
+            throw new InvalidArgumentException("Nome de tabela de origem inválido: {$tabela}");
+        }
+
+        return $tabela;
     }
 
     /**
@@ -157,7 +237,7 @@ class SincronizadorProtheus
             'ignorados' => $resumo['ignorados'] ?? 0,
             'excluidos' => $resumo['excluidos'] ?? 0,
             'mensagem' => $mensagem ? Str::limit($mensagem, 997) : null,
-        ]);
+        ] + (array_key_exists('ultimo_recno', $resumo) ? ['ultimo_recno' => $resumo['ultimo_recno']] : []));
 
         return $registro;
     }

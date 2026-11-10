@@ -390,3 +390,6 @@ input:disabled, select:disabled, textarea:disabled { background:var(--fundo); co
 .tabela tfoot td { font-weight:600; border-top:2px solid var(--borda-forte); }
 .tabela .kx-entrada { color:var(--ok); }
 .tabela .kx-saida { color:var(--erro); }
+.sinc-progresso { margin:1rem 0; padding:.9rem 1.1rem; border:1px solid var(--protheus); border-radius:10px; background:var(--protheus-suave); }
+.sinc-progresso ul { margin:.5rem 0 0; padding-left:1.1rem; font-size:.92rem; }
+.sinc-progresso li + li { margin-top:.25rem; }

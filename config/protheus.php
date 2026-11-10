@@ -111,6 +111,19 @@ return [
     // como serviço (veja o README, "Sincronização automática com o Protheus").
     'agenda' => env('PROTHEUS_SINCRONIZAR_CRON', ''),
 
+    // Leitura completa das tabelas incrementais (SD3, SD2), para pegar mudanças antigas fora da janela de releitura.
+    // Padrão: domingo às 03:17 (só se a sincronização automática estiver ligada). Vazio = nunca (use o comando
+    // "php artisan protheus:sincronizar --completa").
+    'agenda_completa' => env('PROTHEUS_SINCRONIZAR_CRON_COMPLETA', '17 3 * * 0'),
+
+    // Movimentos (SD3, SD2): a cada sincronização são lidos os registros novos e os dos últimos N dias (estornos e
+    // exclusões costumam ser recentes). A primeira sincronização e a completa leem tudo.
+    'reler_dias' => (int) env('PROTHEUS_RELER_DIAS', 45),
+
+    // Botão da tela Banco de dados: cada etapa (requisição) trabalha no máximo este tempo (segundos) e a tela chama a
+    // próxima. Deixe bem abaixo do "activityTimeout" do FastCGI no IIS (padrão 70 s).
+    'segundos_por_etapa' => (int) env('PROTHEUS_SEGUNDOS_POR_ETAPA', 25),
+
     // Ordens de produção, movimentos (SD3) e notas (SD2): só os emitidos a partir desta data (AAAAMMDD). Vazio = todos.
     'sc2_desde' => env('PROTHEUS_SC2_DESDE', ''),
 
