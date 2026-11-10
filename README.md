@@ -205,8 +205,8 @@ fiscal com OP (`D2_OP`, ou `PROTHEUS_SD2_CAMPO_OP`), com a legenda **Nota fiscal
 `D3_CUSTO1` / `D2_CUSTO1`. As legendas do `D3_CF` (PR = produção, RE = baixa/consumo, DE = devolução, com a descrição
 de cada código) ficam em `config/protheus.php` (`legendas_d3_cf`) e podem ser ajustadas. Na lista de OPs:
 - **Custo atual** = (baixas − devoluções) ÷ quantidade produzida (PR);
-- **Custo meta** = custo unitário do **fechamento mais recente** do produto na **SB9** (maior `B9_DATA`, de preferência
-  da filial da OP; com vários armazéns, soma de `B9_VINI1` ÷ soma de `B9_QINI`; sem saldo, `B9_CM1`). A SB9 não é
+- **Custo meta** = custo unitário do **fechamento mais recente** do produto na **SB9** (maior `B9_DATA`, na filial
+  da OP ou, se não houver, na filial em branco/compartilhada; com vários armazéns, soma de `B9_VINI1` ÷ soma de `B9_QINI`; sem saldo, `B9_CM1`). A SB9 não é
   copiada: só esse valor é gravado em `ordens_producao.custo_meta`, a cada sincronização das OPs;
 - **Divergência** = (atual − meta) ÷ meta. Acima da meta além de ±5% (`OEE_CUSTO_TOLERANCIA`) fica em vermelho, abaixo em verde.
 
@@ -217,7 +217,10 @@ produzido, custo e custo unitário acumulados. A tela antiga de apontamentos ago
 depois do `activityTimeout` do FastCGI, 70 s por padrão: "The FastCGI process exceeded configured activity timeout").
 Cada etapa trabalha no máximo 25 s (`PROTHEUS_SEGUNDOS_POR_ETAPA`), grava até onde chegou (último `R_E_C_N_O_`, em
 `sincronizacoes.ultimo_recno`) e a tela chama a próxima, mostrando o andamento de cada tabela. Mantenha a página
-aberta até terminar. O comando `php artisan protheus:sincronizar` e o agendamento rodam tudo de uma vez (no PHP de
+aberta até terminar. Se uma etapa for cortada (ou a página for fechada), clicar de novo **retoma** a execução em
+andamento do último lote gravado, em vez de dar erro. Lotes que levam mais de 10 s ficam registrados em
+`storage/logs/laravel.log`, para achar o que está lento. Se a SD3 ou a SD2 terminarem com 0 linhas, o resultado diz
+o motivo (ex.: o campo da OP está vazio e qual outro campo de OP tem dados). O comando `php artisan protheus:sincronizar` e o agendamento rodam tudo de uma vez (no PHP de
 linha de comando não há esse limite).
 
 **Leitura incremental dos movimentos** (SD3 e SD2, que só crescem): depois da primeira vez, cada sincronização lê só os

@@ -60,6 +60,7 @@
             <span class="etiqueta sinc-{{ $u->situacao }}">{{ ['sucesso' => 'Sucesso', 'erro' => 'Erro', 'executando' => 'Em andamento'][$u->situacao] ?? $u->situacao }}</span>
             @if ($u->situacao === 'sucesso')
               <small class="suave">{{ $u->lidos }} lidos · {{ $u->novos }} novos · {{ $u->atualizados }} atualizados @if ($u->excluidos) · {{ $u->excluidos }} excluídos @endif</small>
+              @if ($u->mensagem)<br><small class="texto-alerta">{{ $u->mensagem }}</small>@endif
             @elseif ($u->mensagem)
               <br><small class="erro">{{ \Illuminate\Support\Str::limit($u->mensagem, 160) }}</small>
             @endif
@@ -199,23 +200,30 @@
   async function executar(chaves, token) {
     painel.hidden = false;
     lista.innerHTML = '';
-    var falhou = false;
+    var falhou = false, aviso = false;
     for (var i = 0; i < chaves.length; i++) {
       var item = document.createElement('li');
       item.textContent = nomes[chaves[i]] + ': começando…';
       lista.appendChild(item);
-      var id = null;
       try {
-        for (;;) {
-          var r = await etapa(chaves[i], id, token);
-          id = r.id;
-          var texto = r.descricao + ': ' + numero(r.lidos) + ' lidos, ' + numero(r.novos) + ' novos, ' + numero(r.atualizados) + ' atualizados'
-            + (r.excluidos ? ', ' + numero(r.excluidos) + ' excluídos' : '');
-          if (!r.terminou) { item.textContent = texto + '… (em andamento)'; continue; }
-          if (r.situacao === 'sucesso') { item.textContent = '✓ ' + texto + '.'; item.className = 'ok'; }
-          else { item.textContent = '✗ ' + r.descricao + ': ' + (r.mensagem || 'falhou'); item.className = 'erro'; falhou = true; }
-          break;
+        // 1ª chamada: abre a execução (ou retoma a que já está em andamento) e devolve o id; as outras continuam pelo id.
+        var r = await etapa(chaves[i], null, token);
+        var anterior = -1;
+        if (r.retomada) item.textContent = r.descricao + ': continuando a sincronização em andamento…';
+        while (!r.terminou) {
+          if (r.lidos === anterior) await espera(3000); // outra etapa ainda está rodando no servidor: aguarda
+          anterior = r.lidos;
+          r = await etapa(chaves[i], r.id, token);
+          if (!r.terminou) item.textContent = r.descricao + ': ' + numero(r.lidos) + ' lidos, ' + numero(r.novos) + ' novos, '
+            + numero(r.atualizados) + ' atualizados… (em andamento)';
         }
+        var texto = r.descricao + ': ' + numero(r.lidos) + ' lidos, ' + numero(r.novos) + ' novos, ' + numero(r.atualizados) + ' atualizados'
+          + (r.excluidos ? ', ' + numero(r.excluidos) + ' excluídos' : '');
+        if (r.situacao === 'sucesso') {
+          item.textContent = '✓ ' + texto + '.' + (r.mensagem ? ' ' + r.mensagem : '');
+          item.className = r.mensagem ? 'texto-alerta' : 'ok';
+          if (r.mensagem) aviso = true;
+        } else { item.textContent = '✗ ' + r.descricao + ': ' + (r.mensagem || 'falhou'); item.className = 'erro'; falhou = true; }
       } catch (e) {
         item.textContent = '✗ ' + nomes[chaves[i]] + ': ' + e.message; item.className = 'erro'; falhou = true;
       }
@@ -224,7 +232,7 @@
     var fim = document.createElement('li');
     fim.innerHTML = '<strong>' + (falhou ? 'Terminou com erros.' : 'Sincronização concluída.') + '</strong> Atualizando a página…';
     lista.appendChild(fim);
-    await espera(falhou ? 6000 : 2500);
+    await espera(falhou || aviso ? 8000 : 2500);
     location.reload();
   }
 })();

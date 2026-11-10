@@ -20,8 +20,10 @@ use App\Services\Protheus\ImportadorProdutos;
 use App\Services\Protheus\SincronizadorProtheus;
 use App\Services\StatusOrdemProducao;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Events\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -263,7 +265,7 @@ class OrdensProducaoTest extends TestCase
         $this->sb9('PA002', '20260930', 50, 90, 1.8, 1);                  // fechamento antigo: não vale
         $this->sb9('PA002', '20261031', 100, 180, 1.8, 2, '01');          // mais recente, dois armazéns:
         $this->sb9('PA002', '20261031', 50, 120, 2.4, 3, '02');           // (180 + 120) ÷ 150 = 2,00
-        $this->sb9('PA001', '20261031', 10, 15, 1.5, 4, '01', '02');      // outra filial (sem fechamento na filial 01)
+        $this->sb9('PA001', '20261031', 10, 15, 1.5, 4, '01', '02');      // outra filial (não vale para OP da filial 01)
 
         $op = '50986001001   ';
         $this->sd3(1, $op, 'RE1', 'MP001', 10, 150);
@@ -308,7 +310,7 @@ class OrdensProducaoTest extends TestCase
 
         $meta = fn (string $numero) => OrdemProducao::where('numero', $numero)->value('custo_meta');
         $this->assertEqualsWithDelta(2.0, $meta('50986001001'), 0.0001);  // PA002: média ponderada dos armazéns
-        $this->assertEqualsWithDelta(1.5, $meta('50985901001'), 0.0001);  // PA001: só há fechamento em outra filial
+        $this->assertNull($meta('50985901001'));                          // PA001: só há fechamento em outra filial
 
         // Novo fechamento no Protheus: a próxima sincronização das OPs atualiza a meta (sem mudar nada na SC2).
         $this->sb9('PA002', '20261130', 10, 25, 2.5, 5);
@@ -392,21 +394,81 @@ class OrdensProducaoTest extends TestCase
     {
         $admin = Usuario::create(['entra_oid' => 'oid-adm', 'nome' => 'Adm', 'email' => 'adm@empresa.com', 'perfil' => 'admin']);
 
+        // 1ª chamada só abre a execução e devolve o id na hora.
         $r = $this->actingAs($admin)->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'ordens_producao'])->assertOk()
-            ->assertJson(['tabela' => 'ordens_producao', 'situacao' => 'sucesso', 'terminou' => true, 'lidos' => 4, 'novos' => 4]);
+            ->assertJson(['tabela' => 'ordens_producao', 'situacao' => 'executando', 'terminou' => false, 'retomada' => false, 'lidos' => 0]);
+        $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'ordens_producao', 'id' => $r->json('id')])->assertOk()
+            ->assertJson(['id' => $r->json('id'), 'situacao' => 'sucesso', 'terminou' => true, 'lidos' => 4, 'novos' => 4]);
 
         // Continuar uma execução que já terminou só devolve o resultado.
         $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'ordens_producao', 'id' => $r->json('id')])
             ->assertOk()->assertJson(['id' => $r->json('id'), 'terminou' => true]);
 
-        // Execução aberta (por exemplo, pela etapa anterior) continua pelo id.
+        // Já existe uma execução em andamento (ex.: a etapa anterior foi cortada pelo IIS): o botão retoma essa, sem erro.
         $aberta = app(SincronizadorProtheus::class)->iniciar('produtos', 'manual', $admin);
+        $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'produtos'])
+            ->assertOk()->assertJson(['id' => $aberta->id, 'retomada' => true, 'terminou' => false]);
         $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'produtos', 'id' => $aberta->id])
             ->assertOk()->assertJson(['id' => $aberta->id, 'situacao' => 'sucesso', 'novos' => 2]);
+        $this->assertSame(0, Sincronizacao::where('situacao', 'erro')->count());
 
         $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'usuarios'])->assertUnprocessable();
         $this->actingAs($this->usuario(['ordens_producao']))->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'produtos'])->assertForbidden();
         $this->get('/admin/banco')->assertForbidden();
+    }
+
+    public function test_etapa_cortada_no_meio_retoma_do_ultimo_lote_gravado(): void
+    {
+        config(['protheus.lote' => 50]);
+        foreach (range(1, 230) as $i) {
+            $this->sc2((string) (700000 + $i), 'PA001', 100 + $i);
+        }
+        $sincronizador = app(SincronizadorProtheus::class);
+        $registro = $sincronizador->iniciar('ordens_producao', 'manual');
+
+        // Simula o IIS matando o PHP no meio da 3ª página: os 2 primeiros lotes já foram gravados.
+        $chamadas = 0;
+        DB::connection('protheus')->listen(function ($q) use (&$chamadas) {
+            if (str_contains($q->sql, '"SC2"') && ++$chamadas === 3) {
+                throw new \RuntimeException('processo cortado');
+            }
+        });
+        try {
+            $sincronizador->continuar($registro);
+        } catch (\RuntimeException) {
+        }
+        DB::connection('protheus')->flushQueryLog();
+        DB::connection('protheus')->setEventDispatcher(new Dispatcher);
+
+        $registro->refresh();
+        $this->assertSame(196, $registro->ultimo_recno);   // 2 lotes de 50 (4 OPs do setUp + R_E_C_N_O_ 101 a 196)
+        $this->assertSame(100, OrdemProducao::count());
+
+        // A etapa "morta" deixou a trava presa e não dá sinal há 2 minutos: a próxima etapa assume e termina.
+        Cache::lock("protheus-passo-{$registro->id}", 300)->get();
+        $registro->update(['situacao' => 'executando', 'sinal_em' => now()->subMinutes(2), 'mensagem' => null]);
+        $final = $sincronizador->continuar($registro);
+        $this->assertSame('sucesso', $final->situacao);
+        $this->assertSame(234, OrdemProducao::count());
+    }
+
+    public function test_sem_linhas_com_op_explica_o_motivo(): void
+    {
+        // D3_ORDEM vazio em toda a SD3, mas D3_OP preenchido (padrão do Protheus).
+        Schema::connection('protheus')->table('SD3', fn (Blueprint $t) => $t->string('D3_OP')->default(''));
+        $this->sd3(1, '', 'RE0', 'MP001', 1, 10, ['D3_OP' => '50986001001']);
+
+        $r = $this->sincronizar('movimentos_producao');
+        $this->assertSame(['sucesso', 0], [$r->situacao, $r->lidos]);
+        $this->assertStringContainsString('Nenhuma linha com D3_ORDEM preenchido', $r->mensagem);
+        $this->assertStringContainsString('PROTHEUS_SD3_CAMPO_OP=D3_OP', $r->mensagem);
+
+        // Trocando o campo, os movimentos vêm.
+        config(['protheus.sd3_campo_op' => 'D3_OP']);
+        $this->assertSame(1, $this->sincronizar('movimentos_producao')->novos);
+
+        $this->actingAs(Usuario::create(['entra_oid' => 'oid-a', 'nome' => 'A', 'email' => 'a@empresa.com', 'perfil' => 'admin']))
+            ->get('/admin/banco')->assertOk();
     }
 
     public function test_movimentos_sao_lidos_de_forma_incremental(): void

@@ -64,8 +64,9 @@ class BancoController extends Controller
     }
 
     /**
-     * Uma etapa da sincronização pelo botão: sem "id", abre a execução da tabela; com "id", continua a execução de onde
-     * parou. Cada etapa trabalha no máximo protheus.segundos_por_etapa segundos; a tela chama de novo até "terminou".
+     * Uma etapa da sincronização pelo botão. Sem "id": só abre a execução da tabela e devolve o id na hora (se já houver
+     * uma em andamento, devolve essa, para a tela continuar dela em vez de dar erro). Com "id": processa a partir de onde
+     * parou por no máximo protheus.segundos_por_etapa segundos. A tela chama de novo até "terminou".
      */
     public function etapa(Request $request, SincronizadorProtheus $sincronizador): JsonResponse
     {
@@ -74,13 +75,17 @@ class BancoController extends Controller
             'id' => ['nullable', 'integer'],
         ]);
 
+        $retomada = false;
         if (isset($dados['id'])) {
             $registro = Sincronizacao::where('chave', $dados['tabela'])->findOrFail($dados['id']);
+            if ($registro->situacao === 'executando') {
+                $registro = $sincronizador->continuar($registro, max(5, (int) config('protheus.segundos_por_etapa', 25)));
+            }
         } else {
-            $registro = $sincronizador->iniciar($dados['tabela'], 'manual', $request->user());
-        }
-        if ($registro->situacao === 'executando') {
-            $registro = $sincronizador->continuar($registro, max(5, (int) config('protheus.segundos_por_etapa', 25)));
+            $sincronizador->encerrarInterrompidas();
+            $registro = Sincronizacao::where('chave', $dados['tabela'])->where('situacao', 'executando')->latest('iniciado_em')->first();
+            $retomada = $registro !== null;
+            $registro ??= $sincronizador->iniciar($dados['tabela'], 'manual', $request->user());
         }
 
         return response()->json([
@@ -89,6 +94,7 @@ class BancoController extends Controller
             'descricao' => $sincronizador->itens()[$registro->chave]['descricao'],
             'situacao' => $registro->situacao,
             'terminou' => $registro->situacao !== 'executando',
+            'retomada' => $retomada,
             'lidos' => (int) $registro->lidos,
             'novos' => (int) $registro->novos,
             'atualizados' => (int) $registro->atualizados,

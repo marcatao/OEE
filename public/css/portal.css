@@ -393,3 +393,4 @@ input:disabled, select:disabled, textarea:disabled { background:var(--fundo); co
 .sinc-progresso { margin:1rem 0; padding:.9rem 1.1rem; border:1px solid var(--protheus); border-radius:10px; background:var(--protheus-suave); }
 .sinc-progresso ul { margin:.5rem 0 0; padding-left:1.1rem; font-size:.92rem; }
 .sinc-progresso li + li { margin-top:.25rem; }
+.texto-alerta { color:var(--alerta); }

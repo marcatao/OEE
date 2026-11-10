@@ -49,7 +49,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   A tela "Apontamento real" é a antiga "Apontamentos" (permissão `apontamentos`, a chave não muda).
 - Sincronização sem estourar o tempo do IIS: o botão da tela Banco de dados usa `SincronizadorProtheus::iniciar()` +
   `continuar($registro, segundos)` em etapas (rota `admin.banco.sincronizar.etapa`, JSON; `protheus.segundos_por_etapa`),
-  retomando de `sincronizacoes.ultimo_recno`. Nunca rode uma sincronização inteira dentro de uma requisição web.
+  retomando de `sincronizacoes.ultimo_recno` (gravado a cada lote; a 1ª chamada só abre ou retoma a execução e devolve o
+  id; etapa travada sem sinal há 75 s é assumida). Nunca rode uma sincronização inteira dentro de uma requisição web.
+  Consultas ao Protheus devem usar os índices dele (ex.: SB9 sempre com `B9_FILIAL` na condição).
   SD3/SD2 são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na

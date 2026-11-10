@@ -103,6 +103,17 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertSame('MONTAGEM FINAL', CentroCusto::where('ctt_custo', '1002')->value('ctt_desc01'));
     }
 
+    public function test_campos_char_com_espacos_nao_contam_como_alterados(): void
+    {
+        $sincronizador = app(SincronizadorProtheus::class);
+        $sincronizador->sincronizar('centros_custo', 'comando');
+        // No SQL Server, CHAR(8) vazio volta como 8 espaços.
+        DB::table('centros_custo')->update(['ctt_dtexsf' => '        ']);
+
+        $r = $sincronizador->sincronizar('centros_custo', 'comando');
+        $this->assertSame([0, 0], [$r->novos, $r->atualizados]);
+    }
+
     public function test_falha_no_protheus_fica_registrada_e_aparece_na_tela(): void
     {
         Schema::connection('protheus')->drop('CTT');

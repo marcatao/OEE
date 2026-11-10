@@ -107,9 +107,20 @@ class SincronizadorProtheus
      */
     public function continuar(Sincronizacao $registro, ?float $segundos = null): Sincronizacao
     {
-        $passo = Cache::lock("protheus-passo-{$registro->id}", 900);
+        $passo = Cache::lock("protheus-passo-{$registro->id}", 300);
         if (! $passo->get()) {
-            return $registro->fresh(); // outra etapa desta execução ainda está rodando
+            // Outra etapa desta execução está rodando. Se ela não dá sinal de vida há mais de 75 s, o processo morreu
+            // (ex.: o IIS cortou a requisição): assume a execução e continua do último lote gravado.
+            $registro->refresh();
+            $parada = $registro->sinal_em === null
+                || $registro->sinal_em->lt(now()->subSeconds(max(75, (int) config('protheus.segundos_por_etapa', 25) + 50)));
+            if ($registro->situacao !== 'executando' || ! $parada) {
+                return $registro;
+            }
+            $passo->forceRelease();
+            if (! $passo->get()) {
+                return $registro;
+            }
         }
         try {
             $registro->refresh();
@@ -132,6 +143,7 @@ class SincronizadorProtheus
             $porPagina = max(50, (int) config('protheus.lote', 1000));
             // Lê o Protheus em páginas (ordem de R_E_C_N_O_): nunca carrega a tabela inteira na memória.
             $linhas = (function () use ($importador, $tabela, $porPagina, $registro, $base, $limite, &$lidos, &$ultimo, &$terminou) {
+                $relogio = microtime(true);
                 do {
                     if ($limite !== null && $lidos > 0 && microtime(true) >= $limite) {
                         return; // tempo desta etapa acabou: a próxima continua do último R_E_C_N_O_
@@ -151,7 +163,16 @@ class SincronizadorProtheus
                     }
                     $quantos = $pagina->count();
                     unset($pagina);
-                    $registro->update(['lidos' => $base + $lidos, 'sinal_em' => now()]); // sinal de vida a cada página
+                    // Sinal de vida a cada página. Página cheia = lote já gravado pelo importador (o lote tem o mesmo
+                    // tamanho da página): grava também o ponto de parada, para uma etapa cortada no meio não perder nada.
+                    $registro->update(['lidos' => $base + $lidos, 'sinal_em' => now()]
+                        + ($quantos === $porPagina ? ['ultimo_recno' => $ultimo] : []));
+                    $duracao = microtime(true) - $relogio;
+                    if ($duracao > 10) {
+                        Log::info(sprintf('Sincronização %s: lote de %d linhas levou %.1f s (até R_E_C_N_O_ %s).',
+                            $registro->chave, $quantos, $duracao, $ultimo));
+                    }
+                    $relogio = microtime(true);
                 } while ($quantos === $porPagina);
                 $terminou = true;
             })();
@@ -169,7 +190,11 @@ class SincronizadorProtheus
                 return $registro;
             }
 
-            return $this->terminar($registro, 'sucesso', $totais + ['ultimo_recno' => $ultimo]);
+            // Nada lido: diz por quê (ex.: campo da OP vazio na SD3), para não parecer que deu certo.
+            $aviso = $totais['lidos'] === 0 && method_exists($importador, 'diagnosticoSemLinhas')
+                ? $importador->diagnosticoSemLinhas($tabela) : null;
+
+            return $this->terminar($registro, 'sucesso', $totais + ['ultimo_recno' => $ultimo], $aviso);
         } catch (Throwable $e) {
             Log::warning("Falha ao sincronizar {$registro->chave} com o Protheus", ['erro' => $e->getMessage()]);
 

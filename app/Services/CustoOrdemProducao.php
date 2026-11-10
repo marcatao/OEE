@@ -128,9 +128,9 @@ class CustoOrdemProducao
 
     /**
      * Grava ordens_producao.custo_meta das OPs informadas: custo unitário do fechamento mais recente (maior B9_DATA)
-     * do produto na SB9 do Protheus, de preferência da mesma filial da OP. Com vários armazéns no mesmo fechamento,
-     * vale o custo médio ponderado (soma de B9_VINI1 ÷ soma de B9_QINI); sem saldo, o maior B9_CM1.
-     * Só grava as que mudaram. A SB9 não é copiada para o portal.
+     * do produto na SB9 do Protheus, na filial da OP (ou, se não houver, na filial em branco = compartilhada). Com
+     * vários armazéns no mesmo fechamento, vale o custo médio ponderado (soma de B9_VINI1 ÷ soma de B9_QINI); sem
+     * saldo, o maior B9_CM1. Só grava as que mudaram, em poucos comandos (agrupadas pelo valor). A SB9 não é copiada.
      *
      * @param  list<int>  $ids
      * @return list<int> ids alterados
@@ -140,16 +140,24 @@ class CustoOrdemProducao
         $alterados = [];
         foreach (array_chunk($ids, 1000) as $bloco) {
             $ops = OrdemProducao::whereIn('id', $bloco)->get(['id', 'c2_filial', 'c2_produto', 'custo_meta']);
-            $custos = $this->custosSb9($ops->pluck('c2_produto')->map(fn ($p) => rtrim($p))->filter()->unique()->values()->all());
+            $custos = $this->custosSb9(
+                $ops->pluck('c2_produto')->map(fn ($p) => rtrim($p))->filter()->unique()->values()->all(),
+                $ops->pluck('c2_filial')->map(fn ($f) => rtrim($f))->push('')->unique()->values()->all(),
+            );
+            $porValor = [];
             foreach ($ops as $op) {
                 $porFilial = $custos[rtrim($op->c2_produto)] ?? [];
-                $escolhido = $porFilial[rtrim($op->c2_filial)] ?? collect($porFilial)->sortByDesc('data')->first();
+                $escolhido = $porFilial[rtrim($op->c2_filial)] ?? $porFilial[''] ?? null;
                 $novo = $escolhido !== null ? round($escolhido['valor'], 6) : null;
                 $atual = $op->custo_meta !== null ? round((float) $op->custo_meta, 6) : null;
                 if ($novo !== $atual && ($novo === null || $atual === null || abs($novo - $atual) > 0.000001)) {
-                    DB::table('ordens_producao')->where('id', $op->id)->update(['custo_meta' => $novo]);
-                    $alterados[] = $op->id;
+                    $porValor[$novo === null ? 'nulo' : (string) $novo][] = $op->id;
                 }
+            }
+            foreach ($porValor as $valor => $idsDoValor) {
+                DB::table('ordens_producao')->whereIn('id', $idsDoValor)
+                    ->update(['custo_meta' => $valor === 'nulo' ? null : (float) $valor]);
+                array_push($alterados, ...$idsDoValor);
             }
         }
 
@@ -159,10 +167,14 @@ class CustoOrdemProducao
     /**
      * Custo do fechamento mais recente de cada produto e filial na SB9.
      *
+     * A filial vem na condição para o SQL Server usar o índice da SB9 (B9_FILIAL + B9_COD + ...): sem ela, cada
+     * lote varria a SB9 inteira e a sincronização das OPs ficava lenta.
+     *
      * @param  list<string>  $produtos
+     * @param  list<string>  $filiais
      * @return array<string, array<string, array{data: string, valor: float}>> produto → filial → custo
      */
-    private function custosSb9(array $produtos): array
+    private function custosSb9(array $produtos, array $filiais): array
     {
         if (! $produtos) {
             return [];
@@ -173,8 +185,9 @@ class CustoOrdemProducao
         }
         $linhas = DB::connection('protheus')->table("{$tabela} as b")
             ->select('b.B9_FILIAL', 'b.B9_COD', 'b.B9_DATA', 'b.B9_QINI', 'b.B9_VINI1', 'b.B9_CM1')
-            ->where('b.D_E_L_E_T_', '<>', '*')
+            ->whereIn('b.B9_FILIAL', $filiais)
             ->whereIn('b.B9_COD', $produtos)
+            ->where('b.D_E_L_E_T_', '<>', '*')
             ->where('b.B9_DATA', '=', fn ($q) => $q->from("{$tabela} as x")->selectRaw('max(x.B9_DATA)')
                 ->whereColumn('x.B9_COD', 'b.B9_COD')->whereColumn('x.B9_FILIAL', 'b.B9_FILIAL')->where('x.D_E_L_E_T_', '<>', '*'))
             ->get();

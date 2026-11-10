@@ -13,6 +13,8 @@ use Illuminate\Database\Query\Builder;
  */
 class ImportadorMovimentosProducao extends ImportadorEspelho
 {
+    use DiagnosticoCampoOp;
+
     public const CAMPOS = ['D3_FILIAL', 'D3_TM', 'D3_CF', 'D3_COD', 'D3_UM', 'D3_QUANT', 'D3_LOCAL', 'D3_DOC', 'D3_EMISSAO',
         'D3_NUMSEQ', 'D3_CUSTO1', 'D3_ESTORNO', 'D_E_L_E_T_', 'R_E_C_N_O_'];
 

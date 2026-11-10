@@ -54,7 +54,11 @@ class ImportadorCentrosCusto implements ImportadorProtheus
                     'r_e_c_n_o_' => isset($l['R_E_C_N_O_']) ? (int) $l['R_E_C_N_O_'] : null,
                 ]);
 
-                if ($novo || $centro->isDirty()) {
+                // Campos CHAR do SQL Server (ex.: ctt_dtexsf vazio) voltam com espaços à direita: compara sem eles,
+                // senão todo centro de custo parecia alterado a cada sincronização.
+                $mudou = $novo || collect($centro->getDirty())->contains(
+                    fn ($valor, $campo) => rtrim((string) $valor) !== rtrim((string) $centro->getOriginal($campo)));
+                if ($mudou) {
                     $centro->save();
                     $resumo[$novo ? 'novos' : 'atualizados']++;
                 }
