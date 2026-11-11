@@ -64,6 +64,15 @@
       <label>Conta Microsoft (login)
         <input value="{{ $u->email }}" readonly>
       </label>
+      <label>Centro de custo <small class="suave">(local de escritório no Entra ID)</small>
+        <input value="{{ $u->local_escritorio ?? 'Não informado no Entra ID' }}" readonly>
+      </label>
+      <label>Departamento
+        <input value="{{ $u->departamento ?? 'Não informado no Entra ID' }}" readonly>
+      </label>
+      <label>Gerente responsável
+        <input value="{{ $u->gerente_nome ? $u->gerente_nome.($u->gerente_email ? ' ('.$u->gerente_email.')' : '') : 'Não informado no Entra ID' }}" readonly>
+      </label>
       <label>ID do objeto no Entra ID
         <input value="{{ $u->entra_oid }}" readonly>
       </label>

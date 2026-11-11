@@ -48,7 +48,8 @@ class EntraId
 
     private function driver()
     {
-        return Socialite::driver('azure')->enablePKCE()->scopes(['openid', 'profile', 'email', 'User.Read']);
+        return Socialite::driver('azure')->enablePKCE()
+            ->scopes(['openid', 'profile', 'email', 'User.Read', ...config('services.azure.escopos_extras', [])]);
     }
 
     private function claimsDoIdToken(?string $idToken): array

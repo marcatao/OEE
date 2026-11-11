@@ -54,6 +54,11 @@ das máquinas ficam no banco do portal.
   QUAL, CALIB, PREV, REF e OFF. Tabela `legendas`.
 - **Dashboard por máquina**: OEE, disponibilidade, performance e qualidade de cada máquina por período (hoje, ontem,
   7 dias, 30 dias, mês), calculados dos apontamentos e paradas (`app/Services/IndicadoresOee.php`).
+- **Dados da organização** (lidos do Entra ID a cada login e sempre iguais aos de lá): **centro de custo** (campo
+  "Local de escritório" / `officeLocation`), **departamento** (`department`) e **gerente responsável**
+  (`/me/manager`). Aparecem em Segurança › Usuários (lista e edição) e no Meu perfil. Se o gerente ficar vazio
+  mesmo existindo no Entra ID, o aplicativo precisa da permissão delegada `User.ReadBasic.All`: adicione-a (com
+  consentimento do administrador) no registro do aplicativo e ponha `ENTRA_ESCOPOS_EXTRAS=User.ReadBasic.All` no `.env`.
 - **Meu perfil**: foto, setor, cargo, e-mail de contato e celular. No login, o portal lê esses dados no Microsoft
   Entra ID (Microsoft Graph `/me`, permissão delegada `User.Read`) e preenche os campos vazios; o botão
   "Atualizar com o Entra ID" troca tudo pelo que está lá. Matrícula (`employeeId`) e IDs são só leitura. As fotos

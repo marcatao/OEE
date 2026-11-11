@@ -9,9 +9,10 @@ use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
- * Lê do Microsoft Graph (/me) os dados de perfil do funcionário: setor, cargo, e-mail, celular, matrícula e foto.
- * Usa o token do próprio login (permissão delegada User.Read, que o aplicativo já tem). Qualquer falha aqui é
- * registrada no log e ignorada: nunca impede o login.
+ * Lê do Microsoft Graph (/me) os dados de perfil do funcionário: setor, cargo, e-mail, celular, matrícula e foto, e os
+ * dados da organização (departamento, local de escritório = centro de custo e gerente responsável).
+ * Usa o token do próprio login (permissão delegada User.Read, que o aplicativo já tem; o gerente pode precisar de
+ * User.ReadBasic.All, ver o README). Qualquer falha aqui é registrada no log e ignorada: nunca impede o login.
  */
 class PerfilEntra
 {
@@ -23,6 +24,12 @@ class PerfilEntra
         'jobTitle' => 'cargo',
         'mail' => 'email_contato',
         'mobilePhone' => 'celular',
+    ];
+
+    /** Dados da organização: campo do Graph => coluna. Somente leitura no portal: sempre valem os do Entra ID. */
+    private const ORGANIZACAO = [
+        'department' => 'departamento',
+        'officeLocation' => 'local_escritorio',
     ];
 
     /**
@@ -40,7 +47,7 @@ class PerfilEntra
         $alterados = [];
         try {
             $dados = $this->http($token)
-                ->get(self::GRAPH.'/me', ['$select' => 'department,jobTitle,mail,mobilePhone,employeeId'])
+                ->get(self::GRAPH.'/me', ['$select' => 'department,jobTitle,mail,mobilePhone,employeeId,officeLocation'])
                 ->throw()
                 ->json();
 
@@ -49,6 +56,26 @@ class PerfilEntra
                 if ($valor !== '' && ($sobrescrever || blank($usuario->{$coluna})) && $usuario->{$coluna} !== $valor) {
                     $usuario->{$coluna} = mb_substr($valor, 0, $coluna === 'email_contato' ? 320 : 120);
                     $alterados[] = $coluna;
+                }
+            }
+
+            // Departamento e local de escritório (centro de custo): sempre os do Entra ID, mesmo vazios.
+            foreach (self::ORGANIZACAO as $campoGraph => $coluna) {
+                $valor = mb_substr(trim((string) ($dados[$campoGraph] ?? '')), 0, 120) ?: null;
+                if ($valor !== $usuario->{$coluna}) {
+                    $usuario->{$coluna} = $valor;
+                    $alterados[] = $coluna;
+                }
+            }
+
+            // Gerente responsável (/me/manager). Sem gerente no Entra ID (404) fica vazio; sem permissão (403) não mexe.
+            $gerente = $this->gerente($token);
+            if ($gerente !== false) {
+                foreach (['gerente_nome' => $gerente['nome'] ?? null, 'gerente_email' => $gerente['email'] ?? null] as $coluna => $valor) {
+                    if ($valor !== $usuario->{$coluna}) {
+                        $usuario->{$coluna} = $valor;
+                        $alterados[] = $coluna;
+                    }
                 }
             }
 
@@ -75,6 +102,37 @@ class PerfilEntra
         }
 
         return $alterados;
+    }
+
+    /**
+     * Gerente do funcionário no Entra ID: ['nome' => ..., 'email' => ...], [] se não tiver gerente, ou false se não
+     * deu para ler (ex.: o aplicativo não tem a permissão para ler o gerente). Nunca lança erro.
+     *
+     * @return array{nome?: ?string, email?: ?string}|false
+     */
+    public function gerente(string $token): array|false
+    {
+        try {
+            $resposta = $this->http($token)->get(self::GRAPH.'/me/manager', ['$select' => 'displayName,mail,userPrincipalName']);
+            if ($resposta->status() === 404) {
+                return [];
+            }
+            if (! $resposta->successful()) {
+                Log::info('Gerente não lido no Microsoft Graph', ['status' => $resposta->status()]);
+
+                return false;
+            }
+            $g = $resposta->json();
+
+            return [
+                'nome' => mb_substr(trim((string) ($g['displayName'] ?? '')), 0, 200) ?: null,
+                'email' => mb_substr(trim((string) (($g['mail'] ?? '') ?: ($g['userPrincipalName'] ?? ''))), 0, 320) ?: null,
+            ];
+        } catch (Throwable $e) {
+            Log::info('Gerente não lido no Microsoft Graph', ['erro' => $e->getMessage()]);
+
+            return false;
+        }
     }
 
     /** Foto do Entra ID (JPEG) ou null se o funcionário não tiver foto. */

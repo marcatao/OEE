@@ -55,6 +55,48 @@ class PerfilTest extends TestCase
         $this->get('/auth/callback?code=c&state=s')->assertRedirect();
     }
 
+    public function test_login_grava_centro_de_custo_departamento_e_gerente_do_entra(): void
+    {
+        $u = $this->usuario();
+        $u->update(['departamento' => 'Antigo', 'local_escritorio' => 'Antigo']);
+        Http::fake([
+            'https://graph.microsoft.com/v1.0/me/manager*' => Http::response(['displayName' => 'João Gerente', 'mail' => 'joao@empresa.com']),
+            'https://graph.microsoft.com/v1.0/me?*' => Http::response(['department' => 'Manutenção Industrial', 'officeLocation' => '110101 - Injeção']),
+            'https://graph.microsoft.com/v1.0/me/photos/*' => Http::response('', 404),
+            'https://graph.microsoft.com/v1.0/me/photo/*' => Http::response('', 404),
+        ]);
+
+        $this->entrarComToken();
+
+        $u->refresh();
+        // Dados da organização: sempre os do Entra ID (trocam os antigos).
+        $this->assertSame(['Manutenção Industrial', '110101 - Injeção', 'João Gerente', 'joao@empresa.com'],
+            [$u->departamento, $u->local_escritorio, $u->gerente_nome, $u->gerente_email]);
+
+        $admin = Usuario::create(['entra_oid' => 'oid-adm', 'nome' => 'Adm', 'email' => 'adm@empresa.com', 'perfil' => 'admin']);
+        $this->actingAs($admin)->get('/cadastros/logins/usuarios')->assertOk()
+            ->assertSee('Centro de custo')->assertSee('Departamento')->assertSee('110101 - Injeção')->assertSee('Manutenção Industrial')
+            ->assertDontSee('<th>Perfis</th>', false)->assertDontSee('<th>Grupos</th>', false);
+        $this->get("/cadastros/logins/usuarios/{$u->id}/editar")->assertOk()->assertSee('Gerente responsável')->assertSee('João Gerente');
+        $this->actingAs($u)->get('/perfil')->assertOk()->assertSee('110101 - Injeção')->assertSee('João Gerente');
+    }
+
+    public function test_sem_permissao_para_o_gerente_nao_apaga_o_que_ja_tinha(): void
+    {
+        $u = $this->usuario();
+        $u->update(['gerente_nome' => 'João Gerente']);
+        Http::fake([
+            'https://graph.microsoft.com/v1.0/me/manager*' => Http::response(['error' => ['code' => 'Authorization_RequestDenied']], 403),
+            'https://graph.microsoft.com/v1.0/me?*' => Http::response(['department' => 'Qualidade']),
+            'https://graph.microsoft.com/v1.0/me/photos/*' => Http::response('', 404),
+            'https://graph.microsoft.com/v1.0/me/photo/*' => Http::response('', 404),
+        ]);
+
+        $this->entrarComToken();
+
+        $this->assertSame(['Qualidade', 'João Gerente'], [$u->fresh()->departamento, $u->fresh()->gerente_nome]);
+    }
+
     public function test_funcionario_edita_o_perfil_e_envia_foto(): void
     {
         $u = $this->usuario();

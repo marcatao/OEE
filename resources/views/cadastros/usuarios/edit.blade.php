@@ -11,8 +11,11 @@
     <div><dt>E-mail</dt><dd>{{ $usuario->email }}</dd></div>
     <div><dt>Cadastrado em</dt><dd>@dataHora($usuario->criado_em)</dd></div>
     <div><dt>Último login</dt><dd>@dataHora($usuario->ultimo_login_em)</dd></div>
+    <div><dt>Centro de custo</dt><dd>{{ $usuario->local_escritorio ?? '-' }}</dd></div>
+    <div><dt>Departamento</dt><dd>{{ $usuario->departamento ?? '-' }}</dd></div>
+    <div><dt>Gerente responsável</dt><dd>{{ $usuario->gerente_nome ?? '-' }}@if ($usuario->gerente_email) <small class="suave">{{ $usuario->gerente_email }}</small>@endif</dd></div>
   </dl>
-  <p class="suave">Nome e e-mail vêm do Entra ID e são atualizados a cada login.</p>
+  <p class="suave">Nome, e-mail, centro de custo (local de escritório), departamento e gerente vêm do Entra ID e são atualizados a cada login.</p>
 
   @if ($errors->any())<p class="aviso erro" role="alert">{{ $errors->first() }}</p>@endif
 

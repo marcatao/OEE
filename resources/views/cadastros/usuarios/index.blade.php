@@ -14,7 +14,7 @@
   @endif
 
   <form method="get" class="filtros" role="search">
-    <label>Buscar<input type="search" name="busca" value="{{ request('busca') }}" placeholder="Nome ou e-mail"></label>
+    <label>Buscar<input type="search" name="busca" value="{{ request('busca') }}" placeholder="Nome, e-mail, centro de custo ou departamento"></label>
     <label>Perfil
       <select name="perfil">
         <option value="">Todos</option>
@@ -28,14 +28,14 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Nome</th><th>E-mail</th><th>Perfis</th><th>Grupos</th><th>Situação</th><th>Último login</th><th></th></tr></thead>
+    <thead><tr><th>Nome</th><th>E-mail</th><th>Centro de custo</th><th>Departamento</th><th>Situação</th><th>Último login</th><th></th></tr></thead>
     <tbody>
     @forelse ($usuarios as $usuario)
       <tr>
         <td><span style="display:inline-flex;align-items:center;gap:.6rem">@include('partials.avatar', ['usuario' => $usuario]) <span>{{ $usuario->nome }}@if ($usuario->cargo)<br><small class="suave">{{ $usuario->cargo }}</small>@endif</span></span></td>
         <td>{{ $usuario->email }}</td>
-        <td class="quebra">@forelse ($usuario->perfisAcesso() as $p)<span class="etiqueta perfil-{{ $p }}">{{ \App\Models\Usuario::perfisDisponiveis()[$p]['rotulo'] }}</span> @empty<span class="etiqueta perfil-sem_acesso">Sem acesso</span>@endforelse</td>
-        <td class="quebra">{{ $usuario->grupos->pluck('nome')->join(', ') ?: '-' }}</td>
+        <td class="quebra">{{ $usuario->local_escritorio ?? '-' }}</td>
+        <td class="quebra">{{ $usuario->departamento ?? '-' }}</td>
         <td>{{ $usuario->ativo ? 'Ativo' : 'Inativo' }}</td>
         <td>@dataHora($usuario->ultimo_login_em)</td>
         <td><a class="botao pequeno" href="{{ route('cadastros.usuarios.edit', $usuario) }}">Editar</a></td>

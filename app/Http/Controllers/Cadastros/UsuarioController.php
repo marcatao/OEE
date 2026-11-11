@@ -25,7 +25,9 @@ class UsuarioController extends Controller
         $usuarios = Usuario::with('grupos')
             ->when($busca !== '', fn ($q) => $q->where(fn ($q) => $q
                 ->where('nome', 'like', "%{$busca}%")
-                ->orWhere('email', 'like', "%{$busca}%")))
+                ->orWhere('email', 'like', "%{$busca}%")
+                ->orWhere('local_escritorio', 'like', "%{$busca}%")
+                ->orWhere('departamento', 'like', "%{$busca}%")))
             ->when($perfil === 'sem_acesso', fn ($q) => $q->where('perfil', 'sem_acesso'))
             ->when(array_key_exists((string) $perfil, Usuario::perfisDisponiveis()), fn ($q) => $q->where(fn ($w) => $w
                 ->whereExists(fn ($e) => $e->from('usuario_perfis')->whereColumn('usuario_perfis.usuario_id', 'usuarios.id')->where('perfil', $perfil))

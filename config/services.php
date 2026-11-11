@@ -42,6 +42,9 @@ return [
         'redirect' => env('ENTRA_REDIRECT_URI', 'http://localhost:8000/auth/callback'),
         'tenant' => env('ENTRA_TENANT_ID'),
         'proxy' => env('ENTRA_PROXY'),
+        // Permissões delegadas a mais no login, separadas por vírgula. Ex.: "User.ReadBasic.All" se o gerente
+        // responsável não vier com a User.Read (precisa ser adicionada e consentida no registro do aplicativo antes).
+        'escopos_extras' => array_values(array_filter(array_map('trim', explode(',', (string) env('ENTRA_ESCOPOS_EXTRAS', ''))))),
     ],
 
 ];

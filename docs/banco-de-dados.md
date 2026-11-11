@@ -365,6 +365,10 @@ erDiagram
         nvarchar(255) foto
         datetime foto_atualizada_em
         datetime perfil_entra_em
+        nvarchar(120) departamento
+        nvarchar(120) local_escritorio
+        nvarchar(200) gerente_nome
+        nvarchar(320) gerente_email
     }
     maquinas ||--o{ apontamentos : "maquina_id"
     turnos |o--o{ apontamentos : "turno_id"
@@ -464,7 +468,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 16 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
-| [`usuarios`](#usuarios) | Sistema | `id` | 18 | 0 |
+| [`usuarios`](#usuarios) | Sistema | `id` | 22 | 0 |
 
 ### apontamentos
 
@@ -1092,6 +1096,10 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `foto` | `nvarchar(255)` | sim |  |  |
 | `foto_atualizada_em` | `datetime` | sim |  |  |
 | `perfil_entra_em` | `datetime` | sim |  |  |
+| `departamento` | `nvarchar(120)` | sim |  |  |
+| `local_escritorio` | `nvarchar(120)` | sim |  |  |
+| `gerente_nome` | `nvarchar(200)` | sim |  |  |
+| `gerente_email` | `nvarchar(320)` | sim |  |  |
 
 **Índices:** `usuarios_entra_oid_unique` único (entra_oid) · `usuarios_email_index` (email)
 

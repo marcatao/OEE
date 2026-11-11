@@ -31,6 +31,7 @@ class Usuario extends Authenticatable
     protected $fillable = [
         'entra_oid', 'entra_tenant_id', 'nome', 'email', 'perfil', 'ativo', 'ultimo_login_em',
         'setor', 'cargo', 'email_contato', 'celular', 'matricula',
+        'departamento', 'local_escritorio', 'gerente_nome', 'gerente_email',
     ];
 
     // Sem senha nem "lembrar de mim": a autenticação é sempre pelo Entra ID.
