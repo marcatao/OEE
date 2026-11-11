@@ -79,6 +79,17 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
 - **Ferramentas** (`os_ferramentas`, cadastro em Ordens de serviço › Ferramentas): cada uma fica com UM mantenedor
   (`mantenedor_id`, com `atribuida_em`) ou **avulsa** (vazio). Amarra-se pelo cadastro da ferramenta ou pelo do
   mantenedor (lá aparecem as avulsas e as dele; desmarcar devolve = fica avulsa).
+- **Avaliação** (substitui o antigo "aceite"): OS concluída → o solicitante avalia **Excelente**, **Boa** ou **Ruim**
+  (`ordens_servico.avaliacao`; quem e quando em `aceite_por_id`/`aceite_em`, comentário em `aceite_observacao`).
+  Excelente/Boa encerram; **Ruim exige motivo e reabre** (volta para em execução). Aviso em todas as telas
+  (`manutencao._aviso-avaliacao`) enquanto houver OS dele esperando avaliação. `FluxoOrdemServico::avaliar()`.
+- **Histórico** da OS inclui o da SS (abertura/aprovação; `OrdemServico::historicoCompleto()`), em ordem **decrescente**;
+  a tela mostra a **linha do tempo**: SS aberta → Aprovada → Em atendimento → Concluída → Avaliada, com quem e o tempo
+  entre as etapas.
+- **Interações** (`os_interacoes` + `os_interacao_anexos`): conversa da OS para todos que a veem, estilo chat (foto,
+  nome, hora), com links clicáveis e anexos (até 5 por mensagem; limite = menor entre 10 MB e o upload do PHP; prints
+  colados com Ctrl+V). Arquivos no disco privado `local` (`os-anexos/{os}`), entregues só pela rota
+  `os.interacoes.anexo`, que confere o acesso. Texto sempre escapado (`InteracaoOs::textoHtml`).
 - **Vários mantenedores por OS** (`os_ordem_mantenedores`; `responsavel_id` = o principal, o primeiro). Na aprovação da
   SS escolhe-se um ou mais (nenhum = definir depois). Os **próprios mantenedores abrem e aprovam SS**; se quem aprova é
   mantenedor, ele já vem marcado e fica sempre atribuído à OS. Quem inicia apontamento numa OS também passa a estar

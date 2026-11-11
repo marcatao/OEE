@@ -15,6 +15,7 @@ use App\Http\Controllers\Cadastros\UsuarioController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Manutencao\ApontamentoHorasController;
 use App\Http\Controllers\Manutencao\CadastroManutencaoController;
+use App\Http\Controllers\Manutencao\InteracaoController;
 use App\Http\Controllers\Manutencao\MaterialController;
 use App\Http\Controllers\Manutencao\OrdemServicoController;
 use App\Http\Controllers\Manutencao\PlanoPreventivaController;
@@ -83,7 +84,10 @@ Route::middleware('auth')->group(function () {
             Route::get('ordens', [OrdemServicoController::class, 'index'])->name('ordens.index');
             Route::get('ordens/{ordem}', [OrdemServicoController::class, 'show'])->whereNumber('ordem')->name('ordens.show');
             Route::get('ordens/{ordem}/imprimir', [OrdemServicoController::class, 'imprimir'])->whereNumber('ordem')->name('ordens.imprimir');
-            Route::post('ordens/{ordem}/aceite', [OrdemServicoController::class, 'aceite'])->whereNumber('ordem')->name('ordens.aceite');
+            Route::post('ordens/{ordem}/avaliar', [OrdemServicoController::class, 'avaliar'])->whereNumber('ordem')->name('ordens.avaliar');
+            // Interações (conversa da OS, com anexos): todos que veem a OS.
+            Route::post('ordens/{ordem}/interacoes', [InteracaoController::class, 'store'])->whereNumber('ordem')->name('interacoes.store');
+            Route::get('anexos/{anexo}', [InteracaoController::class, 'anexo'])->whereNumber('anexo')->name('interacoes.anexo');
             // Abrir SS: só com o perfil Solicitante (conferido no controlador). Cancelar/reabrir: autor ou administrador da área.
             Route::get('solicitacoes/nova', [SolicitacaoController::class, 'create'])->name('solicitacoes.create');
             Route::post('solicitacoes', [SolicitacaoController::class, 'store'])->name('solicitacoes.store');

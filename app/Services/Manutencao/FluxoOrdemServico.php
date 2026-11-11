@@ -147,27 +147,39 @@ final class FluxoOrdemServico
                 $dados['cancelamento_motivo'] = mb_substr((string) $obs, 0, 500);
             }
             if ($acao === 'reabrir') {
-                $dados += ['concluida_em' => null, 'aceite_por_id' => null, 'aceite_em' => null];
+                $dados += ['concluida_em' => null, 'aceite_por_id' => null, 'aceite_em' => null, 'avaliacao' => null];
             }
             $os->forceFill($dados)->save();
             $this->registrar($os, null, $acao, $anterior, $para, $obs, $usuario);
         });
     }
 
-    /** Aceite do solicitante (assinatura eletrônica): OS concluída → encerrada. */
-    public function aceitar(OrdemServico $os, Usuario $usuario, ?string $obs = null): void
+    /**
+     * Avaliação do solicitante quando a OS é concluída (vale como a assinatura eletrônica dele):
+     * Excelente ou Boa → OS encerrada; Ruim → a OS volta para execução e o motivo é obrigatório. Tudo vai para o histórico.
+     */
+    public function avaliar(OrdemServico $os, Usuario $usuario, string $avaliacao, ?string $obs = null): void
     {
-        $this->exigirStatus($os->status, ['concluida'], 'Só dá para dar o aceite numa OS concluída.');
-        $os->forceFill(['status' => 'encerrada', 'aceite_por_id' => $usuario->id, 'aceite_em' => now(), 'aceite_observacao' => $obs])->save();
-        $this->registrar($os, null, 'aceite', 'concluida', 'encerrada', $obs, $usuario);
-    }
+        $this->exigirStatus($os->status, ['concluida'], 'Só dá para avaliar uma OS concluída.');
+        if (! isset(OrdemServico::AVALIACOES[$avaliacao])) {
+            throw ValidationException::withMessages(['avaliacao' => 'Escolha Excelente, Boa ou Ruim.']);
+        }
+        $obs = trim((string) $obs) !== '' ? mb_substr(trim($obs), 0, 500) : null;
+        if ($avaliacao === 'ruim' && $obs === null) {
+            throw ValidationException::withMessages(['observacao' => 'Na avaliação Ruim, conte o motivo: a OS volta para a manutenção.']);
+        }
+        $rotulo = OrdemServico::AVALIACOES[$avaliacao];
 
-    /** Solicitante não aprovou o resultado: volta para execução com a justificativa. */
-    public function recusarServico(OrdemServico $os, Usuario $usuario, string $obs): void
-    {
-        $this->exigirStatus($os->status, ['concluida'], 'Só dá para recusar o resultado de uma OS concluída.');
-        $os->forceFill(['status' => 'em_execucao', 'concluida_em' => null])->save();
-        $this->registrar($os, null, 'servico_recusado', 'concluida', 'em_execucao', $obs, $usuario);
+        DB::transaction(function () use ($os, $usuario, $avaliacao, $obs, $rotulo) {
+            $dados = ['avaliacao' => $avaliacao, 'aceite_por_id' => $usuario->id, 'aceite_em' => now(), 'aceite_observacao' => $obs];
+            if ($avaliacao === 'ruim') {
+                $os->forceFill($dados + ['status' => 'em_execucao', 'concluida_em' => null])->save();
+                $this->registrar($os, null, 'avaliada_ruim', 'concluida', 'em_execucao', "Avaliação: {$rotulo}. Motivo: {$obs}", $usuario);
+            } else {
+                $os->forceFill($dados + ['status' => 'encerrada'])->save();
+                $this->registrar($os, null, 'avaliada', 'concluida', 'encerrada', "Avaliação: {$rotulo}.".($obs ? " {$obs}" : ''), $usuario);
+            }
+        });
     }
 
     /** Começa a contar as horas do mantenedor na OS (um apontamento aberto por mantenedor). */

@@ -32,7 +32,7 @@ class OrdemServico extends Model
         'aberta' => 'Aberta',
         'em_execucao' => 'Em execução',
         'aguardando_material' => 'Aguardando material',
-        'concluida' => 'Concluída (aguardando aceite)',
+        'concluida' => 'Concluída (aguardando avaliação)',
         'encerrada' => 'Encerrada',
         'cancelada' => 'Cancelada',
     ];
@@ -42,7 +42,7 @@ class OrdemServico extends Model
 
     protected $table = 'ordens_servico';
 
-    protected $fillable = ['titulo', 'unidade', 'solicitacao_id', 'plano_preventiva_id', 'prevista_para', 'tipo', 'maquina_id',
+    protected $fillable = ['avaliacao', 'titulo', 'unidade', 'solicitacao_id', 'plano_preventiva_id', 'prevista_para', 'tipo', 'maquina_id',
         'area_executante_id', 'centro_custo', 'centro_custo_solicitante', 'prioridade', 'maquina_parada', 'descricao',
         'solicitante_id', 'aprovado_por_id', 'responsavel_id', 'status', 'iniciada_em', 'concluida_em', 'solucao',
         'aceite_por_id', 'aceite_em', 'aceite_observacao', 'cancelamento_motivo', 'ordem_producao_id',
@@ -227,6 +227,21 @@ class OrdemServico extends Model
     public function historico(): HasMany
     {
         return $this->hasMany(HistoricoOs::class, 'ordem_servico_id');
+    }
+
+    /** Avaliação do solicitante ao receber o serviço. */
+    public const AVALIACOES = ['excelente' => 'Excelente', 'boa' => 'Boa', 'ruim' => 'Ruim'];
+
+    public function interacoes(): HasMany
+    {
+        return $this->hasMany(InteracaoOs::class, 'ordem_servico_id');
+    }
+
+    /** Histórico completo: o da OS e o da SS que a originou (abertura, aprovação). */
+    public function historicoCompleto(): Builder
+    {
+        return HistoricoOs::query()->where(fn ($q) => $q->where('ordem_servico_id', $this->id)
+            ->when($this->solicitacao_id, fn ($q) => $q->orWhere(fn ($w) => $w->where('solicitacao_id', $this->solicitacao_id)->whereNull('ordem_servico_id'))));
     }
 
     public function checklist(): HasMany

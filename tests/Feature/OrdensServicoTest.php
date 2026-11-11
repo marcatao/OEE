@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CentroCusto;
 use App\Models\Linha;
+use App\Models\Manutencao\AnexoInteracaoOs;
 use App\Models\Manutencao\ApontamentoHoras;
 use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\Ferramenta;
@@ -18,7 +19,9 @@ use App\Services\Manutencao\GeradorPreventivas;
 use App\Support\AcessoOs;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -129,10 +132,28 @@ class OrdensServicoTest extends TestCase
         $this->assertEquals($ap->fim->getTimestamp(), $os->concluida_em->getTimestamp());
 
         // Solicitante vê a OS dele e dá o aceite.
-        $this->actingAs($operador)->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertSee('Aceitar o serviço');
-        $this->post("/ordens-de-servico/ordens/{$os->id}/aceite", ['resultado' => 'aceito'])->assertRedirect();
+        // O solicitante vê o pedido de avaliação; Ruim exige motivo e reabre; Excelente encerra.
+        $this->actingAs($operador)->get('/ordens-de-servico/solicitacoes')->assertOk()->assertSee('esperando a sua avaliação');
+        $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertSee('avalie o atendimento');
+        $this->post("/ordens-de-servico/ordens/{$os->id}/avaliar", ['avaliacao' => 'ruim'])->assertSessionHasErrors('observacao');
+        $this->post("/ordens-de-servico/ordens/{$os->id}/avaliar", ['avaliacao' => 'ruim', 'observacao' => 'Ainda vaza óleo'])->assertRedirect();
+        $this->assertSame('em_execucao', $os->fresh()->status);
+        $this->assertSame('ruim', $os->fresh()->avaliacao);
+        $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertSee('Ainda vaza óleo');
+        $this->actingAs($mecanico)->post("/ordens-de-servico/ordens/{$os->id}/acao", ['acao' => 'concluir'])->assertRedirect();
+        $this->actingAs($operador)->post("/ordens-de-servico/ordens/{$os->id}/avaliar", ['avaliacao' => 'excelente'])->assertRedirect();
         $this->assertSame('encerrada', $os->fresh()->status);
+        $this->assertSame('excelente', $os->fresh()->avaliacao);
         $this->assertSame($operador->id, $os->fresh()->aceite_por_id);
+        // Histórico mostra a abertura da SS e as avaliações, do mais recente para o mais antigo; linha do tempo completa.
+        $pagina = $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertSee('Avaliação: Excelente')->getContent();
+        $historico = substr($pagina, strpos($pagina, '<h2>Histórico</h2>'));
+        $this->assertTrue(strpos($historico, 'Avaliada pelo solicitante') < strpos($historico, 'Avaliada como Ruim'));
+        $this->assertTrue(strpos($historico, 'Avaliada como Ruim') < strpos($historico, 'SS aprovada'));
+        $this->assertTrue(strpos($historico, 'SS aprovada') < strpos($historico, 'SS aberta'));
+        foreach (['SS aberta', 'Aprovada', 'Em atendimento', 'Concluída', 'Avaliada'] as $marco) {
+            $this->assertStringContainsString($marco, $pagina);
+        }
         $this->get("/ordens-de-servico/ordens/{$os->id}/imprimir")->assertOk()->assertSee('Solicitante');
         $this->assertGreaterThanOrEqual(5, $os->historico()->count());
     }
@@ -228,6 +249,38 @@ class OrdensServicoTest extends TestCase
         $this->put("/ordens-de-servico/cadastros/ferramentas/{$multimetro->id}", ['unidade' => 'manutencao', 'codigo' => 'FER-01', 'descricao' => 'Multímetro',
             'mantenedor_id' => $m->id, 'ativo' => '1'])->assertRedirect();
         $this->assertSame($m->id, $multimetro->fresh()->mantenedor_id);
+    }
+
+    public function test_interacoes_com_anexos_so_para_quem_ve_a_os(): void
+    {
+        Storage::fake('local');
+        $operador = $this->usuario(['solicitante_manutencao'], 'operador@empresa.com');
+        $lider = $this->usuario(['admin_producao'], 'lider@empresa.com');
+        $estranho = $this->usuario(['solicitante_manutencao'], 'estranho@empresa.com', '2002');
+        $ss = $this->abrirSs($operador);
+        $this->actingAs($lider)->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar")->assertRedirect();
+        $os = OrdemServico::where('solicitacao_id', $ss->id)->firstOrFail();
+
+        // Vazio não vale; texto com link e print anexado vale.
+        $this->actingAs($operador)->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => ' '])->assertSessionHasErrors('texto');
+        $this->post("/ordens-de-servico/ordens/{$os->id}/interacoes", [
+            'texto' => 'Segue o print, veja https://exemplo.com/manual',
+            'anexos' => [UploadedFile::fake()->image('print.png', 200, 100), UploadedFile::fake()->create('laudo.pdf', 100, 'application/pdf')],
+        ])->assertRedirect();
+        $this->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['anexos' => [UploadedFile::fake()->create('virus.exe', 10)]])->assertSessionHasErrors('anexos.0');
+        $this->actingAs($lider)->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => 'Recebido, vamos verificar.'])->assertRedirect();
+
+        $pagina = $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk();
+        $pagina->assertSee('Recebido, vamos verificar.')->assertSee('laudo.pdf')->assertSee('href="https://exemplo.com/manual"', false);
+        $anexo = AnexoInteracaoOs::where('nome', 'print.png')->firstOrFail();
+        Storage::disk('local')->assertExists($anexo->caminho);
+        $this->get("/ordens-de-servico/anexos/{$anexo->id}")->assertOk();
+        // Quem não vê a OS não comenta nem baixa anexo.
+        $this->actingAs($estranho)->get("/ordens-de-servico/anexos/{$anexo->id}")->assertNotFound();
+        $this->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => 'oi'])->assertNotFound();
+        // Texto com HTML é escapado.
+        $this->actingAs($operador)->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => '<script>alert(1)</script>'])->assertRedirect();
+        $this->get("/ordens-de-servico/ordens/{$os->id}")->assertDontSee('<script>alert(1)</script>', false);
     }
 
     public function test_rejeicao_volta_ao_solicitante_com_motivo(): void

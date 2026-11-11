@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **39** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **41** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -287,6 +287,7 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
         nvarchar(120) titulo
+        nvarchar(10) avaliacao
     }
     os_apontamentos_horas {
         bigint id PK
@@ -349,6 +350,22 @@ erDiagram
         nvarchar(20) status_novo
         nvarchar(1000) observacao
         bigint usuario_id FK
+        datetime criado_em
+    }
+    os_interacao_anexos {
+        bigint id PK
+        bigint interacao_id FK
+        nvarchar(200) nome
+        nvarchar(300) caminho
+        nvarchar(120) mime
+        int tamanho
+        datetime criado_em
+    }
+    os_interacoes {
+        bigint id PK
+        bigint ordem_servico_id FK
+        bigint usuario_id FK
+        nvarchar(4000) texto
         datetime criado_em
     }
     os_justificativas_setor {
@@ -627,6 +644,9 @@ erDiagram
     ordens_servico |o--o{ os_historico : "ordem_servico_id"
     solicitacoes_servico |o--o{ os_historico : "solicitacao_id"
     usuarios |o--o{ os_historico : "usuario_id"
+    os_interacoes ||--o{ os_interacao_anexos : "interacao_id"
+    ordens_servico ||--o{ os_interacoes : "ordem_servico_id"
+    usuarios ||--o{ os_interacoes : "usuario_id"
     os_mantenedores ||--o{ os_mantenedor_areas : "mantenedor_id"
     os_areas_executantes ||--o{ os_mantenedor_areas : "area_executante_id"
     usuarios |o--o{ os_mantenedores : "usuario_id"
@@ -721,12 +741,14 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
 | [`ordens_producao`](#ordens_producao) | Protheus | `id` | 26 | 0 |
-| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 32 | 12 |
+| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 33 | 12 |
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
 | [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 9 | 2 |
 | [`os_checklist`](#os_checklist) | Sistema | `id` | 9 | 3 |
 | [`os_ferramentas`](#os_ferramentas) | Sistema | `id` | 14 | 3 |
 | [`os_historico`](#os_historico) | Sistema | `id` | 9 | 3 |
+| [`os_interacao_anexos`](#os_interacao_anexos) | Sistema | `id` | 7 | 1 |
+| [`os_interacoes`](#os_interacoes) | Sistema | `id` | 5 | 2 |
 | [`os_justificativas_setor`](#os_justificativas_setor) | Sistema | `id` | 9 | 2 |
 | [`os_mantenedor_areas`](#os_mantenedor_areas) | Sistema | `id` | 5 | 3 |
 | [`os_mantenedores`](#os_mantenedores) | Sistema | `id` | 16 | 4 |
@@ -1214,10 +1236,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `titulo` | `nvarchar(120)` | sim |  |  |
+| `avaliacao` | `nvarchar(10)` | sim |  |  |
 
 **Índices:** `ux_ordens_servico_solicitacao` único (solicitacao_id) filtrado `WHERE solicitacao_id IS NOT NULL` (só SQL Server) · `ux_ordens_servico_plano_prevista` único (plano_preventiva_id, prevista_para) filtrado `WHERE plano_preventiva_id IS NOT NULL` (só SQL Server) · `ordens_servico_unidade_status_id_index` (unidade, status, id) · `ordens_servico_responsavel_id_status_index` (responsavel_id, status) · `ordens_servico_maquina_id_criado_em_index` (maquina_id, criado_em) · `ordens_servico_status_prevista_para_index` (status, prevista_para) · `ordens_servico_solicitante_id_index` (solicitante_id)
 
-**Regras (CHECK, só no SQL Server):** `ck_ordens_servico_unidade`: `unidade IN ('manutencao', 'tecnologia')` · `ck_ordens_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_ordens_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_ordens_servico_status`: `status IN ('aberta', 'em_execucao', 'aguardando_material', 'concluida', 'encerrada', 'cancelada')` · `ck_ordens_servico_total_minutos`: `total_minutos >= 0`
+**Regras (CHECK, só no SQL Server):** `ck_ordens_servico_unidade`: `unidade IN ('manutencao', 'tecnologia')` · `ck_ordens_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_ordens_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_ordens_servico_status`: `status IN ('aberta', 'em_execucao', 'aguardando_material', 'concluida', 'encerrada', 'cancelada')` · `ck_ordens_servico_total_minutos`: `total_minutos >= 0` · `ck_ordens_servico_avaliacao`: `avaliacao IS NULL OR avaliacao IN ('excelente', 'boa', 'ruim')`
 
 ### os_apontamentos_horas
 
@@ -1326,6 +1349,36 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `os_historico_ordem_servico_id_id_index` (ordem_servico_id, id) · `os_historico_solicitacao_id_id_index` (solicitacao_id, id)
 
 **Regras (CHECK, só no SQL Server):** `ck_os_historico_origem`: `ordem_servico_id IS NOT NULL OR solicitacao_id IS NOT NULL`
+
+### os_interacao_anexos
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `interacao_id` | `bigint` | não |  | FK → `os_interacoes.id` |
+| `nome` | `nvarchar(200)` | não |  |  |
+| `caminho` | `nvarchar(300)` | não |  |  |
+| `mime` | `nvarchar(120)` | sim |  |  |
+| `tamanho` | `int` | não | `'0'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+
+**Índices:** `os_interacao_anexos_interacao_id_index` (interacao_id)
+
+### os_interacoes
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `ordem_servico_id` | `bigint` | não |  | FK → `ordens_servico.id` |
+| `usuario_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `texto` | `nvarchar(4000)` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+
+**Índices:** `os_interacoes_ordem_servico_id_id_index` (ordem_servico_id, id)
 
 ### os_justificativas_setor
 

@@ -8,68 +8,223 @@
 
 @section('conteudo')
 @php($aberta = in_array($os->status, ['aberta', 'em_execucao', 'aguardando_material'], true))
-<section class="cartao">
+@php($atribuidos = $os->mantenedoresAtribuidos())
+<section class="cartao os-detalhe">
   <p class="trilha">Ordens de serviço › <a href="{{ route('os.ordens.index') }}">OS</a></p>
-  <div class="titulo-com-acao">
-    <h1>{{ $os->numeroFormatado() }}@if ($os->titulo) — {{ $os->titulo }}@endif <small class="suave">{{ $os->rotuloTipo() }}</small></h1>
+
+  {{-- 1. Do que se trata: número, título e situação --}}
+  <div class="os-topo">
+    <div class="os-topo-texto">
+      <p class="os-numero">{{ $os->numeroFormatado() }}@if ($os->solicitacao) · aberta pela <a href="{{ route('os.solicitacoes.show', $os->solicitacao) }}">{{ $os->solicitacao->numeroFormatado() }}</a>@elseif ($os->plano) · preventiva {{ $os->plano->codigo }}@endif</p>
+      <h1>{{ $os->titulo ?: \Illuminate\Support\Str::limit($os->descricao, 90) }}</h1>
+      <div class="os-chips">
+        <span class="etiqueta os-{{ $os->status }}">{{ $os->rotuloStatus() }}</span>
+        <span class="etiqueta">{{ $os->rotuloTipo() }}</span>
+        <span class="etiqueta prioridade-{{ $os->prioridade }}">Prioridade {{ mb_strtolower($os->rotuloPrioridade()) }}</span>
+        @if ($os->maquina_parada)<span class="etiqueta os-rejeitada">Máquina parada</span>@endif
+        @if ($os->avaliacao && $os->status === 'encerrada')<span class="etiqueta avaliacao-{{ $os->avaliacao }}">Avaliação: {{ \App\Models\Manutencao\OrdemServico::AVALIACOES[$os->avaliacao] }}</span>@endif
+      </div>
+    </div>
     <div class="os-cabecalho">
-      <span class="etiqueta os-{{ $os->status }}">{{ $os->rotuloStatus() }}</span>
       <a class="botao secundario" href="{{ route('os.ordens.imprimir', $os) }}" target="_blank">@include('layouts.partials.icone', ['nome' => 'imprimir']) Imprimir</a>
       @if ($podeAprovar)<a class="botao secundario" href="{{ route('os.ordens.edit', $os) }}">Editar</a>@endif
     </div>
   </div>
   @include('manutencao._erros')
 
-  <dl class="dados-curtos">
-    <div><dt>Máquina</dt><dd>@include('manutencao._maquina', ['maquina' => $os->maquina])@if ($os->maquina_parada)<br><span class="os-parada">máquina parada</span>@endif</dd></div>
-    <div><dt>Prioridade</dt><dd class="prioridade-{{ $os->prioridade }}">{{ $os->rotuloPrioridade() }}</dd></div>
-    <div><dt>Área executante</dt><dd>{{ $os->areaExecutante?->nome }} <span class="etiqueta unidade-{{ $os->unidade }}">{{ config('oee.unidades')[$os->unidade] ?? $os->unidade }}</span></dd></div>
-    <div><dt>Mantenedores</dt><dd>{{ $os->mantenedoresAtribuidos()->map->nomeExibicao()->join(', ') ?: 'definir depois' }}</dd></div>
-    <div><dt>Centro de custo</dt><dd>{{ $os->centro_custo ?: '—' }}</dd></div>
-    <div><dt>Solicitante</dt><dd>{{ $os->solicitante?->nome ?? ($os->plano ? 'PAMP '.$os->plano->codigo : '—') }}@if ($os->solicitacao)<br><a href="{{ route('os.solicitacoes.show', $os->solicitacao) }}"><small>{{ $os->solicitacao->numeroFormatado() }}</small></a>@endif</dd></div>
-    <div><dt>Aprovada por</dt><dd>{{ $os->aprovadoPor?->nome ?? '—' }}</dd></div>
-    <div><dt>Emitida</dt><dd>@dataHora($os->criado_em)@if ($os->prevista_para)<br><small>prevista {{ $os->prevista_para->format('d/m/Y') }}</small>@endif</dd></div>
-    <div><dt>Início / conclusão</dt><dd>{{ $os->iniciada_em ? \App\Providers\AppServiceProvider::dataHora($os->iniciada_em) : '—' }}<br>{{ $os->concluida_em ? \App\Providers\AppServiceProvider::dataHora($os->concluida_em) : '—' }}</dd></div>
-    <div><dt>Horas apontadas</dt><dd><strong>{{ HorasManutencao::hhmm($os->total_minutos) }}</strong></dd></div>
-  </dl>
-  <h2>Descrição</h2>
-  <p class="os-texto">{{ $os->descricao }}</p>
-  @if ($os->solucao)<h2>Serviço realizado</h2><p class="os-texto">{{ $os->solucao }}</p>@endif
-  @if ($os->status === 'cancelada')<p class="aviso erro">Cancelada: {{ $os->cancelamento_motivo }}</p>@endif
-  @if ($os->aceite_em)<p class="aviso ok">Aceite de {{ $os->aceitePor?->nome }} em @dataHora($os->aceite_em).@if ($os->aceite_observacao) {{ $os->aceite_observacao }}@endif</p>@endif
-
-  <div class="os-acoes">
-    @php($acoesVisiveis = collect($acoes)->filter(fn ($r, $a) => in_array($a, ['cancelar', 'reabrir'], true) ? $podeCancelar : $podeExecutar))
-    @if ($acoesVisiveis->isNotEmpty())
-      <form method="post" action="{{ route('os.ordens.acao', $os) }}">
-        @csrf
-        <label>Observação <input name="observacao" maxlength="2000" placeholder="opcional (obrigatória para cancelar)"></label>
-        @foreach ($acoesVisiveis as $acao => $rotulo)
-            <button class="botao {{ in_array($acao, ['cancelar', 'reabrir', 'aguardar_material'], true) ? 'secundario' : '' }}" type="submit" name="acao" value="{{ $acao }}"
-              @if ($acao === 'cancelar') onclick="return confirm('Cancelar esta OS?')" @endif>{{ $rotulo }}</button>
+  {{-- 2. Avaliação pendente: bem visível para o solicitante --}}
+  @if ($podeAvaliar)
+    <form method="post" action="{{ route('os.ordens.avaliar', $os) }}" class="os-avaliar" id="avaliar">
+      @csrf
+      <div class="os-avaliar-titulo">@include('layouts.partials.icone', ['nome' => 'alerta'])
+        <div><strong>Serviço concluído: avalie o atendimento</strong>
+          <p>A manutenção terminou esta OS{{ $os->concluida_em ? ' em '.\App\Providers\AppServiceProvider::dataHora($os->concluida_em) : '' }}. Confira o resultado e avalie — sua avaliação encerra a OS (vale como sua assinatura). <strong>Ruim</strong> devolve a OS para a manutenção.</p></div>
+      </div>
+      <div class="os-avaliar-opcoes">
+        @foreach (['excelente' => 'Excelente', 'boa' => 'Boa', 'ruim' => 'Ruim'] as $v => $r)
+          <label class="os-nota avaliacao-{{ $v }}"><input type="radio" name="avaliacao" value="{{ $v }}" required @checked(old('avaliacao') === $v)><span>{{ $r }}</span></label>
         @endforeach
-      </form>
-    @endif
-    @if ($podeAprovar && $aberta)
-      <form method="post" action="{{ route('os.ordens.distribuir', $os) }}" class="ss-analise-bloco" style="flex-basis:100%">
-        @csrf
-        @include('manutencao._escolher-mantenedores', ['area' => $os->areaExecutante?->nome, 'mantenedores' => $mantenedores, 'marcados' => $os->mantenedoresAtribuidos()->pluck('id')->all()])
-        <div class="acoes"><button class="botao secundario" type="submit">Salvar mantenedores</button></div>
-      </form>
-    @endif
+      </div>
+      <label class="os-avaliar-obs">Comentário <small class="suave" id="avaliar-dica">(opcional)</small>
+        <textarea name="observacao" rows="2" maxlength="500" id="avaliar-obs" placeholder="Algo a dizer sobre o serviço?">{{ old('observacao') }}</textarea></label>
+      <div class="acoes"><button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'check']) Enviar avaliação</button></div>
+    </form>
+    <script>
+      (function () {
+        var obs = document.getElementById('avaliar-obs'), dica = document.getElementById('avaliar-dica');
+        document.querySelectorAll('#avaliar input[name=avaliacao]').forEach(function (r) {
+          r.addEventListener('change', function () {
+            var ruim = r.value === 'ruim' && r.checked;
+            obs.required = ruim;
+            dica.textContent = ruim ? '(obrigatório: o que ficou ruim? A OS volta para a manutenção)' : '(opcional)';
+            obs.placeholder = ruim ? 'Explique o motivo' : 'Algo a dizer sobre o serviço?';
+          });
+        });
+      })();
+    </script>
+  @elseif ($os->status === 'concluida')
+    <p class="aviso">Serviço concluído: aguardando a avaliação de {{ $os->solicitante?->nome ?? 'quem solicitou' }}.</p>
+  @endif
+  @if ($os->status === 'cancelada')<p class="aviso erro">Cancelada: {{ $os->cancelamento_motivo }}</p>@endif
+  @if ($os->avaliacao === 'ruim' && $os->status !== 'encerrada' && $os->aceite_observacao)
+    <p class="aviso erro">Avaliada como <strong>Ruim</strong> por {{ $os->aceitePor?->nome }} em @dataHora($os->aceite_em): {{ $os->aceite_observacao }}</p>
+  @endif
+
+  {{-- 3. O problema e o que foi feito --}}
+  <div class="os-corpo">
+    <div class="os-texto-bloco">
+      <h2>Problema / serviço solicitado</h2>
+      <p class="os-texto">{{ $os->descricao }}</p>
+      @if ($os->solucao)<h2>Serviço realizado</h2><p class="os-texto">{{ $os->solucao }}</p>@endif
+      @if ($os->status === 'encerrada' && $os->aceite_observacao)<h2>Comentário da avaliação</h2><p class="os-texto">{{ $os->aceite_observacao }}</p>@endif
+    </div>
+
+    {{-- 4. Onde e quem --}}
+    <div class="os-ficha">
+      <div class="os-ficha-bloco">
+        <h3>Equipamento</h3>
+        <dl>
+          <dt>Máquina</dt><dd>@include('manutencao._maquina', ['maquina' => $os->maquina])</dd>
+          <dt>Centro de custo</dt><dd>{{ $os->centro_custo ?: '—' }}@if ($ccDescricao) <small class="suave">{{ $ccDescricao }}</small>@endif</dd>
+        </dl>
+      </div>
+      <div class="os-ficha-bloco">
+        <h3>Solicitação</h3>
+        <dl>
+          <dt>Solicitante</dt>
+          <dd>@if ($os->solicitante)<span class="os-pessoa">@include('partials.avatar', ['usuario' => $os->solicitante]) <span>{{ $os->solicitante->nome }}@if ($os->centro_custo_solicitante)<small class="suave">{{ $os->centro_custo_solicitante }}</small>@endif</span></span>@else{{ $os->plano ? 'PAMP '.$os->plano->codigo : '—' }}@endif</dd>
+          <dt>Aprovada por</dt><dd>{{ $os->aprovadoPor?->nome ?? '—' }}</dd>
+        </dl>
+      </div>
+      <div class="os-ficha-bloco">
+        <h3>Execução</h3>
+        <dl>
+          <dt>Área executante</dt><dd>{{ $os->areaExecutante?->nome }} <span class="etiqueta unidade-{{ $os->unidade }}">{{ config('oee.unidades')[$os->unidade] ?? $os->unidade }}</span></dd>
+          <dt>Mantenedores</dt>
+          <dd>@forelse ($atribuidos as $mt)<span class="os-pessoa">@if ($mt->usuario)@include('partials.avatar', ['usuario' => $mt->usuario])@endif <span>{{ $mt->nomeExibicao() }}</span></span>@empty<span class="suave">definir depois</span>@endforelse</dd>
+          <dt>Horas apontadas</dt><dd><strong>{{ \App\Services\Manutencao\HorasManutencao::hhmm($os->total_minutos) }}</strong></dd>
+        </dl>
+      </div>
+    </div>
   </div>
 
-  @if ($podeAceitar)
-    <form method="post" action="{{ route('os.ordens.aceite', $os) }}" class="os-rodando">
-      @csrf
-      <p><strong>Serviço entregue.</strong> Confira o resultado e dê o aceite (vale como sua assinatura) ou recuse explicando o que faltou.</p>
-      <label>Observação <input name="observacao" maxlength="500"></label>
-      <div class="acoes">
-        <button class="botao" type="submit" name="resultado" value="aceito">@include('layouts.partials.icone', ['nome' => 'check']) Aceitar o serviço</button>
-        <button class="botao secundario" type="submit" name="resultado" value="recusado">Recusar (volta para execução)</button>
-      </div>
-    </form>
+  {{-- 5. Linha do tempo --}}
+  <ol class="os-linha-tempo">
+    @foreach ($marcos as $m)
+      <li @class(['feito' => $m['quando'] !== null])>
+        <span class="os-marco-ponto"></span>
+        <strong>{{ $m['rotulo'] }}</strong>
+        @if ($m['quando'])
+          <span>{{ $m['quando'] instanceof \Carbon\CarbonInterface && $m['rotulo'] === 'Programada para' ? $m['quando']->format('d/m/Y') : \App\Providers\AppServiceProvider::dataHora($m['quando']) }}</span>
+          @if ($m['quem'])<small class="suave">{{ $m['quem'] }}</small>@endif
+          @if ($m['detalhe'])<small>{{ $m['detalhe'] }}</small>@endif
+          @if (! empty($m['duracao']))<small class="os-marco-duracao">+{{ $m['duracao'] }}</small>@endif
+        @else
+          <small class="suave">pendente</small>
+        @endif
+      </li>
+    @endforeach
+  </ol>
+
+  {{-- 6. Ações --}}
+  @php($acoesVisiveis = collect($acoes)->filter(fn ($r, $a) => in_array($a, ['cancelar', 'reabrir'], true) ? $podeCancelar : $podeExecutar))
+  @if ($acoesVisiveis->isNotEmpty() || ($podeAprovar && $aberta))
+    <div class="os-acoes-bloco">
+      @if ($acoesVisiveis->isNotEmpty())
+        <form method="post" action="{{ route('os.ordens.acao', $os) }}" class="os-acoes">
+          @csrf
+          <label>Observação <input name="observacao" maxlength="2000" placeholder="opcional (obrigatória para cancelar)"></label>
+          @foreach ($acoesVisiveis as $acao => $rotulo)
+            <button class="botao {{ in_array($acao, ['cancelar', 'reabrir', 'aguardar_material'], true) ? 'secundario' : '' }}" type="submit" name="acao" value="{{ $acao }}"
+              @if ($acao === 'cancelar') onclick="return confirm('Cancelar esta OS?')" @endif>{{ $rotulo }}</button>
+          @endforeach
+        </form>
+      @endif
+      @if ($podeAprovar && $aberta)
+        <form method="post" action="{{ route('os.ordens.distribuir', $os) }}" class="ss-analise-bloco">
+          @csrf
+          @include('manutencao._escolher-mantenedores', ['area' => $os->areaExecutante?->nome, 'mantenedores' => $mantenedores, 'marcados' => $atribuidos->pluck('id')->all()])
+          <div class="acoes"><button class="botao secundario" type="submit">Salvar mantenedores</button></div>
+        </form>
+      @endif
+    </div>
   @endif
+</section>
+
+{{-- Interações: conversa de todos os envolvidos, com anexos --}}
+<section class="cartao" id="interacoes">
+  <h2>Interações</h2>
+  <p class="suave">Conversa entre o solicitante, a manutenção e todos que acompanham esta OS. Anexe documentos, prints (cole com Ctrl+V) ou links.</p>
+  <div class="chat">
+    @forelse ($interacoes as $msg)
+      <article @class(['chat-msg', 'minha' => $msg->usuario_id === auth()->id()])>
+        @if ($msg->usuario)@include('partials.avatar', ['usuario' => $msg->usuario])@endif
+        <div class="chat-balao">
+          <header><strong>{{ $msg->usuario?->nome }}</strong> <small class="suave">@dataHora($msg->criado_em)</small></header>
+          @if ($msg->texto)<div class="chat-texto">{!! $msg->textoHtml() !!}</div>@endif
+          @if ($msg->anexos->isNotEmpty())
+            <div class="chat-anexos">
+              @foreach ($msg->anexos as $an)
+                @if ($an->ehImagem())
+                  <a href="{{ route('os.interacoes.anexo', $an) }}" target="_blank" class="chat-imagem" title="{{ $an->nome }}"><img src="{{ route('os.interacoes.anexo', $an) }}" alt="{{ $an->nome }}" loading="lazy"></a>
+                @else
+                  <a href="{{ route('os.interacoes.anexo', $an) }}" target="_blank" class="chat-arquivo">@include('layouts.partials.icone', ['nome' => 'apontamento']) <span>{{ $an->nome }}<small class="suave">{{ $an->tamanhoLegivel() }}</small></span></a>
+                @endif
+              @endforeach
+            </div>
+          @endif
+        </div>
+      </article>
+    @empty
+      <p class="suave chat-vazio">Nenhuma interação ainda. Escreva a primeira mensagem.</p>
+    @endforelse
+  </div>
+
+  <form method="post" action="{{ route('os.interacoes.store', $os) }}" enctype="multipart/form-data" class="chat-form" id="chat-form">
+    @csrf
+    <textarea name="texto" rows="2" maxlength="4000" placeholder="Escreva uma mensagem… (links viram clicáveis; cole prints com Ctrl+V)" id="chat-texto">{{ old('texto') }}</textarea>
+    <div class="chat-form-rodape">
+      <label class="botao secundario pequeno chat-anexar">@include('layouts.partials.icone', ['nome' => 'mais']) Anexar
+        <input type="file" name="anexos[]" multiple id="chat-arquivos" hidden
+               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z,.dwg,.dxf,.mp4,.mov"></label>
+      <span class="suave chat-limite">até {{ \App\Http\Controllers\Manutencao\InteracaoController::MAX_ARQUIVOS }} arquivos de {{ number_format($limiteAnexoKb / 1024, 1, ',', '.') }} MB</span>
+      <span id="chat-selecionados" class="chat-selecionados"></span>
+      <button class="botao" type="submit">Enviar</button>
+    </div>
+  </form>
+  <script>
+    (function () {
+      var arquivos = document.getElementById('chat-arquivos'), lista = document.getElementById('chat-selecionados');
+      var texto = document.getElementById('chat-texto'), limite = {{ $limiteAnexoKb }} * 1024;
+      function mostrar() {
+        lista.textContent = '';
+        Array.prototype.forEach.call(arquivos.files, function (f) {
+          var chip = document.createElement('span');
+          chip.className = 'escolha-chip' + (f.size > limite ? ' grande' : '');
+          chip.textContent = f.name + (f.size > limite ? ' (grande demais)' : '');
+          lista.appendChild(chip);
+        });
+      }
+      arquivos.addEventListener('change', mostrar);
+      // Colar print (Ctrl+V) na caixa de mensagem: entra como anexo.
+      texto.addEventListener('paste', function (e) {
+        var imagens = Array.prototype.filter.call((e.clipboardData || {}).files || [], function (f) { return f.type.indexOf('image/') === 0; });
+        if (!imagens.length) return;
+        e.preventDefault();
+        var dt = new DataTransfer();
+        Array.prototype.forEach.call(arquivos.files, function (f) { dt.items.add(f); });
+        imagens.forEach(function (f, i) {
+          var nome = 'print-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + (i ? '-' + i : '') + '.png';
+          dt.items.add(new File([f], nome, { type: f.type }));
+        });
+        arquivos.files = dt.files;
+        mostrar();
+      });
+      // Ctrl+Enter envia.
+      texto.addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) document.getElementById('chat-form').requestSubmit(); });
+      var chat = document.querySelector('.chat'); if (chat) chat.scrollTop = chat.scrollHeight;
+    })();
+  </script>
 </section>
 
 <section class="cartao">

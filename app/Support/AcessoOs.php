@@ -172,6 +172,12 @@ final class AcessoOs
         });
     }
 
+    /** OS concluídas que o usuário (solicitante) ainda precisa avaliar. */
+    public static function pendentesDeAvaliacao(Usuario $u): Collection
+    {
+        return OrdemServico::where('solicitante_id', $u->id)->where('status', 'concluida')->orderBy('concluida_em')->get(['id', 'titulo', 'descricao', 'concluida_em']);
+    }
+
     /** Mantenedor ligado ao login do usuário (para apontar as próprias horas). */
     public static function mantenedorDo(Usuario $u): ?Mantenedor
     {

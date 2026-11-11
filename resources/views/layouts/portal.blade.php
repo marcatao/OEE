@@ -151,6 +151,7 @@
       </header>
       <main>
         @include('layouts.partials.avisos')
+        @include('manutencao._aviso-avaliacao')
         @yield('conteudo')
       </main>
     </div>

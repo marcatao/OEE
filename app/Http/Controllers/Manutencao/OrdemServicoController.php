@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Manutencao;
 
 use App\Http\Controllers\Controller;
+use App\Models\CentroCusto;
 use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
 use App\Services\Manutencao\FluxoOrdemServico;
+use App\Services\Manutencao\HorasManutencao;
 use App\Support\AcessoOs;
+use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -75,19 +78,26 @@ class OrdemServicoController extends Controller
         $os = $this->buscar($request, $ordem);
         $u = $request->user();
 
+        $historico = $os->historicoCompleto()->with('usuario')->orderByDesc('criado_em')->orderByDesc('id')->get();
+
         return view('manutencao.ordens.show', [
             'os' => $os,
+            'marcos' => $this->marcos($os, $historico),
+            // SQL Server ignora os espaços à direita do código do Protheus na comparação.
+            'ccDescricao' => $os->centro_custo ? CentroCusto::withoutGlobalScope('unidade')->where('ctt_custo', trim((string) $os->centro_custo))->first()?->descricao() : null,
             'apontamentos' => $os->apontamentos()->with(['mantenedor' => fn ($q) => $q->withoutGlobalScopes(), 'criadoPor'])->orderBy('inicio')->get(),
             'materiais' => $os->materiais()->with('criadoPor')->orderBy('id')->get(),
             'checklist' => $os->checklist()->with('respondidoPor')->orderBy('ordem')->orderBy('id')->get(),
-            'historico' => $os->historico()->with('usuario')->orderBy('id')->get(),
+            'historico' => $historico,
             'acoes' => FluxoOrdemServico::acoesPossiveis($os),
             'mantenedores' => AcessoOs::mantenedoresDaArea($os),
             'meuMantenedor' => AcessoOs::mantenedorDo($u),
             'podeAprovar' => AcessoOs::podeAprovar($u, $os),
             'podeExecutar' => AcessoOs::podeExecutar($u, $os),
             'podeCancelar' => AcessoOs::podeCancelar($u, $os),
-            'podeAceitar' => $os->status === 'concluida' && ($os->solicitante_id === $u->id || AcessoOs::podeAprovar($u, $os)),
+            'podeAvaliar' => $os->status === 'concluida' && ($os->solicitante_id === $u->id || AcessoOs::ehAdminDa($u, $os->unidade)),
+            'interacoes' => $os->interacoes()->with(['usuario', 'anexos'])->orderBy('id')->get(),
+            'limiteAnexoKb' => InteracaoController::limiteKb(),
         ]);
     }
 
@@ -178,22 +188,19 @@ class OrdemServicoController extends Controller
         return redirect()->route('os.ordens.show', $os)->with('ok', 'OS '.mb_strtolower(OrdemServico::STATUS[$os->status]).'.');
     }
 
-    /** Aceite (assinatura eletrônica) do solicitante, ou recusa do resultado com justificativa. */
-    public function aceite(Request $request, int $ordem): RedirectResponse
+    /** Avaliação do solicitante (Excelente, Boa ou Ruim — Ruim reabre a OS e pede o motivo). */
+    public function avaliar(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscar($request, $ordem);
         $u = $request->user();
-        abort_unless($os->solicitante_id === $u->id || AcessoOs::podeAprovar($u, $os), 403, 'Só o solicitante dá o aceite do serviço.');
-        $dados = $request->validate(['resultado' => ['required', Rule::in(['aceito', 'recusado'])], 'observacao' => ['nullable', 'string', 'max:500']]);
-        if ($dados['resultado'] === 'recusado') {
-            $request->validate(['observacao' => ['required']], ['observacao.required' => 'Explique o que ficou faltando no serviço.']);
-            $this->fluxo->recusarServico($os, $u, $dados['observacao']);
+        abort_unless($os->solicitante_id === $u->id || AcessoOs::ehAdminDa($u, $os->unidade), 403, 'Só o solicitante avalia o serviço.');
+        $dados = $request->validate(['avaliacao' => ['required', Rule::in(array_keys(OrdemServico::AVALIACOES))], 'observacao' => ['nullable', 'string', 'max:500']],
+            ['avaliacao.required' => 'Escolha Excelente, Boa ou Ruim.']);
+        $this->fluxo->avaliar($os, $u, $dados['avaliacao'], $dados['observacao'] ?? null);
 
-            return redirect()->route('os.ordens.show', $os)->with('ok', 'Serviço recusado: a OS voltou para execução.');
-        }
-        $this->fluxo->aceitar($os, $u, $dados['observacao'] ?? null);
-
-        return redirect()->route('os.ordens.show', $os)->with('ok', 'Aceite registrado: OS encerrada.');
+        return redirect()->route('os.ordens.show', $os)->with('ok', $dados['avaliacao'] === 'ruim'
+            ? 'Avaliação registrada: a OS voltou para a manutenção com o seu motivo.'
+            : 'Obrigado! Avaliação registrada e OS encerrada.');
     }
 
     public function checklist(Request $request, int $ordem): RedirectResponse
@@ -211,6 +218,60 @@ class OrdemServicoController extends Controller
         }
 
         return back()->with('ok', 'Checklist salvo.');
+    }
+
+    /**
+     * Linha do tempo da OS: abertura da SS → aprovação → início do atendimento → conclusão → avaliação, com quem fez e o
+     * tempo desde a etapa anterior (lida do histórico, que guarda tudo; as datas da OS completam as antigas).
+     *
+     * @return list<array{rotulo: string, quando: ?CarbonInterface, quem: ?string, detalhe: ?string}>
+     */
+    private function marcos(OrdemServico $os, $historico): array
+    {
+        $cronologico = $historico->sortBy(fn ($h) => [$h->criado_em?->getTimestamp(), $h->id])->values();
+        $primeiro = fn (array $acoes) => $cronologico->first(fn ($h) => in_array($h->acao, $acoes, true));
+        $ultimo = fn (array $acoes) => $cronologico->last(fn ($h) => in_array($h->acao, $acoes, true));
+
+        $abertura = $primeiro(['aberta', 'gerada_preventiva']);
+        $aprovacao = $primeiro(['aprovada']);
+        $inicio = $primeiro(['iniciar']);
+        $conclusao = $ultimo(['concluir']);
+        $avaliacao = $ultimo(['avaliada', 'avaliada_ruim', 'aceite']);
+        $preventiva = $os->plano_preventiva_id !== null;
+
+        $marcos = [
+            ['rotulo' => $preventiva ? 'OS gerada (PAMP)' : 'SS aberta', 'quando' => $abertura?->criado_em ?? $os->solicitacao?->criado_em ?? $os->criado_em,
+                'quem' => $abertura?->usuario?->nome ?? $os->solicitante?->nome, 'detalhe' => null],
+            ['rotulo' => $preventiva ? 'Programada para' : 'Aprovada', 'quando' => $preventiva ? $os->prevista_para : ($aprovacao?->criado_em ?? $os->solicitacao?->analisado_em),
+                'quem' => $preventiva ? null : ($aprovacao?->usuario?->nome ?? $os->aprovadoPor?->nome), 'detalhe' => null],
+            ['rotulo' => 'Em atendimento', 'quando' => $inicio?->criado_em ?? $os->iniciada_em, 'quem' => $inicio?->usuario?->nome, 'detalhe' => null],
+            ['rotulo' => 'Concluída', 'quando' => $conclusao?->criado_em ?? $os->concluida_em, 'quem' => $conclusao?->usuario?->nome,
+                'detalhe' => $os->total_minutos > 0 ? HorasManutencao::hhmm($os->total_minutos).' h apontadas' : null],
+            ['rotulo' => 'Avaliada', 'quando' => $os->status === 'encerrada' ? ($avaliacao?->criado_em ?? $os->aceite_em) : null,
+                'quem' => $os->status === 'encerrada' ? ($avaliacao?->usuario?->nome ?? $os->aceitePor?->nome) : null,
+                'detalhe' => $os->status === 'encerrada' && $os->avaliacao ? OrdemServico::AVALIACOES[$os->avaliacao] : null],
+        ];
+        // Tempo desde a etapa anterior concluída.
+        $anterior = null;
+        foreach ($marcos as &$m) {
+            $m['duracao'] = $m['quando'] && $anterior && ! $preventiva ? self::duracao($anterior, $m['quando']) : null;
+            if ($m['quando']) {
+                $anterior = $m['quando'];
+            }
+        }
+
+        return $marcos;
+    }
+
+    /** "2 d 3 h", "4 h 10 min", "25 min". */
+    public static function duracao($de, $ate): string
+    {
+        $min = max(0, intdiv($ate->getTimestamp() - $de->getTimestamp(), 60));
+        if ($min >= 1440) {
+            return intdiv($min, 1440).' d '.intdiv($min % 1440, 60).' h';
+        }
+
+        return $min >= 60 ? intdiv($min, 60).' h '.($min % 60).' min' : $min.' min';
     }
 
     private function buscar(Request $request, int $id): OrdemServico

@@ -81,7 +81,7 @@ class SolicitacaoController extends Controller
 
         return view('manutencao.solicitacoes.show', [
             'ss' => $ss,
-            'historico' => $ss->historico()->with('usuario')->orderBy('id')->get(),
+            'historico' => $ss->historico()->with('usuario')->orderByDesc('criado_em')->orderByDesc('id')->get(),
             'mantenedores' => AcessoOs::mantenedoresDaArea($ss),
             'meuMantenedor' => AcessoOs::mantenedorDo($request->user()),
             'podeAprovar' => AcessoOs::podeAprovar($request->user(), $ss),
