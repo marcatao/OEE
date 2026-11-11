@@ -24,6 +24,13 @@ return [
         'apontamentos_producao' => 'Apontamentos OP (produções, baixas e notas das OPs no Protheus)',
         'ordens_producao' => 'Ordens de produção (consulta, custos e kardex)',
         'calculadora' => 'Calculadora de OEE',
+        // Ordens de serviço (manutenção de produção e de tecnologia; cada um vê a fila da sua unidade)
+        'os_solicitar' => 'Ordens de serviço: abrir solicitações de serviço (SS) e acompanhar as suas',
+        'os_aprovar' => 'Ordens de serviço: analisar SS (aprovar/rejeitar), distribuir e editar OS',
+        'solicitacoes_manutencao' => 'Ordens de serviço: executar OS (apontar horas, materiais, checklist e concluir)',
+        'os_almoxarifado' => 'Ordens de serviço: atender requisições de material (almoxarifado e compras)',
+        'os_preventivas' => 'Ordens de serviço: preventivas (PAMP, planos e checklist)',
+        'os_relatorios' => 'Ordens de serviço: relatórios de horas (intranet, contabilidade e diretoria)',
     ],
 
     // Custo da OP × custo meta (SB9): divergência dentro desta faixa (0,05 = ±5%) fica neutra; acima, em vermelho;
@@ -38,7 +45,7 @@ return [
             'rotulo' => 'Operador',
             'descricao' => 'Informa o apontamento real e vê as ordens de produção.',
             'unidades' => ['manutencao'],
-            'permissoes' => ['apontamentos', 'ordens_producao'],
+            'permissoes' => ['apontamentos', 'ordens_producao', 'os_solicitar'],
         ],
         'admin_producao' => [
             'rotulo' => 'Administrador de Produção',
@@ -56,13 +63,13 @@ return [
             'rotulo' => 'Mantenedor de Produção',
             'descricao' => 'Solicitações de manutenção e as máquinas de manutenção nos dashboards.',
             'unidades' => ['manutencao'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_solicitar'],
         ],
         'mantenedor_tecnologia' => [
             'rotulo' => 'Mantenedor de Tecnologia',
             'descricao' => 'Vê o que é de tecnologia: equipamentos e dashboards de tecnologia.',
             'unidades' => ['tecnologia'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_solicitar'],
         ],
     ],
 

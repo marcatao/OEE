@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **24** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **36** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -254,6 +254,173 @@ erDiagram
         datetime sincronizado_em
         float(53) custo_meta
     }
+    ordens_servico {
+        bigint id PK
+        nvarchar(20) unidade
+        bigint solicitacao_id FK, UK
+        bigint plano_preventiva_id FK
+        date prevista_para
+        nvarchar(15) tipo
+        bigint maquina_id FK
+        bigint area_executante_id FK
+        nvarchar(20) centro_custo
+        nvarchar(120) centro_custo_solicitante
+        nvarchar(10) prioridade
+        bit maquina_parada
+        nvarchar(2000) descricao
+        bigint solicitante_id FK
+        bigint aprovado_por_id FK
+        bigint responsavel_id FK
+        nvarchar(20) status
+        datetime iniciada_em
+        datetime concluida_em
+        nvarchar(2000) solucao
+        bigint aceite_por_id FK
+        datetime aceite_em
+        nvarchar(500) aceite_observacao
+        nvarchar(500) cancelamento_motivo
+        bigint ordem_producao_id FK
+        bigint apontamento_estado_id FK
+        int total_minutos
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    os_apontamentos_horas {
+        bigint id PK
+        bigint ordem_servico_id FK
+        bigint mantenedor_id FK, UK
+        datetime inicio
+        datetime fim
+        int minutos_normais
+        int minutos_extras
+        nvarchar(1000) descricao
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    os_areas_executantes {
+        bigint id PK
+        nvarchar(20) unidade
+        nvarchar(20) codigo UK
+        nvarchar(80) nome
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    os_checklist {
+        bigint id PK
+        bigint ordem_servico_id FK
+        bigint plano_item_id FK
+        smallint ordem
+        nvarchar(300) descricao
+        nvarchar(3) resposta
+        nvarchar(300) observacao
+        bigint respondido_por_id FK
+        datetime respondido_em
+    }
+    os_historico {
+        bigint id PK
+        bigint ordem_servico_id FK
+        bigint solicitacao_id FK
+        nvarchar(30) acao
+        nvarchar(20) status_anterior
+        nvarchar(20) status_novo
+        nvarchar(1000) observacao
+        bigint usuario_id FK
+        datetime criado_em
+    }
+    os_justificativas_setor {
+        bigint id PK
+        nvarchar(20) unidade
+        nvarchar(120) centro_custo
+        date competencia
+        nvarchar(1000) texto
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    os_mantenedores {
+        bigint id PK
+        nvarchar(20) unidade
+        bigint usuario_id FK, UK
+        nvarchar(120) nome
+        nvarchar(20) matricula
+        bigint area_executante_id FK
+        nvarchar(20) centro_custo
+        nvarchar(5) jornada_inicio
+        nvarchar(5) jornada_fim
+        smallint intervalo_min
+        nvarchar(7) dias_semana
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    os_materiais {
+        bigint id PK
+        bigint ordem_servico_id FK
+        nvarchar(30) produto_codigo
+        nvarchar(200) descricao
+        decimal(14, quantidade
+        nvarchar(4) um
+        nvarchar(12) status
+        nvarchar(30) solicitacao_compra
+        decimal(18, custo_unitario
+        nvarchar(500) observacao
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    os_planos_itens {
+        bigint id PK
+        bigint plano_preventiva_id FK
+        smallint ordem
+        nvarchar(300) descricao
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    os_planos_preventiva {
+        bigint id PK
+        nvarchar(20) unidade
+        nvarchar(20) codigo UK
+        nvarchar(200) descricao
+        bigint maquina_id FK
+        bigint area_executante_id FK
+        bigint responsavel_id FK
+        nvarchar(10) prioridade
+        nvarchar(10) periodicidade
+        nvarchar(12) meses
+        smallint dia_mes
+        date proxima_em
+        smallint antecedencia_dias
+        int duracao_prevista_min
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    os_sugestoes_descricao {
+        bigint id PK
+        nvarchar(20) unidade
+        nvarchar(200) texto
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     paradas {
         bigint id PK
         bigint maquina_id FK
@@ -328,6 +495,29 @@ erDiagram
         datetime sinal_em
         bigint ultimo_recno
     }
+    solicitacoes_servico {
+        bigint id PK
+        nvarchar(20) unidade
+        bigint solicitante_id FK
+        nvarchar(15) tipo
+        bigint maquina_id FK
+        bigint area_executante_id FK
+        nvarchar(20) centro_custo
+        nvarchar(120) centro_custo_solicitante
+        nvarchar(10) prioridade
+        bit maquina_parada
+        nvarchar(2000) descricao
+        nvarchar(12) status
+        bigint analisado_por_id FK
+        datetime analisado_em
+        nvarchar(500) motivo_rejeicao
+        bigint apontamento_estado_id FK
+        bigint ordem_producao_id FK
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     turnos {
         bigint id PK
         nvarchar(60) nome UK
@@ -386,10 +576,41 @@ erDiagram
     dispositivos_iot |o--o{ maquinas : "iot1_dispositivo_id"
     dispositivos_iot |o--o{ maquinas : "iot2_dispositivo_id"
     dispositivos_iot |o--o{ maquinas : "iot3_dispositivo_id"
+    solicitacoes_servico |o--o{ ordens_servico : "solicitacao_id"
+    os_planos_preventiva |o--o{ ordens_servico : "plano_preventiva_id"
+    maquinas |o--o{ ordens_servico : "maquina_id"
+    os_areas_executantes ||--o{ ordens_servico : "area_executante_id"
+    usuarios |o--o{ ordens_servico : "solicitante_id"
+    usuarios |o--o{ ordens_servico : "aprovado_por_id"
+    os_mantenedores |o--o{ ordens_servico : "responsavel_id"
+    usuarios |o--o{ ordens_servico : "aceite_por_id"
+    ordens_producao |o--o{ ordens_servico : "ordem_producao_id"
+    apontamentos_estado |o--o{ ordens_servico : "apontamento_estado_id"
+    ordens_servico ||--o{ os_apontamentos_horas : "ordem_servico_id"
+    os_mantenedores ||--o{ os_apontamentos_horas : "mantenedor_id"
+    ordens_servico ||--o{ os_checklist : "ordem_servico_id"
+    os_planos_itens |o--o{ os_checklist : "plano_item_id"
+    usuarios |o--o{ os_checklist : "respondido_por_id"
+    ordens_servico |o--o{ os_historico : "ordem_servico_id"
+    solicitacoes_servico |o--o{ os_historico : "solicitacao_id"
+    usuarios |o--o{ os_historico : "usuario_id"
+    usuarios |o--o{ os_mantenedores : "usuario_id"
+    os_areas_executantes |o--o{ os_mantenedores : "area_executante_id"
+    ordens_servico ||--o{ os_materiais : "ordem_servico_id"
+    os_planos_preventiva ||--o{ os_planos_itens : "plano_preventiva_id"
+    maquinas |o--o{ os_planos_preventiva : "maquina_id"
+    os_areas_executantes ||--o{ os_planos_preventiva : "area_executante_id"
+    os_mantenedores |o--o{ os_planos_preventiva : "responsavel_id"
     maquinas ||--o{ paradas : "maquina_id"
     motivos_parada |o--o{ paradas : "motivo_id"
     usuarios |o--o{ registros_login : "usuario_id"
     usuarios |o--o{ sincronizacoes : "usuario_id"
+    usuarios ||--o{ solicitacoes_servico : "solicitante_id"
+    maquinas |o--o{ solicitacoes_servico : "maquina_id"
+    os_areas_executantes ||--o{ solicitacoes_servico : "area_executante_id"
+    usuarios |o--o{ solicitacoes_servico : "analisado_por_id"
+    apontamentos_estado |o--o{ solicitacoes_servico : "apontamento_estado_id"
+    ordens_producao |o--o{ solicitacoes_servico : "ordem_producao_id"
     usuarios ||--o{ usuario_perfis : "usuario_id"
     centros_custo |o..o{ maquinas : "centro_custo (código)"
     produtos_protheus |o..o{ ordens_producao : "c2_produto (código)"
@@ -398,6 +619,10 @@ erDiagram
     produtos_protheus |o..o{ movimentos_producao : "d3_cod (código)"
     ordens_producao |o..o{ notas_fiscais_op : "op_numero (código)"
     produtos_protheus |o..o{ notas_fiscais_op : "d2_cod (código)"
+    centros_custo |o..o{ os_mantenedores : "centro_custo (código)"
+    centros_custo |o..o{ solicitacoes_servico : "centro_custo (código)"
+    centros_custo |o..o{ ordens_servico : "centro_custo (código)"
+    produtos_protheus |o..o{ os_materiais : "produto_codigo (código)"
 ```
 
 ## Decisões e sugestões de modelagem
@@ -459,6 +684,17 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
 | [`ordens_producao`](#ordens_producao) | Protheus | `id` | 26 | 0 |
+| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 31 | 12 |
+| [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
+| [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 9 | 2 |
+| [`os_checklist`](#os_checklist) | Sistema | `id` | 9 | 3 |
+| [`os_historico`](#os_historico) | Sistema | `id` | 9 | 3 |
+| [`os_justificativas_setor`](#os_justificativas_setor) | Sistema | `id` | 9 | 2 |
+| [`os_mantenedores`](#os_mantenedores) | Sistema | `id` | 16 | 4 |
+| [`os_materiais`](#os_materiais) | Sistema | `id` | 14 | 3 |
+| [`os_planos_itens`](#os_planos_itens) | Sistema | `id` | 9 | 3 |
+| [`os_planos_preventiva`](#os_planos_preventiva) | Sistema | `id` | 19 | 5 |
+| [`os_sugestoes_descricao`](#os_sugestoes_descricao) | Sistema | `id` | 8 | 2 |
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`plantas`](#plantas) | Sistema | `id` | 9 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
@@ -466,6 +702,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`registros_login`](#registros_login) | Sistema | `id` | 8 | 1 |
 | [`sessions`](#sessions) | Infra | `id` | 6 | 0 |
 | [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 16 | 1 |
+| [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 21 | 8 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
 | [`usuarios`](#usuarios) | Sistema | `id` | 22 | 0 |
@@ -899,6 +1136,270 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Regras (CHECK, só no SQL Server):** `ck_ordens_producao_status`: `status IN ('aberta', 'andamento', 'fechada', 'parada')`
 
+### ordens_servico
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não |  |  |
+| `solicitacao_id` | `bigint` | sim |  | FK → `solicitacoes_servico.id` |
+| `plano_preventiva_id` | `bigint` | sim |  | FK → `os_planos_preventiva.id` |
+| `prevista_para` | `date` | sim |  |  |
+| `tipo` | `nvarchar(15)` | não |  |  |
+| `maquina_id` | `bigint` | sim |  | FK → `maquinas.id` |
+| `area_executante_id` | `bigint` | não |  | FK → `os_areas_executantes.id` |
+| `centro_custo` | `nvarchar(20)` | sim |  | código → `centros_custo.ctt_custo` (sem FK) |
+| `centro_custo_solicitante` | `nvarchar(120)` | sim |  |  |
+| `prioridade` | `nvarchar(10)` | não |  |  |
+| `maquina_parada` | `bit` | não | `'0'` |  |
+| `descricao` | `nvarchar(2000)` | não |  |  |
+| `solicitante_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `aprovado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `responsavel_id` | `bigint` | sim |  | FK → `os_mantenedores.id` |
+| `status` | `nvarchar(20)` | não | `'aberta'` |  |
+| `iniciada_em` | `datetime` | sim |  |  |
+| `concluida_em` | `datetime` | sim |  |  |
+| `solucao` | `nvarchar(2000)` | sim |  |  |
+| `aceite_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `aceite_em` | `datetime` | sim |  |  |
+| `aceite_observacao` | `nvarchar(500)` | sim |  |  |
+| `cancelamento_motivo` | `nvarchar(500)` | sim |  |  |
+| `ordem_producao_id` | `bigint` | sim |  | FK → `ordens_producao.id` |
+| `apontamento_estado_id` | `bigint` | sim |  | FK → `apontamentos_estado.id` |
+| `total_minutos` | `int` | não | `'0'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `ux_ordens_servico_solicitacao` único (solicitacao_id) filtrado `WHERE solicitacao_id IS NOT NULL` (só SQL Server) · `ux_ordens_servico_plano_prevista` único (plano_preventiva_id, prevista_para) filtrado `WHERE plano_preventiva_id IS NOT NULL` (só SQL Server) · `ordens_servico_unidade_status_id_index` (unidade, status, id) · `ordens_servico_responsavel_id_status_index` (responsavel_id, status) · `ordens_servico_maquina_id_criado_em_index` (maquina_id, criado_em) · `ordens_servico_status_prevista_para_index` (status, prevista_para) · `ordens_servico_solicitante_id_index` (solicitante_id)
+
+**Regras (CHECK, só no SQL Server):** `ck_ordens_servico_unidade`: `unidade IN ('manutencao', 'tecnologia')` · `ck_ordens_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_ordens_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_ordens_servico_status`: `status IN ('aberta', 'em_execucao', 'aguardando_material', 'concluida', 'encerrada', 'cancelada')` · `ck_ordens_servico_total_minutos`: `total_minutos >= 0`
+
+### os_apontamentos_horas
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `ordem_servico_id` | `bigint` | não |  | FK → `ordens_servico.id` |
+| `mantenedor_id` | `bigint` | não |  | FK → `os_mantenedores.id` |
+| `inicio` | `datetime` | não |  |  |
+| `fim` | `datetime` | sim |  |  |
+| `minutos_normais` | `int` | sim |  |  |
+| `minutos_extras` | `int` | sim |  |  |
+| `descricao` | `nvarchar(1000)` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `ux_os_apontamentos_horas_aberto` único (mantenedor_id) filtrado `WHERE fim IS NULL` (só SQL Server) · `os_apontamentos_horas_ordem_servico_id_inicio_index` (ordem_servico_id, inicio) · `os_apontamentos_horas_mantenedor_id_inicio_index` (mantenedor_id, inicio) · `os_apontamentos_horas_inicio_index` (inicio)
+
+**Regras (CHECK, só no SQL Server):** `ck_os_apontamentos_horas_periodo`: `fim IS NULL OR fim >= inicio` · `ck_os_apontamentos_horas_minutos`: `(minutos_normais IS NULL OR minutos_normais >= 0) AND (minutos_extras IS NULL OR minutos_extras >= 0)`
+
+### os_areas_executantes
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
+| `codigo` | `nvarchar(20)` | não |  |  |
+| `nome` | `nvarchar(80)` | não |  |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `os_areas_executantes_codigo_unique` único (codigo) · `os_areas_executantes_unidade_index` (unidade)
+
+**Regras (CHECK, só no SQL Server):** `ck_os_areas_executantes_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+
+### os_checklist
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `ordem_servico_id` | `bigint` | não |  | FK → `ordens_servico.id` |
+| `plano_item_id` | `bigint` | sim |  | FK → `os_planos_itens.id` |
+| `ordem` | `smallint` | não | `'0'` |  |
+| `descricao` | `nvarchar(300)` | não |  |  |
+| `resposta` | `nvarchar(3)` | sim |  |  |
+| `observacao` | `nvarchar(300)` | sim |  |  |
+| `respondido_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `respondido_em` | `datetime` | sim |  |  |
+
+**Índices:** `os_checklist_ordem_servico_id_ordem_index` (ordem_servico_id, ordem)
+
+**Regras (CHECK, só no SQL Server):** `ck_os_checklist_resposta`: `resposta IS NULL OR resposta IN ('ok', 'nok', 'na')`
+
+### os_historico
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `ordem_servico_id` | `bigint` | sim |  | FK → `ordens_servico.id` |
+| `solicitacao_id` | `bigint` | sim |  | FK → `solicitacoes_servico.id` |
+| `acao` | `nvarchar(30)` | não |  |  |
+| `status_anterior` | `nvarchar(20)` | sim |  |  |
+| `status_novo` | `nvarchar(20)` | sim |  |  |
+| `observacao` | `nvarchar(1000)` | sim |  |  |
+| `usuario_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `criado_em` | `datetime` | sim |  |  |
+
+**Índices:** `os_historico_ordem_servico_id_id_index` (ordem_servico_id, id) · `os_historico_solicitacao_id_id_index` (solicitacao_id, id)
+
+**Regras (CHECK, só no SQL Server):** `ck_os_historico_origem`: `ordem_servico_id IS NOT NULL OR solicitacao_id IS NOT NULL`
+
+### os_justificativas_setor
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não |  |  |
+| `centro_custo` | `nvarchar(120)` | não |  |  |
+| `competencia` | `date` | não |  |  |
+| `texto` | `nvarchar(1000)` | não |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `os_justificativas_setor_unidade_centro_custo_competencia_unique` único (unidade, centro_custo, competencia)
+
+**Regras (CHECK, só no SQL Server):** `ck_os_justificativas_setor_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_os_justificativas_setor_competencia`: `DAY(competencia) = 1`
+
+### os_mantenedores
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
+| `usuario_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `nome` | `nvarchar(120)` | não |  |  |
+| `matricula` | `nvarchar(20)` | sim |  |  |
+| `area_executante_id` | `bigint` | sim |  | FK → `os_areas_executantes.id` |
+| `centro_custo` | `nvarchar(20)` | sim |  | código → `centros_custo.ctt_custo` (sem FK) |
+| `jornada_inicio` | `nvarchar(5)` | não | `'07:00'` |  |
+| `jornada_fim` | `nvarchar(5)` | não | `'17:00'` |  |
+| `intervalo_min` | `smallint` | não | `'60'` |  |
+| `dias_semana` | `nvarchar(7)` | não | `'12345'` |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `ux_os_mantenedores_usuario` único (usuario_id) filtrado `WHERE usuario_id IS NOT NULL` (só SQL Server) · `os_mantenedores_unidade_index` (unidade) · `os_mantenedores_area_executante_id_index` (area_executante_id)
+
+**Regras (CHECK, só no SQL Server):** `ck_os_mantenedores_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_os_mantenedores_jornada`: `jornada_inicio LIKE '[0-2][0-9]:[0-5][0-9]' AND jornada_fim LIKE '[0-2][0-9]:[0-5][0-9]'` · `ck_os_mantenedores_dias_semana`: `dias_semana NOT LIKE '%[^1-7]%'` · `ck_os_mantenedores_intervalo`: `intervalo_min >= 0`
+
+### os_materiais
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `ordem_servico_id` | `bigint` | não |  | FK → `ordens_servico.id` |
+| `produto_codigo` | `nvarchar(30)` | sim |  | código → `produtos_protheus.b1_cod` (sem FK) |
+| `descricao` | `nvarchar(200)` | não |  |  |
+| `quantidade` | `decimal(14,` | sim |  |  |
+| `um` | `nvarchar(4)` | sim |  |  |
+| `status` | `nvarchar(12)` | não | `'requisitado'` |  |
+| `solicitacao_compra` | `nvarchar(30)` | sim |  |  |
+| `custo_unitario` | `decimal(18,` | sim |  |  |
+| `observacao` | `nvarchar(500)` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `os_materiais_status_id_index` (status, id) · `os_materiais_ordem_servico_id_index` (ordem_servico_id)
+
+**Regras (CHECK, só no SQL Server):** `ck_os_materiais_status`: `status IN ('requisitado', 'disponivel', 'em_compra', 'recebido', 'entregue', 'cancelado')` · `ck_os_materiais_quantidade`: `quantidade > 0` · `ck_os_materiais_custo`: `custo_unitario IS NULL OR custo_unitario >= 0`
+
+### os_planos_itens
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `plano_preventiva_id` | `bigint` | não |  | FK → `os_planos_preventiva.id` |
+| `ordem` | `smallint` | não | `'0'` |  |
+| `descricao` | `nvarchar(300)` | não |  |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `os_planos_itens_plano_preventiva_id_ordem_index` (plano_preventiva_id, ordem)
+
+### os_planos_preventiva
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
+| `codigo` | `nvarchar(20)` | não |  |  |
+| `descricao` | `nvarchar(200)` | não |  |  |
+| `maquina_id` | `bigint` | sim |  | FK → `maquinas.id` |
+| `area_executante_id` | `bigint` | não |  | FK → `os_areas_executantes.id` |
+| `responsavel_id` | `bigint` | sim |  | FK → `os_mantenedores.id` |
+| `prioridade` | `nvarchar(10)` | não | `'media'` |  |
+| `periodicidade` | `nvarchar(10)` | não |  |  |
+| `meses` | `nvarchar(12)` | não | `'111111111111'` |  |
+| `dia_mes` | `smallint` | não | `'1'` |  |
+| `proxima_em` | `date` | sim |  |  |
+| `antecedencia_dias` | `smallint` | não | `'7'` |  |
+| `duracao_prevista_min` | `int` | sim |  |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `os_planos_preventiva_codigo_unique` único (codigo) · `os_planos_preventiva_unidade_index` (unidade) · `os_planos_preventiva_ativo_proxima_em_index` (ativo, proxima_em) · `os_planos_preventiva_maquina_id_index` (maquina_id)
+
+**Regras (CHECK, só no SQL Server):** `ck_os_planos_preventiva_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_os_planos_preventiva_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_os_planos_preventiva_periodicidade`: `periodicidade IN ('semanal', 'quinzenal', 'meses')` · `ck_os_planos_preventiva_meses`: `LEN(meses) = 12 AND meses NOT LIKE '%[^01]%'` · `ck_os_planos_preventiva_dia_mes`: `dia_mes BETWEEN 1 AND 31` · `ck_os_planos_preventiva_antecedencia`: `antecedencia_dias >= 0` · `ck_os_planos_preventiva_duracao`: `duracao_prevista_min IS NULL OR duracao_prevista_min > 0`
+
+### os_sugestoes_descricao
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
+| `texto` | `nvarchar(200)` | não |  |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `os_sugestoes_descricao_unidade_index` (unidade)
+
+**Regras (CHECK, só no SQL Server):** `ck_os_sugestoes_descricao_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+
 ### paradas
 
 **Origem:** Sistema OEE · **Chave primária:** `id`
@@ -1037,6 +1538,38 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `sincronizacoes_chave_iniciado_em_index` (chave, iniciado_em)
 
 **Regras (CHECK, só no SQL Server):** `ck_sincronizacoes_situacao`: `situacao IN ('executando', 'sucesso', 'erro')` · `ck_sincronizacoes_disparo`: `disparo IN ('manual', 'agendado', 'comando')`
+
+### solicitacoes_servico
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não |  |  |
+| `solicitante_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `tipo` | `nvarchar(15)` | não |  |  |
+| `maquina_id` | `bigint` | sim |  | FK → `maquinas.id` |
+| `area_executante_id` | `bigint` | não |  | FK → `os_areas_executantes.id` |
+| `centro_custo` | `nvarchar(20)` | sim |  | código → `centros_custo.ctt_custo` (sem FK) |
+| `centro_custo_solicitante` | `nvarchar(120)` | sim |  |  |
+| `prioridade` | `nvarchar(10)` | não | `'media'` |  |
+| `maquina_parada` | `bit` | não | `'0'` |  |
+| `descricao` | `nvarchar(2000)` | não |  |  |
+| `status` | `nvarchar(12)` | não | `'pendente'` |  |
+| `analisado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `analisado_em` | `datetime` | sim |  |  |
+| `motivo_rejeicao` | `nvarchar(500)` | sim |  |  |
+| `apontamento_estado_id` | `bigint` | sim |  | FK → `apontamentos_estado.id` |
+| `ordem_producao_id` | `bigint` | sim |  | FK → `ordens_producao.id` |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `solicitacoes_servico_unidade_status_id_index` (unidade, status, id) · `solicitacoes_servico_solicitante_id_id_index` (solicitante_id, id) · `solicitacoes_servico_maquina_id_index` (maquina_id)
+
+**Regras (CHECK, só no SQL Server):** `ck_solicitacoes_servico_unidade`: `unidade IN ('manutencao', 'tecnologia')` · `ck_solicitacoes_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_solicitacoes_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_solicitacoes_servico_status`: `status IN ('pendente', 'aprovada', 'rejeitada', 'cancelada')`
 
 ### turnos
 

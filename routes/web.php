@@ -13,6 +13,13 @@ use App\Http\Controllers\Cadastros\AcessoController;
 use App\Http\Controllers\Cadastros\GrupoController;
 use App\Http\Controllers\Cadastros\UsuarioController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Manutencao\ApontamentoHorasController;
+use App\Http\Controllers\Manutencao\CadastroManutencaoController;
+use App\Http\Controllers\Manutencao\MaterialController;
+use App\Http\Controllers\Manutencao\OrdemServicoController;
+use App\Http\Controllers\Manutencao\PlanoPreventivaController;
+use App\Http\Controllers\Manutencao\RelatorioManutencaoController;
+use App\Http\Controllers\Manutencao\SolicitacaoController;
 use App\Http\Controllers\OrdemProducaoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PortalController;
@@ -63,6 +70,78 @@ Route::middleware('auth')->group(function () {
     });
     Route::match(['get', 'post'], 'calculadora', [PortalController::class, 'calculadora'])
         ->middleware('permissao:calculadora')->name('calculadora');
+
+    // Ordens de serviço (manutenção de produção e de tecnologia). SS → aprovação → OS → horas, materiais → conclusão →
+    // aceite; preventivas (PAMP) e relatórios de horas. Cada um vê a fila da sua unidade; o solicitante vê as suas.
+    Route::prefix('ordens-de-servico')->name('os.')->group(function () {
+        $todos = 'permissao:os_solicitar,os_aprovar,solicitacoes_manutencao,os_almoxarifado';
+        $executa = 'permissao:solicitacoes_manutencao,os_aprovar';
+
+        Route::middleware($todos)->group(function () {
+            Route::get('solicitacoes', [SolicitacaoController::class, 'index'])->name('solicitacoes.index');
+            Route::get('solicitacoes/{solicitacao}', [SolicitacaoController::class, 'show'])->whereNumber('solicitacao')->name('solicitacoes.show');
+            Route::get('ordens', [OrdemServicoController::class, 'index'])->name('ordens.index');
+            Route::get('ordens/{ordem}', [OrdemServicoController::class, 'show'])->whereNumber('ordem')->name('ordens.show');
+            Route::get('ordens/{ordem}/imprimir', [OrdemServicoController::class, 'imprimir'])->whereNumber('ordem')->name('ordens.imprimir');
+            Route::post('ordens/{ordem}/aceite', [OrdemServicoController::class, 'aceite'])->whereNumber('ordem')->name('ordens.aceite');
+        });
+        Route::middleware('permissao:os_solicitar,os_aprovar')->group(function () {
+            Route::get('solicitacoes/nova', [SolicitacaoController::class, 'create'])->name('solicitacoes.create');
+            Route::post('solicitacoes', [SolicitacaoController::class, 'store'])->name('solicitacoes.store');
+            Route::get('solicitacoes/{solicitacao}/editar', [SolicitacaoController::class, 'edit'])->whereNumber('solicitacao')->name('solicitacoes.edit');
+            Route::put('solicitacoes/{solicitacao}', [SolicitacaoController::class, 'update'])->whereNumber('solicitacao')->name('solicitacoes.update');
+            Route::post('solicitacoes/{solicitacao}/cancelar', [SolicitacaoController::class, 'cancelar'])->whereNumber('solicitacao')->name('solicitacoes.cancelar');
+        });
+        Route::middleware('permissao:os_aprovar')->group(function () {
+            Route::post('solicitacoes/{solicitacao}/aprovar', [SolicitacaoController::class, 'aprovar'])->whereNumber('solicitacao')->name('solicitacoes.aprovar');
+            Route::post('solicitacoes/{solicitacao}/rejeitar', [SolicitacaoController::class, 'rejeitar'])->whereNumber('solicitacao')->name('solicitacoes.rejeitar');
+            Route::get('ordens/{ordem}/editar', [OrdemServicoController::class, 'edit'])->whereNumber('ordem')->name('ordens.edit');
+            Route::put('ordens/{ordem}', [OrdemServicoController::class, 'update'])->whereNumber('ordem')->name('ordens.update');
+            Route::post('ordens/{ordem}/distribuir', [OrdemServicoController::class, 'distribuir'])->whereNumber('ordem')->name('ordens.distribuir');
+            Route::delete('apontamentos/{apontamento}', [ApontamentoHorasController::class, 'destroy'])->whereNumber('apontamento')->name('apontamentos.destroy');
+        });
+        Route::middleware($executa)->group(function () {
+            Route::get('minhas', [ApontamentoHorasController::class, 'minhas'])->name('minhas');
+            Route::post('ordens/{ordem}/acao', [OrdemServicoController::class, 'acao'])->whereNumber('ordem')->name('ordens.acao');
+            Route::put('ordens/{ordem}/checklist', [OrdemServicoController::class, 'checklist'])->whereNumber('ordem')->name('ordens.checklist');
+            Route::post('ordens/{ordem}/apontamentos/iniciar', [ApontamentoHorasController::class, 'iniciar'])->whereNumber('ordem')->name('apontamentos.iniciar');
+            Route::post('ordens/{ordem}/apontamentos', [ApontamentoHorasController::class, 'store'])->whereNumber('ordem')->name('apontamentos.store');
+            Route::post('apontamentos/{apontamento}/encerrar', [ApontamentoHorasController::class, 'encerrar'])->whereNumber('apontamento')->name('apontamentos.encerrar');
+            Route::put('apontamentos/{apontamento}', [ApontamentoHorasController::class, 'update'])->whereNumber('apontamento')->name('apontamentos.update');
+            Route::post('ordens/{ordem}/materiais', [MaterialController::class, 'store'])->whereNumber('ordem')->name('materiais.store');
+        });
+        Route::middleware('permissao:os_almoxarifado,solicitacoes_manutencao,os_aprovar')->group(function () {
+            Route::get('materiais', [MaterialController::class, 'index'])->name('materiais.index');
+            Route::put('materiais/{material}', [MaterialController::class, 'update'])->whereNumber('material')->name('materiais.update');
+        });
+        Route::middleware('permissao:os_preventivas')->group(function () {
+            Route::get('preventivas', [PlanoPreventivaController::class, 'index'])->name('preventivas.index');
+            Route::get('preventivas/nova', [PlanoPreventivaController::class, 'create'])->name('preventivas.create');
+            Route::post('preventivas', [PlanoPreventivaController::class, 'store'])->name('preventivas.store');
+            Route::get('preventivas/{preventiva}/editar', [PlanoPreventivaController::class, 'edit'])->whereNumber('preventiva')->name('preventivas.edit');
+            Route::put('preventivas/{preventiva}', [PlanoPreventivaController::class, 'update'])->whereNumber('preventiva')->name('preventivas.update');
+            Route::post('preventivas/gerar', [PlanoPreventivaController::class, 'gerar'])->name('preventivas.gerar');
+        });
+        Route::middleware('permissao:os_relatorios')->group(function () {
+            Route::get('relatorios/horas', [RelatorioManutencaoController::class, 'horas'])->name('relatorios.horas');
+            Route::get('relatorios/setores', [RelatorioManutencaoController::class, 'setores'])->name('relatorios.setores');
+            Route::post('relatorios/setores/justificativa', [RelatorioManutencaoController::class, 'justificar'])->name('relatorios.justificar');
+        });
+        // Cadastros só da manutenção (os comuns — máquinas, usuários, centros de custo — ficam em Administração).
+        Route::middleware('perfil:admin_producao,admin_tecnologia')->prefix('cadastros')->name('cadastros.')->group(function () {
+            Route::get('areas', [CadastroManutencaoController::class, 'areas'])->name('areas');
+            Route::post('areas', [CadastroManutencaoController::class, 'salvarArea'])->name('areas.store');
+            Route::put('areas/{area}', [CadastroManutencaoController::class, 'salvarArea'])->whereNumber('area')->name('areas.update');
+            Route::get('mantenedores', [CadastroManutencaoController::class, 'mantenedores'])->name('mantenedores');
+            Route::get('mantenedores/novo', [CadastroManutencaoController::class, 'mantenedor'])->name('mantenedores.create');
+            Route::post('mantenedores', [CadastroManutencaoController::class, 'salvarMantenedor'])->name('mantenedores.store');
+            Route::get('mantenedores/{mantenedor}/editar', [CadastroManutencaoController::class, 'mantenedor'])->whereNumber('mantenedor')->name('mantenedores.edit');
+            Route::put('mantenedores/{mantenedor}', [CadastroManutencaoController::class, 'salvarMantenedor'])->whereNumber('mantenedor')->name('mantenedores.update');
+            Route::get('sugestoes', [CadastroManutencaoController::class, 'sugestoes'])->name('sugestoes');
+            Route::post('sugestoes', [CadastroManutencaoController::class, 'salvarSugestao'])->name('sugestoes.store');
+            Route::put('sugestoes/{sugestao}', [CadastroManutencaoController::class, 'salvarSugestao'])->whereNumber('sugestao')->name('sugestoes.update');
+        });
+    });
 
     // Administração > Logins (só administradores; as URLs antigas "cadastros/logins" foram mantidas)
     // Segurança (só Administrador de Tecnologia): usuários, grupos, histórico de acessos e banco de dados.

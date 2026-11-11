@@ -474,3 +474,41 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
   .heroi { padding:1.4rem 1.25rem; }
   h1 { font-size:1.3rem; }
 }
+
+/* ---------- Ordens de serviço (manutenção) ---------- */
+.os-pendente, .os-aberta, .os-requisitado { color:var(--protheus); background:var(--protheus-suave); border-color:transparent; }
+.os-em_execucao, .os-em_compra, .os-disponivel, .os-recebido { color:var(--primaria); background:var(--primaria-suave); border-color:transparent; }
+.os-aguardando_material, .os-concluida { color:var(--alerta); background:var(--alerta-suave); border-color:transparent; }
+.os-aprovada, .os-encerrada, .os-entregue { color:var(--ok); background:var(--ok-suave); border-color:transparent; }
+.os-rejeitada { color:var(--erro); background:var(--erro-suave); border-color:transparent; }
+.os-cancelada { color:var(--suave); border-color:var(--borda-forte); }
+.prioridade-urgente { color:var(--erro); font-weight:700; }
+.prioridade-alta { color:var(--alerta); font-weight:600; }
+.prioridade-media, .prioridade-baixa { color:var(--suave); }
+.os-parada { color:var(--erro); font-weight:600; }
+.os-totais { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0 .25rem; }
+.os-totais a { display:inline-flex; align-items:center; gap:.4rem; padding:.3rem .7rem; border:1px solid var(--borda); border-radius:999px; text-decoration:none; color:var(--texto); font-size:.88rem; background:var(--cartao); }
+.os-totais a.ativo { border-color:var(--primaria); box-shadow:inset 0 0 0 1px var(--primaria); }
+.os-cabecalho { display:flex; flex-wrap:wrap; gap:.5rem 1.25rem; align-items:center; }
+.os-acoes { display:flex; flex-wrap:wrap; gap:.5rem; align-items:flex-end; margin-top:1rem; }
+.os-acoes form { display:flex; flex-wrap:wrap; gap:.5rem; align-items:flex-end; margin:0; }
+.os-texto { white-space:pre-line; }
+.os-rodando { border-left:4px solid var(--primaria); background:var(--primaria-suave); padding:1rem; border-radius:10px; margin:1rem 0; }
+.os-rodando strong.tempo { font-size:1.6rem; font-variant-numeric:tabular-nums; }
+.os-lista-cartoes { display:grid; gap:.75rem; grid-template-columns:repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.os-lista-cartoes .cartao { margin:0; display:flex; flex-direction:column; gap:.5rem; }
+.pamp td.mes { text-align:center; min-width:2.4rem; padding:.3rem .2rem; }
+.pamp .marca { display:inline-block; width:1.6rem; height:1.6rem; line-height:1.6rem; border-radius:6px; font-size:.75rem; font-weight:700; text-decoration:none; }
+.pamp .marca.programada { border:1px dashed var(--borda-forte); color:var(--suave); }
+.pamp .marca.aberta { background:var(--alerta-suave); color:var(--alerta); }
+.pamp .marca.atrasada { background:var(--erro-suave); color:var(--erro); }
+.pamp .marca.feita { background:var(--ok-suave); color:var(--ok); }
+.incomum { color:var(--erro); font-weight:600; }
+.aceitavel { color:var(--ok); }
+.assinaturas { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:2rem; margin-top:3rem; }
+.assinaturas div { border-top:1px solid var(--texto); padding-top:.3rem; text-align:center; font-size:.85rem; }
+@media print {
+  .menu-lateral, .topo, .nao-imprimir, .aviso { display:none !important; }
+  body, .cartao { background:var(--branco); box-shadow:none; }
+  .area-principal, main { margin:0; padding:0; }
+}

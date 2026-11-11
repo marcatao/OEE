@@ -45,7 +45,10 @@
         <td>@if ($a->ordemProducao)<code>{{ $a->ordemProducao->numero }}</code> <span class="etiqueta op-{{ $a->ordemProducao->status }}">{{ $a->ordemProducao->rotuloStatus() }}</span>@else - @endif</td>
         <td>{{ $a->referencia ?? '-' }}</td>
         <td>{{ $a->criadoPor?->nome ?? '-' }}</td>
-        <td><a class="botao pequeno secundario" href="{{ route('apontamentos.edit', $a) }}">Editar</a></td>
+        <td><a class="botao pequeno secundario" href="{{ route('apontamentos.edit', $a) }}">Editar</a>
+          @if (in_array($a->legenda?->tipo, ['parada', 'planejada'], true) && (auth()->user()->pode('os_solicitar') || auth()->user()->pode('os_aprovar')))
+            <a class="botao pequeno secundario" href="{{ route('os.solicitacoes.create', ['apontamento' => $a->id]) }}" title="Abrir solicitação de serviço para esta parada">Abrir SS</a>
+          @endif</td>
       </tr>
     @empty
       <tr><td colspan="9" class="suave">Nenhum apontamento encontrado.</td></tr>

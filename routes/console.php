@@ -2,6 +2,7 @@
 
 use App\Models\Usuario;
 use App\Services\InfoBanco;
+use App\Services\Manutencao\GeradorPreventivas;
 use App\Services\Protheus\SincronizadorProtheus;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -100,3 +101,13 @@ if ($agenda = config('protheus.agenda')) {
         Schedule::command('protheus:sincronizar --agendado --completa')->cron($completa)->withoutOverlapping();
     }
 }
+
+// Ordens de serviço: gera as OS preventivas dos planos (PAMP) que estão chegando. Roda todo dia com o agendador.
+Artisan::command('os:gerar-preventivas', function (GeradorPreventivas $gerador) {
+    $criadas = $gerador->gerar();
+    foreach ($criadas as $os) {
+        $this->line("  {$os->numeroFormatado()} — {$os->descricao} (prevista para {$os->prevista_para->format('d/m/Y')})");
+    }
+    $this->info(count($criadas).' OS preventiva(s) gerada(s).');
+})->purpose('Gera as OS preventivas programadas nos planos de preventiva (PAMP)');
+Schedule::command('os:gerar-preventivas')->dailyAt('05:10')->withoutOverlapping();

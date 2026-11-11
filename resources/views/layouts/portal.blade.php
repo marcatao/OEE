@@ -58,6 +58,36 @@
           </div>
         @endif
 
+        @if ($u->pode('os_solicitar') || $u->pode('os_aprovar') || $u->pode('solicitacoes_manutencao') || $u->pode('os_almoxarifado') || $u->pode('os_preventivas') || $u->pode('os_relatorios') || $u->ehAdmin())
+          <div class="menu-bloco" data-bloco="ordens-servico">
+            @include('layouts.partials.menu-secao', ['titulo' => 'Ordens de serviço'])
+            <div class="menu-itens">
+              @if ($u->pode('os_solicitar') || $u->pode('os_aprovar') || $u->pode('solicitacoes_manutencao') || $u->pode('os_almoxarifado'))
+                @include('layouts.partials.menu-link', ['rota' => 'os.solicitacoes.index', 'rotulo' => 'Solicitações (SS)', 'icone' => 'solicitacao', 'ativo' => 'os.solicitacoes.*'])
+                @include('layouts.partials.menu-link', ['rota' => 'os.ordens.index', 'rotulo' => 'Ordens de serviço', 'icone' => 'ferramenta', 'ativo' => 'os.ordens.*'])
+              @endif
+              @if ($u->pode('solicitacoes_manutencao') || $u->pode('os_aprovar'))
+                @include('layouts.partials.menu-link', ['rota' => 'os.minhas', 'rotulo' => 'Apontar horas', 'icone' => 'cronometro'])
+              @endif
+              @if ($u->pode('os_almoxarifado') || $u->pode('solicitacoes_manutencao') || $u->pode('os_aprovar'))
+                @include('layouts.partials.menu-link', ['rota' => 'os.materiais.index', 'rotulo' => 'Materiais', 'icone' => 'caixa', 'ativo' => 'os.materiais.*'])
+              @endif
+              @if ($u->pode('os_preventivas'))
+                @include('layouts.partials.menu-link', ['rota' => 'os.preventivas.index', 'rotulo' => 'Preventivas (PAMP)', 'icone' => 'calendario', 'ativo' => 'os.preventivas.*'])
+              @endif
+              @if ($u->pode('os_relatorios'))
+                @include('layouts.partials.menu-link', ['rota' => 'os.relatorios.horas', 'rotulo' => 'Relatório de horas', 'icone' => 'relatorio'])
+                @include('layouts.partials.menu-link', ['rota' => 'os.relatorios.setores', 'rotulo' => 'Horas por setor', 'icone' => 'relatorio'])
+              @endif
+              @if ($u->ehAdmin())
+                @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.areas', 'rotulo' => 'Áreas executantes', 'icone' => 'estrutura'])
+                @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.mantenedores', 'rotulo' => 'Mantenedores', 'icone' => 'usuarios', 'ativo' => 'os.cadastros.mantenedores*'])
+                @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.sugestoes', 'rotulo' => 'Sugestões de descrição', 'icone' => 'legenda'])
+              @endif
+            </div>
+          </div>
+        @endif
+
         @if ($u->ehAdmin())
           <div class="menu-bloco" data-bloco="administracao">
             @include('layouts.partials.menu-secao', ['titulo' => 'Administração'])

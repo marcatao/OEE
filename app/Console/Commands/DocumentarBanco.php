@@ -33,6 +33,10 @@ class DocumentarBanco extends Command
         'movimentos_producao.d3_cod' => 'produtos_protheus.b1_cod',
         'notas_fiscais_op.op_numero' => 'ordens_producao.numero',
         'notas_fiscais_op.d2_cod' => 'produtos_protheus.b1_cod',
+        'os_mantenedores.centro_custo' => 'centros_custo.ctt_custo',
+        'solicitacoes_servico.centro_custo' => 'centros_custo.ctt_custo',
+        'ordens_servico.centro_custo' => 'centros_custo.ctt_custo',
+        'os_materiais.produto_codigo' => 'produtos_protheus.b1_cod',
     ];
 
     private const MARCA_INICIO = '<!-- manual:inicio -->';
@@ -82,7 +86,7 @@ class DocumentarBanco extends Command
     private function interpretar(array $comandos): array
     {
         $t = [];
-        $nova = fn () => ['colunas' => [], 'pk' => [], 'fks' => [], 'unicos' => [], 'indices' => [], 'checks' => []];
+        $nova = fn () => ['colunas' => [], 'pk' => [], 'fks' => [], 'unicos' => [], 'indices' => [], 'filtros' => [], 'checks' => []];
 
         foreach ($comandos as $sql) {
             if (preg_match('/^create table "(\w+)" \((.*)\)$/s', $sql, $m)) {
@@ -100,6 +104,12 @@ class DocumentarBanco extends Command
                 $t[$m[1]]['pk'] = $this->listaColunas($m[2]);
             } elseif (preg_match('/^create (unique )?index "(\w+)" on "(\w+)" \((.*)\)/', $sql, $m)) {
                 $t[$m[3]][$m[1] ? 'unicos' : 'indices'][$m[2]] = $this->listaColunas($m[4]);
+            } elseif (preg_match('/^CREATE (UNIQUE )?INDEX (\w+) ON (\w+) \(([\w, ]+)\)(?: WHERE (.*))?$/s', $sql, $m)) {
+                // Índice escrito à mão (só SQL Server), em geral filtrado: "único quando preenchido".
+                $t[$m[3]][$m[1] ? 'unicos' : 'indices'][$m[2]] = array_map('trim', explode(',', $m[4]));
+                if (! empty($m[5])) {
+                    $t[$m[3]]['filtros'][$m[2]] = $m[5];
+                }
             } elseif (preg_match('/^ALTER TABLE (\w+) ADD CONSTRAINT (\w+) CHECK \((.*)\)$/s', $sql, $m)) {
                 $t[$m[1]]['checks'][$m[2]] = $m[3];
             }
@@ -246,8 +256,8 @@ class DocumentarBanco extends Command
             if ($tab['unicos'] || $tab['indices']) {
                 $md[] = '';
                 $md[] = '**Índices:** '.implode(' · ', array_merge(
-                    array_map(fn ($cols, $n) => "`{$n}` único (".implode(', ', $cols).')', $tab['unicos'], array_keys($tab['unicos'])),
-                    array_map(fn ($cols, $n) => "`{$n}` (".implode(', ', $cols).')', $tab['indices'], array_keys($tab['indices'])),
+                    array_map(fn ($cols, $n) => "`{$n}` único (".implode(', ', $cols).')'.$this->filtro($tab, $n), $tab['unicos'], array_keys($tab['unicos'])),
+                    array_map(fn ($cols, $n) => "`{$n}` (".implode(', ', $cols).')'.$this->filtro($tab, $n), $tab['indices'], array_keys($tab['indices'])),
                 ));
             }
             if ($tab['checks']) {
@@ -258,6 +268,12 @@ class DocumentarBanco extends Command
         $md[] = '';
 
         return implode("\n", $md);
+    }
+
+    /** Condição de um índice filtrado (só no SQL Server), para a lista de índices. */
+    private function filtro(array $tabela, string $indice): string
+    {
+        return isset($tabela['filtros'][$indice]) ? ' filtrado `WHERE '.$tabela['filtros'][$indice].'` (só SQL Server)' : '';
     }
 
     private function trechoManual(string $arquivo): string
