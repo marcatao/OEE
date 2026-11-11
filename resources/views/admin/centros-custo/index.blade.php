@@ -21,11 +21,12 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Filial</th><th>Código</th><th>Descrição</th><th>Classe</th><th>C. custo superior</th><th>Existência</th><th class="num">Máquinas</th><th>Origem</th><th>Situação</th><th></th></tr></thead>
+    <thead><tr><th>Filial</th><th>Unidade</th><th>Código</th><th>Descrição</th><th>Classe</th><th>C. custo superior</th><th>Existência</th><th class="num">Máquinas</th><th>Origem</th><th>Situação</th><th></th></tr></thead>
     <tbody>
     @forelse ($centros as $c)
       <tr>
         <td><code>{{ rtrim($c->ctt_filial) ?: '-' }}</code></td>
+        <td><span class="etiqueta unidade-{{ $c->unidade }}">{{ $c->rotuloUnidade() }}</span></td>
         <td><strong>{{ $c->codigo() }}</strong></td>
         <td>{{ $c->descricao() }}</td>
         <td>{{ CentroCusto::CLASSES[$c->ctt_classe] ?? $c->ctt_classe }}</td>
@@ -37,7 +38,7 @@
         <td><a class="botao pequeno secundario" href="{{ route('admin.centros-custo.edit', $c) }}">Editar</a></td>
       </tr>
     @empty
-      <tr><td colspan="10" class="suave">Nenhum centro de custo cadastrado.</td></tr>
+      <tr><td colspan="11" class="suave">Nenhum centro de custo cadastrado.</td></tr>
     @endforelse
     </tbody>
   </table>

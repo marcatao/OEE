@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DispositivoIot;
 use App\Models\Maquina;
+use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -66,6 +67,7 @@ class DispositivoIotController extends Controller
     private function salvar(Request $request, DispositivoIot $dispositivo): void
     {
         $dados = $request->validate([
+            'unidade' => Unidades::regras($request->user(), $dispositivo->exists ? $dispositivo->unidade : null),
             'codigo' => ['required', 'string', 'max:40', Rule::unique('dispositivos_iot', 'codigo')->ignore($dispositivo->id)],
             'nome' => ['required', 'string', 'max:120'],
             'tipo' => ['required', Rule::in(array_keys(DispositivoIot::TIPOS))],

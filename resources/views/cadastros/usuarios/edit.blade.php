@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Administração › Logins › <a href="{{ route('cadastros.usuarios.index') }}">Usuários</a></p>
+  <p class="trilha">Segurança › <a href="{{ route('cadastros.usuarios.index') }}">Usuários</a></p>
   <h1>{{ $usuario->nome }}</h1>
 
   <dl class="dados-curtos">
@@ -20,16 +20,17 @@
     @csrf @method('put')
 
     <fieldset>
-      <legend>Perfil</legend>
-      @foreach ($perfis as $valor => $rotulo)
+      <legend>Perfis</legend>
+      <p class="suave">Marque um ou mais. Sem nenhum perfil, o usuário entra no portal mas não vê nenhuma página.
+        Perfis de <strong>Manutenção</strong> enxergam os cadastros de manutenção; de <strong>Tecnologia</strong>, os de tecnologia;
+        cadastros marcados como <strong>Ambos</strong> aparecem para os dois.</p>
+      @php($perfisMarcados = old('perfis', $usuario->perfisAcesso()))
+      @foreach ($perfis as $valor => $perfil)
         <label class="opcao">
-          <input type="radio" name="perfil" value="{{ $valor }}" @checked(old('perfil', $usuario->perfil) === $valor)>
-          <span><strong>{{ $rotulo }}</strong>
-            <small>{{ match ($valor) {
-              'sem_acesso' => 'Entra no portal, mas não vê nenhuma página.',
-              'operador' => 'Vê as páginas permitidas pelos grupos dele.',
-              'admin' => 'Vê tudo e administra usuários, grupos e o banco.',
-            } }}</small></span>
+          <input type="checkbox" name="perfis[]" value="{{ $valor }}" @checked(in_array($valor, $perfisMarcados, true))>
+          <span><strong>{{ $perfil['rotulo'] }}</strong>
+            @foreach ($perfil['unidades'] as $unidade)<span class="etiqueta unidade-{{ $unidade }}">{{ config('oee.unidades')[$unidade] }}</span> @endforeach
+            <small>{{ $perfil['descricao'] }}</small></span>
         </label>
       @endforeach
     </fieldset>

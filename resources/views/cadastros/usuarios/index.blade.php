@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Administração › Logins</p>
+  <p class="trilha">Segurança</p>
   <h1>Usuários</h1>
   <p>Os usuários são cadastrados automaticamente no primeiro login pelo Entra ID e nascem <strong>sem acesso</strong>.
     Aqui você define o perfil, a situação e os grupos de cada um.</p>
@@ -28,13 +28,13 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Grupos</th><th>Situação</th><th>Último login</th><th></th></tr></thead>
+    <thead><tr><th>Nome</th><th>E-mail</th><th>Perfis</th><th>Grupos</th><th>Situação</th><th>Último login</th><th></th></tr></thead>
     <tbody>
     @forelse ($usuarios as $usuario)
       <tr>
         <td><span style="display:inline-flex;align-items:center;gap:.6rem">@include('partials.avatar', ['usuario' => $usuario]) <span>{{ $usuario->nome }}@if ($usuario->cargo)<br><small class="suave">{{ $usuario->cargo }}</small>@endif</span></span></td>
         <td>{{ $usuario->email }}</td>
-        <td><span class="etiqueta perfil-{{ $usuario->perfil }}">{{ $usuario->rotuloPerfil() }}</span></td>
+        <td class="quebra">@forelse ($usuario->perfisAcesso() as $p)<span class="etiqueta perfil-{{ $p }}">{{ \App\Models\Usuario::perfisDisponiveis()[$p]['rotulo'] }}</span> @empty<span class="etiqueta perfil-sem_acesso">Sem acesso</span>@endforelse</td>
         <td class="quebra">{{ $usuario->grupos->pluck('nome')->join(', ') ?: '-' }}</td>
         <td>{{ $usuario->ativo ? 'Ativo' : 'Inativo' }}</td>
         <td>@dataHora($usuario->ultimo_login_em)</td>

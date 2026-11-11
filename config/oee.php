@@ -30,6 +30,49 @@ return [
     // abaixo, em verde.
     'custo_tolerancia' => (float) env('OEE_CUSTO_TOLERANCIA', 0.05),
 
+    // Perfis de acesso (um usuário pode ter vários). "unidade" = ambiente que o perfil enxerga (manutencao, tecnologia
+    // ou as duas); "permissoes" = telas liberadas pelo perfil ('*' = todas do catálogo acima). Os grupos continuam
+    // somando permissões. O Administrador de Tecnologia vê tudo de tudo, inclusive a Segurança.
+    'perfis_acesso' => [
+        'operador' => [
+            'rotulo' => 'Operador',
+            'descricao' => 'Informa o apontamento real e vê as ordens de produção.',
+            'unidades' => ['manutencao'],
+            'permissoes' => ['apontamentos', 'ordens_producao'],
+        ],
+        'admin_producao' => [
+            'rotulo' => 'Administrador de Produção',
+            'descricao' => 'Vê e cadastra tudo da produção/manutenção, exceto a Segurança.',
+            'unidades' => ['manutencao'],
+            'permissoes' => ['*'],
+        ],
+        'admin_tecnologia' => [
+            'rotulo' => 'Administrador de Tecnologia',
+            'descricao' => 'Vê tudo de tudo, inclusive a Segurança (usuários, grupos, acessos e banco de dados).',
+            'unidades' => ['manutencao', 'tecnologia'],
+            'permissoes' => ['*'],
+        ],
+        'mantenedor_producao' => [
+            'rotulo' => 'Mantenedor de Produção',
+            'descricao' => 'Solicitações de manutenção e as máquinas de manutenção nos dashboards.',
+            'unidades' => ['manutencao'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao'],
+        ],
+        'mantenedor_tecnologia' => [
+            'rotulo' => 'Mantenedor de Tecnologia',
+            'descricao' => 'Vê o que é de tecnologia: equipamentos e dashboards de tecnologia.',
+            'unidades' => ['tecnologia'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao'],
+        ],
+    ],
+
+    // Unidades (ambientes) dos cadastros.
+    'unidades' => [
+        'manutencao' => 'Manutenção',
+        'tecnologia' => 'Tecnologia',
+        'ambos' => 'Ambos',
+    ],
+
     // Hora em que o "dia de produção" começa na Timeline (o dia vai desta hora até a mesma hora do dia seguinte).
     'timeline_inicio_dia' => env('TIMELINE_INICIO_DIA', '06:00'),
 

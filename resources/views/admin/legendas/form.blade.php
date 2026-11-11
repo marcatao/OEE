@@ -15,6 +15,7 @@
     @if ($legenda->exists) @method('put') @endif
 
     <div class="campos">
+        @include('partials.campo-unidade', ['registro' => $legenda])
       <label>Sigla
         <input name="codigo" required maxlength="12" value="{{ old('codigo', $legenda->codigo) }}" placeholder="Ex.: DT" style="text-transform:uppercase">
         <small>Aparece dentro da barra na timeline.</small>

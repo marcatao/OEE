@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Administração › Logins › <a href="{{ route('cadastros.grupos.index') }}">Grupos</a></p>
+  <p class="trilha">Segurança › <a href="{{ route('cadastros.grupos.index') }}">Grupos</a></p>
   <h1>{{ $grupo->exists ? $grupo->nome : 'Novo grupo' }}</h1>
 
   @if ($errors->any())<p class="aviso erro" role="alert">{{ $errors->first() }}</p>@endif
@@ -42,7 +42,7 @@
       @forelse ($usuarios as $usuario)
         <label class="opcao">
           <input type="checkbox" name="usuarios[]" value="{{ $usuario->id }}" @checked(in_array($usuario->id, $marcados))>
-          <span>{{ $usuario->nome }} <small>{{ $usuario->email }} · {{ $usuario->rotuloPerfil() }}</small></span>
+          <span>{{ $usuario->nome }} <small>{{ $usuario->email }} · {{ $usuario->rotuloPerfilCurto() }}</small></span>
         </label>
       @empty
         <p class="suave">Nenhum usuário cadastrado ainda (eles aparecem após o primeiro login).</p>

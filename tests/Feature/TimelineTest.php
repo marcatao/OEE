@@ -35,9 +35,15 @@ class TimelineTest extends TestCase
         parent::tearDown();
     }
 
+    /** $perfil: perfil antigo (admin, operador) ou um perfil novo (ex.: mantenedor_producao). */
     private function usuario(string $perfil, array $permissoes = []): Usuario
     {
-        $u = Usuario::create(['entra_oid' => 'oid-'.$perfil.count($permissoes), 'nome' => 'Fulano', 'email' => "{$perfil}@empresa.com", 'perfil' => $perfil]);
+        $novo = array_key_exists($perfil, Usuario::perfisDisponiveis()) && $perfil !== 'operador';
+        $u = Usuario::create(['entra_oid' => 'oid-'.$perfil.count($permissoes), 'nome' => 'Fulano', 'email' => "{$perfil}@empresa.com",
+            'perfil' => $novo ? 'operador' : $perfil]);
+        if ($novo) {
+            $u->definirPerfis([$perfil]);
+        }
         if ($permissoes) {
             $grupo = Grupo::create(['nome' => 'Grupo '.$perfil, 'ativo' => true]);
             $grupo->definirPermissoes($permissoes);
@@ -124,7 +130,7 @@ class TimelineTest extends TestCase
         ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $dt->id,
             'inicio' => Carbon::parse('2026-11-05 13:00', 'UTC')]);
 
-        $this->actingAs($this->usuario('operador', ['timeline']));
+        $this->actingAs($this->usuario('mantenedor_producao'));
         $this->get('/dashboards/timeline')->assertOk()
             ->assertSee('Injetora 01')->assertSee('OP 509859')
             ->assertSee('background-color: #43a047', false)->assertSee('background-color: #e53935', false)
@@ -136,8 +142,14 @@ class TimelineTest extends TestCase
 
     public function test_permissoes_da_timeline_e_dos_apontamentos(): void
     {
-        $this->actingAs($this->usuario('operador', ['calculadora']));
+        // Operador: aponta, mas não vê a timeline (a não ser que um grupo dê).
+        $this->actingAs($this->usuario('operador'));
         $this->get('/dashboards/timeline')->assertForbidden();
+        $this->get('/producao/apontamentos')->assertOk();
+
+        // Mantenedor de produção: vê os dashboards, mas não aponta.
+        $this->actingAs($this->usuario('mantenedor_producao'));
+        $this->get('/dashboards/timeline')->assertOk();
         $this->get('/producao/apontamentos')->assertForbidden();
         $this->post('/producao/apontamentos', [])->assertForbidden();
     }

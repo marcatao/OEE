@@ -394,3 +394,8 @@ input:disabled, select:disabled, textarea:disabled { background:var(--fundo); co
 .sinc-progresso ul { margin:.5rem 0 0; padding-left:1.1rem; font-size:.92rem; }
 .sinc-progresso li + li { margin-top:.25rem; }
 .texto-alerta { color:var(--alerta); }
+
+/* Unidades (ambientes) dos cadastros */
+.unidade-manutencao { color:var(--primaria); background:var(--primaria-suave); border-color:transparent; }
+.unidade-tecnologia { color:var(--protheus); background:var(--protheus-suave); border-color:transparent; }
+.unidade-ambos { color:var(--texto); border-color:var(--borda-forte); }

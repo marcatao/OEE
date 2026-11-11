@@ -94,9 +94,12 @@ class OrdensProducaoTest extends TestCase
         return app(SincronizadorProtheus::class)->sincronizar($chave, 'comando');
     }
 
-    private function usuario(array $permissoes, string $email = 'op@empresa.com'): Usuario
+    private function usuario(array $permissoes, string $email = 'op@empresa.com', array $perfis = []): Usuario
     {
         $u = Usuario::create(['entra_oid' => 'oid-'.$email, 'nome' => 'Fulano', 'email' => $email, 'perfil' => 'operador']);
+        if ($perfis) {
+            $u->definirPerfis($perfis);
+        }
         $g = Grupo::create(['nome' => 'G '.$email, 'ativo' => true]);
         $g->definirPermissoes($permissoes);
         $g->usuarios()->attach($u->id);
@@ -216,7 +219,7 @@ class OrdensProducaoTest extends TestCase
         $this->sincronizar('produtos');
         $this->sincronizar('ordens_producao');
 
-        $this->actingAs($this->usuario(['apontamentos'], 'sem@empresa.com'))->get('/producao/ordens-de-producao')->assertForbidden();
+        $this->actingAs($this->usuario(['apontamentos'], 'sem@empresa.com', ['mantenedor_producao']))->get('/producao/ordens-de-producao')->assertForbidden();
 
         $this->actingAs($this->usuario(['ordens_producao']));
         $this->get('/producao/ordens-de-producao')->assertOk()
@@ -233,7 +236,7 @@ class OrdensProducaoTest extends TestCase
         $this->sincronizar('ordens_producao');
 
         // Sem a permissão da tela de OPs: nada de OPs na página inicial.
-        $this->actingAs($this->usuario(['apontamentos'], 'sem@empresa.com'))->get('/')->assertOk()
+        $this->actingAs($this->usuario(['apontamentos'], 'sem@empresa.com', ['mantenedor_producao']))->get('/')->assertOk()
             ->assertDontSee('OPs em andamento')->assertDontSee('50985901001');
 
         $this->actingAs($this->usuario(['ordens_producao']))->get('/')->assertOk()
@@ -387,7 +390,7 @@ class OrdensProducaoTest extends TestCase
             ->assertDontSee('R$ 999,00');                                          // estornado e excluído fora
         $this->get('/producao/ordens-de-producao/999999')->assertNotFound();
 
-        $this->actingAs($this->usuario(['apontamentos'], 'sem@empresa.com'))->get(route('ordens-producao.show', $op))->assertForbidden();
+        $this->actingAs($this->usuario(['apontamentos'], 'sem@empresa.com', ['mantenedor_producao']))->get(route('ordens-producao.show', $op))->assertForbidden();
     }
 
     public function test_tela_apontamentos_de_producao(): void

@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **23** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **24** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -60,6 +60,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        nvarchar(20) unidade
     }
     dispositivos_iot {
         bigint id PK
@@ -78,6 +79,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        nvarchar(20) unidade
     }
     filtros_usuarios {
         bigint id PK
@@ -119,6 +121,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        nvarchar(20) unidade
     }
     linhas {
         bigint id PK
@@ -130,6 +133,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        nvarchar(20) unidade
     }
     maquinas {
         bigint id PK
@@ -164,6 +168,7 @@ erDiagram
         bigint iot1_dispositivo_id FK
         bigint iot2_dispositivo_id FK
         bigint iot3_dispositivo_id FK
+        nvarchar(20) unidade
     }
     motivos_parada {
         bigint id PK
@@ -270,6 +275,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        nvarchar(20) unidade
     }
     produtos {
         bigint id PK
@@ -333,6 +339,13 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
     }
+    usuario_perfis {
+        bigint id PK
+        bigint usuario_id FK
+        nvarchar(30) perfil
+        datetime criado_em
+        bigint criado_por_id FK
+    }
     usuarios {
         bigint id PK
         nvarchar(36) entra_oid UK
@@ -373,6 +386,7 @@ erDiagram
     motivos_parada |o--o{ paradas : "motivo_id"
     usuarios |o--o{ registros_login : "usuario_id"
     usuarios |o--o{ sincronizacoes : "usuario_id"
+    usuarios ||--o{ usuario_perfis : "usuario_id"
     centros_custo |o..o{ maquinas : "centro_custo (código)"
     produtos_protheus |o..o{ ordens_producao : "c2_produto (código)"
     centros_custo |o..o{ ordens_producao : "c2_cc (código)"
@@ -425,8 +439,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 12 | 5 |
 | [`cache`](#cache) | Infra | `key` | 3 | 0 |
 | [`cache_locks`](#cache_locks) | Infra | `key` | 3 | 0 |
-| [`centros_custo`](#centros_custo) | Protheus | `id` | 15 | 2 |
-| [`dispositivos_iot`](#dispositivos_iot) | Sistema | `id` | 16 | 3 |
+| [`centros_custo`](#centros_custo) | Protheus | `id` | 16 | 2 |
+| [`dispositivos_iot`](#dispositivos_iot) | Sistema | `id` | 17 | 3 |
 | [`failed_jobs`](#failed_jobs) | Infra | `id` | 7 | 0 |
 | [`filtros_usuarios`](#filtros_usuarios) | Sistema | `id` | 8 | 1 |
 | [`grupo_permissoes`](#grupo_permissoes) | Sistema | `grupo_id, permissao` | 2 | 1 |
@@ -434,21 +448,22 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`grupos`](#grupos) | Sistema | `id` | 8 | 2 |
 | [`job_batches`](#job_batches) | Infra | `id` | 10 | 0 |
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
-| [`legendas`](#legendas) | Sistema | `id` | 11 | 2 |
-| [`linhas`](#linhas) | Sistema | `id` | 9 | 3 |
-| [`maquinas`](#maquinas) | Mista | `id` | 32 | 6 |
+| [`legendas`](#legendas) | Sistema | `id` | 12 | 2 |
+| [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
+| [`maquinas`](#maquinas) | Mista | `id` | 33 | 6 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
 | [`ordens_producao`](#ordens_producao) | Protheus | `id` | 26 | 0 |
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
-| [`plantas`](#plantas) | Sistema | `id` | 8 | 2 |
+| [`plantas`](#plantas) | Sistema | `id` | 9 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
 | [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 11 | 0 |
 | [`registros_login`](#registros_login) | Sistema | `id` | 8 | 1 |
 | [`sessions`](#sessions) | Infra | `id` | 6 | 0 |
 | [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 16 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
+| [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
 | [`usuarios`](#usuarios) | Sistema | `id` | 18 | 0 |
 
 ### apontamentos
@@ -543,10 +558,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
 
-**Índices:** `centros_custo_ctt_filial_ctt_custo_unique` único (ctt_filial, ctt_custo) · `centros_custo_ctt_custo_index` (ctt_custo)
+**Índices:** `centros_custo_ctt_filial_ctt_custo_unique` único (ctt_filial, ctt_custo) · `centros_custo_ctt_custo_index` (ctt_custo) · `centros_custo_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_centros_custo_classe`: `ctt_classe IN ('1', '2')` · `ck_centros_custo_bloq`: `ctt_bloq IN ('1', '2')`
+**Regras (CHECK, só no SQL Server):** `ck_centros_custo_classe`: `ctt_classe IN ('1', '2')` · `ck_centros_custo_bloq`: `ctt_bloq IN ('1', '2')` · `ck_centros_custo_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
 
 ### dispositivos_iot
 
@@ -570,8 +586,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
 
-**Índices:** `dispositivos_iot_codigo_unique` único (codigo) · `dispositivos_iot_maquina_id_index` (maquina_id)
+**Índices:** `dispositivos_iot_codigo_unique` único (codigo) · `dispositivos_iot_maquina_id_index` (maquina_id) · `dispositivos_iot_unidade_index` (unidade)
+
+**Regras (CHECK, só no SQL Server):** `ck_dispositivos_iot_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
 
 ### failed_jobs
 
@@ -691,10 +710,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
 
-**Índices:** `legendas_codigo_unique` único (codigo)
+**Índices:** `legendas_codigo_unique` único (codigo) · `legendas_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_legendas_tipo`: `tipo IN ('produzindo', 'parada', 'planejada', 'desligada')`
+**Regras (CHECK, só no SQL Server):** `ck_legendas_tipo`: `tipo IN ('produzindo', 'parada', 'planejada', 'desligada')` · `ck_legendas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
 
 ### linhas
 
@@ -711,8 +731,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
 
-**Índices:** `linhas_planta_id_codigo_unique` único (planta_id, codigo)
+**Índices:** `linhas_planta_id_codigo_unique` único (planta_id, codigo) · `linhas_unidade_index` (unidade)
+
+**Regras (CHECK, só no SQL Server):** `ck_linhas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
 
 ### maquinas
 
@@ -752,10 +775,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `iot1_dispositivo_id` | `bigint` | sim |  | FK → `dispositivos_iot.id` |
 | `iot2_dispositivo_id` | `bigint` | sim |  | FK → `dispositivos_iot.id` |
 | `iot3_dispositivo_id` | `bigint` | sim |  | FK → `dispositivos_iot.id` |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
 
-**Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_)
+**Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_) · `maquinas_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_maquinas_paradas`: `micro_parada_s IS NULL OR macro_parada_s IS NULL OR macro_parada_s > micro_parada_s` · `ck_maquinas_iot1_tipo`: `iot1_tipo IS NULL OR iot1_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot2_tipo`: `iot2_tipo IS NULL OR iot2_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot3_tipo`: `iot3_tipo IS NULL OR iot3_tipo IN ('producao', 'refugo')` · `ck_maquinas_d_e_l_e_t_`: `d_e_l_e_t_ IN (' ', '*')` · `ck_maquinas_ativa_com_linha`: `ativo = 0 OR linha_id IS NOT NULL` · `ck_maquinas_ativa_nao_excluida`: `ativo = 0 OR d_e_l_e_t_ <> '*'`
+**Regras (CHECK, só no SQL Server):** `ck_maquinas_paradas`: `micro_parada_s IS NULL OR macro_parada_s IS NULL OR macro_parada_s > micro_parada_s` · `ck_maquinas_iot1_tipo`: `iot1_tipo IS NULL OR iot1_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot2_tipo`: `iot2_tipo IS NULL OR iot2_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot3_tipo`: `iot3_tipo IS NULL OR iot3_tipo IN ('producao', 'refugo')` · `ck_maquinas_d_e_l_e_t_`: `d_e_l_e_t_ IN (' ', '*')` · `ck_maquinas_ativa_com_linha`: `ativo = 0 OR linha_id IS NOT NULL` · `ck_maquinas_ativa_nao_excluida`: `ativo = 0 OR d_e_l_e_t_ <> '*'` · `ck_maquinas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
 
 ### motivos_parada
 
@@ -906,8 +930,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
 
-**Índices:** `plantas_codigo_unique` único (codigo)
+**Índices:** `plantas_codigo_unique` único (codigo) · `plantas_unidade_index` (unidade)
+
+**Regras (CHECK, só no SQL Server):** `ck_plantas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
 
 ### produtos
 
@@ -1024,6 +1051,22 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 
 **Índices:** `turnos_nome_unique` único (nome)
+
+### usuario_perfis
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `usuario_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `perfil` | `nvarchar(30)` | não |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `usuario_perfis_usuario_id_perfil_unique` único (usuario_id, perfil)
+
+**Regras (CHECK, só no SQL Server):** `ck_usuario_perfis_perfil`: `perfil IN ('operador', 'admin_producao', 'admin_tecnologia', 'mantenedor_producao', 'mantenedor_tecnologia')`
 
 ### usuarios
 

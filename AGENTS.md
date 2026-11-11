@@ -8,9 +8,18 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - O **Entra ID só autentica** a entrada (`app/Services/EntraId.php`). O usuário é cadastrado no banco no primeiro
   login (`usuarios`, chave `entra_oid`, nunca o e-mail) e nasce **sem acesso**; só os e-mails de `config('oee.admins')`
   (padrão `marcato@alumbra.com.br`) nascem `admin`. Todo login vai para `registros_login`.
-- Acesso: perfil (`sem_acesso` | `operador` | `admin`) + **grupos**. Os grupos dão permissões de página
-  (`grupo_permissoes`, catálogo em `config('oee.permissoes')`). Admin pode tudo. Só admin cria grupos e altera
-  cadastros.
+- Dois ambientes: **Manutenção** (produção) e **Tecnologia**. Acesso por **perfis** (vários por usuário, tabela
+  `usuario_perfis`, definição em `config('oee.perfis_acesso')`: operador, admin_producao, admin_tecnologia,
+  mantenedor_producao, mantenedor_tecnologia; cada um com unidades e permissões de página) + **grupos** (somam
+  páginas, `grupo_permissoes`, catálogo em `config('oee.permissoes')`). Usuário sem linhas em `usuario_perfis` segue a
+  coluna antiga `perfil` (admin = todos os perfis, operador = operador). Administrador de Tecnologia pode tudo e é o
+  único na aba **Segurança** (usuários, grupos, acessos, banco: `perfil:admin_tecnologia`); cadastros =
+  `perfil:admin_producao,admin_tecnologia`. Use `Usuario::pode()`, `ehAdmin()`, `podeSeguranca()`, `temPerfil()`.
+- Todo cadastro tem **unidade** (`manutencao` | `tecnologia` | `ambos`, trait `App\Models\Concerns\TemUnidade`): escopo
+  global mostra ao usuário logado só as unidades dele + "ambos" (Admin de Tecnologia vê tudo; sem usuário logado, sem
+  filtro). No formulário use `@include('partials.campo-unidade')` e `App\Support\Unidades::regras()` (Manutenção só
+  para admin_producao, Tecnologia só para admin_tecnologia, Ambos para quem tem os dois). Cadastro novo de qualquer
+  tipo deve ganhar a coluna `unidade` (padrão `manutencao`) e o trait.
 - Banco principal: **SQL Server** (`DB_CONNECTION=sqlsrv`, configurado no `.env`). Testes rodam em SQLite em memória:
   tudo precisa funcionar nos dois. Recursos só do SQL Server ficam atrás de `DB::getDriverName() === 'sqlsrv'`.
 - Datas gravadas em **UTC** (`config/app.php` usa `UTC`) e exibidas no fuso local com `@dataHora($valor)`.

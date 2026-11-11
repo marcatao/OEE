@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Administração</p>
+  <p class="trilha">Segurança</p>
   <h1>Banco de dados</h1>
   <p class="suave">A conexão é configurada no arquivo <code>.env</code> do servidor (seção "Banco de dados"). Depois de
     alterar, rode <code>php artisan config:clear</code> e confira aqui.</p>

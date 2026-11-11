@@ -49,7 +49,7 @@ class PortalController extends Controller
             'iotAtivos' => DispositivoIot::where('ativo', true)->count(),
             'iotOnline' => DispositivoIot::where('ativo', true)
                 ->where('ultimo_sinal_em', '>=', now()->subMinutes(config('oee.iot_minutos_sem_sinal', 5)))->count(),
-            'aguardando' => $usuario->ehAdmin() ? Usuario::where('perfil', 'sem_acesso')->where('ativo', true)->count() : 0,
+            'aguardando' => $usuario->podeSeguranca() ? Usuario::where('perfil', 'sem_acesso')->where('ativo', true)->count() : 0,
         ]);
     }
 

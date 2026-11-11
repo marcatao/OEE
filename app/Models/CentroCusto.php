@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\TemUnidade;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,12 +14,13 @@ use Illuminate\Database\Eloquent\Model;
 class CentroCusto extends Model
 {
     use Auditavel;
+    use TemUnidade;
 
     public const CLASSES = ['1' => 'Sintético', '2' => 'Analítico'];
 
     protected $table = 'centros_custo';
 
-    protected $fillable = ['ctt_filial', 'ctt_custo', 'ctt_desc01', 'ctt_classe', 'ctt_bloq', 'ctt_ccsup', 'ctt_dtexis', 'ctt_dtexsf'];
+    protected $fillable = ['unidade', 'ctt_filial', 'ctt_custo', 'ctt_desc01', 'ctt_classe', 'ctt_bloq', 'ctt_ccsup', 'ctt_dtexis', 'ctt_dtexsf'];
 
     protected $attributes = ['ctt_filial' => '', 'ctt_classe' => '2', 'ctt_bloq' => '2', 'ctt_ccsup' => '', 'ctt_dtexis' => '', 'ctt_dtexsf' => '', 'd_e_l_e_t_' => ' '];
 

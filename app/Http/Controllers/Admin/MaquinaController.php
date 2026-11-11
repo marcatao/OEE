@@ -7,6 +7,7 @@ use App\Models\CentroCusto;
 use App\Models\DispositivoIot;
 use App\Models\Linha;
 use App\Models\Maquina;
+use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -86,6 +87,7 @@ class MaquinaController extends Controller
     private function salvar(Request $request, Maquina $maquina): void
     {
         $regras = [
+            'unidade' => Unidades::regras($request->user(), $maquina->exists ? $maquina->unidade : null),
             'linha_id' => ['nullable', 'required_if:ativo,1', 'integer', Rule::exists('linhas', 'id')],
             'codigo' => ['required', 'string', 'max:30', Rule::unique('maquinas', 'codigo')->ignore($maquina->id)],
             'nome' => ['required', 'string', 'max:120'],

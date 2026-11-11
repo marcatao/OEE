@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Usuário do portal. Cadastrado no primeiro login pelo Entra ID (nome e e-mail vêm do login) e nasce SEM ACESSO.
- * O administrador define o perfil e os grupos; os grupos dão as permissões de tela.
+ * O Administrador de Tecnologia define os PERFIS (vários por usuário, tabela usuario_perfis; config oee.perfis_acesso)
+ * e os grupos. O perfil dá as telas e o ambiente (unidade: manutenção e/ou tecnologia); os grupos somam telas.
+ * Usuário ainda sem perfis gravados segue a coluna antiga "perfil": admin = todos os perfis, operador = operador.
  */
 class Usuario extends Authenticatable
 {
@@ -38,6 +40,8 @@ class Usuario extends Authenticatable
 
     private ?array $permissoesCache = null;
 
+    private ?array $perfisCache = null;
+
     protected function casts(): array
     {
         return [
@@ -58,25 +62,152 @@ class Usuario extends Authenticatable
         return $this->hasMany(RegistroLogin::class);
     }
 
+    /** @return array<string, array{rotulo: string, descricao: string, unidades: list<string>, permissoes: list<string>}> */
+    public static function perfisDisponiveis(): array
+    {
+        return config('oee.perfis_acesso', []);
+    }
+
+    /**
+     * Perfis de acesso do usuário. Sem perfis gravados em usuario_perfis, segue a coluna antiga "perfil"
+     * (admin = todos os perfis, operador = operador, sem_acesso = nenhum): os cadastros antigos não perdem nada.
+     *
+     * @return list<string>
+     */
+    public function perfisAcesso(): array
+    {
+        if ($this->perfisCache !== null) {
+            return $this->perfisCache;
+        }
+        $validos = array_keys(self::perfisDisponiveis());
+        $gravados = $this->exists ? DB::table('usuario_perfis')->where('usuario_id', $this->id)->pluck('perfil')->all() : [];
+        if (! $gravados) {
+            $gravados = match ($this->perfil) {
+                'admin' => $validos,
+                'operador' => ['operador'],
+                default => [],
+            };
+        }
+
+        return $this->perfisCache = array_values(array_intersect($validos, $gravados));
+    }
+
+    /** Grava os perfis (troca os que tinha) e ajusta a coluna antiga "perfil" (sem_acesso, operador ou admin). */
+    public function definirPerfis(array $perfis, ?Usuario $por = null): void
+    {
+        $perfis = array_values(array_intersect(array_keys(self::perfisDisponiveis()), $perfis));
+        DB::transaction(function () use ($perfis, $por) {
+            DB::table('usuario_perfis')->where('usuario_id', $this->id)->whereNotIn('perfil', $perfis ?: [''])->delete();
+            $atuais = DB::table('usuario_perfis')->where('usuario_id', $this->id)->pluck('perfil')->all();
+            foreach (array_diff($perfis, $atuais) as $perfil) {
+                DB::table('usuario_perfis')->insert(['usuario_id' => $this->id, 'perfil' => $perfil,
+                    'criado_em' => now(), 'criado_por_id' => $por?->id]);
+            }
+            $this->forceFill(['perfil' => match (true) {
+                $perfis === [] => 'sem_acesso',
+                (bool) array_intersect($perfis, ['admin_producao', 'admin_tecnologia']) => 'admin',
+                default => 'operador',
+            }])->save();
+        });
+        $this->perfisCache = null;
+        $this->permissoesCache = null;
+    }
+
+    public function temPerfil(string ...$perfis): bool
+    {
+        return (bool) array_intersect($perfis, $this->perfisAcesso());
+    }
+
+    public function ehAdminTecnologia(): bool
+    {
+        return $this->temPerfil('admin_tecnologia');
+    }
+
+    public function ehAdminProducao(): bool
+    {
+        return $this->temPerfil('admin_producao');
+    }
+
+    /** Pode abrir os cadastros (máquinas, legendas, IoT...): Administrador de Produção ou de Tecnologia. */
     public function ehAdmin(): bool
     {
-        return $this->perfil === 'admin';
+        return $this->temPerfil('admin_producao', 'admin_tecnologia');
     }
 
-    /** Liberado por um administrador (perfil diferente de "sem acesso") e ativo. */
+    /** Aba Segurança (usuários, grupos, histórico de acessos, banco de dados): só o Administrador de Tecnologia. */
+    public function podeSeguranca(): bool
+    {
+        return $this->temAcesso() && $this->ehAdminTecnologia();
+    }
+
+    /** Ativo e com pelo menos um perfil. */
     public function temAcesso(): bool
     {
-        return $this->ativo && $this->perfil !== 'sem_acesso';
+        return $this->ativo && $this->perfisAcesso() !== [];
     }
 
-    /** Pode abrir a tela? Admin pode tudo; os demais, o que os grupos ativos deles permitem. */
+    /** Ambientes que o usuário enxerga (manutencao, tecnologia). @return list<string> */
+    public function unidades(): array
+    {
+        $unidades = [];
+        foreach ($this->perfisAcesso() as $perfil) {
+            array_push($unidades, ...(self::perfisDisponiveis()[$perfil]['unidades'] ?? []));
+        }
+
+        return array_values(array_unique($unidades));
+    }
+
+    /**
+     * Filtro dos cadastros por unidade: null = vê tudo (os dois ambientes); senão as unidades visíveis (as dele e
+     * "ambos").
+     *
+     * @return list<string>|null
+     */
+    public function unidadesVisiveis(): ?array
+    {
+        $unidades = $this->temAcesso() ? $this->unidades() : [];
+
+        return count(array_intersect(['manutencao', 'tecnologia'], $unidades)) === 2 ? null : [...$unidades, 'ambos'];
+    }
+
+    /**
+     * Unidades que o usuário pode escolher num cadastro: Manutenção só com Administrador de Produção, Tecnologia só
+     * com Administrador de Tecnologia, Ambos só com os dois.
+     *
+     * @return list<string>
+     */
+    public function unidadesParaCadastro(): array
+    {
+        $producao = $this->ehAdminProducao();
+        $tecnologia = $this->ehAdminTecnologia();
+
+        return array_values(array_filter([
+            $producao ? 'manutencao' : null,
+            $tecnologia ? 'tecnologia' : null,
+            $producao && $tecnologia ? 'ambos' : null,
+        ]));
+    }
+
+    /**
+     * Pode abrir a tela? Administrador de Tecnologia pode tudo; os demais, o que os perfis e os grupos ativos deles
+     * permitem.
+     */
     public function pode(string $permissao): bool
     {
         if (! $this->temAcesso()) {
             return false;
         }
+        if ($this->ehAdminTecnologia()) {
+            return true;
+        }
+        foreach ($this->perfisAcesso() as $perfil) {
+            $doPerfil = self::perfisDisponiveis()[$perfil]['permissoes'] ?? [];
+            if (in_array('*', $doPerfil, true) || in_array($permissao, $doPerfil, true)) {
+                return true;
+            }
+        }
 
-        return $this->ehAdmin() || in_array($permissao, $this->permissoes(), true);
+        return in_array($permissao, $this->permissoes(), true);
     }
 
     /** @return list<string> permissões vindas dos grupos ativos */
@@ -92,9 +223,25 @@ class Usuario extends Authenticatable
             ->all();
     }
 
+    /** Rótulo curto para o topo: o perfil principal e quantos mais (ex.: "Administrador de Tecnologia +4"). */
+    public function rotuloPerfilCurto(): string
+    {
+        $perfis = $this->perfisAcesso();
+        if (! $perfis) {
+            return 'Sem acesso';
+        }
+        $ordem = ['admin_tecnologia', 'admin_producao', 'mantenedor_tecnologia', 'mantenedor_producao', 'operador'];
+        $principal = collect($ordem)->first(fn ($p) => in_array($p, $perfis, true)) ?? $perfis[0];
+
+        return self::perfisDisponiveis()[$principal]['rotulo'].(count($perfis) > 1 ? ' +'.(count($perfis) - 1) : '');
+    }
+
+    /** "Operador, Mantenedor de Produção" (ou "Sem acesso"). */
     public function rotuloPerfil(): string
     {
-        return self::PERFIS[$this->perfil] ?? $this->perfil;
+        $rotulos = array_map(fn ($p) => self::perfisDisponiveis()[$p]['rotulo'], $this->perfisAcesso());
+
+        return $rotulos ? implode(', ', $rotulos) : 'Sem acesso';
     }
 
     /** Iniciais do nome (ex.: "Marcato Silva" → "MS") para quando não há foto. */

@@ -14,8 +14,23 @@ das máquinas ficam no banco do portal.
 - Cadastro automático no primeiro login pelo Entra ID: o usuário nasce **sem acesso** e vê só a página
   "aguardando liberação" até um administrador liberar. Só `marcato@alumbra.com.br` (configurável em
   `PORTAL_ADMINS`) nasce **administrador**.
-- Perfis: **Sem acesso**, **Operador** (vê as páginas que os grupos dele permitem) e **Administrador** (vê tudo).
-- **Grupos**: o administrador cria grupos, escolhe as páginas que cada grupo pode abrir e quem faz parte dele.
+- **Dois ambientes**: **Manutenção** (produção) e **Tecnologia**. Todo cadastro (máquinas, legendas, dispositivos IoT,
+  centros de custo, plantas e linhas) tem o campo **Unidade**: Manutenção, Tecnologia ou Ambos. Cada usuário só
+  enxerga os cadastros das unidades dele (e os de "Ambos"). Os cadastros anteriores ficaram como **Manutenção**.
+- **Perfis** (um usuário pode ter vários, marcados em Segurança › Usuários):
+  | Perfil | Unidade | O que faz |
+  |---|---|---|
+  | Operador | Manutenção | Informa o apontamento real e vê as ordens de produção |
+  | Administrador de Produção | Manutenção | Vê e cadastra tudo da produção/manutenção, exceto a Segurança |
+  | Administrador de Tecnologia | as duas | Vê tudo de tudo, inclusive a **Segurança** |
+  | Mantenedor de Produção | Manutenção | Solicitações de manutenção e máquinas de manutenção nos dashboards |
+  | Mantenedor de Tecnologia | Tecnologia | O que é de tecnologia (equipamentos e dashboards de tecnologia) |
+
+  No cadastro, a unidade **Manutenção** só pode ser escolhida por quem é Administrador de Produção, **Tecnologia**
+  por quem é Administrador de Tecnologia, e **Ambos** só por quem tem os dois. Usuários de antes dos perfis novos
+  continuam como estavam: administrador = todos os perfis, operador = Operador. Sem nenhum perfil = sem acesso.
+- **Grupos**: somam páginas às dos perfis (o Administrador de Tecnologia cria os grupos, escolhe as páginas e os membros).
+- Menu **Segurança** (só Administrador de Tecnologia): Usuários, Grupos, Histórico de acessos e Banco de dados.
 - Menu lateral (recolhível: o botão do topo deixa só os ícones e o navegador lembra a escolha):
   Início · **Produção** (Dashboard por máquina, Calculadora de OEE) · **Administração** (Máquinas, Plantas e linhas,
   Dispositivos IoT, Logins › Usuários/Grupos/Histórico de acessos, Banco de dados). Cada usuário só vê o que pode abrir.
@@ -59,7 +74,7 @@ das máquinas ficam no banco do portal.
 | `app/Services/RegistroDeLogin.php` | Grava usuário e logins no banco |
 | `app/Services/CalculadoraOee.php` | Cálculo de OEE |
 | `app/Services/InfoBanco.php` | Descrição e teste da conexão com o banco |
-| `app/Http/Middleware/` | `UsuarioAtivo` (derruba sessão de quem foi desativado), `ExigePerfil` (`perfil:admin`) e `ExigePermissao` (`permissao:calculadora`) |
+| `app/Http/Middleware/` | `UsuarioAtivo` (derruba sessão de quem foi desativado), `ExigePerfil` (`perfil:admin_producao,admin_tecnologia`) e `ExigePermissao` (`permissao:calculadora`) |
 | `app/Http/Controllers/Cadastros/` | Administração › Logins: usuários, grupos e histórico de acessos |
 | `config/oee.php` | Quem nasce admin e o catálogo de permissões (páginas) que os grupos podem dar |
 | `app/Models/` | Modelos Eloquent (`Usuario`, `RegistroLogin`, `Planta`, `Linha`, `Maquina`, ...) |
@@ -152,15 +167,14 @@ php artisan db:seed             # motivos de parada padrão
 php artisan serve               # abra http://localhost:8000
 ```
 
-Entre primeiro com `marcato@alumbra.com.br`: ele nasce **administrador**. Os demais usuários aparecem em
-**Administração › Logins › Usuários** depois do primeiro login, **sem acesso**. Para liberar alguém:
+Entre primeiro com `marcato@alumbra.com.br`: ele nasce com **todos os perfis**. Os demais usuários aparecem em
+**Segurança › Usuários** depois do primeiro login, **sem acesso**. Para liberar alguém:
 
-1. Em **Administração › Logins › Grupos**, crie os grupos (ex.: "Operadores Linha 1") e marque as páginas que eles podem
-   abrir.
-2. Em **Administração › Logins › Usuários**, clique em **Editar**, escolha o perfil (**Operador** ou **Administrador**) e
-   marque os grupos.
+1. Em **Segurança › Usuários**, clique em **Editar** e marque os **perfis** (um ou mais).
+2. Se precisar de páginas além das do perfil, crie grupos em **Segurança › Grupos** e marque-os no usuário.
 
-O perfil também pode ser mudado pelo terminal (útil para recuperar o acesso de administrador):
+Os perfis também podem ser mudados pelo terminal (útil para recuperar o acesso: `admin` = todos os perfis,
+`sem_acesso` = nenhum, ou o nome de um perfil para acrescentá-lo):
 
 ```sh
 php artisan usuarios:listar

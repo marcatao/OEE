@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Legenda;
+use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -52,6 +53,7 @@ class LegendaController extends Controller
     {
         $request->merge(['codigo' => mb_strtoupper(trim((string) $request->input('codigo'))), 'cor' => strtolower((string) $request->input('cor'))]);
         $dados = $request->validate([
+            'unidade' => Unidades::regras($request->user(), $legenda->exists ? $legenda->unidade : null),
             'codigo' => ['required', 'string', 'max:12', Rule::unique('legendas', 'codigo')->ignore($legenda->id)],
             'descricao' => ['required', 'string', 'max:120'],
             'tipo' => ['required', Rule::in(array_keys(Legenda::TIPOS))],

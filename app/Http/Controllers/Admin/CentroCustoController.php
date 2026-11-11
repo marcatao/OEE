@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CentroCusto;
 use App\Models\Maquina;
+use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -63,6 +64,7 @@ class CentroCustoController extends Controller
             'ctt_custo' => trim((string) $request->input('ctt_custo')),
         ]);
         $dados = $request->validate([
+            'unidade' => Unidades::regras($request->user(), $centro->exists ? $centro->unidade : null),
             'ctt_filial' => ['nullable', 'string', 'max:8'],
             'ctt_custo' => ['required', 'string', 'max:20', Rule::unique('centros_custo', 'ctt_custo')
                 ->where(fn ($q) => $q->where('ctt_filial', (string) $request->input('ctt_filial')))->ignore($centro->id)],

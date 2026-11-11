@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Administração › Logins</p>
+  <p class="trilha">Segurança</p>
   <div class="titulo-com-acao">
     <h1>Grupos</h1>
     <a class="botao" href="{{ route('cadastros.grupos.create') }}">Novo grupo</a>

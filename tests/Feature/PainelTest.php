@@ -50,7 +50,8 @@ class PainelTest extends TestCase
     {
         $this->actingAs($this->usuario('admin', 'admin@empresa.com'))->get('/')->assertOk()
             ->assertSeeInOrder(['Dashboards', 'Dashboard por máquina', 'Timeline', 'Produção', 'Apontamento real', 'Apontamentos OP', 'Ordens de produção', 'Calculadora de OEE',
-                'Administração', 'Máquinas', 'Plantas e linhas', 'Legendas', 'Dispositivos IoT', 'Logins', 'Usuários', 'Grupos', 'Histórico de acessos', 'Banco de dados']);
+                'Administração', 'Máquinas', 'Plantas e linhas', 'Legendas', 'Dispositivos IoT',
+                'Segurança', 'Usuários', 'Grupos', 'Histórico de acessos', 'Banco de dados']);
     }
 
     public function test_quem_nao_e_admin_nao_acessa_os_cadastros_novos(): void

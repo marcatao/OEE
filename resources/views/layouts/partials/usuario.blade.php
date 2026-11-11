@@ -3,7 +3,7 @@
   @include('partials.avatar', ['usuario' => $eu])
   <span class="topo-usuario-texto">
     <strong>{{ $eu->nome ?? $eu->email }}</strong>
-    <small>{{ $eu->cargo ?: $eu->rotuloPerfil() }}</small>
+    <small>{{ $eu->cargo ?: $eu->rotuloPerfilCurto() }}</small>
   </span>
 </a>
 <form method="post" action="{{ route('logout') }}">

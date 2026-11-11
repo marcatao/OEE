@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\TemUnidade;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Legenda extends Model
 {
     use Auditavel;
+    use TemUnidade;
 
     public const TIPOS = [
         'produzindo' => 'Produzindo',
@@ -23,7 +25,7 @@ class Legenda extends Model
 
     protected $table = 'legendas';
 
-    protected $fillable = ['codigo', 'descricao', 'tipo', 'cor', 'ordem', 'ativo'];
+    protected $fillable = ['unidade', 'codigo', 'descricao', 'tipo', 'cor', 'ordem', 'ativo'];
 
     protected $attributes = ['ativo' => true, 'ordem' => 0];
 

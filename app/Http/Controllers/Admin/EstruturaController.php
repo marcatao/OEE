@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Linha;
 use App\Models\Planta;
+use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -33,6 +34,7 @@ class EstruturaController extends Controller
     public function salvarPlanta(Request $request): RedirectResponse
     {
         $dados = $request->validate([
+            'unidade' => Unidades::regras($request->user()),
             'codigo' => ['required', 'string', 'max:20', Rule::unique('plantas', 'codigo')],
             'nome' => ['required', 'string', 'max:120'],
         ], self::MENSAGENS);
@@ -44,6 +46,7 @@ class EstruturaController extends Controller
     public function atualizarPlanta(Request $request, Planta $planta): RedirectResponse
     {
         $dados = $request->validate([
+            'unidade' => Unidades::regras($request->user(), $planta->unidade),
             'nome' => ['required', 'string', 'max:120'],
             'ativo' => ['required', 'boolean'],
         ], self::MENSAGENS);
@@ -55,6 +58,7 @@ class EstruturaController extends Controller
     public function salvarLinha(Request $request): RedirectResponse
     {
         $dados = $request->validate([
+            'unidade' => Unidades::regras($request->user()),
             'planta_id' => ['required', 'integer', Rule::exists('plantas', 'id')],
             'codigo' => ['required', 'string', 'max:20',
                 Rule::unique('linhas', 'codigo')->where(fn ($q) => $q->where('planta_id', $request->integer('planta_id')))],
@@ -68,6 +72,7 @@ class EstruturaController extends Controller
     public function atualizarLinha(Request $request, Linha $linha): RedirectResponse
     {
         $dados = $request->validate([
+            'unidade' => Unidades::regras($request->user(), $linha->unidade),
             'nome' => ['required', 'string', 'max:120'],
             'ativo' => ['required', 'boolean'],
         ], self::MENSAGENS);

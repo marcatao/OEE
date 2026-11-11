@@ -25,7 +25,7 @@ class AdminTest extends TestCase
 
         $this->actingAs($admin)->get('/cadastros/logins/usuarios')->assertOk()
             ->assertSee('novo@empresa.com')->assertSee('1 usuário aguarda liberação')
-            ->assertSee('Administração')->assertSee('Logins')->assertSee('Grupos')->assertSee('Histórico de acessos');
+            ->assertSee('Administração')->assertSee('Segurança')->assertSee('Grupos')->assertSee('Histórico de acessos');
         $this->get('/cadastros/logins/grupos')->assertOk();
         $this->get('/cadastros/logins/grupos/novo')->assertOk();
         $this->get('/cadastros/logins/acessos')->assertOk();
@@ -50,33 +50,49 @@ class AdminTest extends TestCase
         $this->get('/aguardando-liberacao')->assertOk();
     }
 
-    public function test_admin_libera_usuario_vira_admin_e_coloca_em_grupos(): void
+    public function test_admin_libera_usuario_com_varios_perfis_e_coloca_em_grupos(): void
     {
         $admin = $this->usuario('admin', 'admin@empresa.com');
         $maria = $this->usuario('sem_acesso', 'maria@empresa.com');
         $grupo = Grupo::create(['nome' => 'Supervisores']);
 
-        $this->actingAs($admin)->get("/cadastros/logins/usuarios/{$maria->id}/editar")->assertOk()->assertSee('Supervisores');
-        $this->put("/cadastros/logins/usuarios/{$maria->id}", ['perfil' => 'admin', 'ativo' => '1', 'grupos' => [$grupo->id]])
+        $this->actingAs($admin)->get("/cadastros/logins/usuarios/{$maria->id}/editar")->assertOk()->assertSee('Supervisores')
+            ->assertSee('Administrador de Produção')->assertSee('Mantenedor de Tecnologia');
+        $this->put("/cadastros/logins/usuarios/{$maria->id}", ['perfis' => ['operador', 'mantenedor_tecnologia'], 'ativo' => '1', 'grupos' => [$grupo->id]])
             ->assertRedirect('/cadastros/logins/usuarios')->assertSessionHas('ok');
 
-        $maria->refresh();
-        $this->assertSame('admin', $maria->perfil);
+        $maria = $maria->fresh();
+        $this->assertSame(['operador', 'mantenedor_tecnologia'], $maria->perfisAcesso());
+        $this->assertSame(['manutencao', 'tecnologia'], $maria->unidades());
+        $this->assertSame('operador', $maria->perfil); // coluna antiga acompanha (sem_acesso / operador / admin)
         $this->assertSame(['Supervisores'], $maria->grupos->pluck('nome')->all());
+        $this->get('/cadastros/logins/usuarios?perfil=mantenedor_tecnologia')->assertSee('maria@empresa.com');
+        $this->get('/cadastros/logins/usuarios?perfil=admin_producao')->assertDontSee('maria@empresa.com');
 
-        // e depois rebaixa para operador e tira dos grupos
-        $this->put("/cadastros/logins/usuarios/{$maria->id}", ['perfil' => 'operador', 'ativo' => '1']);
-        $this->assertSame('operador', $maria->refresh()->perfil);
+        // e depois tira todos os perfis e os grupos: volta a "sem acesso"
+        $this->put("/cadastros/logins/usuarios/{$maria->id}", ['ativo' => '1']);
+        $maria = $maria->fresh();
+        $this->assertSame([], $maria->perfisAcesso());
+        $this->assertSame('sem_acesso', $maria->perfil);
+        $this->assertFalse($maria->temAcesso());
         $this->assertCount(0, $maria->grupos);
+    }
+
+    public function test_usuario_antigo_mantem_o_acesso_sem_perfis_gravados(): void
+    {
+        // Cadastros de antes dos perfis novos: admin = todos os perfis; operador = operador.
+        $this->assertSame(array_keys(Usuario::perfisDisponiveis()), $this->usuario('admin', 'a@empresa.com')->perfisAcesso());
+        $this->assertSame(['operador'], $this->usuario('operador', 'o@empresa.com')->perfisAcesso());
+        $this->assertSame([], $this->usuario('sem_acesso', 's@empresa.com')->perfisAcesso());
     }
 
     public function test_admin_nao_tira_o_proprio_acesso(): void
     {
         $admin = $this->usuario('admin', 'admin@empresa.com');
 
-        $this->actingAs($admin)->put("/cadastros/logins/usuarios/{$admin->id}", ['perfil' => 'operador', 'ativo' => '1'])
+        $this->actingAs($admin)->put("/cadastros/logins/usuarios/{$admin->id}", ['perfis' => ['admin_producao'], 'ativo' => '1'])
             ->assertSessionHas('erro');
-        $this->assertSame('admin', $admin->refresh()->perfil);
+        $this->assertTrue($admin->fresh()->ehAdminTecnologia());
     }
 
     public function test_perfil_invalido_e_rejeitado(): void
@@ -84,8 +100,20 @@ class AdminTest extends TestCase
         $admin = $this->usuario('admin', 'admin@empresa.com');
         $maria = $this->usuario('operador', 'maria@empresa.com');
 
-        $this->actingAs($admin)->put("/cadastros/logins/usuarios/{$maria->id}", ['perfil' => 'dono', 'ativo' => '1'])
-            ->assertSessionHasErrors('perfil');
+        $this->actingAs($admin)->put("/cadastros/logins/usuarios/{$maria->id}", ['perfis' => ['dono'], 'ativo' => '1'])
+            ->assertSessionHasErrors('perfis.0');
+    }
+
+    public function test_seguranca_so_para_administrador_de_tecnologia(): void
+    {
+        $producao = $this->usuario('operador', 'prod@empresa.com');
+        $producao->definirPerfis(['admin_producao']);
+
+        $this->actingAs($producao)->get('/')->assertSee('Administração')->assertDontSee('Segurança');
+        $this->get('/admin/maquinas')->assertOk();                 // cadastros: sim
+        foreach (['/cadastros/logins/usuarios', '/cadastros/logins/grupos', '/cadastros/logins/acessos', '/admin/banco'] as $url) {
+            $this->get($url)->assertForbidden();                    // segurança: não
+        }
     }
 
     public function test_admin_cria_e_edita_grupo_com_permissoes_e_membros(): void

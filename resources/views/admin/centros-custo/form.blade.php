@@ -20,6 +20,7 @@
     @if ($centro->exists) @method('put') @endif
 
     <div class="campos">
+        @include('partials.campo-unidade', ['registro' => $centro])
       <label>Código (CTT_CUSTO)
         <input name="ctt_custo" required maxlength="20" value="{{ old('ctt_custo', $centro->codigo()) }}" placeholder="Ex.: 110101">
       </label>

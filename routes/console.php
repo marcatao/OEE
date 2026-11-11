@@ -27,8 +27,10 @@ Artisan::command('usuarios:listar', function () {
 })->purpose('Lista os usuários do portal');
 
 Artisan::command('usuarios:perfil {email} {perfil}', function (string $email, string $perfil) {
-    if (! array_key_exists($perfil, Usuario::PERFIS)) {
-        $this->error('Perfil inválido. Use: '.implode(', ', array_keys(Usuario::PERFIS)));
+    // admin = todos os perfis (recupera o acesso total); sem_acesso = nenhum; ou um perfil novo, que é acrescentado.
+    $novos = array_keys(Usuario::perfisDisponiveis());
+    if (! in_array($perfil, ['admin', 'sem_acesso', ...$novos], true)) {
+        $this->error('Perfil inválido. Use: admin (todos), sem_acesso ou '.implode(', ', $novos));
 
         return 1;
     }
@@ -38,9 +40,13 @@ Artisan::command('usuarios:perfil {email} {perfil}', function (string $email, st
 
         return 1;
     }
-    $usuario->update(['perfil' => $perfil]);
-    $this->info("{$email} agora é {$perfil}.");
-})->purpose('Define o perfil (sem_acesso, operador ou admin) de um usuário — útil para recuperar o acesso de admin');
+    $usuario->definirPerfis(match ($perfil) {
+        'admin' => $novos,
+        'sem_acesso' => [],
+        default => array_unique([...$usuario->perfisAcesso(), $perfil]),
+    });
+    $this->info("{$email}: ".$usuario->rotuloPerfil().'.');
+})->purpose('Define os perfis de um usuário (admin = todos, sem_acesso = nenhum, ou acrescenta um perfil) — útil para recuperar o acesso');
 
 Artisan::command('usuarios:ativar {email} {--desativar : Bloqueia a entrada do usuário no portal}', function (string $email) {
     $usuario = Usuario::where('email', $email)->first();

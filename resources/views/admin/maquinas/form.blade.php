@@ -29,6 +29,7 @@
           alterados aqui.</p>
       @endif
       <div class="campos">
+        @include('partials.campo-unidade', ['registro' => $maquina])
         <label>Código
           <input name="codigo" required maxlength="30" value="{{ old('codigo', $maquina->codigo) }}" placeholder="Ex.: INJ-01" @disabled($maquina->doProtheus())>
         </label>

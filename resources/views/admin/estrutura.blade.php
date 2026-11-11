@@ -16,6 +16,7 @@
       <div class="campos">
         <label>Código <input name="codigo" required maxlength="20" placeholder="Ex.: MATRIZ"></label>
         <label>Nome <input name="nome" required maxlength="120" placeholder="Ex.: Planta Matriz"></label>
+        @include('partials.campo-unidade', ['registro' => new \App\Models\Planta])
       </div>
       <div class="acoes" style="margin-top:1rem"><button class="botao" type="submit">Adicionar planta</button></div>
     </form>
@@ -33,6 +34,7 @@
         </label>
         <label>Código <input name="codigo" required maxlength="20" placeholder="Ex.: L1"></label>
         <label>Nome <input name="nome" required maxlength="120" placeholder="Ex.: Linha 1"></label>
+        @include('partials.campo-unidade', ['registro' => new \App\Models\Linha])
       </div>
       <div class="acoes" style="margin-top:1rem"><button class="botao" type="submit" @disabled($plantas->isEmpty())>Adicionar linha</button></div>
     </form>
@@ -44,6 +46,7 @@
     <form method="post" action="{{ route('admin.estrutura.plantas.update', $planta) }}" class="filtros" style="margin:0">
       @csrf @method('put')
       <label>Planta <code>{{ $planta->codigo }}</code><input name="nome" required maxlength="120" value="{{ $planta->nome }}"></label>
+      @include('partials.campo-unidade', ['registro' => $planta])
       <label>Situação
         <select name="ativo"><option value="1" @selected($planta->ativo)>Ativa</option><option value="0" @selected(! $planta->ativo)>Inativa</option></select>
       </label>
@@ -61,6 +64,7 @@
             <form method="post" action="{{ route('admin.estrutura.linhas.update', $linha) }}" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
               @csrf @method('put')
               <input name="nome" required maxlength="120" value="{{ $linha->nome }}" aria-label="Nome da linha">
+              @include('partials.campo-unidade', ['registro' => $linha])
               <span class="suave">{{ $linha->maquinas_count }} máquina(s)</span>
               <select name="ativo" aria-label="Situação da linha"><option value="1" @selected($linha->ativo)>Ativa</option><option value="0" @selected(! $linha->ativo)>Inativa</option></select>
               <button class="botao secundario pequeno" type="submit">Salvar</button>

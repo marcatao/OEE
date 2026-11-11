@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\TemUnidade;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DispositivoIot extends Model
 {
     use Auditavel;
+    use TemUnidade;
 
     public const TIPOS = [
         'sensor' => 'Sensor',
@@ -31,7 +33,7 @@ class DispositivoIot extends Model
 
     protected $table = 'dispositivos_iot';
 
-    protected $fillable = ['codigo', 'nome', 'tipo', 'protocolo', 'endereco', 'porta', 'topico', 'maquina_id', 'observacao', 'ativo'];
+    protected $fillable = ['unidade', 'codigo', 'nome', 'tipo', 'protocolo', 'endereco', 'porta', 'topico', 'maquina_id', 'observacao', 'ativo'];
 
     protected $attributes = ['ativo' => true];
 

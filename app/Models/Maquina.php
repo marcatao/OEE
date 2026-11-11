@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\TemUnidade;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Maquina extends Model
 {
     use Auditavel;
+    use TemUnidade;
 
     protected $table = 'maquinas';
 
@@ -19,7 +21,7 @@ class Maquina extends Model
     /** Números dos canais IoT da máquina (colunas iotN_id, iotN_canal, iotN_tipo). */
     public const CANAIS_IOT = [1, 2, 3];
 
-    protected $fillable = [
+    protected $fillable = ['unidade',
         'linha_id', 'codigo', 'nome', 'fabricante', 'modelo', 'ciclo_ideal_s', 'ativo',
         'centro_custo', 'micro_parada_s', 'macro_parada_s',
         // Canais IoT: dispositivo (FK para dispositivos_iot), canal e tipo. As colunas antigas iotN_id (texto livre)

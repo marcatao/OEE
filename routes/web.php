@@ -65,7 +65,9 @@ Route::middleware('auth')->group(function () {
         ->middleware('permissao:calculadora')->name('calculadora');
 
     // Administração > Logins (só administradores; as URLs antigas "cadastros/logins" foram mantidas)
-    Route::middleware('perfil:admin')->prefix('cadastros/logins')->name('cadastros.')->group(function () {
+    // Segurança (só Administrador de Tecnologia): usuários, grupos, histórico de acessos e banco de dados.
+    // As URLs antigas ("cadastros/logins" e "admin/banco") foram mantidas.
+    Route::middleware('perfil:admin_tecnologia')->prefix('cadastros/logins')->name('cadastros.')->group(function () {
         Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios.index');
         Route::get('usuarios/{usuario}/editar', [UsuarioController::class, 'edit'])->name('usuarios.edit');
         Route::put('usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
@@ -79,12 +81,15 @@ Route::middleware('auth')->group(function () {
         Route::get('acessos', AcessoController::class)->name('acessos');
     });
 
-    // Administração (só administradores)
-    Route::middleware('perfil:admin')->prefix('admin')->name('admin.')->group(function () {
+    Route::middleware('perfil:admin_tecnologia')->prefix('admin')->name('admin.')->group(function () {
         Route::get('banco', BancoController::class)->name('banco');
         Route::post('banco/sincronizar', [BancoController::class, 'sincronizar'])->name('banco.sincronizar');
         // Botão da tela: sincroniza em etapas curtas (JSON), sem estourar o tempo limite do IIS.
         Route::post('banco/sincronizar/etapa', [BancoController::class, 'etapa'])->name('banco.sincronizar.etapa');
+    });
+
+    // Administração / cadastros (Administrador de Produção ou de Tecnologia; cada um vê as unidades dele)
+    Route::middleware('perfil:admin_producao,admin_tecnologia')->prefix('admin')->name('admin.')->group(function () {
 
         Route::get('maquinas', [MaquinaController::class, 'index'])->name('maquinas.index');
         Route::get('maquinas/nova', [MaquinaController::class, 'create'])->name('maquinas.create');

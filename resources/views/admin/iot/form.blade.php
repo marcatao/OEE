@@ -15,6 +15,7 @@
     @if ($dispositivo->exists) @method('put') @endif
 
     <div class="campos">
+        @include('partials.campo-unidade', ['registro' => $dispositivo])
       <label>Código
         <input name="codigo" required maxlength="40" value="{{ old('codigo', $dispositivo->codigo) }}" placeholder="Ex.: SENS-INJ01">
       </label>

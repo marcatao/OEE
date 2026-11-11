@@ -41,11 +41,12 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Código</th><th>Nome</th><th>Situação</th><th>Origem</th><th>Linha · Planta</th><th>Centro de custo</th><th class="num">Ciclo ideal (s)</th><th class="num">Micro / macro (s)</th><th>Canais IoT</th><th></th></tr></thead>
+    <thead><tr><th>Código</th><th>Unidade</th><th>Nome</th><th>Situação</th><th>Origem</th><th>Linha · Planta</th><th>Centro de custo</th><th class="num">Ciclo ideal (s)</th><th class="num">Micro / macro (s)</th><th>Canais IoT</th><th></th></tr></thead>
     <tbody>
     @forelse ($maquinas as $maquina)
       <tr>
         <td><a href="{{ route('admin.maquinas.edit', $maquina) }}"><code>{{ $maquina->codigo }}</code></a></td>
+        <td><span class="etiqueta unidade-{{ $maquina->unidade }}">{{ $maquina->rotuloUnidade() }}</span></td>
         <td><a href="{{ route('admin.maquinas.edit', $maquina) }}">{{ $maquina->nome }}</a></td>
         <td>
           @if ($maquina->excluidaNoProtheus())
@@ -65,7 +66,7 @@
         <td><a class="botao pequeno {{ $maquina->aguardandoCadastro() ? '' : 'secundario' }}" href="{{ route('admin.maquinas.edit', $maquina) }}">{{ $maquina->aguardandoCadastro() ? 'Completar' : 'Editar' }}</a></td>
       </tr>
     @empty
-      <tr><td colspan="10" class="suave">Nenhuma máquina encontrada.</td></tr>
+      <tr><td colspan="11" class="suave">Nenhuma máquina encontrada.</td></tr>
     @endforelse
     </tbody>
   </table>

@@ -14,11 +14,12 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Cor</th><th>Sigla</th><th>Descrição</th><th>Tipo</th><th class="num">Ordem</th><th class="num">Apontamentos</th><th>Situação</th><th></th></tr></thead>
+    <thead><tr><th>Cor</th><th>Unidade</th><th>Sigla</th><th>Descrição</th><th>Tipo</th><th class="num">Ordem</th><th class="num">Apontamentos</th><th>Situação</th><th></th></tr></thead>
     <tbody>
     @forelse ($legendas as $l)
       <tr>
         <td><span class="amostra-cor" style="background: {{ $l->cor }}" title="{{ $l->cor }}"></span> <code>{{ $l->cor }}</code></td>
+        <td><span class="etiqueta unidade-{{ $l->unidade }}">{{ $l->rotuloUnidade() }}</span></td>
         <td><strong>{{ $l->codigo }}</strong></td>
         <td>{{ $l->descricao }}</td>
         <td>{{ $l->rotuloTipo() }}</td>
@@ -28,7 +29,7 @@
         <td><a class="botao pequeno secundario" href="{{ route('admin.legendas.edit', $l) }}">Editar</a></td>
       </tr>
     @empty
-      <tr><td colspan="8" class="suave">Nenhuma legenda cadastrada.</td></tr>
+      <tr><td colspan="9" class="suave">Nenhuma legenda cadastrada.</td></tr>
     @endforelse
     </tbody>
   </table>

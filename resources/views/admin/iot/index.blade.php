@@ -18,11 +18,12 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Código</th><th>Nome</th><th>Tipo</th><th>Protocolo</th><th>Endereço</th><th>Máquina</th><th>Último sinal</th><th>Situação</th><th></th></tr></thead>
+    <thead><tr><th>Código</th><th>Unidade</th><th>Nome</th><th>Tipo</th><th>Protocolo</th><th>Endereço</th><th>Máquina</th><th>Último sinal</th><th>Situação</th><th></th></tr></thead>
     <tbody>
     @forelse ($dispositivos as $d)
       <tr>
         <td><code>{{ $d->codigo }}</code></td>
+        <td><span class="etiqueta unidade-{{ $d->unidade }}">{{ $d->rotuloUnidade() }}</span></td>
         <td>{{ $d->nome }}</td>
         <td>{{ $d->rotuloTipo() }}</td>
         <td>{{ $d->rotuloProtocolo() }}</td>
@@ -33,7 +34,7 @@
         <td><a class="botao pequeno secundario" href="{{ route('admin.iot.edit', $d) }}">Editar</a></td>
       </tr>
     @empty
-      <tr><td colspan="9" class="suave">Nenhum dispositivo cadastrado.</td></tr>
+      <tr><td colspan="10" class="suave">Nenhum dispositivo cadastrado.</td></tr>
     @endforelse
     </tbody>
   </table>

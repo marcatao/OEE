@@ -49,7 +49,7 @@
         $u->pode('calculadora') ? ['calculadora', 'calculadora', 'Calculadora de OEE', 'Simule o OEE de um turno a partir de tempos e peças.'] : null,
         $u->ehAdmin() ? ['admin.maquinas.index', 'maquina', 'Máquinas', 'Cadastro das máquinas, linhas e ciclos ideais.'] : null,
         $u->ehAdmin() ? ['admin.iot.index', 'iot', 'Dispositivos IoT', 'Sensores, CLPs e gateways que enviam os dados.'] : null,
-        $u->ehAdmin() ? ['cadastros.usuarios.index', 'usuarios', 'Usuários e acessos', 'Libere usuários e organize os grupos.'] : null,
+        $u->podeSeguranca() ? ['cadastros.usuarios.index', 'usuarios', 'Usuários e acessos', 'Libere usuários, defina os perfis e organize os grupos.'] : null,
         ['perfil', 'perfil', 'Meu perfil', 'Foto, setor, cargo e contatos.'],
       ]));
     @endphp
@@ -98,7 +98,7 @@
             @if ($opsParadas > 0)<small>{{ $opsParadas }} {{ $opsParadas === 1 ? 'parada' : 'paradas' }}</small>@endif</div>
         </a>
       @endif
-      @if ($u->ehAdmin() && $aguardando > 0)
+      @if ($u->podeSeguranca() && $aguardando > 0)
         <a class="kpi" href="{{ route('cadastros.usuarios.index') }}">
           <div class="kpi-icone alerta">@include('layouts.partials.icone', ['nome' => 'usuarios'])</div>
           <div><span>Aguardando liberação</span><strong>{{ $aguardando }}</strong><small>usuários para liberar</small></div>
