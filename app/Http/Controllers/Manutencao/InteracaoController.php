@@ -24,7 +24,7 @@ class InteracaoController extends Controller
     /** Até quantos arquivos por comentário. */
     public const MAX_ARQUIVOS = 5;
 
-    /** Tamanho máximo por arquivo (KB): o menor entre 10 MB e o limite de upload do PHP do servidor. */
+    /** Tamanho máximo por arquivo (KB): o menor entre 20 MB e o limite de upload do PHP do servidor. */
     public static function limiteKb(): int
     {
         $bytes = function (string $valor): int {
@@ -35,9 +35,9 @@ class InteracaoController extends Controller
                 'g' => $n * 1024 * 1024 * 1024, 'm' => $n * 1024 * 1024, 'k' => $n * 1024, default => $n,
             };
         };
-        $php = min(array_filter([$bytes((string) ini_get('upload_max_filesize')), $bytes((string) ini_get('post_max_size'))]) ?: [10 * 1048576]);
+        $php = min(array_filter([$bytes((string) ini_get('upload_max_filesize')), $bytes((string) ini_get('post_max_size'))]) ?: [20 * 1048576]);
 
-        return (int) floor(min(10 * 1048576, $php) / 1024);
+        return (int) floor(min(20 * 1048576, $php) / 1024);
     }
 
     public function store(Request $request, int $ordem): RedirectResponse

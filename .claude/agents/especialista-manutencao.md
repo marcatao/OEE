@@ -87,7 +87,7 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   a tela mostra a **linha do tempo**: SS aberta → Aprovada → Em atendimento → Concluída → Avaliada, com quem e o tempo
   entre as etapas.
 - **Interações** (`os_interacoes` + `os_interacao_anexos`): conversa da OS para todos que a veem, estilo chat (foto,
-  nome, hora), com links clicáveis e anexos (até 5 por mensagem; limite = menor entre 10 MB e o upload do PHP; prints
+  nome, hora), com links clicáveis e anexos (até 5 por mensagem; limite = menor entre 20 MB e o upload do PHP; prints
   colados com Ctrl+V). Arquivos no disco privado `local` (`os-anexos/{os}`), entregues só pela rota
   `os.interacoes.anexo`, que confere o acesso. Texto sempre escapado (`InteracaoOs::textoHtml`).
 - **Vários mantenedores por OS** (`os_ordem_mantenedores`; `responsavel_id` = o principal, o primeiro). Na aprovação da
