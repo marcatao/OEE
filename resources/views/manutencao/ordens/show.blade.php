@@ -27,7 +27,7 @@
     </div>
     <div class="os-cabecalho">
       <a class="botao secundario" href="{{ route('os.ordens.imprimir', $os) }}" target="_blank">@include('layouts.partials.icone', ['nome' => 'imprimir']) Imprimir</a>
-      @if ($podeAprovar)<a class="botao secundario" href="{{ route('os.ordens.edit', $os) }}">Editar</a>@endif
+      @if ($podeAprovar && $editavel)<a class="botao secundario" href="{{ route('os.ordens.edit', $os) }}">Editar</a>@endif
     </div>
   </div>
   @include('manutencao._erros')
@@ -68,6 +68,7 @@
     <p class="aviso">Serviço concluído: aguardando a avaliação de {{ $os->solicitante?->nome ?? 'quem solicitou' }}.</p>
   @endif
   @if ($os->status === 'cancelada')<p class="aviso erro">Cancelada: {{ $os->cancelamento_motivo }}</p>@endif
+  @if (! $editavel && ! $podeAvaliar)<p class="aviso">OS fechada: dados, conversa, horas e materiais ficam só para consulta. Para alterar, reabra a OS.</p>@endif
   @if ($os->avaliacao === 'ruim' && $os->status !== 'encerrada' && $os->aceite_observacao)
     <p class="aviso erro">Avaliada como <strong>Ruim</strong> por {{ $os->aceitePor?->nome }} em @dataHora($os->aceite_em): {{ $os->aceite_observacao }}</p>
   @endif
@@ -184,6 +185,7 @@
     @endforelse
   </div>
 
+  @if ($editavel)
   <form method="post" action="{{ route('os.interacoes.store', $os) }}" enctype="multipart/form-data" class="chat-form" id="chat-form">
     @csrf
     <textarea name="texto" rows="2" maxlength="4000" placeholder="Escreva uma mensagem… (links viram clicáveis; cole prints com Ctrl+V)" id="chat-texto">{{ old('texto') }}</textarea>
@@ -229,6 +231,9 @@
       var chat = document.querySelector('.chat'); if (chat) chat.scrollTop = chat.scrollHeight;
     })();
   </script>
+  @else
+    <p class="aviso">Esta OS está {{ mb_strtolower($os->rotuloStatus()) }}: a conversa fica só para leitura. Para escrever, ela precisa ser reaberta.</p>
+  @endif
 </section>
 
 <section class="cartao">
@@ -272,7 +277,7 @@
         </td>
         <td>{{ $ap->criadoPor?->nome }}</td>
         <td>
-          @if ($ap->fim && ($podeAprovar || $meuMantenedor?->id === $ap->mantenedor_id))
+          @if ($editavel && $ap->fim && ($podeAprovar || $meuMantenedor?->id === $ap->mantenedor_id))
             <details><summary class="botao pequeno secundario">Corrigir</summary>
               <form method="post" action="{{ route('os.apontamentos.update', $ap) }}" class="formulario-vertical">
                 @csrf @method('put')
@@ -299,7 +304,7 @@
     </tbody>
   </table>
   </div>
-  @if ($podeAprovar)
+  @if ($podeAprovar && $editavel)
     <details>
       <summary class="botao pequeno secundario">Lançar horas manualmente</summary>
       <form method="post" action="{{ route('os.apontamentos.store', $os) }}" class="filtros">
@@ -363,17 +368,17 @@
           <td>{{ $item->descricao }}</td>
           <td>
             @foreach (\App\Models\Manutencao\ChecklistOs::RESPOSTAS as $v => $r)
-              <label class="opcao"><input type="radio" name="resposta[{{ $item->id }}]" value="{{ $v }}" @checked($item->resposta === $v) @disabled(! $podeExecutar)> <span>{{ $r }}</span></label>
+              <label class="opcao"><input type="radio" name="resposta[{{ $item->id }}]" value="{{ $v }}" @checked($item->resposta === $v) @disabled(! $podeExecutar || ! $editavel)> <span>{{ $r }}</span></label>
             @endforeach
           </td>
-          <td><input name="observacao[{{ $item->id }}]" maxlength="300" value="{{ $item->observacao }}" @disabled(! $podeExecutar)></td>
+          <td><input name="observacao[{{ $item->id }}]" maxlength="300" value="{{ $item->observacao }}" @disabled(! $podeExecutar || ! $editavel)></td>
           <td>{{ $item->respondidoPor?->nome }}@if ($item->respondido_em)<br><small class="suave">@dataHora($item->respondido_em)</small>@endif</td>
         </tr>
       @endforeach
       </tbody>
     </table>
     </div>
-    @if ($podeExecutar)<div class="acoes"><button class="botao" type="submit">Salvar checklist</button></div>@endif
+    @if ($podeExecutar && $editavel)<div class="acoes"><button class="botao" type="submit">Salvar checklist</button></div>@endif
   </form>
 </section>
 @endif

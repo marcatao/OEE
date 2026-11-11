@@ -47,6 +47,7 @@ class ApontamentoHorasController extends Controller
     public function iniciar(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscarOs($request, $ordem);
+        AcessoOs::exigirAberta($os);
         $this->exigirArea($request, $os);
         $mantenedor = $this->mantenedor($request, $os);
         $this->fluxo->iniciarApontamento($os, $mantenedor, $request->user());
@@ -68,6 +69,7 @@ class ApontamentoHorasController extends Controller
     public function store(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscarOs($request, $ordem);
+        AcessoOs::exigirAberta($os);
         abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $this->validar($request);
         $mantenedor = Mantenedor::withoutGlobalScopes()->findOrFail($dados['mantenedor_id']);
@@ -160,10 +162,11 @@ class ApontamentoHorasController extends Controller
     private function buscar(Request $request, int $id): ApontamentoHoras
     {
         $ap = ApontamentoHoras::findOrFail($id);
-        $this->buscarOs($request, $ap->ordem_servico_id);
+        $os = $this->buscarOs($request, $ap->ordem_servico_id);
+        AcessoOs::exigirAberta($os); // corrigir, encerrar ou excluir apontamento só com a OS aberta
         $u = $request->user();
         $meu = AcessoOs::mantenedorDo($u);
-        abort_unless(AcessoOs::podeAprovar($u) || ($meu && $meu->id === $ap->mantenedor_id), 403, 'Você só pode mexer nos seus apontamentos.');
+        abort_unless(AcessoOs::podeAprovar($u, $os) || ($meu && $meu->id === $ap->mantenedor_id), 403, 'Você só pode mexer nos seus apontamentos.');
 
         return $ap;
     }

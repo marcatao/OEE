@@ -10,6 +10,7 @@ use App\Models\Maquina;
 use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Quem vê, abre e cancela nas Ordens de serviço:
@@ -170,6 +171,35 @@ final class AcessoOs
                 $w->orWhereIn($col('unidade'), $almox);
             }
         });
+    }
+
+    /**
+     * Áreas (unidades) do painel: as em que é administrador ou mantenedor (Adm. Tecnologia: as duas); sem nenhuma, as dos
+     * perfis do usuário. @return list<string>
+     */
+    public static function unidadesPainel(Usuario $u): array
+    {
+        $unidades = array_values(array_unique([...self::unidadesAdmin($u), ...self::unidadesMantenedor($u)]));
+        if ($unidades === []) {
+            $unidades = array_values(array_intersect(['manutencao', 'tecnologia'], $u->unidades())) ?: ['manutencao'];
+        }
+
+        return array_values(array_intersect(['manutencao', 'tecnologia'], $unidades));
+    }
+
+    /** OS fechada (concluída, encerrada ou cancelada) não se altera: nada de editar, conversar, apontar ou requisitar. */
+    public static function exigirAberta(OrdemServico $os): void
+    {
+        if (! $os->estaAberta()) {
+            throw ValidationException::withMessages(['os' => 'Esta OS está '.mb_strtolower(OrdemServico::STATUS[$os->status] ?? $os->status)
+                .'. Para alterar, conversar ou apontar, ela precisa ser reaberta.']);
+        }
+    }
+
+    /** Só o próprio solicitante avalia (nem o administrador, a não ser que ele seja o solicitante). */
+    public static function podeAvaliar(Usuario $u, OrdemServico $os): bool
+    {
+        return $os->status === 'concluida' && $os->solicitante_id !== null && (int) $os->solicitante_id === (int) $u->id;
     }
 
     /** OS concluídas que o usuário (solicitante) ainda precisa avaliar. */

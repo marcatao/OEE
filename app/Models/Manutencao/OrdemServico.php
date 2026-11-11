@@ -80,6 +80,12 @@ class OrdemServico extends Model
         return 'manutencao';
     }
 
+    /** Aberta (aberta, em execução ou aguardando material)? Fechada = concluída, encerrada ou cancelada: só reabrir. */
+    public function estaAberta(): bool
+    {
+        return in_array($this->status, self::STATUS_ABERTOS, true);
+    }
+
     public function numeroFormatado(): string
     {
         return 'OS '.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);

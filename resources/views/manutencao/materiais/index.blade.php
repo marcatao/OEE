@@ -26,6 +26,9 @@
         <td class="num">{{ number_format((float) $m->quantidade, 2, ',', '.') }} {{ $m->um }}</td>
         <td>{{ $m->criadoPor?->nome }}<br><small class="suave">@dataHora($m->criado_em)</small></td>
         <td>
+          @if (! $m->ordemServico?->estaAberta())
+            <small class="suave">OS {{ mb_strtolower($m->ordemServico?->rotuloStatus() ?? '') }}: reabra para alterar.</small>
+          @else
           <form method="post" action="{{ route('os.materiais.update', $m) }}" class="os-acoes" style="margin:0">
             @csrf @method('put')
             <select name="status" aria-label="Situação">@foreach (MaterialOs::STATUS as $v => $r)<option value="{{ $v }}" @selected($m->status === $v)>{{ $r }}</option>@endforeach</select>
@@ -34,6 +37,7 @@
             <input name="observacao" maxlength="500" placeholder="Observação" value="{{ $m->observacao }}" aria-label="Observação">
             <button class="botao pequeno" type="submit">Salvar</button>
           </form>
+          @endif
         </td>
       </tr>
     @empty

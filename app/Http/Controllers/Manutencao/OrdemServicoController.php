@@ -95,7 +95,8 @@ class OrdemServicoController extends Controller
             'podeAprovar' => AcessoOs::podeAprovar($u, $os),
             'podeExecutar' => AcessoOs::podeExecutar($u, $os),
             'podeCancelar' => AcessoOs::podeCancelar($u, $os),
-            'podeAvaliar' => $os->status === 'concluida' && ($os->solicitante_id === $u->id || AcessoOs::ehAdminDa($u, $os->unidade)),
+            'podeAvaliar' => AcessoOs::podeAvaliar($u, $os),
+            'editavel' => $os->estaAberta(),
             'interacoes' => $os->interacoes()->with(['usuario', 'anexos'])->orderBy('id')->get(),
             'limiteAnexoKb' => InteracaoController::limiteKb(),
         ]);
@@ -116,6 +117,7 @@ class OrdemServicoController extends Controller
     public function edit(Request $request, int $ordem): View
     {
         $os = $this->buscar($request, $ordem);
+        AcessoOs::exigirAberta($os);
         abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
 
         return view('manutencao.ordens.form', [
@@ -131,6 +133,7 @@ class OrdemServicoController extends Controller
     public function update(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscar($request, $ordem);
+        AcessoOs::exigirAberta($os);
         abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $request->validate([
             'titulo' => ['nullable', 'string', 'max:120'],
@@ -165,6 +168,7 @@ class OrdemServicoController extends Controller
     public function distribuir(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscar($request, $ordem);
+        AcessoOs::exigirAberta($os);
         abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $request->validate(['mantenedores' => ['nullable', 'array'], 'mantenedores.*' => ['integer', Rule::exists('os_mantenedores', 'id')]]);
         $os->atribuirMantenedores($dados['mantenedores'] ?? []);
@@ -178,6 +182,9 @@ class OrdemServicoController extends Controller
     {
         $os = $this->buscar($request, $ordem);
         $dados = $request->validate(['acao' => ['required', Rule::in(array_keys(FluxoOrdemServico::ACOES))], 'observacao' => ['nullable', 'string', 'max:2000']]);
+        if ($dados['acao'] !== 'reabrir') {
+            AcessoOs::exigirAberta($os);
+        }
         if (in_array($dados['acao'], ['cancelar', 'reabrir'], true)) {
             abort_unless(AcessoOs::podeCancelar($request->user(), $os), 403, 'Só o autor da solicitação ou o administrador da área pode cancelar ou reabrir.');
         } else {
@@ -193,7 +200,7 @@ class OrdemServicoController extends Controller
     {
         $os = $this->buscar($request, $ordem);
         $u = $request->user();
-        abort_unless($os->solicitante_id === $u->id || AcessoOs::ehAdminDa($u, $os->unidade), 403, 'Só o solicitante avalia o serviço.');
+        abort_unless((int) $os->solicitante_id === (int) $u->id, 403, 'Só quem solicitou o serviço pode avaliar a OS.');
         $dados = $request->validate(['avaliacao' => ['required', Rule::in(array_keys(OrdemServico::AVALIACOES))], 'observacao' => ['nullable', 'string', 'max:500']],
             ['avaliacao.required' => 'Escolha Excelente, Boa ou Ruim.']);
         $this->fluxo->avaliar($os, $u, $dados['avaliacao'], $dados['observacao'] ?? null);
@@ -206,6 +213,7 @@ class OrdemServicoController extends Controller
     public function checklist(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscar($request, $ordem);
+        AcessoOs::exigirAberta($os);
         abort_unless(AcessoOs::podeExecutar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $request->validate(['resposta' => ['array'], 'resposta.*' => ['nullable', Rule::in(['ok', 'nok', 'na'])],
             'observacao' => ['array'], 'observacao.*' => ['nullable', 'string', 'max:300']]);

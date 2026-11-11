@@ -81,7 +81,7 @@ class OrdensServicoTest extends TestCase
         $this->actingAs($u)->post('/ordens-de-servico/solicitacoes', $dados + [
             'titulo' => 'Vazamento de óleo', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id, 'maquina_id' => $this->injetora->id,
             'prioridade' => 'alta', 'maquina_parada' => '1', 'descricao' => 'Vazamento de óleo no cilindro',
-        ])->assertRedirect();
+        ])->assertRedirect()->assertSessionHasNoErrors();
 
         return SolicitacaoServico::latest('id')->firstOrFail();
     }
@@ -281,6 +281,74 @@ class OrdensServicoTest extends TestCase
         // Texto com HTML é escapado.
         $this->actingAs($operador)->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => '<script>alert(1)</script>'])->assertRedirect();
         $this->get("/ordens-de-servico/ordens/{$os->id}")->assertDontSee('<script>alert(1)</script>', false);
+    }
+
+    public function test_os_fechada_so_reabre_e_so_o_solicitante_avalia(): void
+    {
+        $operador = $this->usuario(['solicitante_manutencao'], 'operador@empresa.com');
+        $adm = $this->usuario(['admin_producao'], 'adm@empresa.com');
+        $mecanico = $this->usuario(['mantenedor_producao'], 'mecanico@empresa.com');
+        $m = Mantenedor::create(['nome' => 'Mecânico', 'usuario_id' => $mecanico->id]);
+        $m->definirAreas([$this->mecanica->id]);
+        $ss = $this->abrirSs($operador);
+        $this->actingAs($mecanico)->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar")->assertRedirect();
+        $os = OrdemServico::where('solicitacao_id', $ss->id)->firstOrFail();
+        $this->post("/ordens-de-servico/ordens/{$os->id}/acao", ['acao' => 'concluir'])->assertRedirect();
+
+        // Fechada (concluída): ninguém conversa, aponta, requisita material, edita nem distribui.
+        $this->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => 'oi'])->assertSessionHasErrors('os');
+        $this->post("/ordens-de-servico/ordens/{$os->id}/apontamentos/iniciar")->assertSessionHasErrors('os');
+        $this->post("/ordens-de-servico/ordens/{$os->id}/materiais", ['descricao' => 'Fita', 'quantidade' => 1])->assertSessionHasErrors('os');
+        $this->actingAs($adm)->put("/ordens-de-servico/ordens/{$os->id}", ['tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'prioridade' => 'baixa', 'descricao' => 'mudou'])->assertSessionHasErrors('os');
+        $this->post("/ordens-de-servico/ordens/{$os->id}/distribuir", ['mantenedores' => [$m->id]])->assertSessionHasErrors('os');
+        $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertSee('reabra a OS')->assertDontSee('id="chat-form"', false);
+        $this->assertSame('concluida', $os->fresh()->status);
+
+        // Só o solicitante avalia: nem o administrador da área.
+        $this->post("/ordens-de-servico/ordens/{$os->id}/avaliar", ['avaliacao' => 'boa'])->assertForbidden();
+        $this->get("/ordens-de-servico/ordens/{$os->id}")->assertDontSee('avalie o atendimento');
+        $this->actingAs($operador)->post("/ordens-de-servico/ordens/{$os->id}/avaliar", ['avaliacao' => 'boa'])->assertRedirect();
+        $this->assertSame('encerrada', $os->fresh()->status);
+
+        // Reabrir libera de novo.
+        $this->actingAs($adm)->post("/ordens-de-servico/ordens/{$os->id}/acao", ['acao' => 'reabrir'])->assertRedirect();
+        $this->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => 'Reaberta para ajuste'])->assertRedirect();
+        $this->assertSame(1, $os->interacoes()->count());
+    }
+
+    public function test_painel_da_area_com_area_padrao(): void
+    {
+        $operador = $this->usuario(['solicitante_manutencao', 'solicitante_tecnologia'], 'operador@empresa.com');
+        $mecanico = $this->usuario(['mantenedor_producao'], 'mecanico@empresa.com');
+        $m = Mantenedor::create(['nome' => 'Mecânico', 'usuario_id' => $mecanico->id]);
+        $m->definirAreas([$this->mecanica->id]);
+        $adm = $this->usuario(['admin_tecnologia'], 'adm-ti@empresa.com');
+
+        $pendente = $this->abrirSs($operador, ['titulo' => 'Pendente na fila']);
+        $ss = $this->abrirSs($operador, ['titulo' => 'Atendida pelo mecânico']);
+        $this->abrirSs($operador, ['titulo' => 'Chamado de TI', 'area_executante_id' => $this->ti->id, 'maquina_id' => '', 'centro_custo' => '2002']);
+        $this->actingAs($mecanico)->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar")->assertRedirect();
+        $os = OrdemServico::where('solicitacao_id', $ss->id)->firstOrFail();
+        $this->actingAs($operador)->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => 'Alguma previsão?'])->assertRedirect();
+
+        // Mantenedor: painel da Manutenção, com a fila, a OS dele e a mensagem sem resposta.
+        $this->actingAs($mecanico)->get('/ordens-de-servico/painel')->assertOk()
+            ->assertSee('Painel — Manutenção')->assertSee('Pendente na fila')->assertSee('Alguma previsão?')->assertSee('Mecanico')
+            ->assertDontSee('Chamado de TI')->assertDontSee('área padrão');
+        // Respondida pelo mecânico: sai da lista.
+        $this->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => 'Amanhã cedo.'])->assertRedirect();
+        $this->get('/ordens-de-servico/painel')->assertDontSee('Alguma previsão?');
+
+        // Quem tem as duas áreas escolhe e grava a área padrão.
+        $this->actingAs($adm)->get('/ordens-de-servico/painel')->assertOk()->assertSee('Painel — Manutenção')->assertSee('Usar Manutenção como área padrão');
+        $this->post('/ordens-de-servico/painel/area-padrao', ['unidade' => 'tecnologia'])->assertRedirect();
+        $this->get('/ordens-de-servico/painel')->assertOk()->assertSee('Painel — Tecnologia')->assertSee('Chamado de TI')->assertDontSee('Pendente na fila');
+        $this->get('/ordens-de-servico/painel?unidade=manutencao')->assertOk()->assertSee('Pendente na fila');
+
+        // Solicitante sem perfil de gestão não vê o painel.
+        $this->actingAs($operador)->get('/ordens-de-servico/painel')->assertForbidden();
+        $this->assertNotNull($pendente->id);
     }
 
     public function test_rejeicao_volta_ao_solicitante_com_motivo(): void

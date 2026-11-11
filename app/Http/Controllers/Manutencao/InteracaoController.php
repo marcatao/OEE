@@ -43,6 +43,7 @@ class InteracaoController extends Controller
     public function store(Request $request, int $ordem): RedirectResponse
     {
         $os = AcessoOs::filtrar(OrdemServico::query(), $request->user())->findOrFail($ordem);
+        AcessoOs::exigirAberta($os);
         $limite = self::limiteKb();
         $dados = $request->validate([
             'texto' => ['nullable', 'string', 'max:4000'],

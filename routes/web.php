@@ -18,6 +18,7 @@ use App\Http\Controllers\Manutencao\CadastroManutencaoController;
 use App\Http\Controllers\Manutencao\InteracaoController;
 use App\Http\Controllers\Manutencao\MaterialController;
 use App\Http\Controllers\Manutencao\OrdemServicoController;
+use App\Http\Controllers\Manutencao\PainelController;
 use App\Http\Controllers\Manutencao\PlanoPreventivaController;
 use App\Http\Controllers\Manutencao\RelatorioManutencaoController;
 use App\Http\Controllers\Manutencao\SolicitacaoController;
@@ -78,6 +79,10 @@ Route::middleware('auth')->group(function () {
         $todos = 'permissao:os_solicitar,os_aprovar,solicitacoes_manutencao,os_almoxarifado';
         $executa = 'permissao:solicitacoes_manutencao,os_aprovar';
 
+        Route::middleware('permissao:os_painel')->group(function () {
+            Route::get('painel', [PainelController::class, 'index'])->name('painel');
+            Route::post('painel/area-padrao', [PainelController::class, 'salvarPadrao'])->name('painel.padrao');
+        });
         Route::middleware($todos)->group(function () {
             Route::get('solicitacoes', [SolicitacaoController::class, 'index'])->name('solicitacoes.index');
             Route::get('solicitacoes/{solicitacao}', [SolicitacaoController::class, 'show'])->whereNumber('solicitacao')->name('solicitacoes.show');

@@ -90,6 +90,15 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   nome, hora), com links clicáveis e anexos (até 5 por mensagem; limite = menor entre 20 MB e o upload do PHP; prints
   colados com Ctrl+V). Arquivos no disco privado `local` (`os-anexos/{os}`), entregues só pela rota
   `os.interacoes.anexo`, que confere o acesso. Texto sempre escapado (`InteracaoOs::textoHtml`).
+- **OS fechada** (concluída, encerrada ou cancelada; `OrdemServico::estaAberta()`): nada se altera — editar,
+  distribuir, conversar, apontar/corrigir horas, materiais e checklist exigem `AcessoOs::exigirAberta()`. Só **reabrir**
+  (administrador da área ou autor da SS) libera de novo.
+- **Avaliação: só o próprio solicitante** (`AcessoOs::podeAvaliar`); nem o administrador, a não ser que seja o solicitante.
+- **Painel** (`os.painel`, permissão `os_painel`, `App\Services\Manutencao\PainelManutencao`): visão da área
+  (Manutenção ou Tecnologia) só com o que o usuário vê — SS aguardando aprovação, OS abertas, máquinas paradas,
+  mensagens sem resposta (última mensagem do solicitante ou de fora da equipe), aguardando avaliação, sem mantenedor,
+  preventivas atrasadas, 30 dias (encerradas, tempo médio emissão→conclusão, avaliações), horas do mês, OS abertas por
+  mantenedor e por área executante. Quem tem as duas áreas grava a **área padrão** (`filtros_usuarios`, tela `os_painel`).
 - **Vários mantenedores por OS** (`os_ordem_mantenedores`; `responsavel_id` = o principal, o primeiro). Na aprovação da
   SS escolhe-se um ou mais (nenhum = definir depois). Os **próprios mantenedores abrem e aprovam SS**; se quem aprova é
   mantenedor, ele já vem marcado e fica sempre atribuído à OS. Quem inicia apontamento numa OS também passa a estar

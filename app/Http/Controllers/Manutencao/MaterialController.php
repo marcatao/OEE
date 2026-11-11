@@ -46,6 +46,7 @@ class MaterialController extends Controller
     public function store(Request $request, int $ordem): RedirectResponse
     {
         $os = AcessoOs::filtrar(OrdemServico::query(), $request->user())->findOrFail($ordem);
+        AcessoOs::exigirAberta($os);
         abort_unless(AcessoOs::podeExecutar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $request->validate([
             'produto_codigo' => ['nullable', 'string', 'max:30'],
@@ -74,6 +75,7 @@ class MaterialController extends Controller
     {
         $m = MaterialOs::findOrFail($material);
         $os = AcessoOs::filtrar(OrdemServico::query(), $request->user())->findOrFail($m->ordem_servico_id);
+        AcessoOs::exigirAberta($os);
         $dados = $request->validate([
             'status' => ['required', Rule::in(array_keys(MaterialOs::STATUS))],
             'solicitacao_compra' => ['nullable', 'string', 'max:30'],

@@ -60,10 +60,13 @@
           </div>
         @endif
 
-        @if ($u->pode('os_solicitar') || $u->pode('os_aprovar') || $u->pode('solicitacoes_manutencao') || $u->pode('os_almoxarifado') || $u->pode('os_preventivas') || $u->pode('os_relatorios') || $u->ehAdmin())
+        @if ($u->pode('os_painel') || $u->pode('os_solicitar') || $u->pode('os_aprovar') || $u->pode('solicitacoes_manutencao') || $u->pode('os_almoxarifado') || $u->pode('os_preventivas') || $u->pode('os_relatorios') || $u->ehAdmin())
           <div class="menu-bloco" data-bloco="ordens-servico">
             @include('layouts.partials.menu-secao', ['titulo' => 'Ordens de serviço'])
             <div class="menu-itens">
+              @if ($u->pode('os_painel'))
+                @include('layouts.partials.menu-link', ['rota' => 'os.painel', 'rotulo' => 'Painel', 'icone' => 'dashboard'])
+              @endif
               @if ($u->pode('os_solicitar') || $u->pode('os_aprovar') || $u->pode('solicitacoes_manutencao') || $u->pode('os_almoxarifado'))
                 @include('layouts.partials.menu-link', ['rota' => 'os.solicitacoes.index', 'rotulo' => 'Solicitações (SS)', 'icone' => 'solicitacao', 'ativo' => 'os.solicitacoes.*'])
                 @include('layouts.partials.menu-link', ['rota' => 'os.ordens.index', 'rotulo' => 'Ordens de serviço', 'icone' => 'ferramenta', 'ativo' => 'os.ordens.*'])
