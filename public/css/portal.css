@@ -653,3 +653,22 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .aviso-avaliacao .icone { color:var(--alerta); width:1.4rem; height:1.4rem; flex-shrink:0; }
 .aviso-avaliacao span { display:flex; flex-wrap:wrap; gap:.25rem 1rem; margin-top:.25rem; }
 .aviso-avaliacao a { font-weight:600; }
+/* Detalhe da OS: coluna principal (descrição, linha do tempo e ações) ao lado das fichas, sem buracos */
+.os-corpo { align-items:stretch; margin-top:1rem; gap:1.25rem; }
+.os-principal { display:flex; flex-direction:column; gap:1rem; min-width:0; }
+.os-descricao { flex:1 1 auto; background:var(--fundo); border:1px solid var(--borda); border-radius:10px; padding:.9rem 1.1rem; }
+.os-descricao h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; color:var(--suave); margin:0 0 .35rem; }
+.os-descricao h2 ~ h2 { margin-top:.9rem; }
+.os-descricao .os-texto { margin:0; line-height:1.6; }
+.os-principal .os-linha-tempo { margin-top:.25rem; }
+.os-principal .os-acoes-bloco { margin-top:0; padding-top:.9rem; }
+.os-ficha { gap:.6rem; }
+.os-ficha-bloco { padding:.65rem .9rem; }
+.os-acoes-bloco .os-acoes { flex-wrap:wrap; }
+.os-acoes-bloco .os-acoes > label { display:flex; align-items:center; gap:.5rem; flex:1 1 14rem; color:var(--suave); font-size:.88rem; }
+.os-acoes-bloco .os-acoes > label input { flex:1; min-width:8rem; }
+.os-avaliar { gap:.7rem; padding:.85rem 1.1rem; }
+.os-avaliar-linha { display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end; }
+.os-avaliar-linha .os-avaliar-obs { flex:1 1 18rem; }
+.os-avaliar-obs textarea { min-height:2.6rem; height:2.6rem; resize:vertical; }
+.os-nota { padding:.45rem 1rem; }

@@ -40,14 +40,16 @@
         <div><strong>Serviço concluído: avalie o atendimento</strong>
           <p>A manutenção terminou esta OS{{ $os->concluida_em ? ' em '.\App\Providers\AppServiceProvider::dataHora($os->concluida_em) : '' }}. Confira o resultado e avalie — sua avaliação encerra a OS (vale como sua assinatura). <strong>Ruim</strong> devolve a OS para a manutenção.</p></div>
       </div>
-      <div class="os-avaliar-opcoes">
-        @foreach (['excelente' => 'Excelente', 'boa' => 'Boa', 'ruim' => 'Ruim'] as $v => $r)
-          <label class="os-nota avaliacao-{{ $v }}"><input type="radio" name="avaliacao" value="{{ $v }}" required @checked(old('avaliacao') === $v)><span>{{ $r }}</span></label>
-        @endforeach
+      <div class="os-avaliar-linha">
+        <div class="os-avaliar-opcoes" role="radiogroup" aria-label="Avaliação">
+          @foreach (['excelente' => 'Excelente', 'boa' => 'Boa', 'ruim' => 'Ruim'] as $v => $r)
+            <label class="os-nota avaliacao-{{ $v }}"><input type="radio" name="avaliacao" value="{{ $v }}" required @checked(old('avaliacao') === $v)><span>{{ $r }}</span></label>
+          @endforeach
+        </div>
+        <label class="os-avaliar-obs"><span>Comentário <small class="suave" id="avaliar-dica">(opcional)</small></span>
+          <textarea name="observacao" rows="1" maxlength="500" id="avaliar-obs" placeholder="Algo a dizer sobre o serviço?">{{ old('observacao') }}</textarea></label>
+        <button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'check']) Enviar avaliação</button>
       </div>
-      <label class="os-avaliar-obs">Comentário <small class="suave" id="avaliar-dica">(opcional)</small>
-        <textarea name="observacao" rows="2" maxlength="500" id="avaliar-obs" placeholder="Algo a dizer sobre o serviço?">{{ old('observacao') }}</textarea></label>
-      <div class="acoes"><button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'check']) Enviar avaliação</button></div>
     </form>
     <script>
       (function () {
@@ -72,11 +74,55 @@
 
   {{-- 3. O problema e o que foi feito --}}
   <div class="os-corpo">
-    <div class="os-texto-bloco">
-      <h2>Problema / serviço solicitado</h2>
-      <p class="os-texto">{{ $os->descricao }}</p>
-      @if ($os->solucao)<h2>Serviço realizado</h2><p class="os-texto">{{ $os->solucao }}</p>@endif
-      @if ($os->status === 'encerrada' && $os->aceite_observacao)<h2>Comentário da avaliação</h2><p class="os-texto">{{ $os->aceite_observacao }}</p>@endif
+    <div class="os-principal">
+      <div class="os-descricao">
+        <h2>Problema / serviço solicitado</h2>
+        <p class="os-texto">{{ $os->descricao }}</p>
+        @if ($os->solucao)<h2>Serviço realizado</h2><p class="os-texto">{{ $os->solucao }}</p>@endif
+        @if ($os->status === 'encerrada' && $os->aceite_observacao)<h2>Comentário da avaliação</h2><p class="os-texto">{{ $os->aceite_observacao }}</p>@endif
+      </div>
+
+    {{-- 5. Linha do tempo --}}
+    <ol class="os-linha-tempo">
+      @foreach ($marcos as $m)
+        <li @class(['feito' => $m['quando'] !== null])>
+          <span class="os-marco-ponto"></span>
+          <strong>{{ $m['rotulo'] }}</strong>
+          @if ($m['quando'])
+            <span>{{ $m['quando'] instanceof \Carbon\CarbonInterface && $m['rotulo'] === 'Programada para' ? $m['quando']->format('d/m/Y') : \App\Providers\AppServiceProvider::dataHora($m['quando']) }}</span>
+            @if ($m['quem'])<small class="suave">{{ $m['quem'] }}</small>@endif
+            @if ($m['detalhe'])<small>{{ $m['detalhe'] }}</small>@endif
+            @if (! empty($m['duracao']))<small class="os-marco-duracao">+{{ $m['duracao'] }}</small>@endif
+          @else
+            <small class="suave">pendente</small>
+          @endif
+        </li>
+      @endforeach
+    </ol>
+
+    {{-- 6. Ações --}}
+    @php($acoesVisiveis = collect($acoes)->filter(fn ($r, $a) => in_array($a, ['cancelar', 'reabrir'], true) ? $podeCancelar : $podeExecutar))
+    @if ($acoesVisiveis->isNotEmpty() || ($podeAprovar && $aberta))
+      <div class="os-acoes-bloco">
+        @if ($acoesVisiveis->isNotEmpty())
+          <form method="post" action="{{ route('os.ordens.acao', $os) }}" class="os-acoes">
+            @csrf
+            <label>Observação <input name="observacao" maxlength="2000" placeholder="opcional (obrigatória para cancelar)"></label>
+            @foreach ($acoesVisiveis as $acao => $rotulo)
+              <button class="botao {{ in_array($acao, ['cancelar', 'reabrir', 'aguardar_material'], true) ? 'secundario' : '' }}" type="submit" name="acao" value="{{ $acao }}"
+                @if ($acao === 'cancelar') onclick="return confirm('Cancelar esta OS?')" @endif>{{ $rotulo }}</button>
+            @endforeach
+          </form>
+        @endif
+        @if ($podeAprovar && $aberta)
+          <form method="post" action="{{ route('os.ordens.distribuir', $os) }}" class="ss-analise-bloco">
+            @csrf
+            @include('manutencao._escolher-mantenedores', ['area' => $os->areaExecutante?->nome, 'mantenedores' => $mantenedores, 'marcados' => $atribuidos->pluck('id')->all()])
+            <div class="acoes"><button class="botao secundario" type="submit">Salvar mantenedores</button></div>
+          </form>
+        @endif
+      </div>
+    @endif
     </div>
 
     {{-- 4. Onde e quem --}}
@@ -107,48 +153,6 @@
       </div>
     </div>
   </div>
-
-  {{-- 5. Linha do tempo --}}
-  <ol class="os-linha-tempo">
-    @foreach ($marcos as $m)
-      <li @class(['feito' => $m['quando'] !== null])>
-        <span class="os-marco-ponto"></span>
-        <strong>{{ $m['rotulo'] }}</strong>
-        @if ($m['quando'])
-          <span>{{ $m['quando'] instanceof \Carbon\CarbonInterface && $m['rotulo'] === 'Programada para' ? $m['quando']->format('d/m/Y') : \App\Providers\AppServiceProvider::dataHora($m['quando']) }}</span>
-          @if ($m['quem'])<small class="suave">{{ $m['quem'] }}</small>@endif
-          @if ($m['detalhe'])<small>{{ $m['detalhe'] }}</small>@endif
-          @if (! empty($m['duracao']))<small class="os-marco-duracao">+{{ $m['duracao'] }}</small>@endif
-        @else
-          <small class="suave">pendente</small>
-        @endif
-      </li>
-    @endforeach
-  </ol>
-
-  {{-- 6. Ações --}}
-  @php($acoesVisiveis = collect($acoes)->filter(fn ($r, $a) => in_array($a, ['cancelar', 'reabrir'], true) ? $podeCancelar : $podeExecutar))
-  @if ($acoesVisiveis->isNotEmpty() || ($podeAprovar && $aberta))
-    <div class="os-acoes-bloco">
-      @if ($acoesVisiveis->isNotEmpty())
-        <form method="post" action="{{ route('os.ordens.acao', $os) }}" class="os-acoes">
-          @csrf
-          <label>Observação <input name="observacao" maxlength="2000" placeholder="opcional (obrigatória para cancelar)"></label>
-          @foreach ($acoesVisiveis as $acao => $rotulo)
-            <button class="botao {{ in_array($acao, ['cancelar', 'reabrir', 'aguardar_material'], true) ? 'secundario' : '' }}" type="submit" name="acao" value="{{ $acao }}"
-              @if ($acao === 'cancelar') onclick="return confirm('Cancelar esta OS?')" @endif>{{ $rotulo }}</button>
-          @endforeach
-        </form>
-      @endif
-      @if ($podeAprovar && $aberta)
-        <form method="post" action="{{ route('os.ordens.distribuir', $os) }}" class="ss-analise-bloco">
-          @csrf
-          @include('manutencao._escolher-mantenedores', ['area' => $os->areaExecutante?->nome, 'mantenedores' => $mantenedores, 'marcados' => $atribuidos->pluck('id')->all()])
-          <div class="acoes"><button class="botao secundario" type="submit">Salvar mantenedores</button></div>
-        </form>
-      @endif
-    </div>
-  @endif
 </section>
 
 {{-- Interações: conversa de todos os envolvidos, com anexos --}}
