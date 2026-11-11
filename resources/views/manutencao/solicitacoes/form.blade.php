@@ -54,7 +54,7 @@
       <legend>Onde</legend>
       <div class="campos ss-campos alinhar-topo">
         <label class="largo-2">Máquina / equipamento
-          <select name="maquina_id" id="ss-maquina">
+          <select name="maquina_id" id="ss-maquina" data-busca="Buscar máquina por código ou nome…">
             <option value="" data-cc="">Sem máquina (serviço geral)</option>
             @foreach ($maquinas as $m)
               <option value="{{ $m->id }}" data-cc="{{ trim((string) $m->centro_custo) }}" @selected((int) old('maquina_id', $ss->maquina_id) === $m->id)>{{ $m->codigo }} — {{ $m->nome }}</option>
@@ -62,14 +62,14 @@
           </select>
         </label>
         <label class="largo-2">Centro de custo
-          <input name="centro_custo" id="ss-cc" list="ss-lista-cc" maxlength="20" autocomplete="off"
-                 value="{{ old('centro_custo', trim((string) $ss->centro_custo) ?: $ccUsuario) }}" placeholder="Digite o código ou o nome e escolha">
+          @php($ccAtual = old('centro_custo', trim((string) $ss->centro_custo) ?: (string) $ccUsuario))
+          <select name="centro_custo" id="ss-cc" data-busca="Buscar centro de custo por código ou nome…">
+            <option value="">Escolha o centro de custo…</option>
+            @foreach ($centros as $c)<option value="{{ $c->codigo() }}" @selected($ccAtual === $c->codigo())>{{ $c->codigo() }} — {{ $c->descricao() }}</option>@endforeach
+          </select>
           <small id="ss-cc-info" class="suave"></small>
         </label>
       </div>
-      <datalist id="ss-lista-cc">
-        @foreach ($centros as $c)<option value="{{ $c->codigo() }}">{{ $c->codigo() }} — {{ $c->descricao() }}</option>@endforeach
-      </datalist>
     </fieldset>
 
     <fieldset>
@@ -91,28 +91,25 @@
 <script>
   (function () {
     var ccUsuario = @json((string) $ccUsuario);
-    var descricoes = {};
-    document.querySelectorAll('#ss-lista-cc option').forEach(function (o) { descricoes[o.value] = o.textContent; });
     var maquina = document.getElementById('ss-maquina'), cc = document.getElementById('ss-cc'), info = document.getElementById('ss-cc-info');
-
-    function mostrarDescricao(origem) {
-      var d = descricoes[cc.value.trim()];
-      info.textContent = d ? d + (origem ? ' · ' + origem : '') : (cc.value.trim() ? 'Código não encontrado: escolha da lista.' : 'Obrigatório: busque pelo código ou nome.');
-    }
-    // Máquina com CC: usa o dela e trava. Sem máquina ou máquina sem CC: o do solicitante (se tiver) e libera para escolher.
+    function temOpcao(v) { return v && Array.prototype.some.call(cc.options, function (o) { return o.value === v; }); }
+    // Máquina com CC: usa o dela e trava (o servidor também força). Sem máquina ou máquina sem CC: o do solicitante
+    // (se tiver) e libera; sem nenhum, é obrigatório escolher.
     function aplicarMaquina(inicio) {
       var ccMaq = maquina.selectedOptions[0] ? maquina.selectedOptions[0].dataset.cc : '';
       if (ccMaq) {
-        cc.value = ccMaq; cc.readOnly = true; cc.required = false;
-        mostrarDescricao('do cadastro da máquina');
+        if (!temOpcao(ccMaq)) { var o = new Option(ccMaq + ' (da máquina)', ccMaq); cc.add(o); }
+        cc.value = ccMaq; cc.disabled = true; cc.required = false;
+        info.textContent = 'Centro de custo do cadastro da máquina.';
       } else {
-        if (cc.readOnly || !inicio) { cc.value = ccUsuario || (inicio ? cc.value : ''); }
-        cc.readOnly = false; cc.required = true;
-        mostrarDescricao(cc.value && cc.value === ccUsuario ? 'do seu cadastro' : '');
+        if (cc.disabled || !inicio) cc.value = temOpcao(ccUsuario) ? ccUsuario : (inicio ? cc.value : '');
+        cc.disabled = false; cc.required = true;
+        info.textContent = cc.value && cc.value === ccUsuario ? 'Centro de custo do seu cadastro.' : (cc.value ? '' : 'Obrigatório: busque pelo código ou nome.');
       }
+      cc.dispatchEvent(new Event('change'));
     }
     maquina.addEventListener('change', function () { aplicarMaquina(false); });
-    cc.addEventListener('input', function () { mostrarDescricao(''); });
+    cc.addEventListener('change', function () { if (!cc.disabled && cc.value) info.textContent = cc.value === ccUsuario ? 'Centro de custo do seu cadastro.' : ''; });
     aplicarMaquina(true);
 
     document.querySelectorAll('[data-sugestao]').forEach(function (b) {

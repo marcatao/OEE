@@ -24,17 +24,17 @@
         </select>
       </label>
       <label>Responsável
-        <select name="responsavel_id"><option value="">Ninguém</option>
+        <select name="responsavel_id" data-busca><option value="">Ninguém</option>
           @foreach ($mantenedores as $m)<option value="{{ $m->id }}" @selected((int) old('responsavel_id', $os->responsavel_id) === $m->id)>{{ $m->nome }}</option>@endforeach
         </select>
       </label>
       <label>Máquina / equipamento
-        <select name="maquina_id"><option value="">Sem máquina</option>
+        <select name="maquina_id" data-busca><option value="">Sem máquina</option>
           @foreach ($maquinas as $m)<option value="{{ $m->id }}" @selected((int) old('maquina_id', $os->maquina_id) === $m->id)>{{ $m->codigo }} — {{ $m->nome }}</option>@endforeach
         </select>
       </label>
       <label>Centro de custo
-        <select name="centro_custo"><option value="">—</option>
+        <select name="centro_custo" data-busca><option value="">—</option>
           @foreach ($centros as $c)<option value="{{ $c->codigo() }}" @selected(old('centro_custo', trim((string) $os->centro_custo)) === $c->codigo())>{{ $c->codigo() }} — {{ $c->descricao() }}</option>@endforeach
         </select>
       </label>

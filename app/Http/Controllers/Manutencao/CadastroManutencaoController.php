@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manutencao;
 
 use App\Http\Controllers\Controller;
 use App\Models\Manutencao\AreaExecutante;
+use App\Models\Manutencao\Ferramenta;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\SugestaoDescricao;
 use App\Models\Usuario;
@@ -50,7 +51,8 @@ class CadastroManutencaoController extends Controller
     public function mantenedores(): View
     {
         return view('manutencao.cadastros.mantenedores', [
-            'mantenedores' => Mantenedor::with(['usuario', 'areas'])->orderByDesc('ativo')->orderBy('nome')->get(),
+            'mantenedores' => Mantenedor::with(['usuario', 'areas', 'ferramentas' => fn ($q) => $q->where('ativo', true)->orderBy('codigo')])
+                ->orderByDesc('ativo')->orderBy('nome')->get(),
         ]);
     }
 
@@ -66,6 +68,10 @@ class CadastroManutencaoController extends Controller
             'usuarios' => Usuario::where('ativo', true)->whereNotIn('id', $ocupados)->orderBy('nome')->get(),
             'areas' => AreaExecutante::where('ativo', true)->orWhereIn('id', $m->exists ? $m->areas->pluck('id') : [])->orderBy('nome')->get(),
             'centros' => AcessoOs::centrosCusto(),
+            // Ferramentas que podem ser amarradas: as avulsas e as que já estão com ele.
+            'ferramentas' => Ferramenta::where('ativo', true)
+                ->where(fn ($q) => $q->whereNull('mantenedor_id')->when($m->exists, fn ($q) => $q->orWhere('mantenedor_id', $m->id)))
+                ->orderBy('codigo')->get(),
         ]);
     }
 
@@ -85,6 +91,7 @@ class CadastroManutencaoController extends Controller
             'jornada_fim' => ['required', 'date_format:H:i'],
             'intervalo_min' => ['required', 'integer', 'between:0,600'],
             'dias' => ['required', 'array', 'min:1'], 'dias.*' => ['integer', 'between:1,7'],
+            'ferramentas' => ['nullable', 'array'], 'ferramentas.*' => ['integer', Rule::exists('os_ferramentas', 'id')],
             'ativo' => ['required', 'boolean'],
         ], [
             'usuario_id.required' => 'Escolha o usuário (login) do mantenedor.',
@@ -111,9 +118,80 @@ class CadastroManutencaoController extends Controller
                 'ativo' => (bool) $dados['ativo'],
             ])->save();
             $m->definirAreas($dados['areas']);
+            $this->amarrarFerramentas($m, $dados['ferramentas'] ?? []);
         });
 
         return redirect()->route('os.cadastros.mantenedores')->with('ok', "Mantenedor {$m->nome} salvo. Jornada: ".HorasManutencao::hhmm(HorasManutencao::de($m)->minutosPorDia()).' por dia.');
+    }
+
+    /** Deixa com o mantenedor exatamente estas ferramentas: as desmarcadas voltam a ficar avulsas. */
+    private function amarrarFerramentas(Mantenedor $m, array $ids): void
+    {
+        $ids = array_map('intval', $ids);
+        foreach (Ferramenta::withoutGlobalScopes()->where('mantenedor_id', $m->id)->whereNotIn('id', $ids ?: [0])->get() as $f) {
+            $f->entregarPara(null);
+            $f->save();
+        }
+        // Só ferramentas avulsas (ou já dele) podem ser amarradas aqui: as de outro mantenedor se trocam pelo cadastro da ferramenta.
+        foreach (Ferramenta::withoutGlobalScopes()->whereIn('id', $ids ?: [0])->where(fn ($q) => $q->whereNull('mantenedor_id')->orWhere('mantenedor_id', $m->id))->get() as $f) {
+            $f->entregarPara($m->id);
+            $f->save();
+        }
+    }
+
+    // ---------- Ferramentas ----------
+    public function ferramentas(Request $request): View
+    {
+        $situacao = (string) $request->input('situacao', '');
+        $busca = trim((string) $request->input('busca', ''));
+        $consulta = Ferramenta::with(['mantenedor.usuario'])
+            ->when($situacao === 'avulsas', fn ($q) => $q->whereNull('mantenedor_id')->where('ativo', true))
+            ->when($situacao === 'com_mantenedor', fn ($q) => $q->whereNotNull('mantenedor_id')->where('ativo', true))
+            ->when($situacao === 'inativas', fn ($q) => $q->where('ativo', false))
+            ->when($request->integer('mantenedor'), fn ($q, $id) => $q->where('mantenedor_id', $id))
+            ->when($busca !== '', fn ($q) => $q->where(fn ($w) => $w->where('codigo', 'like', "%{$busca}%")->orWhere('descricao', 'like', "%{$busca}%")
+                ->orWhere('marca_modelo', 'like', "%{$busca}%")->orWhere('numero_serie', 'like', "%{$busca}%")));
+        $totais = [
+            'todas' => Ferramenta::where('ativo', true)->count(),
+            'avulsas' => Ferramenta::where('ativo', true)->whereNull('mantenedor_id')->count(),
+            'com_mantenedor' => Ferramenta::where('ativo', true)->whereNotNull('mantenedor_id')->count(),
+        ];
+
+        return view('manutencao.cadastros.ferramentas', [
+            'ferramentas' => $consulta->orderByDesc('ativo')->orderBy('codigo')->paginate(50)->withQueryString(),
+            'situacao' => $situacao, 'busca' => $busca, 'totais' => $totais,
+            'mantenedores' => AcessoOs::mantenedores(), 'mantenedorFiltro' => $request->integer('mantenedor') ?: null,
+        ]);
+    }
+
+    public function ferramenta(?int $ferramenta = null): View
+    {
+        return view('manutencao.cadastros.ferramenta', [
+            'f' => $ferramenta ? Ferramenta::with('mantenedor.usuario')->findOrFail($ferramenta) : new Ferramenta(['ativo' => true]),
+            'mantenedores' => AcessoOs::mantenedores(),
+        ]);
+    }
+
+    public function salvarFerramenta(Request $request, ?int $ferramenta = null): RedirectResponse
+    {
+        $f = $ferramenta ? Ferramenta::findOrFail($ferramenta) : new Ferramenta;
+        $request->merge(['codigo' => mb_strtoupper(trim((string) $request->input('codigo')))]);
+        $dados = $request->validate([
+            'unidade' => Unidades::regras($request->user(), $f->exists ? $f->unidade : null),
+            'codigo' => ['required', 'string', 'max:30', Rule::unique('os_ferramentas', 'codigo')->ignore($f->id)],
+            'descricao' => ['required', 'string', 'max:150'],
+            'marca_modelo' => ['nullable', 'string', 'max:100'],
+            'numero_serie' => ['nullable', 'string', 'max:60'],
+            'mantenedor_id' => ['nullable', 'integer', Rule::exists('os_mantenedores', 'id')],
+            'observacao' => ['nullable', 'string', 'max:500'],
+            'ativo' => ['required', 'boolean'],
+        ], ['codigo.required' => 'Informe o código ou patrimônio.', 'codigo.unique' => 'Já existe uma ferramenta com esse código.',
+            'descricao.required' => 'Informe a descrição.']);
+        $f->fill(collect($dados)->except('mantenedor_id')->all());
+        $f->entregarPara($dados['mantenedor_id'] ?? null);
+        $f->save();
+
+        return redirect()->route('os.cadastros.ferramentas')->with('ok', "Ferramenta {$f->codigo} salva".($f->mantenedor_id ? ' com '.$f->mantenedor?->nomeExibicao() : ' (avulsa)').'.');
     }
 
     // ---------- Sugestões de descrição ----------

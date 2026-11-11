@@ -35,22 +35,23 @@
   <h2>Descrição</h2>
   <p class="os-texto">{{ $ss->descricao }}</p>
 
-  @if ($ss->status === 'pendente')
-    <div class="os-acoes">
+  @if ($ss->status === 'pendente' && ($podeAprovar || $podeCancelar))
+    <div class="ss-analise">
       @if ($podeAprovar)
-        <form method="post" action="{{ route('os.solicitacoes.aprovar', $ss) }}" class="formulario-vertical" style="flex-basis:100%">
+        <h2>Análise da solicitação</h2>
+        <form method="post" action="{{ route('os.solicitacoes.aprovar', $ss) }}" class="ss-analise-bloco">
           @csrf
           @include('manutencao._escolher-mantenedores', ['area' => $ss->areaExecutante?->nome, 'mantenedores' => $mantenedores, 'marcados' => [], 'fixo' => $meuMantenedor])
           <div class="acoes"><button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'check']) Aprovar e emitir OS</button></div>
         </form>
-        <form method="post" action="{{ route('os.solicitacoes.rejeitar', $ss) }}">
+        <form method="post" action="{{ route('os.solicitacoes.rejeitar', $ss) }}" class="ss-analise-bloco ss-rejeitar">
           @csrf
-          <label>Motivo da rejeição <input name="motivo_rejeicao" maxlength="500" required></label>
+          <label>Motivo da rejeição <input name="motivo_rejeicao" maxlength="500" required placeholder="O motivo vai para o solicitante"></label>
           <button class="botao secundario" type="submit">Rejeitar</button>
         </form>
       @endif
       @if ($podeCancelar)
-        <form method="post" action="{{ route('os.solicitacoes.cancelar', $ss) }}" onsubmit="return confirm('Cancelar esta solicitação?')">
+        <form method="post" action="{{ route('os.solicitacoes.cancelar', $ss) }}" class="ss-analise-bloco" onsubmit="return confirm('Cancelar esta solicitação?')">
           @csrf
           <button class="botao secundario" type="submit">Cancelar solicitação</button>
         </form>

@@ -6,6 +6,8 @@
   <title>@yield('titulo', 'Início') · {{ config('oee.nome') }}</title>
   <link rel="icon" type="image/svg+xml" href="{{ asset('img/alumbra-icone.svg') }}">
   <link rel="stylesheet" href="{{ asset('css/portal.css') }}?v={{ @filemtime(public_path('css/portal.css')) }}">
+  {{-- Componentes das telas (lista com busca, escolha de vários): public/js/componentes.js --}}
+  <script src="{{ asset('js/componentes.js') }}?v={{ @filemtime(public_path('js/componentes.js')) }}" defer></script>
   {{-- Aplica o menu recolhido antes de desenhar a página (sem "piscar") --}}
   <script>try { if (localStorage.getItem('oee-menu') === 'recolhido') document.documentElement.classList.add('menu-recolhido'); } catch (e) {}</script>
 </head>
@@ -82,6 +84,7 @@
               @if ($u->ehAdmin())
                 @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.areas', 'rotulo' => 'Áreas executantes', 'icone' => 'estrutura'])
                 @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.mantenedores', 'rotulo' => 'Mantenedores', 'icone' => 'usuarios', 'ativo' => 'os.cadastros.mantenedores*'])
+                @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.ferramentas', 'rotulo' => 'Ferramentas', 'icone' => 'ferramenta', 'ativo' => 'os.cadastros.ferramentas*'])
                 @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.sugestoes', 'rotulo' => 'Sugestões de descrição', 'icone' => 'legenda'])
               @endif
             </div>

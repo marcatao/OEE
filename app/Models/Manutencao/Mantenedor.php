@@ -39,6 +39,12 @@ class Mantenedor extends Model
         return $this->belongsTo(Usuario::class, 'usuario_id');
     }
 
+    /** Ferramentas que estão com o mantenedor. */
+    public function ferramentas(): HasMany
+    {
+        return $this->hasMany(Ferramenta::class, 'mantenedor_id')->withoutGlobalScope('unidade');
+    }
+
     /** Áreas executantes que o mantenedor atende (várias; a coluna area_executante_id é a principal). */
     public function areas(): BelongsToMany
     {

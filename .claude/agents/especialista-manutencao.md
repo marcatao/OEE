@@ -76,6 +76,9 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   checklist e mudar status exigem `AcessoOs::podeExecutar($u, $registro)` (área dele OU atribuído à OS). O administrador
   da área atende todas da unidade. Mantenedor sem áreas cadastradas: vale a unidade do perfil. Na aprovação, a lista de
   mantenedores mostra só os da área executante da SS (`AcessoOs::mantenedoresDaArea`).
+- **Ferramentas** (`os_ferramentas`, cadastro em Ordens de serviço › Ferramentas): cada uma fica com UM mantenedor
+  (`mantenedor_id`, com `atribuida_em`) ou **avulsa** (vazio). Amarra-se pelo cadastro da ferramenta ou pelo do
+  mantenedor (lá aparecem as avulsas e as dele; desmarcar devolve = fica avulsa).
 - **Vários mantenedores por OS** (`os_ordem_mantenedores`; `responsavel_id` = o principal, o primeiro). Na aprovação da
   SS escolhe-se um ou mais (nenhum = definir depois). Os **próprios mantenedores abrem e aprovam SS**; se quem aprova é
   mantenedor, ele já vem marcado e fica sempre atribuído à OS. Quem inicia apontamento numa OS também passa a estar

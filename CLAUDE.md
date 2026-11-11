@@ -29,6 +29,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Identidade visual em **tons de verde** (estilo da empresa): as cores ficam só nas variáveis do topo de
   `public/css/portal.css` (tema claro e escuro). Nunca use cores soltas nas telas.
 - Telas em Blade com `layouts.portal` e o CSS de `public/css/portal.css`. Sem etapa de build com Node.
+  Listas longas (centro de custo, máquina, usuário, mantenedor): use `<select data-busca>` (lista com busca) e, para
+  marcar vários, o partial `partials.escolha-multipla` (abre/fecha, com busca) — ambos em `public/js/componentes.js`.
 - Toda rota interna fica no grupo `auth`. Página nova: registre a chave em `config/oee.php` (`permissoes`), proteja a
   rota com `->middleware('permissao:chave')` e inclua o link no menu lateral (`layouts/portal.blade.php`) dentro de
   `@if ($u->pode('chave'))`. Páginas só de admin usam `->middleware('perfil:admin')`.

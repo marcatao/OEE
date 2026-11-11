@@ -21,7 +21,7 @@
       <label>Código <input name="codigo" required maxlength="20" value="{{ old('codigo', $plano->codigo) }}" style="text-transform:uppercase"></label>
       <label>Descrição <input name="descricao" required maxlength="200" value="{{ old('descricao', $plano->descricao) }}"></label>
       <label>Máquina
-        <select name="maquina_id"><option value="">Sem máquina</option>
+        <select name="maquina_id" data-busca><option value="">Sem máquina</option>
           @foreach ($maquinas as $m)<option value="{{ $m->id }}" @selected((int) old('maquina_id', $plano->maquina_id) === $m->id)>{{ $m->codigo }} — {{ $m->nome }}</option>@endforeach
         </select></label>
       <label>Área executante
@@ -29,7 +29,7 @@
           @foreach ($areas as $a)<option value="{{ $a->id }}" @selected((int) old('area_executante_id', $plano->area_executante_id) === $a->id)>{{ $a->nome }}</option>@endforeach
         </select></label>
       <label>Responsável
-        <select name="responsavel_id"><option value="">Definir na OS</option>
+        <select name="responsavel_id" data-busca><option value="">Definir na OS</option>
           @foreach ($mantenedores as $m)<option value="{{ $m->id }}" @selected((int) old('responsavel_id', $plano->responsavel_id) === $m->id)>{{ $m->nome }}</option>@endforeach
         </select></label>
       <label>Prioridade

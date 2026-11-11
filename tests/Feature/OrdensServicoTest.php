@@ -6,6 +6,7 @@ use App\Models\CentroCusto;
 use App\Models\Linha;
 use App\Models\Manutencao\ApontamentoHoras;
 use App\Models\Manutencao\AreaExecutante;
+use App\Models\Manutencao\Ferramenta;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\PlanoPreventiva;
@@ -198,6 +199,37 @@ class OrdensServicoTest extends TestCase
         $this->post("/ordens-de-servico/ordens/{$os->id}/apontamentos/iniciar")->assertRedirect();
     }
 
+    public function test_ferramentas_avulsas_e_amarradas_ao_mantenedor(): void
+    {
+        $admin = $this->usuario(['admin_producao'], 'adm@empresa.com');
+        $maria = $this->usuario(['mantenedor_producao'], 'maria@empresa.com');
+        $this->actingAs($admin);
+        $this->post('/ordens-de-servico/cadastros/ferramentas', ['unidade' => 'manutencao', 'codigo' => 'fer-01', 'descricao' => 'Multímetro', 'ativo' => '1'])->assertRedirect();
+        $this->post('/ordens-de-servico/cadastros/ferramentas', ['unidade' => 'manutencao', 'codigo' => 'FER-02', 'descricao' => 'Torquímetro', 'ativo' => '1'])->assertRedirect();
+        $multimetro = Ferramenta::where('codigo', 'FER-01')->firstOrFail();
+        $this->assertTrue($multimetro->avulsa());
+
+        // No cadastro do mantenedor, as avulsas aparecem para amarrar.
+        $this->get('/ordens-de-servico/cadastros/mantenedores/novo')->assertOk()->assertSee('FER-01 — Multímetro')->assertSee('Torquímetro');
+        $this->post('/ordens-de-servico/cadastros/mantenedores', ['unidade' => 'manutencao', 'usuario_id' => $maria->id, 'jornada_inicio' => '07:00',
+            'jornada_fim' => '17:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'areas' => [$this->mecanica->id],
+            'ferramentas' => [$multimetro->id], 'ativo' => '1'])->assertRedirect();
+        $m = Mantenedor::where('usuario_id', $maria->id)->firstOrFail();
+        $this->assertSame($m->id, $multimetro->fresh()->mantenedor_id);
+        $this->assertNotNull($multimetro->fresh()->atribuida_em);
+        $this->get('/ordens-de-servico/cadastros/ferramentas?situacao=avulsas')->assertOk()->assertSee('Torquímetro')->assertDontSee('Multímetro');
+        $this->get('/ordens-de-servico/cadastros/ferramentas?situacao=com_mantenedor')->assertOk()->assertSee('Multímetro')->assertSee('Maria');
+        $this->get('/ordens-de-servico/cadastros/mantenedores')->assertOk()->assertSee('1 ferramenta');
+
+        // Desmarcar no mantenedor devolve (fica avulsa); pelo cadastro da ferramenta também se troca o dono.
+        $this->put("/ordens-de-servico/cadastros/mantenedores/{$m->id}", ['unidade' => 'manutencao', 'usuario_id' => $maria->id, 'jornada_inicio' => '07:00',
+            'jornada_fim' => '17:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'areas' => [$this->mecanica->id], 'ativo' => '1'])->assertRedirect();
+        $this->assertNull($multimetro->fresh()->mantenedor_id);
+        $this->put("/ordens-de-servico/cadastros/ferramentas/{$multimetro->id}", ['unidade' => 'manutencao', 'codigo' => 'FER-01', 'descricao' => 'Multímetro',
+            'mantenedor_id' => $m->id, 'ativo' => '1'])->assertRedirect();
+        $this->assertSame($m->id, $multimetro->fresh()->mantenedor_id);
+    }
+
     public function test_rejeicao_volta_ao_solicitante_com_motivo(): void
     {
         $operador = $this->usuario(['operador', 'solicitante_manutencao', 'solicitante_tecnologia'], 'operador@empresa.com');
@@ -332,7 +364,7 @@ class OrdensServicoTest extends TestCase
         $this->actingAs($admin);
         foreach (['/ordens-de-servico/ordens', '/ordens-de-servico/materiais', '/ordens-de-servico/relatorios/horas', '/ordens-de-servico/relatorios/setores',
             '/ordens-de-servico/cadastros/areas', '/ordens-de-servico/cadastros/mantenedores', '/ordens-de-servico/cadastros/mantenedores/novo',
-            '/ordens-de-servico/cadastros/sugestoes', '/ordens-de-servico/solicitacoes/nova', '/ordens-de-servico/preventivas/nova'] as $url) {
+            '/ordens-de-servico/cadastros/sugestoes', '/ordens-de-servico/cadastros/ferramentas', '/ordens-de-servico/cadastros/ferramentas/nova', '/ordens-de-servico/solicitacoes/nova', '/ordens-de-servico/preventivas/nova'] as $url) {
             $this->get($url)->assertOk();
         }
         $this->get('/ordens-de-servico/relatorios/horas?formato=csv')->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');

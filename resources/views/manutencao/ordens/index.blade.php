@@ -34,11 +34,11 @@
         @foreach (SolicitacaoServico::TIPOS as $v => $r)<option value="{{ $v }}" @selected($f['tipo'] === $v)>{{ $r }}</option>@endforeach
       </select></label>
     <label>Máquina
-      <select name="maquina"><option value="">Todas</option>
+      <select name="maquina" data-busca><option value="">Todas</option>
         @foreach ($maquinas as $m)<option value="{{ $m->id }}" @selected($f['maquina'] === $m->id)>{{ $m->codigo }} — {{ $m->nome }}</option>@endforeach
       </select></label>
     <label>Mantenedor
-      <select name="responsavel"><option value="">Todos</option>
+      <select name="responsavel" data-busca><option value="">Todos</option>
         @foreach ($mantenedores as $m)<option value="{{ $m->id }}" @selected($f['responsavel'] === $m->id)>{{ $m->nome }}</option>@endforeach
       </select></label>
     <button class="botao secundario" type="submit">Filtrar</button>

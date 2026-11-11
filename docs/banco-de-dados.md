@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **38** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **39** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -324,6 +324,22 @@ erDiagram
         bigint respondido_por_id FK
         datetime respondido_em
     }
+    os_ferramentas {
+        bigint id PK
+        nvarchar(20) unidade
+        nvarchar(30) codigo UK
+        nvarchar(150) descricao
+        nvarchar(100) marca_modelo
+        nvarchar(60) numero_serie
+        bigint mantenedor_id FK
+        datetime atribuida_em
+        nvarchar(500) observacao
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     os_historico {
         bigint id PK
         bigint ordem_servico_id FK
@@ -607,6 +623,7 @@ erDiagram
     ordens_servico ||--o{ os_checklist : "ordem_servico_id"
     os_planos_itens |o--o{ os_checklist : "plano_item_id"
     usuarios |o--o{ os_checklist : "respondido_por_id"
+    os_mantenedores |o--o{ os_ferramentas : "mantenedor_id"
     ordens_servico |o--o{ os_historico : "ordem_servico_id"
     solicitacoes_servico |o--o{ os_historico : "solicitacao_id"
     usuarios |o--o{ os_historico : "usuario_id"
@@ -708,6 +725,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
 | [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 9 | 2 |
 | [`os_checklist`](#os_checklist) | Sistema | `id` | 9 | 3 |
+| [`os_ferramentas`](#os_ferramentas) | Sistema | `id` | 14 | 3 |
 | [`os_historico`](#os_historico) | Sistema | `id` | 9 | 3 |
 | [`os_justificativas_setor`](#os_justificativas_setor) | Sistema | `id` | 9 | 2 |
 | [`os_mantenedor_areas`](#os_mantenedor_areas) | Sistema | `id` | 5 | 3 |
@@ -1263,6 +1281,31 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `os_checklist_ordem_servico_id_ordem_index` (ordem_servico_id, ordem)
 
 **Regras (CHECK, só no SQL Server):** `ck_os_checklist_resposta`: `resposta IS NULL OR resposta IN ('ok', 'nok', 'na')`
+
+### os_ferramentas
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
+| `codigo` | `nvarchar(30)` | não |  |  |
+| `descricao` | `nvarchar(150)` | não |  |  |
+| `marca_modelo` | `nvarchar(100)` | sim |  |  |
+| `numero_serie` | `nvarchar(60)` | sim |  |  |
+| `mantenedor_id` | `bigint` | sim |  | FK → `os_mantenedores.id` |
+| `atribuida_em` | `datetime` | sim |  |  |
+| `observacao` | `nvarchar(500)` | sim |  |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `os_ferramentas_codigo_unique` único (codigo) · `os_ferramentas_unidade_index` (unidade) · `os_ferramentas_mantenedor_id_ativo_index` (mantenedor_id, ativo)
+
+**Regras (CHECK, só no SQL Server):** `ck_os_ferramentas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
 
 ### os_historico
 

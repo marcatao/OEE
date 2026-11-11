@@ -19,7 +19,7 @@
     @if ($m->exists) @method('put') @endif
 
     <label>Usuário (login)
-      <select name="usuario_id" id="mant-usuario" @if (! $m->exists || $m->usuario_id) required @endif>
+      <select name="usuario_id" id="mant-usuario" data-busca="Buscar usuário por nome ou e-mail…" @if (! $m->exists || $m->usuario_id) required @endif>
         <option value="">{{ $m->exists && ! $m->usuario_id ? 'Sem login (cadastro antigo: '.$m->nome.')' : 'Escolha o usuário…' }}</option>
         @foreach ($usuarios as $u)
           <option value="{{ $u->id }}" @selected((int) old('usuario_id', $m->usuario_id) === $u->id)
@@ -40,25 +40,31 @@
       </dl>
     </div>
 
-    <fieldset>
-      <legend>Áreas executantes</legend>
-      <p class="suave">Marque uma ou mais. O mantenedor <strong>vê, aprova e atende</strong> as SS/OS dessas áreas (as de outras áreas
-        ele só vê se for o autor, se forem do centro de custo dele ou se estiver atribuído à OS).</p>
-      <div class="grade-opcoes">
-        @forelse ($areas as $a)
-          <label class="opcao"><input type="checkbox" name="areas[]" value="{{ $a->id }}" @checked(in_array($a->id, $areasMarcadas, true))>
-            <span>{{ $a->nome }} <span class="etiqueta unidade-{{ $a->unidade }}">{{ $a->rotuloUnidade() }}</span></span></label>
-        @empty
-          <p class="suave">Cadastre as áreas em <a href="{{ route('os.cadastros.areas') }}">Áreas executantes</a>.</p>
-        @endforelse
-      </div>
-    </fieldset>
+    <div class="formulario-bloco">
+      @include('partials.escolha-multipla', [
+        'nome' => 'areas[]', 'titulo' => 'Áreas executantes (aprova, atende e vê as SS/OS)', 'vazio' => 'Nenhuma — marque pelo menos uma',
+        'busca' => 'Buscar área…', 'aberto' => ! $m->exists || $errors->has('areas'),
+        'semItens' => 'Cadastre as áreas em Ordens de serviço › Áreas executantes.',
+        'itens' => $areas->map(fn ($a) => ['valor' => $a->id, 'nome' => $a->nome, 'detalhe' => $a->rotuloUnidade(), 'marcado' => in_array($a->id, $areasMarcadas, true)])->all(),
+      ])
+    </div>
+    @php($ferramentasMarcadas = array_map('intval', old('ferramentas', $m->exists ? $m->ferramentas()->pluck('id')->all() : [])))
+    <div class="formulario-bloco">
+      @include('partials.escolha-multipla', [
+        'nome' => 'ferramentas[]', 'titulo' => 'Ferramentas que estão com ele', 'vazio' => 'Nenhuma',
+        'busca' => 'Buscar ferramenta por código ou descrição…',
+        'semItens' => 'Nenhuma ferramenta avulsa. Cadastre em Ordens de serviço › Ferramentas.',
+        'itens' => $ferramentas->map(fn ($f) => ['valor' => $f->id, 'nome' => $f->codigo.' — '.$f->descricao,
+          'detalhe' => trim(($f->marca_modelo ?? '').($f->mantenedor_id ? '' : ' · avulsa'), ' ·'), 'marcado' => in_array($f->id, $ferramentasMarcadas, true)])->all(),
+      ])
+      <small class="suave">Aparecem as ferramentas avulsas e as que já estão com ele. Desmarcar devolve a ferramenta (fica avulsa).</small>
+    </div>
 
     <div class="campos">
       @include('partials.campo-unidade', ['registro' => $m])
       <label>Matrícula <input name="matricula" maxlength="20" value="{{ old('matricula', $m->matricula) }}"></label>
       <label>Centro de custo
-        <select name="centro_custo"><option value="">—</option>
+        <select name="centro_custo" data-busca><option value="">—</option>
           @foreach ($centros as $c)<option value="{{ $c->codigo() }}" @selected(old('centro_custo', trim((string) $m->centro_custo)) === $c->codigo())>{{ $c->codigo() }} — {{ $c->descricao() }}</option>@endforeach
         </select></label>
       <label>Início da jornada <input type="time" name="jornada_inicio" required value="{{ old('jornada_inicio', $m->jornada_inicio) }}"></label>

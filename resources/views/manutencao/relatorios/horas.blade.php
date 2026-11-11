@@ -17,9 +17,9 @@
     <label>De <input type="date" name="de" value="{{ $de->format('Y-m-d') }}"></label>
     <label>Até <input type="date" name="ate" value="{{ $ate->format('Y-m-d') }}"></label>
     <label>Tipo <select name="tipo"><option value="">Todos</option>@foreach (SolicitacaoServico::TIPOS as $v => $r)<option value="{{ $v }}" @selected($filtros['tipo'] === $v)>{{ $r }}</option>@endforeach</select></label>
-    <label>Mantenedor <select name="mantenedor"><option value="">Todos</option>@foreach ($mantenedores as $m)<option value="{{ $m->id }}" @selected($filtros['mantenedor'] === $m->id)>{{ $m->nome }}</option>@endforeach</select></label>
-    <label>Máquina <select name="maquina"><option value="">Todas</option>@foreach ($maquinas as $m)<option value="{{ $m->id }}" @selected($filtros['maquina'] === $m->id)>{{ $m->codigo }} — {{ $m->nome }}</option>@endforeach</select></label>
-    <label>Centro de custo <select name="centro_custo"><option value="">Todos</option>@foreach ($centros as $c)<option value="{{ $c->codigo() }}" @selected($filtros['centro_custo'] === $c->codigo())>{{ $c->codigo() }} — {{ $c->descricao() }}</option>@endforeach</select></label>
+    <label>Mantenedor <select name="mantenedor" data-busca><option value="">Todos</option>@foreach ($mantenedores as $m)<option value="{{ $m->id }}" @selected($filtros['mantenedor'] === $m->id)>{{ $m->nome }}</option>@endforeach</select></label>
+    <label>Máquina <select name="maquina" data-busca><option value="">Todas</option>@foreach ($maquinas as $m)<option value="{{ $m->id }}" @selected($filtros['maquina'] === $m->id)>{{ $m->codigo }} — {{ $m->nome }}</option>@endforeach</select></label>
+    <label>Centro de custo <select name="centro_custo" data-busca><option value="">Todos</option>@foreach ($centros as $c)<option value="{{ $c->codigo() }}" @selected($filtros['centro_custo'] === $c->codigo())>{{ $c->codigo() }} — {{ $c->descricao() }}</option>@endforeach</select></label>
     <button class="botao secundario" type="submit">Filtrar</button>
   </form>
 

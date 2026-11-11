@@ -51,14 +51,11 @@
       </form>
     @endif
     @if ($podeAprovar && $aberta)
-      <details style="flex-basis:100%">
-        <summary class="botao secundario">Distribuir mantenedores</summary>
-        <form method="post" action="{{ route('os.ordens.distribuir', $os) }}" class="formulario-vertical">
-          @csrf
-          @include('manutencao._escolher-mantenedores', ['area' => $os->areaExecutante?->nome, 'mantenedores' => $mantenedores, 'marcados' => $os->mantenedoresAtribuidos()->pluck('id')->all()])
-          <div class="acoes"><button class="botao" type="submit">Salvar mantenedores</button></div>
-        </form>
-      </details>
+      <form method="post" action="{{ route('os.ordens.distribuir', $os) }}" class="ss-analise-bloco" style="flex-basis:100%">
+        @csrf
+        @include('manutencao._escolher-mantenedores', ['area' => $os->areaExecutante?->nome, 'mantenedores' => $mantenedores, 'marcados' => $os->mantenedoresAtribuidos()->pluck('id')->all()])
+        <div class="acoes"><button class="botao secundario" type="submit">Salvar mantenedores</button></div>
+      </form>
     @endif
   </div>
 

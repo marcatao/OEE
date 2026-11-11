@@ -50,7 +50,7 @@
         </label>
         <label>Setor / centro de custo
           @php($ccAtual = old('centro_custo', $maquina->centro_custo))
-          <select name="centro_custo" @disabled($maquina->doProtheus())>
+          <select name="centro_custo" data-busca @disabled($maquina->doProtheus())>
             <option value="">Nenhum</option>
             @foreach ($centros as $cc)
               <option value="{{ $cc->codigo() }}" @selected($ccAtual === $cc->codigo())>{{ $cc->codigo() }} — {{ $cc->descricao() }}</option>
