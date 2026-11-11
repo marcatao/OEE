@@ -70,14 +70,59 @@ final class AcessoOs
         return $u->pode('os_aprovar') || $u->pode('solicitacoes_manutencao') || $u->pode('os_almoxarifado');
     }
 
-    public static function podeAprovar(Usuario $u): bool
+    /** Pode aprovar SS (e editar/distribuir OS)? Com o registro, só se a área executante dele for uma das que atende. */
+    public static function podeAprovar(Usuario $u, ?object $registro = null): bool
     {
-        return $u->pode('os_aprovar');
+        return $u->pode('os_aprovar') && ($registro === null || self::atendeArea($u, $registro));
     }
 
-    public static function podeExecutar(Usuario $u): bool
+    /** Pode executar (apontar horas, materiais, checklist, concluir)? Com a OS: se atende a área dela ou está atribuído. */
+    public static function podeExecutar(Usuario $u, ?object $registro = null): bool
     {
-        return $u->pode('solicitacoes_manutencao') || $u->pode('os_aprovar');
+        if (! ($u->pode('solicitacoes_manutencao') || $u->pode('os_aprovar'))) {
+            return false;
+        }
+        if ($registro === null || self::atendeArea($u, $registro)) {
+            return true;
+        }
+        $m = self::mantenedorDo($u);
+
+        return $m !== null && $registro instanceof OrdemServico
+            && ((int) $registro->responsavel_id === $m->id || $registro->mantenedores()->where('os_mantenedores.id', $m->id)->exists());
+    }
+
+    /**
+     * A área executante da SS/OS é uma das que o usuário atende? Administrador da área: todas da unidade. Mantenedor:
+     * as áreas executantes do cadastro dele (Ordens de serviço › Mantenedores). Mantenedor ainda sem áreas cadastradas
+     * (ou quem aprova por grupo): as da unidade do perfil.
+     */
+    public static function atendeArea(Usuario $u, object $registro): bool
+    {
+        if (self::ehAdminDa($u, $registro->unidade)) {
+            return true;
+        }
+        $areas = self::areasDo($u);
+        if ($areas !== []) {
+            return in_array((int) $registro->area_executante_id, $areas, true);
+        }
+
+        return in_array($registro->unidade, [...self::unidadesMantenedor($u), ...$u->unidades()], true);
+    }
+
+    /** Áreas executantes do cadastro de mantenedor do usuário (vazio = sem cadastro ou sem áreas). @return list<int> */
+    public static function areasDo(Usuario $u): array
+    {
+        $m = self::mantenedorDo($u);
+
+        return $m ? $m->areas()->pluck('os_areas_executantes.id')->map(fn ($i) => (int) $i)->all() : [];
+    }
+
+    /** Mantenedores que atendem a área executante da SS/OS (os sem áreas cadastradas entram pela unidade). */
+    public static function mantenedoresDaArea(object $registro): Collection
+    {
+        return self::mantenedores()->filter(fn ($m) => $m->areas->isNotEmpty()
+            ? $m->areas->contains('id', (int) $registro->area_executante_id)
+            : in_array($m->unidade, [$registro->unidade, 'ambos'], true))->values();
     }
 
     /** Unidades dos perfis de mantenedor do usuário. @return list<string> */

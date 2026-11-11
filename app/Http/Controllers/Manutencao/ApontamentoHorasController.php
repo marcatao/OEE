@@ -47,7 +47,8 @@ class ApontamentoHorasController extends Controller
     public function iniciar(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscarOs($request, $ordem);
-        $mantenedor = $this->mantenedor($request);
+        $this->exigirArea($request, $os);
+        $mantenedor = $this->mantenedor($request, $os);
         $this->fluxo->iniciarApontamento($os, $mantenedor, $request->user());
 
         return back()->with('ok', "Apontamento iniciado na {$os->numeroFormatado()} para {$mantenedor->nome}.");
@@ -67,6 +68,7 @@ class ApontamentoHorasController extends Controller
     public function store(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscarOs($request, $ordem);
+        abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $this->validar($request);
         $mantenedor = Mantenedor::withoutGlobalScopes()->findOrFail($dados['mantenedor_id']);
         $ap = new ApontamentoHoras(['ordem_servico_id' => $os->id, 'mantenedor_id' => $mantenedor->id]);
@@ -91,7 +93,7 @@ class ApontamentoHorasController extends Controller
     public function destroy(Request $request, int $apontamento): RedirectResponse
     {
         $ap = $this->buscar($request, $apontamento);
-        abort_unless(AcessoOs::podeAprovar($request->user()), 403, 'Só quem aprova OS pode excluir um apontamento.');
+        abort_unless(AcessoOs::podeAprovar($request->user(), $ap->ordemServico), 403, 'Só quem aprova OS desta área pode excluir um apontamento.');
         $os = $ap->ordemServico;
         $texto = ($ap->mantenedor()->withoutGlobalScopes()->value('nome') ?? '').': '.$ap->inicio->setTimezone(config('oee.fuso_exibicao'))->format('d/m H:i');
         $ap->delete();
@@ -132,9 +134,9 @@ class ApontamentoHorasController extends Controller
     }
 
     /** O próprio mantenedor (pelo login) ou, para quem aprova, o mantenedor escolhido. */
-    private function mantenedor(Request $request): Mantenedor
+    private function mantenedor(Request $request, OrdemServico $os): Mantenedor
     {
-        if ($request->filled('mantenedor_id') && AcessoOs::podeAprovar($request->user())) {
+        if ($request->filled('mantenedor_id') && AcessoOs::podeAprovar($request->user(), $os)) {
             return Mantenedor::withoutGlobalScopes()->where('ativo', true)->findOrFail($request->integer('mantenedor_id'));
         }
         $m = AcessoOs::mantenedorDo($request->user());
@@ -143,6 +145,11 @@ class ApontamentoHorasController extends Controller
         }
 
         return $m;
+    }
+
+    private function exigirArea(Request $request, OrdemServico $os): void
+    {
+        abort_unless(AcessoOs::podeExecutar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
     }
 
     private function buscarOs(Request $request, int $id): OrdemServico

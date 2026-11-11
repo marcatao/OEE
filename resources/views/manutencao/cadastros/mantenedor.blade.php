@@ -41,7 +41,9 @@
     </div>
 
     <fieldset>
-      <legend>Áreas executantes que atende</legend>
+      <legend>Áreas executantes</legend>
+      <p class="suave">Marque uma ou mais. O mantenedor <strong>vê, aprova e atende</strong> as SS/OS dessas áreas (as de outras áreas
+        ele só vê se for o autor, se forem do centro de custo dele ou se estiver atribuído à OS).</p>
       <div class="grade-opcoes">
         @forelse ($areas as $a)
           <label class="opcao"><input type="checkbox" name="areas[]" value="{{ $a->id }}" @checked(in_array($a->id, $areasMarcadas, true))>

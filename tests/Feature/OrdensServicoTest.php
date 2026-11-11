@@ -166,6 +166,38 @@ class OrdensServicoTest extends TestCase
         $this->assertSame($mPedro->id, $os2->fresh()->responsavel_id);
     }
 
+    public function test_mantenedor_aprova_e_atende_so_as_areas_do_cadastro(): void
+    {
+        $eletrica = AreaExecutante::create(['codigo' => 'ELE', 'nome' => 'Elétrica', 'unidade' => 'manutencao']);
+        $operador = $this->usuario(['solicitante_manutencao'], 'operador@empresa.com', '1001');
+        // Mecânico de duas áreas e eletricista que é do mesmo centro de custo do operador (vê pela regra do CC).
+        $mecanico = $this->usuario(['mantenedor_producao'], 'mecanico@empresa.com');
+        $mMec = Mantenedor::create(['nome' => 'Mecânico', 'usuario_id' => $mecanico->id]);
+        $mMec->definirAreas([$this->mecanica->id, $eletrica->id]);
+        $eletricista = $this->usuario(['mantenedor_producao'], 'eletricista@empresa.com', '1001');
+        Mantenedor::create(['nome' => 'Eletricista', 'usuario_id' => $eletricista->id])->definirAreas([$eletrica->id]);
+
+        $ss = $this->abrirSs($operador); // área Mecânica
+        // O eletricista vê (mesmo CC), mas não aprova nem rejeita: não é da área.
+        $this->actingAs($eletricista)->get("/ordens-de-servico/solicitacoes/{$ss->id}")->assertOk()->assertDontSee('Aprovar e emitir OS');
+        $this->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar")->assertForbidden();
+        $this->post("/ordens-de-servico/solicitacoes/{$ss->id}/rejeitar", ['motivo_rejeicao' => 'x'])->assertForbidden();
+
+        // O mecânico (Mecânica + Elétrica) aprova; a lista de mantenedores mostra só os da área Mecânica.
+        $this->actingAs($mecanico)->get("/ordens-de-servico/solicitacoes/{$ss->id}")->assertOk()->assertSee('Aprovar e emitir OS')
+            ->assertSee('da área Mecânica')->assertDontSee('Eletricista');
+        $this->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar")->assertRedirect();
+        $os = OrdemServico::where('solicitacao_id', $ss->id)->firstOrFail();
+
+        // O eletricista não inicia apontamento nem requisita material numa OS da Mecânica.
+        $this->actingAs($eletricista)->post("/ordens-de-servico/ordens/{$os->id}/apontamentos/iniciar")->assertForbidden();
+        $this->post("/ordens-de-servico/ordens/{$os->id}/materiais", ['descricao' => 'Fita', 'quantidade' => 1])->assertForbidden();
+        $this->post("/ordens-de-servico/ordens/{$os->id}/acao", ['acao' => 'concluir'])->assertForbidden();
+        // ...a não ser que seja atribuído à OS.
+        $os->incluirMantenedor(Mantenedor::where('usuario_id', $eletricista->id)->value('id'));
+        $this->post("/ordens-de-servico/ordens/{$os->id}/apontamentos/iniciar")->assertRedirect();
+    }
+
     public function test_rejeicao_volta_ao_solicitante_com_motivo(): void
     {
         $operador = $this->usuario(['operador', 'solicitante_manutencao', 'solicitante_tecnologia'], 'operador@empresa.com');

@@ -82,12 +82,12 @@ class OrdemServicoController extends Controller
             'checklist' => $os->checklist()->with('respondidoPor')->orderBy('ordem')->orderBy('id')->get(),
             'historico' => $os->historico()->with('usuario')->orderBy('id')->get(),
             'acoes' => FluxoOrdemServico::acoesPossiveis($os),
-            'mantenedores' => AcessoOs::mantenedores(),
+            'mantenedores' => AcessoOs::mantenedoresDaArea($os),
             'meuMantenedor' => AcessoOs::mantenedorDo($u),
-            'podeAprovar' => AcessoOs::podeAprovar($u),
-            'podeExecutar' => AcessoOs::podeExecutar($u),
+            'podeAprovar' => AcessoOs::podeAprovar($u, $os),
+            'podeExecutar' => AcessoOs::podeExecutar($u, $os),
             'podeCancelar' => AcessoOs::podeCancelar($u, $os),
-            'podeAceitar' => $os->status === 'concluida' && ($os->solicitante_id === $u->id || AcessoOs::podeAprovar($u)),
+            'podeAceitar' => $os->status === 'concluida' && ($os->solicitante_id === $u->id || AcessoOs::podeAprovar($u, $os)),
         ]);
     }
 
@@ -106,13 +106,14 @@ class OrdemServicoController extends Controller
     public function edit(Request $request, int $ordem): View
     {
         $os = $this->buscar($request, $ordem);
+        abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
 
         return view('manutencao.ordens.form', [
             'os' => $os,
             'maquinas' => AcessoOs::maquinas(),
             'areas' => AcessoOs::areas(),
             'centros' => AcessoOs::centrosCusto(),
-            'mantenedores' => AcessoOs::mantenedores(),
+            'mantenedores' => AcessoOs::mantenedoresDaArea($os),
         ]);
     }
 
@@ -120,6 +121,7 @@ class OrdemServicoController extends Controller
     public function update(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscar($request, $ordem);
+        abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $request->validate([
             'titulo' => ['nullable', 'string', 'max:120'],
             'tipo' => ['required', Rule::in(array_keys(SolicitacaoServico::TIPOS))],
@@ -153,6 +155,7 @@ class OrdemServicoController extends Controller
     public function distribuir(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscar($request, $ordem);
+        abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $request->validate(['mantenedores' => ['nullable', 'array'], 'mantenedores.*' => ['integer', Rule::exists('os_mantenedores', 'id')]]);
         $os->atribuirMantenedores($dados['mantenedores'] ?? []);
         $nomes = $os->mantenedores()->with('usuario')->get()->map->nomeExibicao()->join(', ');
@@ -168,7 +171,7 @@ class OrdemServicoController extends Controller
         if (in_array($dados['acao'], ['cancelar', 'reabrir'], true)) {
             abort_unless(AcessoOs::podeCancelar($request->user(), $os), 403, 'Só o autor da solicitação ou o administrador da área pode cancelar ou reabrir.');
         } else {
-            abort_unless(AcessoOs::podeExecutar($request->user()), 403);
+            abort_unless(AcessoOs::podeExecutar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         }
         $this->fluxo->executarAcao($os, $dados['acao'], $request->user(), $dados['observacao'] ?? null);
 
@@ -180,7 +183,7 @@ class OrdemServicoController extends Controller
     {
         $os = $this->buscar($request, $ordem);
         $u = $request->user();
-        abort_unless($os->solicitante_id === $u->id || AcessoOs::podeAprovar($u), 403, 'Só o solicitante dá o aceite do serviço.');
+        abort_unless($os->solicitante_id === $u->id || AcessoOs::podeAprovar($u, $os), 403, 'Só o solicitante dá o aceite do serviço.');
         $dados = $request->validate(['resultado' => ['required', Rule::in(['aceito', 'recusado'])], 'observacao' => ['nullable', 'string', 'max:500']]);
         if ($dados['resultado'] === 'recusado') {
             $request->validate(['observacao' => ['required']], ['observacao.required' => 'Explique o que ficou faltando no serviço.']);
@@ -196,6 +199,7 @@ class OrdemServicoController extends Controller
     public function checklist(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscar($request, $ordem);
+        abort_unless(AcessoOs::podeExecutar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $request->validate(['resposta' => ['array'], 'resposta.*' => ['nullable', Rule::in(['ok', 'nok', 'na'])],
             'observacao' => ['array'], 'observacao.*' => ['nullable', 'string', 'max:300']]);
         foreach ($os->checklist as $item) {

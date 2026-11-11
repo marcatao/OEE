@@ -71,6 +71,11 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
 - **Centro de custo da SS**: com máquina que tem CC, vale o da máquina (travado na tela e forçado no servidor); sem
   máquina ou máquina sem CC, o do solicitante (o "Centro de custo" do Entra, `usuarios.local_escritorio`, quando é um
   código de `centros_custo`; `AcessoOs::centroCustoDo`); sem nenhum, é obrigatório escolher da lista (código + descrição).
+- **Áreas executantes do mantenedor** (cadastro de mantenedores, uma ou mais): definem o que ele **vê, aprova e atende**.
+  Aprovar/rejeitar SS e editar/distribuir OS exigem `AcessoOs::podeAprovar($u, $registro)`; apontar horas, materiais,
+  checklist e mudar status exigem `AcessoOs::podeExecutar($u, $registro)` (área dele OU atribuído à OS). O administrador
+  da área atende todas da unidade. Mantenedor sem áreas cadastradas: vale a unidade do perfil. Na aprovação, a lista de
+  mantenedores mostra só os da área executante da SS (`AcessoOs::mantenedoresDaArea`).
 - **Vários mantenedores por OS** (`os_ordem_mantenedores`; `responsavel_id` = o principal, o primeiro). Na aprovação da
   SS escolhe-se um ou mais (nenhum = definir depois). Os **próprios mantenedores abrem e aprovam SS**; se quem aprova é
   mantenedor, ele já vem marcado e fica sempre atribuído à OS. Quem inicia apontamento numa OS também passa a estar

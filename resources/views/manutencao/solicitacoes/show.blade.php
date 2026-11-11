@@ -40,7 +40,7 @@
       @if ($podeAprovar)
         <form method="post" action="{{ route('os.solicitacoes.aprovar', $ss) }}" class="formulario-vertical" style="flex-basis:100%">
           @csrf
-          @include('manutencao._escolher-mantenedores', ['mantenedores' => $mantenedores, 'marcados' => [], 'fixo' => $meuMantenedor])
+          @include('manutencao._escolher-mantenedores', ['area' => $ss->areaExecutante?->nome, 'mantenedores' => $mantenedores, 'marcados' => [], 'fixo' => $meuMantenedor])
           <div class="acoes"><button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'check']) Aprovar e emitir OS</button></div>
         </form>
         <form method="post" action="{{ route('os.solicitacoes.rejeitar', $ss) }}">

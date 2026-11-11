@@ -1,6 +1,7 @@
 {{-- Escolha de vários mantenedores. Variáveis: $mantenedores, $marcados (ids), $fixo (mantenedor logado: sempre marcado). --}}
 <fieldset>
-  <legend>Mantenedores <small class="suave">(nenhum marcado = definir depois)</small></legend>
+  <legend>Mantenedores{{ isset($area) && $area ? ' da área '.$area : '' }} <small class="suave">(nenhum marcado = definir depois)</small></legend>
+  @if ($mantenedores->isEmpty())<p class="suave">Nenhum mantenedor cadastrado nesta área executante.</p>@endif
   <div class="grade-opcoes">
     @foreach ($mantenedores as $mt)
       @php($ehFixo = isset($fixo) && $fixo?->id === $mt->id)

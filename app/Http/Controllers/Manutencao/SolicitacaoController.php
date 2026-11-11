@@ -82,9 +82,9 @@ class SolicitacaoController extends Controller
         return view('manutencao.solicitacoes.show', [
             'ss' => $ss,
             'historico' => $ss->historico()->with('usuario')->orderBy('id')->get(),
-            'mantenedores' => AcessoOs::mantenedores(),
+            'mantenedores' => AcessoOs::mantenedoresDaArea($ss),
             'meuMantenedor' => AcessoOs::mantenedorDo($request->user()),
-            'podeAprovar' => AcessoOs::podeAprovar($request->user()),
+            'podeAprovar' => AcessoOs::podeAprovar($request->user(), $ss),
             'podeCancelar' => AcessoOs::podeCancelar($request->user(), $ss),
         ]);
     }
@@ -110,6 +110,7 @@ class SolicitacaoController extends Controller
     public function aprovar(Request $request, int $solicitacao): RedirectResponse
     {
         $ss = $this->buscar($request, $solicitacao);
+        $this->exigirArea($request, $ss);
         $dados = $request->validate([
             'mantenedores' => ['nullable', 'array'],
             'mantenedores.*' => ['integer', Rule::exists('os_mantenedores', 'id')],
@@ -123,6 +124,7 @@ class SolicitacaoController extends Controller
     public function rejeitar(Request $request, int $solicitacao): RedirectResponse
     {
         $ss = $this->buscar($request, $solicitacao);
+        $this->exigirArea($request, $ss);
         $dados = $request->validate(['motivo_rejeicao' => ['required', 'string', 'max:500']],
             ['motivo_rejeicao.required' => 'Escreva o motivo da rejeição: ele vai para o solicitante.']);
         $this->fluxo->rejeitar($ss, $request->user(), $dados['motivo_rejeicao']);
@@ -150,8 +152,15 @@ class SolicitacaoController extends Controller
     private function exigirEdicao(Request $request, SolicitacaoServico $ss): void
     {
         $u = $request->user();
-        abort_unless(AcessoOs::podeAprovar($u) || ($ss->solicitante_id === $u->id && $ss->status === 'pendente'), 403,
+        abort_unless(AcessoOs::podeAprovar($u, $ss) || ($ss->solicitante_id === $u->id && $ss->status === 'pendente'), 403,
             'Só quem aprova solicitações pode alterar uma SS que já foi analisada.');
+    }
+
+    /** Aprovar/rejeitar: só quem atende a área executante da SS (ou o administrador da área). */
+    private function exigirArea(Request $request, SolicitacaoServico $ss): void
+    {
+        abort_unless(AcessoOs::podeAprovar($request->user(), $ss), 403,
+            'Esta SS é da área executante '.($ss->areaExecutante?->nome ?? '').', que não está no seu cadastro de mantenedor.');
     }
 
     /** Só quem tem o perfil Solicitante (de Manutenção e/ou de Tecnologia) abre SS. */
@@ -165,7 +174,7 @@ class SolicitacaoController extends Controller
     private function areasPermitidas(Request $request, SolicitacaoServico $ss)
     {
         $u = $request->user();
-        if ($ss->exists && $ss->solicitante_id !== $u->id && AcessoOs::podeAprovar($u)) {
+        if ($ss->exists && $ss->solicitante_id !== $u->id && AcessoOs::podeAprovar($u, $ss)) {
             return AcessoOs::areas();
         }
 
@@ -230,7 +239,7 @@ class SolicitacaoController extends Controller
         }
         $dados['centro_custo'] = $cc;
         $dados['unidade'] = OrdemServico::unidadePara($area, $maquina);
-        $ehAprovadorEditando = $ss->exists && $ss->solicitante_id !== $request->user()->id && AcessoOs::podeAprovar($request->user());
+        $ehAprovadorEditando = $ss->exists && $ss->solicitante_id !== $request->user()->id && AcessoOs::podeAprovar($request->user(), $ss);
         if (! $ehAprovadorEditando && ! in_array($dados['unidade'], AcessoOs::unidadesSolicitante($request->user()), true)) {
             throw ValidationException::withMessages(['area_executante_id' => 'Você não é solicitante de '.(config('oee.unidades')[$dados['unidade']] ?? $dados['unidade']).'.']);
         }
