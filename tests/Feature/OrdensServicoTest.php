@@ -15,6 +15,7 @@ use App\Models\Usuario;
 use App\Services\Manutencao\GeradorPreventivas;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -30,14 +31,32 @@ class OrdensServicoTest extends TestCase
 
     private AreaExecutante $ti;
 
+    /** Consultas com a mesma coluna repetida no ORDER BY: o SQLite aceita, o SQL Server recusa (erro 169). */
+    private array $ordenacaoRepetida = [];
+
     protected function setUp(): void
     {
         parent::setUp();
+        DB::listen(function ($consulta) {
+            if (preg_match('/order by (.+?)(?: limit | offset |\)|$)/i', $consulta->sql, $m)) {
+                $colunas = array_map(fn ($c) => strtolower(trim(preg_replace('/\s+(asc|desc)$/i', '', trim($c)))), explode(',', $m[1]));
+                if (count($colunas) !== count(array_unique($colunas))) {
+                    $this->ordenacaoRepetida[] = $consulta->sql;
+                }
+            }
+        });
         $planta = Planta::create(['codigo' => 'P', 'nome' => 'Planta']);
         $linha = Linha::create(['planta_id' => $planta->id, 'codigo' => 'L', 'nome' => 'Linha']);
         $this->injetora = Maquina::create(['linha_id' => $linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ativo' => true, 'centro_custo' => '1001']);
         $this->mecanica = AreaExecutante::create(['codigo' => 'MEC', 'nome' => 'Mecânica', 'unidade' => 'manutencao']);
         $this->ti = AreaExecutante::create(['codigo' => 'TI', 'nome' => 'Suporte de TI', 'unidade' => 'tecnologia']);
+    }
+
+    protected function tearDown(): void
+    {
+        $repetidas = $this->ordenacaoRepetida;
+        parent::tearDown();
+        $this->assertSame([], $repetidas, 'Coluna repetida no ORDER BY (o SQL Server recusa).');
     }
 
     private function usuario(array $perfis, string $email): Usuario

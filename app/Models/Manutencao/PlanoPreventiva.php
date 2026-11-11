@@ -74,7 +74,7 @@ class PlanoPreventiva extends Model
 
     public function itens(): HasMany
     {
-        return $this->hasMany(PlanoPreventivaItem::class, 'plano_preventiva_id')->orderBy('ordem')->orderBy('id');
+        return $this->hasMany(PlanoPreventivaItem::class, 'plano_preventiva_id');
     }
 
     public function ordensServico(): HasMany

@@ -129,6 +129,6 @@ class SolicitacaoServico extends Model
 
     public function historico(): HasMany
     {
-        return $this->hasMany(HistoricoOs::class, 'solicitacao_id')->orderBy('id');
+        return $this->hasMany(HistoricoOs::class, 'solicitacao_id');
     }
 }

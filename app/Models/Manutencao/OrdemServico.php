@@ -171,11 +171,11 @@ class OrdemServico extends Model
 
     public function historico(): HasMany
     {
-        return $this->hasMany(HistoricoOs::class, 'ordem_servico_id')->orderBy('id');
+        return $this->hasMany(HistoricoOs::class, 'ordem_servico_id');
     }
 
     public function checklist(): HasMany
     {
-        return $this->hasMany(ChecklistOs::class, 'ordem_servico_id')->orderBy('ordem')->orderBy('id');
+        return $this->hasMany(ChecklistOs::class, 'ordem_servico_id');
     }
 }
