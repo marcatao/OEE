@@ -15,6 +15,7 @@
 
 @section('conteudo')
 <section class="cartao">
+  <p class="trilha">Produção</p>
   <h1>Calculadora de OEE</h1>
   <form method="post" action="{{ route('calculadora') }}" class="formulario">
     @csrf

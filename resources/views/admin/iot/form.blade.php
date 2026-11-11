@@ -59,7 +59,7 @@
       <textarea name="observacao" maxlength="500" rows="3">{{ old('observacao', $dispositivo->observacao) }}</textarea>
     </label>
 
-    <fieldset>
+    <fieldset class="opcoes-linha">
       <legend>Situação</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @checked(old('ativo', (int) $dispositivo->ativo) == 1)> <span>Ativo</span></label>
       <label class="opcao"><input type="radio" name="ativo" value="0" @checked(old('ativo', (int) $dispositivo->ativo) == 0)> <span>Inativo <small>os dados deste dispositivo deixam de ser considerados</small></span></label>

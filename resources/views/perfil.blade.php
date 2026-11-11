@@ -64,7 +64,7 @@
       <label>Conta Microsoft (login)
         <input value="{{ $u->email }}" readonly>
       </label>
-      <label>Centro de custo <small class="suave">(local de escritório no Entra ID)</small>
+      <label><span>Centro de custo <small>(local de escritório no Entra ID)</small></span>
         <input value="{{ $u->local_escritorio ?? 'Não informado no Entra ID' }}" readonly>
       </label>
       <label>Departamento

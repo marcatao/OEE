@@ -45,34 +45,33 @@
   <section class="cartao">
     <form method="post" action="{{ route('admin.estrutura.plantas.update', $planta) }}" class="filtros" style="margin:0">
       @csrf @method('put')
-      <label>Planta <code>{{ $planta->codigo }}</code><input name="nome" required maxlength="120" value="{{ $planta->nome }}"></label>
+      <label><span>Planta <code>{{ $planta->codigo }}</code></span><input name="nome" required maxlength="120" value="{{ $planta->nome }}"></label>
       @include('partials.campo-unidade', ['registro' => $planta])
       <label>Situação
         <select name="ativo"><option value="1" @selected($planta->ativo)>Ativa</option><option value="0" @selected(! $planta->ativo)>Inativa</option></select>
       </label>
-      <button class="botao secundario pequeno" type="submit">Salvar planta</button>
+      <button class="botao secundario" type="submit">Salvar planta</button>
     </form>
 
-    <div class="rolagem">
-    <table class="tabela">
-      <thead><tr><th>Código</th><th>Linha</th><th class="num">Máquinas</th><th>Situação</th><th></th></tr></thead>
+    <div class="rolagem" style="margin-top:1rem">
+    <table class="tabela tabela-form">
+      <thead><tr><th>Código</th><th>Linha</th><th>Unidade</th><th class="num">Máquinas</th><th>Situação</th><th></th></tr></thead>
       <tbody>
       @forelse ($planta->linhas as $linha)
         <tr>
-          <td><code>{{ $linha->codigo }}</code></td>
-          <td colspan="4">
-            <form method="post" action="{{ route('admin.estrutura.linhas.update', $linha) }}" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+          <td><code>{{ $linha->codigo }}</code>
+            <form method="post" action="{{ route('admin.estrutura.linhas.update', $linha) }}" id="linha-{{ $linha->id }}" hidden>
               @csrf @method('put')
-              <input name="nome" required maxlength="120" value="{{ $linha->nome }}" aria-label="Nome da linha">
-              @include('partials.campo-unidade', ['registro' => $linha])
-              <span class="suave">{{ $linha->maquinas_count }} máquina(s)</span>
-              <select name="ativo" aria-label="Situação da linha"><option value="1" @selected($linha->ativo)>Ativa</option><option value="0" @selected(! $linha->ativo)>Inativa</option></select>
-              <button class="botao secundario pequeno" type="submit">Salvar</button>
             </form>
           </td>
+          <td style="min-width:14rem"><input name="nome" required maxlength="120" value="{{ $linha->nome }}" aria-label="Nome da linha" form="linha-{{ $linha->id }}"></td>
+          <td>@include('partials.campo-unidade', ['registro' => $linha, 'form' => 'linha-'.$linha->id, 'semRotulo' => true])</td>
+          <td class="num">{{ $linha->maquinas_count }}</td>
+          <td><select name="ativo" aria-label="Situação da linha" form="linha-{{ $linha->id }}"><option value="1" @selected($linha->ativo)>Ativa</option><option value="0" @selected(! $linha->ativo)>Inativa</option></select></td>
+          <td class="acoes-linha"><button class="botao secundario pequeno" type="submit" form="linha-{{ $linha->id }}">Salvar</button></td>
         </tr>
       @empty
-        <tr><td colspan="5" class="suave">Nenhuma linha nesta planta.</td></tr>
+        <tr><td colspan="6" class="suave">Nenhuma linha nesta planta.</td></tr>
       @endforelse
       </tbody>
     </table>

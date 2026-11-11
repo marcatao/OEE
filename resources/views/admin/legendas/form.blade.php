@@ -43,7 +43,7 @@
       </label>
     </div>
 
-    <fieldset>
+    <fieldset class="opcoes-linha">
       <legend>Situação</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @checked(old('ativo', (int) $legenda->ativo) == 1)> <span>Ativa</span></label>
       <label class="opcao"><input type="radio" name="ativo" value="0" @checked(old('ativo', (int) $legenda->ativo) == 0)> <span>Inativa <small>não aparece em apontamentos novos; o histórico continua com a cor</small></span></label>

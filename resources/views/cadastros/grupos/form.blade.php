@@ -14,14 +14,16 @@
     @csrf
     @if ($grupo->exists) @method('put') @endif
 
-    <label>Nome
-      <input name="nome" required maxlength="80" value="{{ old('nome', $grupo->nome) }}" placeholder="Ex.: Supervisores da Linha 1">
-    </label>
-    <label>Descrição
-      <input name="descricao" maxlength="300" value="{{ old('descricao', $grupo->descricao) }}">
-    </label>
+    <div class="campos">
+      <label>Nome
+        <input name="nome" required maxlength="80" value="{{ old('nome', $grupo->nome) }}" placeholder="Ex.: Supervisores da Linha 1">
+      </label>
+      <label class="duplo">Descrição
+        <input name="descricao" maxlength="300" value="{{ old('descricao', $grupo->descricao) }}">
+      </label>
+    </div>
 
-    <fieldset>
+    <fieldset class="opcoes-linha">
       <legend>Situação</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @checked(old('ativo', (int) $grupo->ativo) == 1)> <span>Ativo</span></label>
       <label class="opcao"><input type="radio" name="ativo" value="0" @checked(old('ativo', (int) $grupo->ativo) == 0)> <span>Inativo <small>os membros perdem as permissões deste grupo</small></span></label>
@@ -30,15 +32,17 @@
     <fieldset>
       <legend>Permissões (páginas que os membros podem abrir)</legend>
       @php($marcadas = old('permissoes', $permissoes))
+      <div class="grade-opcoes largas">
       @foreach ($catalogo as $chave => $rotulo)
         <label class="opcao"><input type="checkbox" name="permissoes[]" value="{{ $chave }}" @checked(in_array($chave, $marcadas))> <span>{{ $rotulo }}</span></label>
       @endforeach
+      </div>
     </fieldset>
 
     <fieldset>
       <legend>Usuários do grupo</legend>
       @php($marcados = array_map('intval', old('usuarios', $membros)))
-      <div class="lista-marcar">
+      <div class="lista-marcar grade-opcoes">
       @forelse ($usuarios as $usuario)
         <label class="opcao">
           <input type="checkbox" name="usuarios[]" value="{{ $usuario->id }}" @checked(in_array($usuario->id, $marcados))>

@@ -28,6 +28,7 @@
         Perfis de <strong>Manutenção</strong> enxergam os cadastros de manutenção; de <strong>Tecnologia</strong>, os de tecnologia;
         cadastros marcados como <strong>Ambos</strong> aparecem para os dois.</p>
       @php($perfisMarcados = old('perfis', $usuario->perfisAcesso()))
+      <div class="grade-opcoes largas">
       @foreach ($perfis as $valor => $perfil)
         <label class="opcao">
           <input type="checkbox" name="perfis[]" value="{{ $valor }}" @checked(in_array($valor, $perfisMarcados, true))>
@@ -36,9 +37,10 @@
             <small>{{ $perfil['descricao'] }}</small></span>
         </label>
       @endforeach
+      </div>
     </fieldset>
 
-    <fieldset>
+    <fieldset class="opcoes-linha">
       <legend>Situação</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @checked(old('ativo', (int) $usuario->ativo) == 1)> <span>Ativo</span></label>
       <label class="opcao"><input type="radio" name="ativo" value="0" @checked(old('ativo', (int) $usuario->ativo) == 0)> <span>Inativo <small>bloqueia a entrada no portal na hora</small></span></label>
@@ -47,6 +49,7 @@
     <fieldset>
       <legend>Grupos</legend>
       @php($marcados = old('grupos', $usuario->grupos->pluck('id')->all()))
+      <div class="grade-opcoes">
       @forelse ($grupos as $grupo)
         <label class="opcao">
           <input type="checkbox" name="grupos[]" value="{{ $grupo->id }}" @checked(in_array($grupo->id, $marcados))>
@@ -56,6 +59,7 @@
       @empty
         <p class="suave">Nenhum grupo cadastrado. <a href="{{ route('cadastros.grupos.create') }}">Criar um grupo</a>.</p>
       @endforelse
+      </div>
     </fieldset>
 
     <div class="acoes">

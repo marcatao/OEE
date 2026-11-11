@@ -36,7 +36,7 @@
         <label>Nome
           <input name="nome" required maxlength="120" value="{{ old('nome', $maquina->nome) }}" placeholder="Ex.: Injetora 01" @disabled($maquina->doProtheus())>
         </label>
-        <label>Linha <small class="suave">(obrigatória para ativar)</small>
+        <label><span>Linha <small>(obrigatória para ativar)</small></span>
           <select name="linha_id">
             <option value="">Escolha…</option>
             @foreach ($linhas as $planta => $doGrupo)
@@ -129,7 +129,7 @@
       @endforeach
     </fieldset>
 
-    <fieldset>
+    <fieldset class="opcoes-linha">
       <legend>Máquina ativa ou inativa</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @disabled($maquina->excluidaNoProtheus()) @checked(old('ativo', (int) $maquina->ativo) == 1)> <span>Ativa</span></label>
       <label class="opcao"><input type="radio" name="ativo" value="0" @checked(old('ativo', (int) $maquina->ativo) == 0)> <span>Inativa <small>sai dos painéis e da timeline, mas o histórico continua</small></span></label>
