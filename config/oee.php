@@ -38,8 +38,8 @@ return [
     'custo_tolerancia' => (float) env('OEE_CUSTO_TOLERANCIA', 0.05),
 
     // Perfis de acesso (um usuário pode ter vários). "area" = em que área o perfil aparece no cadastro de usuários;
-    // "unidades" = ambientes dos cadastros que o perfil enxerga; "solicita" = áreas para as quais pode ABRIR SS (só os
-    // Solicitantes, e o Administrador de Tecnologia, que pode tudo); "permissoes" = telas ('*' = todas). Os grupos
+    // "unidades" = ambientes dos cadastros que o perfil enxerga; "solicita" = áreas para as quais pode ABRIR SS (os
+    // Solicitantes e os Administradores, cada um para a sua área); "permissoes" = telas ('*' = todas). Os grupos
     // continuam somando permissões. O Administrador de Tecnologia vê tudo de tudo, inclusive a Segurança.
     'perfis_acesso' => [
         // ----- Área Manutenção (produção) -----
@@ -68,8 +68,9 @@ return [
         'admin_producao' => [
             'rotulo' => 'Administrador de Produção',
             'area' => 'manutencao',
-            'descricao' => 'Vê e cadastra tudo da produção/manutenção (todas as SS/OS da Manutenção), exceto a Segurança.',
+            'descricao' => 'Vê e cadastra tudo da produção/manutenção (abre e vê todas as SS/OS da Manutenção), exceto a Segurança.',
             'unidades' => ['manutencao'],
+            'solicita' => ['manutencao'],
             'permissoes' => ['*'],
         ],
         // ----- Área Tecnologia -----

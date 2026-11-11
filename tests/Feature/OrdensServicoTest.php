@@ -216,8 +216,12 @@ class OrdensServicoTest extends TestCase
 
     public function test_so_solicitante_da_area_abre_e_centro_de_custo_da_maquina_trava(): void
     {
-        // Administrador sem o perfil Solicitante não abre SS (vale o que está marcado no cadastro do usuário).
-        $this->actingAs($this->usuario(['admin_producao'], 'adm-sem@empresa.com'))->get('/ordens-de-servico/solicitacoes/nova')->assertForbidden();
+        // Administrador abre SS para a área dele sem precisar do perfil Solicitante (Produção: só Manutenção).
+        $adm = $this->usuario(['admin_producao'], 'adm-sem@empresa.com');
+        $this->actingAs($adm)->get('/ordens-de-servico/solicitacoes/nova')->assertOk()->assertSee('Mecânica')->assertDontSee('Suporte de TI');
+        $this->post('/ordens-de-servico/solicitacoes', ['titulo' => 'PC', 'tipo' => 'corretiva', 'area_executante_id' => $this->ti->id,
+            'prioridade' => 'media', 'descricao' => 'x', 'centro_custo' => '2002'])->assertSessionHasErrors('area_executante_id');
+        $this->assertNotNull($this->abrirSs($adm)->id);
 
         $soManutencao = $this->usuario(['solicitante_manutencao'], 'sm@empresa.com');
         // Não é solicitante de Tecnologia: não abre para a área de TI.

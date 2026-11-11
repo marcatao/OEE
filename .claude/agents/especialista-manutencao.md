@@ -61,7 +61,8 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   executantes** que ele atende (`os_mantenedor_areas`; `area_executante_id` = a principal, a primeira).
 - **Quem abre SS**: só usuários com o perfil **Solicitante de Manutenção** e/ou **Solicitante de Tecnologia** (cadastro de
   usuários, perfis separados por área), e só para as áreas executantes daquela unidade (`AcessoOs::areasParaSolicitar`).
-  O Administrador de Tecnologia pode tudo. A SS tem **título resumido** (`titulo`), copiado para a OS.
+  Os **administradores** também abrem para a sua área sem precisar do perfil Solicitante (Adm. Produção = Manutenção;
+  Adm. Tecnologia = as duas). A SS tem **título resumido** (`titulo`), copiado para a OS.
 - **Quem vê** (`AcessoOs::filtrar`): o solicitante vê as SS/OS dele e as do **seu centro de custo**; o mantenedor vê as
   das **áreas executantes que atende** (sem áreas cadastradas: as da unidade do perfil) e as OS em que está atribuído;
   o administrador da área vê todas da unidade (Adm. Produção = Manutenção; Adm. Tecnologia = tudo).

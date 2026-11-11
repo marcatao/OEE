@@ -13,8 +13,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Quem vê, abre e cancela nas Ordens de serviço:
- * - ABRIR SS: só quem tem o perfil Solicitante de Manutenção e/ou de Tecnologia, e só para as áreas executantes dessa
- *   unidade (o Administrador de Tecnologia pode tudo);
+ * - ABRIR SS: quem tem o perfil Solicitante de Manutenção e/ou de Tecnologia e os administradores da área, só para as
+ *   áreas executantes dessa unidade (Adm. Produção = Manutenção; Adm. Tecnologia = as duas);
  * - VER: o solicitante vê as SS/OS dele e as do seu centro de custo; o mantenedor vê as das áreas executantes que ele
  *   atende (sem áreas cadastradas: as da unidade do perfil) e as OS em que está atribuído; o administrador da área vê
  *   todas da unidade dele (Administrador de Produção = Manutenção; Administrador de Tecnologia = tudo);
