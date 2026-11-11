@@ -23,49 +23,85 @@
       <nav>
         @include('layouts.partials.menu-link', ['rota' => 'inicio', 'rotulo' => 'Início', 'icone' => 'inicio'])
 
+        {{-- Seções recolhíveis: o título abre e fecha a lista (o navegador lembra). A seção da página atual fica aberta. --}}
         @if ($u->pode('dashboard_maquina') || $u->pode('timeline'))
-          <p class="menu-secao">Dashboards</p>
-          @if ($u->pode('dashboard_maquina'))
-            @include('layouts.partials.menu-link', ['rota' => 'dashboard.maquinas', 'rotulo' => 'Dashboard por máquina', 'icone' => 'dashboard', 'ativo' => 'dashboard.*'])
-          @endif
-          @if ($u->pode('timeline'))
-            @include('layouts.partials.menu-link', ['rota' => 'timeline', 'rotulo' => 'Timeline', 'icone' => 'timeline'])
-          @endif
+          <div class="menu-bloco" data-bloco="dashboards">
+            @include('layouts.partials.menu-secao', ['titulo' => 'Dashboards'])
+            <div class="menu-itens">
+              @if ($u->pode('dashboard_maquina'))
+                @include('layouts.partials.menu-link', ['rota' => 'dashboard.maquinas', 'rotulo' => 'Dashboard por máquina', 'icone' => 'dashboard', 'ativo' => 'dashboard.*'])
+              @endif
+              @if ($u->pode('timeline'))
+                @include('layouts.partials.menu-link', ['rota' => 'timeline', 'rotulo' => 'Timeline', 'icone' => 'timeline'])
+              @endif
+            </div>
+          </div>
         @endif
 
         @if ($u->pode('apontamentos') || $u->pode('apontamentos_producao') || $u->pode('ordens_producao') || $u->pode('calculadora'))
-          <p class="menu-secao">Produção</p>
-          @if ($u->pode('apontamentos'))
-            @include('layouts.partials.menu-link', ['rota' => 'apontamentos.index', 'rotulo' => 'Apontamento real', 'icone' => 'apontamento', 'ativo' => 'apontamentos.*'])
-          @endif
-          @if ($u->pode('apontamentos_producao'))
-            @include('layouts.partials.menu-link', ['rota' => 'apontamentos-producao.index', 'rotulo' => 'Apontamentos OP', 'icone' => 'movimento', 'ativo' => 'apontamentos-producao.*'])
-          @endif
-          @if ($u->pode('ordens_producao'))
-            @include('layouts.partials.menu-link', ['rota' => 'ordens-producao.index', 'rotulo' => 'Ordens de produção', 'icone' => 'ordem_producao', 'ativo' => 'ordens-producao.*'])
-          @endif
-          @if ($u->pode('calculadora'))
-            @include('layouts.partials.menu-link', ['rota' => 'calculadora', 'rotulo' => 'Calculadora de OEE', 'icone' => 'calculadora'])
-          @endif
+          <div class="menu-bloco" data-bloco="producao">
+            @include('layouts.partials.menu-secao', ['titulo' => 'Produção'])
+            <div class="menu-itens">
+              @if ($u->pode('apontamentos'))
+                @include('layouts.partials.menu-link', ['rota' => 'apontamentos.index', 'rotulo' => 'Apontamento real', 'icone' => 'apontamento', 'ativo' => 'apontamentos.*'])
+              @endif
+              @if ($u->pode('apontamentos_producao'))
+                @include('layouts.partials.menu-link', ['rota' => 'apontamentos-producao.index', 'rotulo' => 'Apontamentos OP', 'icone' => 'movimento', 'ativo' => 'apontamentos-producao.*'])
+              @endif
+              @if ($u->pode('ordens_producao'))
+                @include('layouts.partials.menu-link', ['rota' => 'ordens-producao.index', 'rotulo' => 'Ordens de produção', 'icone' => 'ordem_producao', 'ativo' => 'ordens-producao.*'])
+              @endif
+              @if ($u->pode('calculadora'))
+                @include('layouts.partials.menu-link', ['rota' => 'calculadora', 'rotulo' => 'Calculadora de OEE', 'icone' => 'calculadora'])
+              @endif
+            </div>
+          </div>
         @endif
 
         @if ($u->ehAdmin())
-          <p class="menu-secao">Administração</p>
-          @include('layouts.partials.menu-link', ['rota' => 'admin.maquinas.index', 'rotulo' => 'Máquinas', 'icone' => 'maquina', 'ativo' => 'admin.maquinas.*'])
-          @include('layouts.partials.menu-link', ['rota' => 'admin.centros-custo.index', 'rotulo' => 'Centros de custo', 'icone' => 'centro_custo', 'ativo' => 'admin.centros-custo.*'])
-          @include('layouts.partials.menu-link', ['rota' => 'admin.estrutura', 'rotulo' => 'Plantas e linhas', 'icone' => 'estrutura', 'ativo' => 'admin.estrutura*'])
-          @include('layouts.partials.menu-link', ['rota' => 'admin.legendas.index', 'rotulo' => 'Legendas', 'icone' => 'legenda', 'ativo' => 'admin.legendas.*'])
-          @include('layouts.partials.menu-link', ['rota' => 'admin.iot.index', 'rotulo' => 'Dispositivos IoT', 'icone' => 'iot', 'ativo' => 'admin.iot.*'])
+          <div class="menu-bloco" data-bloco="administracao">
+            @include('layouts.partials.menu-secao', ['titulo' => 'Administração'])
+            <div class="menu-itens">
+              @include('layouts.partials.menu-link', ['rota' => 'admin.maquinas.index', 'rotulo' => 'Máquinas', 'icone' => 'maquina', 'ativo' => 'admin.maquinas.*'])
+              @include('layouts.partials.menu-link', ['rota' => 'admin.centros-custo.index', 'rotulo' => 'Centros de custo', 'icone' => 'centro_custo', 'ativo' => 'admin.centros-custo.*'])
+              @include('layouts.partials.menu-link', ['rota' => 'admin.estrutura', 'rotulo' => 'Plantas e linhas', 'icone' => 'estrutura', 'ativo' => 'admin.estrutura*'])
+              @include('layouts.partials.menu-link', ['rota' => 'admin.legendas.index', 'rotulo' => 'Legendas', 'icone' => 'legenda', 'ativo' => 'admin.legendas.*'])
+              @include('layouts.partials.menu-link', ['rota' => 'admin.iot.index', 'rotulo' => 'Dispositivos IoT', 'icone' => 'iot', 'ativo' => 'admin.iot.*'])
+            </div>
+          </div>
         @endif
 
         @if ($u->podeSeguranca())
-          <p class="menu-secao">Segurança</p>
-          @include('layouts.partials.menu-link', ['rota' => 'cadastros.usuarios.index', 'rotulo' => 'Usuários', 'icone' => 'usuarios', 'ativo' => 'cadastros.usuarios.*'])
-          @include('layouts.partials.menu-link', ['rota' => 'cadastros.grupos.index', 'rotulo' => 'Grupos', 'icone' => 'grupos', 'ativo' => 'cadastros.grupos.*'])
-          @include('layouts.partials.menu-link', ['rota' => 'cadastros.acessos', 'rotulo' => 'Histórico de acessos', 'icone' => 'historico'])
-          @include('layouts.partials.menu-link', ['rota' => 'admin.banco', 'rotulo' => 'Banco de dados', 'icone' => 'banco'])
+          <div class="menu-bloco" data-bloco="seguranca">
+            @include('layouts.partials.menu-secao', ['titulo' => 'Segurança'])
+            <div class="menu-itens">
+              @include('layouts.partials.menu-link', ['rota' => 'cadastros.usuarios.index', 'rotulo' => 'Usuários', 'icone' => 'usuarios', 'ativo' => 'cadastros.usuarios.*'])
+              @include('layouts.partials.menu-link', ['rota' => 'cadastros.grupos.index', 'rotulo' => 'Grupos', 'icone' => 'grupos', 'ativo' => 'cadastros.grupos.*'])
+              @include('layouts.partials.menu-link', ['rota' => 'cadastros.acessos', 'rotulo' => 'Histórico de acessos', 'icone' => 'historico'])
+              @include('layouts.partials.menu-link', ['rota' => 'admin.banco', 'rotulo' => 'Banco de dados', 'icone' => 'banco'])
+            </div>
+          </div>
         @endif
       </nav>
+      <script>
+        // Seções do menu: fecha as que o usuário fechou (lembrado no navegador); a da página atual sempre abre.
+        (function () {
+          var fechadas = [];
+          try { fechadas = JSON.parse(localStorage.getItem('oee-menu-secoes') || '[]'); } catch (e) {}
+          document.querySelectorAll('.menu-bloco').forEach(function (bloco) {
+            var botao = bloco.querySelector('.menu-secao');
+            var aplicar = function (aberto) { bloco.classList.toggle('fechado', !aberto); botao.setAttribute('aria-expanded', String(aberto)); };
+            aplicar(bloco.querySelector('a.ativo') !== null || fechadas.indexOf(bloco.dataset.bloco) === -1);
+            botao.addEventListener('click', function () {
+              var aberto = bloco.classList.contains('fechado');
+              aplicar(aberto);
+              fechadas = fechadas.filter(function (b) { return b !== bloco.dataset.bloco; });
+              if (!aberto) fechadas.push(bloco.dataset.bloco);
+              try { localStorage.setItem('oee-menu-secoes', JSON.stringify(fechadas)); } catch (e) {}
+            });
+          });
+        })();
+      </script>
       <button type="button" class="menu-recolher" data-alternar-menu aria-expanded="true" title="Recolher ou expandir o menu">
         @include('layouts.partials.icone', ['nome' => 'recolher'])<span class="menu-rotulo">Recolher menu</span>
       </button>

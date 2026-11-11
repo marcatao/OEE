@@ -77,7 +77,16 @@ code { font-family:Consolas, "Cascadia Mono", monospace; font-size:.9em; }
 .menu-lateral nav a:hover, .menu-grupo summary:hover { background:var(--menu-hover); color:var(--branco); }
 .menu-lateral nav a.ativo { background:var(--menu-ativo); color:var(--branco); font-weight:600; box-shadow:inset 3px 0 0 var(--destaque); }
 .menu-lateral nav a:focus-visible, .menu-grupo summary:focus-visible, .menu-recolher:focus-visible { outline:2px solid var(--branco); outline-offset:1px; }
-.menu-secao { margin:1.1rem .65rem .3rem; font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--menu-secao); white-space:nowrap; overflow:hidden; }
+/* Seções do menu (Dashboards, Produção, Administração, Segurança): o título abre e fecha a lista */
+.menu-bloco + .menu-bloco, nav > a + .menu-bloco { margin-top:.35rem; }
+.menu-secao { display:flex; align-items:center; gap:.4rem; width:100%; margin:.6rem 0 .15rem; padding:.45rem .65rem; border:0; border-radius:8px; background:transparent; font:inherit; font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--menu-secao); white-space:nowrap; overflow:hidden; cursor:pointer; text-align:left; }
+.menu-secao:hover { color:var(--branco); background:var(--menu-hover); }
+.menu-secao:focus-visible { outline:2px solid var(--branco); outline-offset:1px; }
+.menu-secao-texto { flex:1; overflow:hidden; text-overflow:ellipsis; }
+.menu-secao .menu-secao-seta { width:14px; height:14px; transform:rotate(90deg); transition:transform .15s; flex-shrink:0; }
+.menu-bloco.fechado .menu-secao-seta { transform:none; }
+.menu-bloco.fechado .menu-itens { display:none; }
+.menu-bloco.fechado .menu-secao { color:var(--menu-texto); }
 .menu-grupo summary { cursor:pointer; list-style:none; }
 .menu-grupo summary::-webkit-details-marker { display:none; }
 .menu-grupo summary .seta { margin-left:auto; width:16px; height:16px; transition:transform .15s; }
@@ -95,15 +104,21 @@ code { font-family:Consolas, "Cascadia Mono", monospace; font-size:.9em; }
 @media (min-width: 861px) {
   .menu-recolhido .menu-lateral { width:var(--largura-menu-recolhido); }
   .menu-recolhido .menu-rotulo, .menu-recolhido .menu-marca span, .menu-recolhido .menu-grupo .seta { display:none; }
-  .menu-recolhido .menu-secao { height:1px; margin:.7rem .5rem; background:var(--menu-borda); color:transparent; }
+  /* Menu só com ícones: as seções viram um traço e todos os itens aparecem (não há título para abrir). */
+  .menu-recolhido .menu-secao { height:1px; padding:0; margin:.7rem .5rem; background:var(--menu-borda); color:transparent; pointer-events:none; }
+  .menu-recolhido .menu-secao-texto, .menu-recolhido .menu-secao-seta { display:none; }
+  .menu-recolhido .menu-bloco.fechado .menu-itens { display:block; }
   .menu-recolhido .menu-lateral nav a, .menu-recolhido .menu-grupo summary, .menu-recolhido .menu-recolher { justify-content:center; padding-left:0; padding-right:0; }
   .menu-recolhido .menu-marca { justify-content:center; padding:0; }
   .menu-recolhido .menu-grupo .submenu { margin-left:0; padding-left:0; border-left:0; }
   .menu-recolhido .menu-recolher .icone { transform:rotate(180deg); }
 }
 
-main { width:100%; max-width:1280px; margin:0 auto; padding:1.5rem 1.5rem 3rem; }
-main.sozinho { max-width:980px; }
+/* Área de trabalho em largura total (telas largas aproveitam o espaço); textos longos mantêm uma largura confortável. */
+main { width:100%; max-width:none; margin:0; padding:1.5rem 2rem 3rem; }
+@media (min-width: 1600px) { main { padding-left:2.5rem; padding-right:2.5rem; } }
+.cartao > p, .cartao > .suave, .heroi p { max-width:120ch; }
+main.sozinho { max-width:980px; margin:0 auto; }
 
 @media (max-width: 860px) {
   .menu-lateral { position:fixed; left:0; top:0; transform:translateX(-100%); transition:transform .2s; box-shadow:var(--sombra-forte); }
@@ -171,9 +186,11 @@ dd { margin:0; }
 .situacao-sem_sinal { color:var(--alerta); background:var(--alerta-suave); border-color:transparent; }
 .situacao-nunca, .situacao-inativo { color:var(--suave); border-color:var(--borda-forte); }
 .ponto { width:8px; height:8px; border-radius:50%; background:currentColor; }
-.formulario-vertical { display:flex; flex-direction:column; gap:1.25rem; max-width:680px; margin-top:1rem; }
+.formulario-vertical { display:flex; flex-direction:column; gap:1.25rem; margin-top:1rem; }
+.formulario-vertical > .acoes { justify-content:flex-start; }
 .formulario-vertical > label, .campos > label { display:flex; flex-direction:column; gap:.3rem; color:var(--suave); font-size:.88rem; }
-.campos { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem 1.25rem; }
+.campos { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:1rem 1.25rem; align-items:start; }
+.campos > label.largo, .campos > .largo { grid-column:1 / -1; }
 .campos small, .formulario-vertical small { color:var(--suave); font-size:.8rem; }
 fieldset { border:1px solid var(--borda); border-radius:10px; padding:.75rem 1rem 1rem; margin:0; }
 legend { font-weight:600; padding:0 .25rem; }
