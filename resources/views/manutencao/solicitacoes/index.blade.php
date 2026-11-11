@@ -9,11 +9,11 @@
   <p class="trilha">Ordens de serviço</p>
   <div class="titulo-com-acao">
     <h1>Solicitações de serviço (SS)</h1>
-    @if (auth()->user()->pode('os_solicitar') || auth()->user()->pode('os_aprovar'))
+    @if (\App\Support\AcessoOs::podeSolicitar(auth()->user()))
       <a class="botao" href="{{ route('os.solicitacoes.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova solicitação</a>
     @endif
   </div>
-  <p class="suave">Qualquer setor abre a SS. A manutenção analisa: <strong>aprovada</strong>, ela vira uma ordem de serviço (OS) com os mesmos
+  <p class="suave">Quem tem o perfil Solicitante abre a SS. Você vê as suas, as do seu centro de custo e, se for da manutenção, as da sua área. A manutenção analisa: <strong>aprovada</strong>, ela vira uma ordem de serviço (OS) com os mesmos
     dados; <strong>rejeitada</strong>, o motivo aparece aqui para o solicitante.</p>
 
   <div class="os-totais">
@@ -26,7 +26,7 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>SS</th><th>Situação</th><th>Tipo</th><th>Prioridade</th><th>Máquina</th><th>Área executante</th><th>Descrição</th><th>Solicitante</th><th>Aberta em</th></tr></thead>
+    <thead><tr><th>SS</th><th>Situação</th><th>Tipo</th><th>Prioridade</th><th>Máquina</th><th>Área executante</th><th>Título</th><th>Solicitante</th><th>Aberta em</th></tr></thead>
     <tbody>
     @forelse ($solicitacoes as $ss)
       <tr>
@@ -38,7 +38,7 @@
         <td><span class="prioridade-{{ $ss->prioridade }}">{{ $ss->rotuloPrioridade() }}</span>@if ($ss->maquina_parada)<br><small class="os-parada">máquina parada</small>@endif</td>
         <td>@include('manutencao._maquina', ['maquina' => $ss->maquina])</td>
         <td>{{ $ss->areaExecutante?->nome }} <span class="etiqueta unidade-{{ $ss->unidade }}">{{ config('oee.unidades')[$ss->unidade] ?? $ss->unidade }}</span></td>
-        <td>{{ \Illuminate\Support\Str::limit($ss->descricao, 90) }}</td>
+        <td><strong>{{ $ss->titulo ?: \Illuminate\Support\Str::limit($ss->descricao, 60) }}</strong>@if ($ss->titulo)<br><small class="suave">{{ \Illuminate\Support\Str::limit($ss->descricao, 80) }}</small>@endif</td>
         <td>{{ $ss->solicitante?->nome }}</td>
         <td>@dataHora($ss->criado_em)</td>
       </tr>

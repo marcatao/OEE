@@ -11,7 +11,7 @@
   <p class="trilha">Ordens de serviço</p>
   <div class="titulo-com-acao">
     <h1>Ordens de serviço (OS)</h1>
-    @if (auth()->user()->pode('os_solicitar') || auth()->user()->pode('os_aprovar'))
+    @if (\App\Support\AcessoOs::podeSolicitar(auth()->user()))
       <a class="botao" href="{{ route('os.solicitacoes.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova solicitação</a>
     @endif
   </div>
@@ -28,7 +28,7 @@
 
   <form method="get" class="filtros">
     <input type="hidden" name="status" value="{{ $f['status'] }}">
-    <label>Buscar <input name="busca" value="{{ $f['busca'] }}" placeholder="Nº da OS/SS ou descrição"></label>
+    <label>Buscar <input name="busca" value="{{ $f['busca'] }}" placeholder="Nº da OS/SS, título ou descrição"></label>
     <label>Tipo
       <select name="tipo"><option value="">Todos</option>
         @foreach (SolicitacaoServico::TIPOS as $v => $r)<option value="{{ $v }}" @selected($f['tipo'] === $v)>{{ $r }}</option>@endforeach
@@ -47,7 +47,7 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>OS</th><th>Situação</th><th>Tipo</th><th>Prioridade</th><th>Máquina</th><th>Área / mantenedores</th><th>Descrição</th><th class="num">Horas</th><th>Emitida</th></tr></thead>
+    <thead><tr><th>OS</th><th>Situação</th><th>Tipo</th><th>Prioridade</th><th>Máquina</th><th>Área / mantenedores</th><th>Título</th><th class="num">Horas</th><th>Emitida</th></tr></thead>
     <tbody>
     @forelse ($ordens as $os)
       <tr>
@@ -59,7 +59,7 @@
         <td><span class="prioridade-{{ $os->prioridade }}">{{ $os->rotuloPrioridade() }}</span>@if ($os->maquina_parada && in_array($os->status, OrdemServico::STATUS_ABERTOS, true))<br><small class="os-parada">máquina parada</small>@endif</td>
         <td>@include('manutencao._maquina', ['maquina' => $os->maquina])</td>
         <td>{{ $os->areaExecutante?->nome }}<br><small class="suave">{{ $os->mantenedoresAtribuidos()->map->nomeExibicao()->join(', ') ?: 'definir depois' }}</small></td>
-        <td>{{ \Illuminate\Support\Str::limit($os->descricao, 90) }}</td>
+        <td><strong>{{ $os->titulo ?: \Illuminate\Support\Str::limit($os->descricao, 60) }}</strong>@if ($os->titulo)<br><small class="suave">{{ \Illuminate\Support\Str::limit($os->descricao, 80) }}</small>@endif</td>
         <td class="num">{{ HorasManutencao::hhmm($os->total_minutos) }}</td>
         <td>@dataHora($os->criado_em)</td>
       </tr>

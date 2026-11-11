@@ -71,6 +71,7 @@ final class FluxoOrdemServico
                 'centro_custo_solicitante' => $ss->centro_custo_solicitante,
                 'prioridade' => $ss->prioridade,
                 'maquina_parada' => $ss->maquina_parada,
+                'titulo' => $ss->titulo,
                 'descricao' => $ss->descricao,
                 'solicitante_id' => $ss->solicitante_id,
                 'aprovado_por_id' => $usuario->id,

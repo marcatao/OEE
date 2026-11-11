@@ -286,6 +286,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        nvarchar(120) titulo
     }
     os_apontamentos_horas {
         bigint id PK
@@ -531,6 +532,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        nvarchar(120) titulo
     }
     turnos {
         bigint id PK
@@ -702,7 +704,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
 | [`ordens_producao`](#ordens_producao) | Protheus | `id` | 26 | 0 |
-| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 31 | 12 |
+| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 32 | 12 |
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
 | [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 9 | 2 |
 | [`os_checklist`](#os_checklist) | Sistema | `id` | 9 | 3 |
@@ -722,7 +724,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`registros_login`](#registros_login) | Sistema | `id` | 8 | 1 |
 | [`sessions`](#sessions) | Infra | `id` | 6 | 0 |
 | [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 16 | 1 |
-| [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 21 | 8 |
+| [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 22 | 8 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
 | [`usuarios`](#usuarios) | Sistema | `id` | 22 | 0 |
@@ -1193,6 +1195,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `titulo` | `nvarchar(120)` | sim |  |  |
 
 **Índices:** `ux_ordens_servico_solicitacao` único (solicitacao_id) filtrado `WHERE solicitacao_id IS NOT NULL` (só SQL Server) · `ux_ordens_servico_plano_prevista` único (plano_preventiva_id, prevista_para) filtrado `WHERE plano_preventiva_id IS NOT NULL` (só SQL Server) · `ordens_servico_unidade_status_id_index` (unidade, status, id) · `ordens_servico_responsavel_id_status_index` (responsavel_id, status) · `ordens_servico_maquina_id_criado_em_index` (maquina_id, criado_em) · `ordens_servico_status_prevista_para_index` (status, prevista_para) · `ordens_servico_solicitante_id_index` (solicitante_id)
 
@@ -1614,6 +1617,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `titulo` | `nvarchar(120)` | sim |  |  |
 
 **Índices:** `solicitacoes_servico_unidade_status_id_index` (unidade, status, id) · `solicitacoes_servico_solicitante_id_id_index` (solicitante_id, id) · `solicitacoes_servico_maquina_id_index` (maquina_id)
 
@@ -1651,7 +1655,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `usuario_perfis_usuario_id_perfil_unique` único (usuario_id, perfil)
 
-**Regras (CHECK, só no SQL Server):** `ck_usuario_perfis_perfil`: `perfil IN ('operador', 'admin_producao', 'admin_tecnologia', 'mantenedor_producao', 'mantenedor_tecnologia')`
+**Regras (CHECK, só no SQL Server):** `ck_usuario_perfis_perfil`: `perfil IN ('operador', 'admin_producao', 'admin_tecnologia', 'mantenedor_producao', 'mantenedor_tecnologia', 'solicitante_manutencao', 'solicitante_tecnologia')`
 
 ### usuarios
 

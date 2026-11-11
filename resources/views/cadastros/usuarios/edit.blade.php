@@ -26,16 +26,21 @@
       <legend>Perfis</legend>
       <p class="suave">Marque um ou mais. Sem nenhum perfil, o usuário entra no portal mas não vê nenhuma página.
         Perfis de <strong>Manutenção</strong> enxergam os cadastros de manutenção; de <strong>Tecnologia</strong>, os de tecnologia;
-        cadastros marcados como <strong>Ambos</strong> aparecem para os dois.</p>
+        cadastros marcados como <strong>Ambos</strong> aparecem para os dois. Só quem é <strong>Solicitante</strong> de uma área abre
+        solicitações de serviço (SS) para ela.</p>
       @php($perfisMarcados = old('perfis', $usuario->perfisAcesso()))
-      <div class="grade-opcoes largas">
-      @foreach ($perfis as $valor => $perfil)
-        <label class="opcao">
-          <input type="checkbox" name="perfis[]" value="{{ $valor }}" @checked(in_array($valor, $perfisMarcados, true))>
-          <span><strong>{{ $perfil['rotulo'] }}</strong>
-            @foreach ($perfil['unidades'] as $unidade)<span class="etiqueta unidade-{{ $unidade }}">{{ config('oee.unidades')[$unidade] }}</span> @endforeach
-            <small>{{ $perfil['descricao'] }}</small></span>
-        </label>
+      <div class="perfis-areas">
+      @foreach (['manutencao' => 'Manutenção (produção)', 'tecnologia' => 'Tecnologia'] as $area => $tituloArea)
+        <fieldset class="perfis-area">
+          <legend><span class="etiqueta unidade-{{ $area }}">{{ $tituloArea }}</span></legend>
+          @foreach ($perfis as $valor => $perfil)
+            @continue(($perfil['area'] ?? 'manutencao') !== $area)
+            <label class="opcao">
+              <input type="checkbox" name="perfis[]" value="{{ $valor }}" @checked(in_array($valor, $perfisMarcados, true))>
+              <span><strong>{{ $perfil['rotulo'] }}</strong><small>{{ $perfil['descricao'] }}</small></span>
+            </label>
+          @endforeach
+        </fieldset>
       @endforeach
       </div>
     </fieldset>

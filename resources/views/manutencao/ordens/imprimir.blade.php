@@ -7,7 +7,7 @@
 @section('conteudo')
 <section class="cartao">
   <div class="titulo-com-acao">
-    <h1>{{ config('oee.nome') }} — {{ $os->numeroFormatado() }}</h1>
+    <h1>{{ config('oee.nome') }} — {{ $os->numeroFormatado() }}@if ($os->titulo)<br><small>{{ $os->titulo }}</small>@endif</h1>
     <button class="botao nao-imprimir" type="button" onclick="window.print()">@include('layouts.partials.icone', ['nome' => 'imprimir']) Imprimir</button>
   </div>
   <dl class="dados-curtos">

@@ -6,7 +6,7 @@
 <section class="cartao">
   <p class="trilha">Ordens de serviço › <a href="{{ route('os.solicitacoes.index') }}">Solicitações</a></p>
   <div class="titulo-com-acao">
-    <h1>{{ $ss->numeroFormatado() }}</h1>
+    <h1>{{ $ss->numeroFormatado() }}@if ($ss->titulo) — {{ $ss->titulo }}@endif</h1>
     <div class="os-cabecalho">
       <span class="etiqueta os-{{ $ss->status }}">{{ $ss->rotuloStatus() }}</span>
       @if ($ss->ordemServico)<a class="botao" href="{{ route('os.ordens.show', $ss->ordemServico) }}">Abrir {{ $ss->ordemServico->numeroFormatado() }}</a>@endif
@@ -49,7 +49,7 @@
           <button class="botao secundario" type="submit">Rejeitar</button>
         </form>
       @endif
-      @if ($ss->solicitante_id === auth()->id() || $podeAprovar)
+      @if ($podeCancelar)
         <form method="post" action="{{ route('os.solicitacoes.cancelar', $ss) }}" onsubmit="return confirm('Cancelar esta solicitação?')">
           @csrf
           <button class="botao secundario" type="submit">Cancelar solicitação</button>

@@ -44,7 +44,7 @@ class SolicitacaoServico extends Model
 
     protected $table = 'solicitacoes_servico';
 
-    protected $fillable = ['unidade', 'solicitante_id', 'tipo', 'maquina_id', 'area_executante_id', 'centro_custo',
+    protected $fillable = ['titulo', 'unidade', 'solicitante_id', 'tipo', 'maquina_id', 'area_executante_id', 'centro_custo',
         'centro_custo_solicitante', 'prioridade', 'maquina_parada', 'descricao', 'status', 'analisado_por_id',
         'analisado_em', 'motivo_rejeicao', 'apontamento_estado_id', 'ordem_producao_id'];
 

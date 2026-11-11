@@ -84,13 +84,13 @@ Route::middleware('auth')->group(function () {
             Route::get('ordens/{ordem}', [OrdemServicoController::class, 'show'])->whereNumber('ordem')->name('ordens.show');
             Route::get('ordens/{ordem}/imprimir', [OrdemServicoController::class, 'imprimir'])->whereNumber('ordem')->name('ordens.imprimir');
             Route::post('ordens/{ordem}/aceite', [OrdemServicoController::class, 'aceite'])->whereNumber('ordem')->name('ordens.aceite');
-        });
-        Route::middleware('permissao:os_solicitar,os_aprovar')->group(function () {
+            // Abrir SS: só com o perfil Solicitante (conferido no controlador). Cancelar/reabrir: autor ou administrador da área.
             Route::get('solicitacoes/nova', [SolicitacaoController::class, 'create'])->name('solicitacoes.create');
             Route::post('solicitacoes', [SolicitacaoController::class, 'store'])->name('solicitacoes.store');
             Route::get('solicitacoes/{solicitacao}/editar', [SolicitacaoController::class, 'edit'])->whereNumber('solicitacao')->name('solicitacoes.edit');
             Route::put('solicitacoes/{solicitacao}', [SolicitacaoController::class, 'update'])->whereNumber('solicitacao')->name('solicitacoes.update');
             Route::post('solicitacoes/{solicitacao}/cancelar', [SolicitacaoController::class, 'cancelar'])->whereNumber('solicitacao')->name('solicitacoes.cancelar');
+            Route::post('ordens/{ordem}/acao', [OrdemServicoController::class, 'acao'])->whereNumber('ordem')->name('ordens.acao');
         });
         Route::middleware('permissao:os_aprovar')->group(function () {
             Route::post('solicitacoes/{solicitacao}/aprovar', [SolicitacaoController::class, 'aprovar'])->whereNumber('solicitacao')->name('solicitacoes.aprovar');
@@ -102,7 +102,6 @@ Route::middleware('auth')->group(function () {
         });
         Route::middleware($executa)->group(function () {
             Route::get('minhas', [ApontamentoHorasController::class, 'minhas'])->name('minhas');
-            Route::post('ordens/{ordem}/acao', [OrdemServicoController::class, 'acao'])->whereNumber('ordem')->name('ordens.acao');
             Route::put('ordens/{ordem}/checklist', [OrdemServicoController::class, 'checklist'])->whereNumber('ordem')->name('ordens.checklist');
             Route::post('ordens/{ordem}/apontamentos/iniciar', [ApontamentoHorasController::class, 'iniciar'])->whereNumber('ordem')->name('apontamentos.iniciar');
             Route::post('ordens/{ordem}/apontamentos', [ApontamentoHorasController::class, 'store'])->whereNumber('ordem')->name('apontamentos.store');

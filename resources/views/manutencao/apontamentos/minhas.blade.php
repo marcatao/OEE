@@ -37,6 +37,7 @@
       <div class="os-cabecalho"><a href="{{ route('os.ordens.show', $os) }}"><strong>{{ $os->numeroFormatado() }}</strong></a>
         <span class="etiqueta os-{{ $os->status }}">{{ $os->rotuloStatus() }}</span><span class="prioridade-{{ $os->prioridade }}">{{ $os->rotuloPrioridade() }}</span></div>
       <div>@include('manutencao._maquina', ['maquina' => $os->maquina])@if ($os->maquina_parada) <span class="os-parada">parada</span>@endif</div>
+      @if ($os->titulo)<strong>{{ $os->titulo }}</strong>@endif
       <div class="suave">{{ \Illuminate\Support\Str::limit($os->descricao, 140) }}</div>
       @if ($mantenedor && ! $rodando)
         <form method="post" action="{{ route('os.apontamentos.iniciar', $os) }}">@csrf<button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'cronometro']) Iniciar</button></form>

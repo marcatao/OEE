@@ -14,6 +14,7 @@ use App\Support\AcessoOs;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -47,6 +48,7 @@ class SolicitacaoController extends Controller
 
     public function create(Request $request): View
     {
+        $this->exigirSolicitante($request);
         $ss = new SolicitacaoServico(['tipo' => 'corretiva', 'prioridade' => 'media', 'maquina_parada' => false]);
         // Aberta a partir de uma parada do apontamento real (Timeline): já vem com a máquina e a OP.
         if ($request->filled('apontamento')) {
@@ -59,11 +61,12 @@ class SolicitacaoController extends Controller
             $ss->maquina_id = $request->integer('maquina');
         }
 
-        return view('manutencao.solicitacoes.form', $this->dadosFormulario($ss));
+        return view('manutencao.solicitacoes.form', $this->dadosFormulario($ss, $request));
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $this->exigirSolicitante($request);
         $ss = new SolicitacaoServico(['solicitante_id' => $request->user()->id, 'status' => 'pendente',
             'centro_custo_solicitante' => $request->user()->local_escritorio ?: $request->user()->departamento]);
         $this->salvar($request, $ss);
@@ -82,6 +85,7 @@ class SolicitacaoController extends Controller
             'mantenedores' => AcessoOs::mantenedores(),
             'meuMantenedor' => AcessoOs::mantenedorDo($request->user()),
             'podeAprovar' => AcessoOs::podeAprovar($request->user()),
+            'podeCancelar' => AcessoOs::podeCancelar($request->user(), $ss),
         ]);
     }
 
@@ -90,7 +94,7 @@ class SolicitacaoController extends Controller
         $ss = $this->buscar($request, $solicitacao);
         $this->exigirEdicao($request, $ss);
 
-        return view('manutencao.solicitacoes.form', $this->dadosFormulario($ss));
+        return view('manutencao.solicitacoes.form', $this->dadosFormulario($ss, $request));
     }
 
     public function update(Request $request, int $solicitacao): RedirectResponse
@@ -129,7 +133,7 @@ class SolicitacaoController extends Controller
     public function cancelar(Request $request, int $solicitacao): RedirectResponse
     {
         $ss = $this->buscar($request, $solicitacao);
-        abort_unless($ss->solicitante_id === $request->user()->id || AcessoOs::podeAprovar($request->user()), 403);
+        abort_unless(AcessoOs::podeCancelar($request->user(), $ss), 403, 'Só o autor da solicitação ou o administrador da área pode cancelar.');
         $this->fluxo->cancelarSolicitacao($ss, $request->user(), $request->input('observacao'));
 
         return redirect()->route('os.solicitacoes.show', $ss)->with('ok', 'Solicitação cancelada.');
@@ -150,13 +154,39 @@ class SolicitacaoController extends Controller
             'Só quem aprova solicitações pode alterar uma SS que já foi analisada.');
     }
 
-    private function dadosFormulario(SolicitacaoServico $ss): array
+    /** Só quem tem o perfil Solicitante (de Manutenção e/ou de Tecnologia) abre SS. */
+    private function exigirSolicitante(Request $request): void
     {
+        abort_unless(AcessoOs::podeSolicitar($request->user()), 403,
+            'Para abrir solicitações você precisa do perfil Solicitante de Manutenção ou de Tecnologia. Fale com um administrador.');
+    }
+
+    /** Quem aprova (ao editar) escolhe qualquer área; quem solicita, só as da unidade em que é Solicitante. */
+    private function areasPermitidas(Request $request, SolicitacaoServico $ss)
+    {
+        $u = $request->user();
+        if ($ss->exists && $ss->solicitante_id !== $u->id && AcessoOs::podeAprovar($u)) {
+            return AcessoOs::areas();
+        }
+
+        return AcessoOs::areasParaSolicitar($u);
+    }
+
+    private function dadosFormulario(SolicitacaoServico $ss, Request $request): array
+    {
+        $u = $request->user();
+        $autor = $ss->exists ? ($ss->solicitante ?? $u) : $u;
+        $areas = $this->areasPermitidas($request, $ss);
+        if ($ss->exists && $ss->area_executante_id && ! $areas->contains('id', $ss->area_executante_id) && $ss->areaExecutante) {
+            $areas->push($ss->areaExecutante);
+        }
+
         return [
             'ss' => $ss,
             'maquinas' => AcessoOs::maquinas(),
-            'areas' => AcessoOs::areas(),
+            'areas' => $areas,
             'centros' => AcessoOs::centrosCusto(),
+            'ccUsuario' => AcessoOs::centroCustoDo($autor),
             'sugestoes' => SugestaoDescricao::withoutGlobalScope('unidade')->where('ativo', true)->orderBy('texto')->pluck('texto'),
         ];
     }
@@ -164,9 +194,10 @@ class SolicitacaoController extends Controller
     private function salvar(Request $request, SolicitacaoServico $ss): void
     {
         $dados = $request->validate([
+            'titulo' => ['required', 'string', 'max:120'],
             'tipo' => ['required', Rule::in(array_keys(SolicitacaoServico::TIPOS))],
             'maquina_id' => ['nullable', 'integer', Rule::exists('maquinas', 'id')],
-            'area_executante_id' => ['required', 'integer', Rule::exists('os_areas_executantes', 'id')->where('ativo', true)],
+            'area_executante_id' => ['required', 'integer', Rule::exists('os_areas_executantes', 'id')],
             'centro_custo' => ['nullable', 'string', 'max:20'],
             'prioridade' => ['required', Rule::in(array_keys(SolicitacaoServico::PRIORIDADES))],
             'maquina_parada' => ['nullable', 'boolean'],
@@ -174,17 +205,35 @@ class SolicitacaoController extends Controller
             'apontamento_estado_id' => ['nullable', 'integer', Rule::exists('apontamentos_estado', 'id')],
             'ordem_producao_id' => ['nullable', 'integer', Rule::exists('ordens_producao', 'id')],
         ], [
+            'titulo.required' => 'Escreva um título resumido.',
             'area_executante_id.required' => 'Escolha a área executante (quem vai fazer o serviço).',
             'descricao.required' => 'Descreva o problema ou o serviço.',
         ]);
         $dados['maquina_parada'] = (bool) ($dados['maquina_parada'] ?? false);
+        if (! $this->areasPermitidas($request, $ss)->contains('id', (int) $dados['area_executante_id'])
+            && ! ($ss->exists && (int) $ss->area_executante_id === (int) $dados['area_executante_id'])) {
+            throw ValidationException::withMessages(['area_executante_id' => 'Você não é solicitante da área desta área executante.']);
+        }
 
         $area = AreaExecutante::withoutGlobalScopes()->find($dados['area_executante_id']);
         $maquina = isset($dados['maquina_id']) ? Maquina::withoutGlobalScopes()->find($dados['maquina_id']) : null;
-        if (empty($dados['centro_custo']) && $maquina) {
-            $dados['centro_custo'] = $maquina->centro_custo;
+
+        // Centro de custo: o da máquina (travado); sem máquina ou máquina sem CC, o informado ou o do autor; senão é obrigatório.
+        $ccMaquina = trim((string) $maquina?->centro_custo);
+        $autor = $ss->exists ? ($ss->solicitante ?? $request->user()) : $request->user();
+        $cc = $ccMaquina !== '' ? $ccMaquina : (trim((string) ($dados['centro_custo'] ?? '')) ?: (string) AcessoOs::centroCustoDo($autor));
+        if ($cc === '') {
+            throw ValidationException::withMessages(['centro_custo' => 'Selecione o centro de custo.']);
         }
+        if ($ccMaquina === '' && ! AcessoOs::centroCustoExiste($cc)) {
+            throw ValidationException::withMessages(['centro_custo' => 'Escolha um centro de custo da lista.']);
+        }
+        $dados['centro_custo'] = $cc;
         $dados['unidade'] = OrdemServico::unidadePara($area, $maquina);
+        $ehAprovadorEditando = $ss->exists && $ss->solicitante_id !== $request->user()->id && AcessoOs::podeAprovar($request->user());
+        if (! $ehAprovadorEditando && ! in_array($dados['unidade'], AcessoOs::unidadesSolicitante($request->user()), true)) {
+            throw ValidationException::withMessages(['area_executante_id' => 'Você não é solicitante de '.(config('oee.unidades')[$dados['unidade']] ?? $dados['unidade']).'.']);
+        }
         $ss->fill($dados)->save();
     }
 }

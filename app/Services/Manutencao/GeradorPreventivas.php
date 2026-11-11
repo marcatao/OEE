@@ -67,6 +67,7 @@ final class GeradorPreventivas
                 'centro_custo' => $maquina?->centro_custo,
                 'prioridade' => $plano->prioridade ?: 'media',
                 'maquina_parada' => false,
+                'titulo' => mb_substr("Preventiva {$plano->codigo}: {$plano->descricao}", 0, 120),
                 'descricao' => "Preventiva {$plano->codigo}: {$plano->descricao}",
                 'responsavel_id' => $plano->responsavel_id,
                 'status' => 'aberta',

@@ -59,13 +59,24 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
 - **Mantenedor = usuário do portal** (`os_mantenedores.usuario_id`): nome, foto, e-mail e departamento vêm do login
   (Entra ID); o cadastro da manutenção só guarda o adicional (matrícula, CC, jornada, dias) e as **várias áreas
   executantes** que ele atende (`os_mantenedor_areas`; `area_executante_id` = a principal, a primeira).
+- **Quem abre SS**: só usuários com o perfil **Solicitante de Manutenção** e/ou **Solicitante de Tecnologia** (cadastro de
+  usuários, perfis separados por área), e só para as áreas executantes daquela unidade (`AcessoOs::areasParaSolicitar`).
+  O Administrador de Tecnologia pode tudo. A SS tem **título resumido** (`titulo`), copiado para a OS.
+- **Quem vê** (`AcessoOs::filtrar`): o solicitante vê as SS/OS dele e as do **seu centro de custo**; o mantenedor vê as
+  das **áreas executantes que atende** (sem áreas cadastradas: as da unidade do perfil) e as OS em que está atribuído;
+  o administrador da área vê todas da unidade (Adm. Produção = Manutenção; Adm. Tecnologia = tudo).
+- **Cancelar SS/OS e reabrir OS**: só o **administrador da área** ou o **próprio autor** da solicitação (mesmo que seja
+  mantenedor). Mantenedores aprovam e executam, mas não cancelam nem reabrem o que não abriram.
+- **Centro de custo da SS**: com máquina que tem CC, vale o da máquina (travado na tela e forçado no servidor); sem
+  máquina ou máquina sem CC, o do solicitante (o "Centro de custo" do Entra, `usuarios.local_escritorio`, quando é um
+  código de `centros_custo`; `AcessoOs::centroCustoDo`); sem nenhum, é obrigatório escolher da lista (código + descrição).
 - **Vários mantenedores por OS** (`os_ordem_mantenedores`; `responsavel_id` = o principal, o primeiro). Na aprovação da
   SS escolhe-se um ou mais (nenhum = definir depois). Os **próprios mantenedores abrem e aprovam SS**; se quem aprova é
   mantenedor, ele já vem marcado e fica sempre atribuído à OS. Quem inicia apontamento numa OS também passa a estar
   atribuído. Use `OrdemServico::atribuirMantenedores()`, `incluirMantenedor()` e `mantenedoresAtribuidos()`.
 - SQL Server: nunca repita a mesma coluna no ORDER BY (a relação já ordenada + `orderBy` na tela = erro 169). As
   relações do módulo não ordenam; a tela ordena. O teste `OrdensServicoTest` acusa a repetição.
-- Permissões (`config/oee.php`): `os_solicitar` (abrir SS e acompanhar as suas), `os_aprovar` (analisar SS,
+- Permissões (`config/oee.php`): `os_solicitar` (ver as SS — abrir exige o perfil Solicitante), `os_aprovar` (analisar SS,
   distribuir e editar OS), `solicitacoes_manutencao` (executar: apontar horas, materiais, checklist, concluir),
   `os_almoxarifado` (atender requisições de material e compras), `os_preventivas` (PAMP e planos),
   `os_relatorios` (relatórios de horas). Cadastros da manutenção: `perfil:admin_producao,admin_tecnologia`.

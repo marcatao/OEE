@@ -11,7 +11,7 @@
 <section class="cartao">
   <p class="trilha">Ordens de serviço › <a href="{{ route('os.ordens.index') }}">OS</a></p>
   <div class="titulo-com-acao">
-    <h1>{{ $os->numeroFormatado() }} <small class="suave">{{ $os->rotuloTipo() }}</small></h1>
+    <h1>{{ $os->numeroFormatado() }}@if ($os->titulo) — {{ $os->titulo }}@endif <small class="suave">{{ $os->rotuloTipo() }}</small></h1>
     <div class="os-cabecalho">
       <span class="etiqueta os-{{ $os->status }}">{{ $os->rotuloStatus() }}</span>
       <a class="botao secundario" href="{{ route('os.ordens.imprimir', $os) }}" target="_blank">@include('layouts.partials.icone', ['nome' => 'imprimir']) Imprimir</a>
@@ -39,15 +39,14 @@
   @if ($os->aceite_em)<p class="aviso ok">Aceite de {{ $os->aceitePor?->nome }} em @dataHora($os->aceite_em).@if ($os->aceite_observacao) {{ $os->aceite_observacao }}@endif</p>@endif
 
   <div class="os-acoes">
-    @if ($podeExecutar && $acoes)
+    @php($acoesVisiveis = collect($acoes)->filter(fn ($r, $a) => in_array($a, ['cancelar', 'reabrir'], true) ? $podeCancelar : $podeExecutar))
+    @if ($acoesVisiveis->isNotEmpty())
       <form method="post" action="{{ route('os.ordens.acao', $os) }}">
         @csrf
         <label>Observação <input name="observacao" maxlength="2000" placeholder="opcional (obrigatória para cancelar)"></label>
-        @foreach ($acoes as $acao => $rotulo)
-          @if (! in_array($acao, ['cancelar', 'reabrir'], true) || $podeAprovar)
+        @foreach ($acoesVisiveis as $acao => $rotulo)
             <button class="botao {{ in_array($acao, ['cancelar', 'reabrir', 'aguardar_material'], true) ? 'secundario' : '' }}" type="submit" name="acao" value="{{ $acao }}"
               @if ($acao === 'cancelar') onclick="return confirm('Cancelar esta OS?')" @endif>{{ $rotulo }}</button>
-          @endif
         @endforeach
       </form>
     @endif

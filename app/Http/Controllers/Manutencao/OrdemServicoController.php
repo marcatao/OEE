@@ -55,7 +55,7 @@ class OrdemServicoController extends Controller
         }
         if ($f['busca'] !== '') {
             $numero = (int) preg_replace('/\D/', '', $f['busca']);
-            $consulta->where(fn ($q) => $q->where('descricao', 'like', '%'.$f['busca'].'%')
+            $consulta->where(fn ($q) => $q->where('descricao', 'like', '%'.$f['busca'].'%')->orWhere('titulo', 'like', '%'.$f['busca'].'%')
                 ->when($numero > 0, fn ($q) => $q->orWhere('id', $numero)->orWhere('solicitacao_id', $numero)));
         }
         $totais = AcessoOs::filtrar(OrdemServico::query(), $u)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
@@ -86,6 +86,7 @@ class OrdemServicoController extends Controller
             'meuMantenedor' => AcessoOs::mantenedorDo($u),
             'podeAprovar' => AcessoOs::podeAprovar($u),
             'podeExecutar' => AcessoOs::podeExecutar($u),
+            'podeCancelar' => AcessoOs::podeCancelar($u, $os),
             'podeAceitar' => $os->status === 'concluida' && ($os->solicitante_id === $u->id || AcessoOs::podeAprovar($u)),
         ]);
     }
@@ -120,6 +121,7 @@ class OrdemServicoController extends Controller
     {
         $os = $this->buscar($request, $ordem);
         $dados = $request->validate([
+            'titulo' => ['nullable', 'string', 'max:120'],
             'tipo' => ['required', Rule::in(array_keys(SolicitacaoServico::TIPOS))],
             'maquina_id' => ['nullable', 'integer', Rule::exists('maquinas', 'id')],
             'area_executante_id' => ['required', 'integer', Rule::exists('os_areas_executantes', 'id')],
@@ -164,7 +166,9 @@ class OrdemServicoController extends Controller
         $os = $this->buscar($request, $ordem);
         $dados = $request->validate(['acao' => ['required', Rule::in(array_keys(FluxoOrdemServico::ACOES))], 'observacao' => ['nullable', 'string', 'max:2000']]);
         if (in_array($dados['acao'], ['cancelar', 'reabrir'], true)) {
-            abort_unless(AcessoOs::podeAprovar($request->user()), 403, 'Só quem aprova pode cancelar ou reabrir uma OS.');
+            abort_unless(AcessoOs::podeCancelar($request->user(), $os), 403, 'Só o autor da solicitação ou o administrador da área pode cancelar ou reabrir.');
+        } else {
+            abort_unless(AcessoOs::podeExecutar($request->user()), 403);
         }
         $this->fluxo->executarAcao($os, $dados['acao'], $request->user(), $dados['observacao'] ?? null);
 

@@ -13,6 +13,7 @@
 
   <form method="post" class="formulario-vertical" action="{{ route('os.ordens.update', $os) }}">
     @csrf @method('put')
+    <label>Título resumido <input name="titulo" maxlength="120" value="{{ old('titulo', $os->titulo) }}"></label>
     <div class="campos">
       <label>Tipo
         <select name="tipo" required>@foreach (SolicitacaoServico::TIPOS as $v => $r)<option value="{{ $v }}" @selected(old('tipo', $os->tipo) === $v)>{{ $r }}</option>@endforeach</select>

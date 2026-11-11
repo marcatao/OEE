@@ -42,7 +42,7 @@ class OrdemServico extends Model
 
     protected $table = 'ordens_servico';
 
-    protected $fillable = ['unidade', 'solicitacao_id', 'plano_preventiva_id', 'prevista_para', 'tipo', 'maquina_id',
+    protected $fillable = ['titulo', 'unidade', 'solicitacao_id', 'plano_preventiva_id', 'prevista_para', 'tipo', 'maquina_id',
         'area_executante_id', 'centro_custo', 'centro_custo_solicitante', 'prioridade', 'maquina_parada', 'descricao',
         'solicitante_id', 'aprovado_por_id', 'responsavel_id', 'status', 'iniciada_em', 'concluida_em', 'solucao',
         'aceite_por_id', 'aceite_em', 'aceite_observacao', 'cancelamento_motivo', 'ordem_producao_id',

@@ -37,39 +37,64 @@ return [
     // abaixo, em verde.
     'custo_tolerancia' => (float) env('OEE_CUSTO_TOLERANCIA', 0.05),
 
-    // Perfis de acesso (um usuário pode ter vários). "unidade" = ambiente que o perfil enxerga (manutencao, tecnologia
-    // ou as duas); "permissoes" = telas liberadas pelo perfil ('*' = todas do catálogo acima). Os grupos continuam
-    // somando permissões. O Administrador de Tecnologia vê tudo de tudo, inclusive a Segurança.
+    // Perfis de acesso (um usuário pode ter vários). "area" = em que área o perfil aparece no cadastro de usuários;
+    // "unidades" = ambientes dos cadastros que o perfil enxerga; "solicita" = áreas para as quais pode ABRIR SS (só os
+    // Solicitantes, e o Administrador de Tecnologia, que pode tudo); "permissoes" = telas ('*' = todas). Os grupos
+    // continuam somando permissões. O Administrador de Tecnologia vê tudo de tudo, inclusive a Segurança.
     'perfis_acesso' => [
+        // ----- Área Manutenção (produção) -----
         'operador' => [
             'rotulo' => 'Operador',
+            'area' => 'manutencao',
             'descricao' => 'Informa o apontamento real e vê as ordens de produção.',
             'unidades' => ['manutencao'],
-            'permissoes' => ['apontamentos', 'ordens_producao', 'os_solicitar'],
+            'permissoes' => ['apontamentos', 'ordens_producao'],
         ],
-        'admin_producao' => [
-            'rotulo' => 'Administrador de Produção',
-            'descricao' => 'Vê e cadastra tudo da produção/manutenção, exceto a Segurança.',
-            'unidades' => ['manutencao'],
-            'permissoes' => ['*'],
-        ],
-        'admin_tecnologia' => [
-            'rotulo' => 'Administrador de Tecnologia',
-            'descricao' => 'Vê tudo de tudo, inclusive a Segurança (usuários, grupos, acessos e banco de dados).',
-            'unidades' => ['manutencao', 'tecnologia'],
-            'permissoes' => ['*'],
+        'solicitante_manutencao' => [
+            'rotulo' => 'Solicitante de Manutenção',
+            'area' => 'manutencao',
+            'descricao' => 'Abre solicitações de serviço (SS) para as áreas da Manutenção e acompanha as suas e as do seu centro de custo.',
+            'unidades' => [],
+            'solicita' => ['manutencao'],
+            'permissoes' => ['os_solicitar'],
         ],
         'mantenedor_producao' => [
             'rotulo' => 'Mantenedor de Produção',
-            'descricao' => 'Abre, aprova e executa as SS/OS da manutenção e vê as máquinas de manutenção nos dashboards.',
+            'area' => 'manutencao',
+            'descricao' => 'Vê, aprova e executa as SS/OS das áreas executantes dele e as máquinas de manutenção nos dashboards.',
             'unidades' => ['manutencao'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_solicitar', 'os_aprovar'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_aprovar'],
+        ],
+        'admin_producao' => [
+            'rotulo' => 'Administrador de Produção',
+            'area' => 'manutencao',
+            'descricao' => 'Vê e cadastra tudo da produção/manutenção (todas as SS/OS da Manutenção), exceto a Segurança.',
+            'unidades' => ['manutencao'],
+            'permissoes' => ['*'],
+        ],
+        // ----- Área Tecnologia -----
+        'solicitante_tecnologia' => [
+            'rotulo' => 'Solicitante de Tecnologia',
+            'area' => 'tecnologia',
+            'descricao' => 'Abre solicitações de serviço (SS) para as áreas de Tecnologia e acompanha as suas e as do seu centro de custo.',
+            'unidades' => [],
+            'solicita' => ['tecnologia'],
+            'permissoes' => ['os_solicitar'],
         ],
         'mantenedor_tecnologia' => [
             'rotulo' => 'Mantenedor de Tecnologia',
-            'descricao' => 'Abre, aprova e executa as SS/OS de tecnologia e vê equipamentos e dashboards de tecnologia.',
+            'area' => 'tecnologia',
+            'descricao' => 'Vê, aprova e executa as SS/OS das áreas executantes dele e vê equipamentos e dashboards de tecnologia.',
             'unidades' => ['tecnologia'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_solicitar', 'os_aprovar'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_aprovar'],
+        ],
+        'admin_tecnologia' => [
+            'rotulo' => 'Administrador de Tecnologia',
+            'area' => 'tecnologia',
+            'descricao' => 'Vê tudo de tudo, inclusive a Segurança (usuários, grupos, acessos e banco de dados).',
+            'unidades' => ['manutencao', 'tecnologia'],
+            'solicita' => ['manutencao', 'tecnologia'],
+            'permissoes' => ['*'],
         ],
     ],
 
