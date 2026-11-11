@@ -94,12 +94,14 @@ class OrdensServicoTest extends TestCase
         $this->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar")->assertForbidden();
 
         // Líder aprova e distribui: a SS vira OS com os mesmos dados.
-        $this->actingAs($lider)->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar", ['responsavel_id' => $mantenedor->id])->assertRedirect();
+        $this->actingAs($lider)->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar", ['mantenedores' => [$mantenedor->id]])->assertRedirect();
         $os = OrdemServico::where('solicitacao_id', $ss->id)->firstOrFail();
         $this->assertSame('aberta', $os->status);
         $this->assertSame($lider->id, $ss->fresh()->analisado_por_id);
         $this->assertSame('Vazamento de óleo no cilindro', $os->descricao);
         $this->assertTrue($os->maquina_parada);
+        $this->assertSame([$mantenedor->id], $os->mantenedores()->pluck('os_mantenedores.id')->map(fn ($i) => (int) $i)->all());
+        $this->assertSame($mantenedor->id, $os->responsavel_id);
 
         // Mecânico inicia, requisita material e encerra o apontamento.
         $this->actingAs($mecanico)->get('/ordens-de-servico/minhas')->assertOk()->assertSee($os->numeroFormatado());
@@ -126,6 +128,36 @@ class OrdensServicoTest extends TestCase
         $this->assertSame($operador->id, $os->fresh()->aceite_por_id);
         $this->get("/ordens-de-servico/ordens/{$os->id}/imprimir")->assertOk()->assertSee('Solicitante');
         $this->assertGreaterThanOrEqual(5, $os->historico()->count());
+    }
+
+    public function test_mantenedor_abre_e_aprova_e_fica_atribuido_com_outros(): void
+    {
+        $joao = $this->usuario(['mantenedor_producao'], 'joao@empresa.com');
+        $pedro = $this->usuario(['mantenedor_producao'], 'pedro@empresa.com');
+        $mJoao = Mantenedor::create(['nome' => 'Joao', 'usuario_id' => $joao->id]);
+        $mPedro = Mantenedor::create(['nome' => 'Pedro', 'usuario_id' => $pedro->id]);
+
+        $ss = $this->abrirSs($joao);
+        // Na aprovação, o mantenedor logado já vem marcado.
+        $this->get("/ordens-de-servico/solicitacoes/{$ss->id}")->assertOk()->assertSee('você — fica atribuído');
+        // Mesmo sem se marcar, ele fica atribuído; e pode incluir outros.
+        $this->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar", ['mantenedores' => [$mPedro->id]])->assertRedirect();
+        $os = OrdemServico::where('solicitacao_id', $ss->id)->firstOrFail();
+        $this->assertEqualsCanonicalizing([$mJoao->id, $mPedro->id], $os->mantenedores()->pluck('os_mantenedores.id')->map(fn ($i) => (int) $i)->all());
+        $this->assertSame($mJoao->id, $os->responsavel_id);
+        // A OS aparece em "Apontar horas" dos dois.
+        $this->actingAs($pedro)->get('/ordens-de-servico/minhas')->assertOk()->assertSee($os->numeroFormatado());
+
+        // Aprovador que não é mantenedor pode deixar para definir depois e distribuir depois.
+        $lider = $this->usuario(['admin_producao'], 'lider@empresa.com');
+        $ss2 = $this->abrirSs($lider);
+        $this->post("/ordens-de-servico/solicitacoes/{$ss2->id}/aprovar")->assertRedirect();
+        $os2 = OrdemServico::where('solicitacao_id', $ss2->id)->firstOrFail();
+        $this->assertSame(0, $os2->mantenedores()->count());
+        $this->assertNull($os2->responsavel_id);
+        $this->post("/ordens-de-servico/ordens/{$os2->id}/distribuir", ['mantenedores' => [$mPedro->id, $mJoao->id]])->assertRedirect();
+        $this->assertSame(2, $os2->mantenedores()->count());
+        $this->assertSame($mPedro->id, $os2->fresh()->responsavel_id);
     }
 
     public function test_rejeicao_volta_ao_solicitante_com_motivo(): void
@@ -193,9 +225,18 @@ class OrdensServicoTest extends TestCase
             $this->get($url)->assertOk();
         }
         $this->get('/ordens-de-servico/relatorios/horas?formato=csv')->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');
-        $this->post('/ordens-de-servico/cadastros/mantenedores', ['unidade' => 'manutencao', 'nome' => 'Maria', 'jornada_inicio' => '06:00',
-            'jornada_fim' => '14:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'ativo' => '1'])->assertRedirect();
-        $this->assertSame('12345', Mantenedor::where('nome', 'Maria')->value('dias_semana'));
+        // Mantenedor vem do cadastro de usuários (nome, foto, e-mail) e atende várias áreas.
+        $maria = $this->usuario(['mantenedor_producao'], 'maria@empresa.com');
+        $this->actingAs($admin)->post('/ordens-de-servico/cadastros/mantenedores', ['unidade' => 'manutencao', 'jornada_inicio' => '06:00',
+            'jornada_fim' => '14:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'ativo' => '1'])->assertSessionHasErrors(['usuario_id', 'areas']);
+        $this->post('/ordens-de-servico/cadastros/mantenedores', ['unidade' => 'manutencao', 'usuario_id' => $maria->id, 'jornada_inicio' => '06:00',
+            'jornada_fim' => '14:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'areas' => [$this->mecanica->id, $this->ti->id], 'ativo' => '1'])->assertRedirect();
+        $m = Mantenedor::where('usuario_id', $maria->id)->firstOrFail();
+        $this->assertSame('Maria', $m->nome);
+        $this->assertSame('12345', $m->dias_semana);
+        $this->assertSame(2, $m->areas()->count());
+        $this->assertSame($this->mecanica->id, $m->area_executante_id);
+        $this->get('/ordens-de-servico/cadastros/mantenedores')->assertOk()->assertSee('maria@empresa.com')->assertSee('Suporte de TI');
 
         // Operador não abre relatórios nem cadastros, mas vê o menu de OS.
         $this->actingAs($this->usuario(['operador'], 'op@empresa.com'));

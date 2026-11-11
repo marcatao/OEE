@@ -37,7 +37,7 @@ class OrdemServicoController extends Controller
         ];
         $consulta = AcessoOs::filtrar(OrdemServico::query(), $u)
             ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
-                'responsavel' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante']);
+                'responsavel' => fn ($q) => $q->withoutGlobalScopes(), 'mantenedores.usuario', 'solicitante']);
         if ($f['status'] === 'em_aberto') {
             $consulta->whereIn('status', self::EM_ABERTO);
         } elseif (isset(OrdemServico::STATUS[$f['status']])) {
@@ -50,7 +50,8 @@ class OrdemServicoController extends Controller
             $consulta->where('maquina_id', $f['maquina']);
         }
         if ($f['responsavel']) {
-            $consulta->where('responsavel_id', $f['responsavel']);
+            $consulta->where(fn ($q) => $q->where('responsavel_id', $f['responsavel'])
+                ->orWhereHas('mantenedores', fn ($m) => $m->where('os_mantenedores.id', $f['responsavel'])));
         }
         if ($f['busca'] !== '') {
             $numero = (int) preg_replace('/\D/', '', $f['busca']);
@@ -146,15 +147,16 @@ class OrdemServicoController extends Controller
         return redirect()->route('os.ordens.show', $os)->with('ok', 'OS atualizada.');
     }
 
-    /** Distribui (ou troca) o mantenedor responsável. */
+    /** Distribui a OS para um ou mais mantenedores (nenhum = definir depois). */
     public function distribuir(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscar($request, $ordem);
-        $dados = $request->validate(['responsavel_id' => ['nullable', 'integer', Rule::exists('os_mantenedores', 'id')]]);
-        $os->forceFill(['responsavel_id' => $dados['responsavel_id'] ?? null])->save();
-        $this->fluxo->registrar($os, null, 'distribuida', $os->status, $os->status, 'Responsável: '.($os->responsavel()->withoutGlobalScopes()->value('nome') ?? 'ninguém'), $request->user());
+        $dados = $request->validate(['mantenedores' => ['nullable', 'array'], 'mantenedores.*' => ['integer', Rule::exists('os_mantenedores', 'id')]]);
+        $os->atribuirMantenedores($dados['mantenedores'] ?? []);
+        $nomes = $os->mantenedores()->with('usuario')->get()->map->nomeExibicao()->join(', ');
+        $this->fluxo->registrar($os, null, 'distribuida', $os->status, $os->status, 'Mantenedores: '.($nomes ?: 'definir depois'), $request->user());
 
-        return back()->with('ok', 'Responsável atualizado.');
+        return back()->with('ok', 'Mantenedores atualizados.');
     }
 
     public function acao(Request $request, int $ordem): RedirectResponse
@@ -207,7 +209,7 @@ class OrdemServicoController extends Controller
     {
         return AcessoOs::filtrar(OrdemServico::query(), $request->user())
             ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
-                'responsavel' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante', 'aprovadoPor', 'solicitacao', 'plano' => fn ($q) => $q->withoutGlobalScopes(), 'checklist'])
+                'responsavel' => fn ($q) => $q->withoutGlobalScopes(), 'mantenedores.usuario', 'solicitante', 'aprovadoPor', 'solicitacao', 'plano' => fn ($q) => $q->withoutGlobalScopes(), 'checklist'])
             ->findOrFail($id);
     }
 }

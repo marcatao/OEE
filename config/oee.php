@@ -61,15 +61,15 @@ return [
         ],
         'mantenedor_producao' => [
             'rotulo' => 'Mantenedor de Produção',
-            'descricao' => 'Solicitações de manutenção e as máquinas de manutenção nos dashboards.',
+            'descricao' => 'Abre, aprova e executa as SS/OS da manutenção e vê as máquinas de manutenção nos dashboards.',
             'unidades' => ['manutencao'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_solicitar'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_solicitar', 'os_aprovar'],
         ],
         'mantenedor_tecnologia' => [
             'rotulo' => 'Mantenedor de Tecnologia',
-            'descricao' => 'Vê o que é de tecnologia: equipamentos e dashboards de tecnologia.',
+            'descricao' => 'Abre, aprova e executa as SS/OS de tecnologia e vê equipamentos e dashboards de tecnologia.',
             'unidades' => ['tecnologia'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_solicitar'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_solicitar', 'os_aprovar'],
         ],
     ],
 

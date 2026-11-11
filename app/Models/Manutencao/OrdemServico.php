@@ -10,7 +10,9 @@ use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 /**
  * Ordem de Serviço (OS): nasce da SS aprovada (copia os dados dela) ou do plano de preventiva. Status: aberta →
@@ -137,6 +139,59 @@ class OrdemServico extends Model
     public function aprovadoPor(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'aprovado_por_id');
+    }
+
+    /** Mantenedores atribuídos à OS (vários; responsavel_id é o principal). */
+    public function mantenedores(): BelongsToMany
+    {
+        return $this->belongsToMany(Mantenedor::class, 'os_ordem_mantenedores', 'ordem_servico_id', 'mantenedor_id')
+            ->withoutGlobalScope('unidade');
+    }
+
+    /** Mantenedores da OS: os atribuídos e, se não estiver entre eles, o responsável principal. */
+    public function mantenedoresAtribuidos(): Collection
+    {
+        $lista = $this->mantenedores;
+        if ($this->responsavel_id && ! $lista->contains('id', $this->responsavel_id) && $this->responsavel) {
+            $lista = $lista->prepend($this->responsavel);
+        }
+
+        return $lista->values();
+    }
+
+    /**
+     * Atribui exatamente estes mantenedores (o primeiro vira o responsável principal, se o atual sair da lista).
+     *
+     * @return list<int> ids atribuídos
+     */
+    public function atribuirMantenedores(array $ids): array
+    {
+        $ids = array_values(array_unique(array_map('intval', array_filter($ids))));
+        $atuais = $this->mantenedores()->pluck('os_mantenedores.id')->map(fn ($i) => (int) $i)->all();
+        if ($remover = array_diff($atuais, $ids)) {
+            $this->mantenedores()->detach($remover);
+        }
+        foreach (array_diff($ids, $atuais) as $id) {
+            $this->mantenedores()->attach($id, ['criado_em' => now(), 'criado_por_id' => auth()->id()]);
+        }
+        if (! in_array((int) $this->responsavel_id, $ids, true)) {
+            $this->forceFill(['responsavel_id' => $ids[0] ?? null])->save();
+        }
+        $this->unsetRelation('mantenedores');
+
+        return $ids;
+    }
+
+    /** Acrescenta um mantenedor (ex.: quem começou a apontar horas), sem tirar os outros. */
+    public function incluirMantenedor(int $id): void
+    {
+        if (! $this->mantenedores()->where('os_mantenedores.id', $id)->exists()) {
+            $this->mantenedores()->attach($id, ['criado_em' => now(), 'criado_por_id' => auth()->id()]);
+        }
+        if ($this->responsavel_id === null) {
+            $this->forceFill(['responsavel_id' => $id])->save();
+        }
+        $this->unsetRelation('mantenedores');
     }
 
     public function responsavel(): BelongsTo

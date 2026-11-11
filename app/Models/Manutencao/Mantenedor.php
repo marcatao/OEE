@@ -7,6 +7,7 @@ use App\Models\Concerns\TemUnidade;
 use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -36,6 +37,33 @@ class Mantenedor extends Model
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'usuario_id');
+    }
+
+    /** Áreas executantes que o mantenedor atende (várias; a coluna area_executante_id é a principal). */
+    public function areas(): BelongsToMany
+    {
+        return $this->belongsToMany(AreaExecutante::class, 'os_mantenedor_areas', 'mantenedor_id', 'area_executante_id')
+            ->withoutGlobalScope('unidade');
+    }
+
+    /** Define as áreas (a primeira vira a principal). */
+    public function definirAreas(array $ids): void
+    {
+        $ids = array_values(array_unique(array_map('intval', array_filter($ids))));
+        $atuais = $this->areas()->pluck('os_areas_executantes.id')->map(fn ($i) => (int) $i)->all();
+        if ($remover = array_diff($atuais, $ids)) {
+            $this->areas()->detach($remover);
+        }
+        foreach (array_diff($ids, $atuais) as $id) {
+            $this->areas()->attach($id, ['criado_em' => now(), 'criado_por_id' => auth()->id()]);
+        }
+        $this->forceFill(['area_executante_id' => $ids[0] ?? null])->save();
+    }
+
+    /** Nome exibido: o do login (Entra ID), senão o gravado no cadastro. */
+    public function nomeExibicao(): string
+    {
+        return $this->usuario?->nome ?: (string) $this->nome;
     }
 
     public function areaExecutante(): BelongsTo

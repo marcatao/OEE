@@ -71,6 +71,9 @@ final class GeradorPreventivas
                 'responsavel_id' => $plano->responsavel_id,
                 'status' => 'aberta',
             ]);
+            if ($plano->responsavel_id) {
+                $os->incluirMantenedor((int) $plano->responsavel_id);
+            }
             foreach ($plano->itens as $item) {
                 ChecklistOs::create(['ordem_servico_id' => $os->id, 'plano_item_id' => $item->id, 'ordem' => $item->ordem, 'descricao' => $item->descricao]);
             }

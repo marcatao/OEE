@@ -12,6 +12,7 @@ use App\Support\AcessoOs;
 use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -44,19 +45,26 @@ class CadastroManutencaoController extends Controller
     }
 
     // ---------- Mantenedores ----------
+    // O mantenedor é um USUÁRIO do portal (Segurança › Usuários): nome, foto, e-mail e departamento vêm do login
+    // (Entra ID). Aqui ficam só os dados da manutenção: áreas executantes, matrícula, centro de custo e jornada.
     public function mantenedores(): View
     {
         return view('manutencao.cadastros.mantenedores', [
-            'mantenedores' => Mantenedor::with(['usuario', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes()])->orderByDesc('ativo')->orderBy('nome')->get(),
+            'mantenedores' => Mantenedor::with(['usuario', 'areas'])->orderByDesc('ativo')->orderBy('nome')->get(),
         ]);
     }
 
     public function mantenedor(?int $mantenedor = null): View
     {
+        $m = $mantenedor ? Mantenedor::with(['usuario', 'areas'])->findOrFail($mantenedor)
+            : new Mantenedor(['ativo' => true, 'jornada_inicio' => '07:00', 'jornada_fim' => '17:00', 'intervalo_min' => 60, 'dias_semana' => '12345']);
+        // Usuários ativos que ainda não são mantenedores (e o próprio, ao editar).
+        $ocupados = Mantenedor::withoutGlobalScopes()->whereNotNull('usuario_id')->when($m->exists, fn ($q) => $q->where('id', '<>', $m->id))->pluck('usuario_id');
+
         return view('manutencao.cadastros.mantenedor', [
-            'm' => $mantenedor ? Mantenedor::findOrFail($mantenedor) : new Mantenedor(['ativo' => true, 'jornada_inicio' => '07:00', 'jornada_fim' => '17:00', 'intervalo_min' => 60, 'dias_semana' => '12345']),
-            'usuarios' => Usuario::where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'email']),
-            'areas' => AcessoOs::areas(),
+            'm' => $m,
+            'usuarios' => Usuario::where('ativo', true)->whereNotIn('id', $ocupados)->orderBy('nome')->get(),
+            'areas' => AreaExecutante::where('ativo', true)->orWhereIn('id', $m->exists ? $m->areas->pluck('id') : [])->orderBy('nome')->get(),
             'centros' => AcessoOs::centrosCusto(),
         ]);
     }
@@ -66,22 +74,44 @@ class CadastroManutencaoController extends Controller
         $m = $mantenedor ? Mantenedor::findOrFail($mantenedor) : new Mantenedor;
         $dados = $request->validate([
             'unidade' => Unidades::regras($request->user(), $m->exists ? $m->unidade : null),
-            'nome' => ['required', 'string', 'max:120'],
-            'usuario_id' => ['nullable', 'integer', Rule::exists('usuarios', 'id'), Rule::unique('os_mantenedores', 'usuario_id')->ignore($m->id)],
+            // Cadastro antigo sem login continua editável; os novos precisam do usuário.
+            'usuario_id' => [$m->exists && $m->usuario_id === null ? 'nullable' : 'required', 'integer', Rule::exists('usuarios', 'id'),
+                Rule::unique('os_mantenedores', 'usuario_id')->ignore($m->id)],
             'matricula' => ['nullable', 'string', 'max:20'],
-            'area_executante_id' => ['nullable', 'integer', Rule::exists('os_areas_executantes', 'id')],
+            'areas' => ['required', 'array', 'min:1'],
+            'areas.*' => ['integer', Rule::exists('os_areas_executantes', 'id')],
             'centro_custo' => ['nullable', 'string', 'max:20'],
             'jornada_inicio' => ['required', 'date_format:H:i'],
             'jornada_fim' => ['required', 'date_format:H:i'],
             'intervalo_min' => ['required', 'integer', 'between:0,600'],
             'dias' => ['required', 'array', 'min:1'], 'dias.*' => ['integer', 'between:1,7'],
             'ativo' => ['required', 'boolean'],
-        ], ['usuario_id.unique' => 'Esse login já está ligado a outro mantenedor.', 'nome.required' => 'Informe o nome.']);
-        $dias = array_unique(array_map('intval', $dados['dias'] ?? []));
+        ], [
+            'usuario_id.required' => 'Escolha o usuário (login) do mantenedor.',
+            'usuario_id.unique' => 'Esse usuário já é mantenedor.',
+            'areas.required' => 'Marque pelo menos uma área executante.',
+            'dias.required' => 'Marque os dias de trabalho.',
+        ]);
+        $dias = array_unique(array_map('intval', $dados['dias']));
         sort($dias);
-        unset($dados['dias']);
-        $dados['dias_semana'] = implode('', $dias);
-        $m->fill($dados)->save();
+        $usuario = ! empty($dados['usuario_id']) ? Usuario::find($dados['usuario_id']) : null;
+
+        DB::transaction(function () use ($m, $dados, $dias, $usuario) {
+            $m->fill([
+                'unidade' => $dados['unidade'],
+                'usuario_id' => $usuario?->id,
+                // Cópia do nome do login, para relatórios e para quem não tem usuário.
+                'nome' => $usuario?->nome ?: ($m->nome ?: 'Sem nome'),
+                'matricula' => $dados['matricula'] ?? null,
+                'centro_custo' => $dados['centro_custo'] ?? null,
+                'jornada_inicio' => $dados['jornada_inicio'],
+                'jornada_fim' => $dados['jornada_fim'],
+                'intervalo_min' => $dados['intervalo_min'],
+                'dias_semana' => implode('', $dias),
+                'ativo' => (bool) $dados['ativo'],
+            ])->save();
+            $m->definirAreas($dados['areas']);
+        });
 
         return redirect()->route('os.cadastros.mantenedores')->with('ok', "Mantenedor {$m->nome} salvo. Jornada: ".HorasManutencao::hhmm(HorasManutencao::de($m)->minutosPorDia()).' por dia.');
     }

@@ -8,6 +8,7 @@ use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Usuario;
+use App\Support\AcessoOs;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -42,12 +43,23 @@ final class FluxoOrdemServico
         ]);
     }
 
-    /** SS aprovada: grava quem aprovou e cria a OS com todos os dados da SS. */
-    public function aprovar(SolicitacaoServico $ss, Usuario $usuario, ?int $responsavelId = null, ?string $obs = null): OrdemServico
+    /**
+     * SS aprovada: grava quem aprovou e cria a OS com todos os dados da SS, atribuída aos mantenedores escolhidos (vazio =
+     * definir depois). Se quem aprova é um mantenedor, ele fica sempre atribuído à OS (é o primeiro, o principal).
+     *
+     * @param  list<int>  $mantenedorIds
+     */
+    public function aprovar(SolicitacaoServico $ss, Usuario $usuario, array $mantenedorIds = [], ?string $obs = null): OrdemServico
     {
         $this->exigirStatus($ss->status, ['pendente'], 'Esta solicitação já foi analisada.');
 
-        return DB::transaction(function () use ($ss, $usuario, $responsavelId, $obs) {
+        $proprio = AcessoOs::mantenedorDo($usuario);
+        $mantenedorIds = array_values(array_unique(array_map('intval', array_filter($mantenedorIds))));
+        if ($proprio) {
+            $mantenedorIds = array_values(array_unique([$proprio->id, ...$mantenedorIds]));
+        }
+
+        return DB::transaction(function () use ($ss, $usuario, $mantenedorIds, $obs) {
             $ss->forceFill(['status' => 'aprovada', 'analisado_por_id' => $usuario->id, 'analisado_em' => now()])->save();
             $os = OrdemServico::create([
                 'unidade' => $ss->unidade,
@@ -62,12 +74,14 @@ final class FluxoOrdemServico
                 'descricao' => $ss->descricao,
                 'solicitante_id' => $ss->solicitante_id,
                 'aprovado_por_id' => $usuario->id,
-                'responsavel_id' => $responsavelId,
+                'responsavel_id' => $mantenedorIds[0] ?? null,
                 'status' => 'aberta',
                 'ordem_producao_id' => $ss->ordem_producao_id,
                 'apontamento_estado_id' => $ss->apontamento_estado_id,
             ]);
-            $this->registrar($os, $ss, 'aprovada', 'pendente', 'aberta', $obs, $usuario);
+            $os->atribuirMantenedores($mantenedorIds);
+            $nomes = $os->mantenedores()->get()->map->nomeExibicao()->join(', ');
+            $this->registrar($os, $ss, 'aprovada', 'pendente', 'aberta', trim(($nomes !== '' ? "Mantenedores: {$nomes}. " : 'Mantenedores: definir depois. ').($obs ?? '')), $usuario);
 
             return $os;
         });
@@ -171,9 +185,7 @@ final class FluxoOrdemServico
             if ($os->status === 'aberta') {
                 $this->executarAcao($os, 'iniciar', $usuario, 'Início do apontamento de horas');
             }
-            if ($os->responsavel_id === null) {
-                $os->forceFill(['responsavel_id' => $mantenedor->id])->save();
-            }
+            $os->incluirMantenedor($mantenedor->id);
 
             return $ap;
         });

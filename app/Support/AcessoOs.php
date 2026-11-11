@@ -64,6 +64,6 @@ final class AcessoOs
     /** Mantenedores ativos das unidades que o usuário enxerga. */
     public static function mantenedores(): Collection
     {
-        return Mantenedor::where('ativo', true)->orderBy('nome')->get();
+        return Mantenedor::with(['usuario', 'areas'])->where('ativo', true)->orderBy('nome')->get();
     }
 }

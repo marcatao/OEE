@@ -31,7 +31,10 @@ class ApontamentoHorasController extends Controller
         $rodando = $mantenedor ? ApontamentoHoras::where('mantenedor_id', $mantenedor->id)->whereNull('fim')->with('ordemServico')->first() : null;
         $ordens = AcessoOs::filtrar(OrdemServico::query(), $u)
             ->whereIn('status', ['aberta', 'em_execucao', 'aguardando_material'])
-            ->when($mantenedor, fn ($q) => $q->where(fn ($q) => $q->where('responsavel_id', $mantenedor->id)->orWhereNull('responsavel_id')))
+            // As dele (principal ou atribuído) e as ainda sem ninguém.
+            ->when($mantenedor, fn ($q) => $q->where(fn ($q) => $q->where('responsavel_id', $mantenedor->id)
+                ->orWhereHas('mantenedores', fn ($m) => $m->where('os_mantenedores.id', $mantenedor->id))
+                ->orWhere(fn ($q) => $q->whereNull('responsavel_id')->whereDoesntHave('mantenedores'))))
             ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes()])
             ->orderByRaw("CASE prioridade WHEN 'urgente' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END")->orderBy('id')
             ->limit(100)->get();

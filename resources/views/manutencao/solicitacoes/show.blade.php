@@ -38,17 +38,10 @@
   @if ($ss->status === 'pendente')
     <div class="os-acoes">
       @if ($podeAprovar)
-        <form method="post" action="{{ route('os.solicitacoes.aprovar', $ss) }}">
+        <form method="post" action="{{ route('os.solicitacoes.aprovar', $ss) }}" class="formulario-vertical" style="flex-basis:100%">
           @csrf
-          <label>Distribuir para
-            <select name="responsavel_id">
-              <option value="">Definir depois</option>
-              @foreach ($mantenedores as $m)
-                <option value="{{ $m->id }}">{{ $m->nome }}</option>
-              @endforeach
-            </select>
-          </label>
-          <button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'check']) Aprovar e emitir OS</button>
+          @include('manutencao._escolher-mantenedores', ['mantenedores' => $mantenedores, 'marcados' => [], 'fixo' => $meuMantenedor])
+          <div class="acoes"><button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'check']) Aprovar e emitir OS</button></div>
         </form>
         <form method="post" action="{{ route('os.solicitacoes.rejeitar', $ss) }}">
           @csrf

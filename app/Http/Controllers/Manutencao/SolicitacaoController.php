@@ -80,6 +80,7 @@ class SolicitacaoController extends Controller
             'ss' => $ss,
             'historico' => $ss->historico()->with('usuario')->orderBy('id')->get(),
             'mantenedores' => AcessoOs::mantenedores(),
+            'meuMantenedor' => AcessoOs::mantenedorDo($request->user()),
             'podeAprovar' => AcessoOs::podeAprovar($request->user()),
         ]);
     }
@@ -106,10 +107,11 @@ class SolicitacaoController extends Controller
     {
         $ss = $this->buscar($request, $solicitacao);
         $dados = $request->validate([
-            'responsavel_id' => ['nullable', 'integer', Rule::exists('os_mantenedores', 'id')],
+            'mantenedores' => ['nullable', 'array'],
+            'mantenedores.*' => ['integer', Rule::exists('os_mantenedores', 'id')],
             'observacao' => ['nullable', 'string', 'max:1000'],
         ]);
-        $os = $this->fluxo->aprovar($ss, $request->user(), $dados['responsavel_id'] ?? null, $dados['observacao'] ?? null);
+        $os = $this->fluxo->aprovar($ss, $request->user(), $dados['mantenedores'] ?? [], $dados['observacao'] ?? null);
 
         return redirect()->route('os.ordens.show', $os)->with('ok', "Solicitação aprovada: emitida a {$os->numeroFormatado()}.");
     }

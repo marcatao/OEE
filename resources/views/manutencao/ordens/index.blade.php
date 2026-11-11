@@ -37,7 +37,7 @@
       <select name="maquina"><option value="">Todas</option>
         @foreach ($maquinas as $m)<option value="{{ $m->id }}" @selected($f['maquina'] === $m->id)>{{ $m->codigo }} — {{ $m->nome }}</option>@endforeach
       </select></label>
-    <label>Responsável
+    <label>Mantenedor
       <select name="responsavel"><option value="">Todos</option>
         @foreach ($mantenedores as $m)<option value="{{ $m->id }}" @selected($f['responsavel'] === $m->id)>{{ $m->nome }}</option>@endforeach
       </select></label>
@@ -47,7 +47,7 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>OS</th><th>Situação</th><th>Tipo</th><th>Prioridade</th><th>Máquina</th><th>Área / responsável</th><th>Descrição</th><th class="num">Horas</th><th>Emitida</th></tr></thead>
+    <thead><tr><th>OS</th><th>Situação</th><th>Tipo</th><th>Prioridade</th><th>Máquina</th><th>Área / mantenedores</th><th>Descrição</th><th class="num">Horas</th><th>Emitida</th></tr></thead>
     <tbody>
     @forelse ($ordens as $os)
       <tr>
@@ -58,7 +58,7 @@
         <td>{{ $os->rotuloTipo() }}</td>
         <td><span class="prioridade-{{ $os->prioridade }}">{{ $os->rotuloPrioridade() }}</span>@if ($os->maquina_parada && in_array($os->status, OrdemServico::STATUS_ABERTOS, true))<br><small class="os-parada">máquina parada</small>@endif</td>
         <td>@include('manutencao._maquina', ['maquina' => $os->maquina])</td>
-        <td>{{ $os->areaExecutante?->nome }}<br><small class="suave">{{ $os->responsavel?->nome ?? 'sem responsável' }}</small></td>
+        <td>{{ $os->areaExecutante?->nome }}<br><small class="suave">{{ $os->mantenedoresAtribuidos()->map->nomeExibicao()->join(', ') ?: 'definir depois' }}</small></td>
         <td>{{ \Illuminate\Support\Str::limit($os->descricao, 90) }}</td>
         <td class="num">{{ HorasManutencao::hhmm($os->total_minutos) }}</td>
         <td>@dataHora($os->criado_em)</td>

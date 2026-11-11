@@ -56,6 +56,15 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   unidade da SS/OS vem da **área executante** (se a área for "ambos", da máquina; se a máquina também for, `manutencao`).
   Quem executa/aprova só enxerga a fila da sua unidade; o **solicitante sempre vê as próprias SS/OS**, de qualquer
   unidade (por isso SS e OS NÃO usam o escopo global `TemUnidade`; usam o escopo `visiveisPara($usuario)`).
+- **Mantenedor = usuário do portal** (`os_mantenedores.usuario_id`): nome, foto, e-mail e departamento vêm do login
+  (Entra ID); o cadastro da manutenção só guarda o adicional (matrícula, CC, jornada, dias) e as **várias áreas
+  executantes** que ele atende (`os_mantenedor_areas`; `area_executante_id` = a principal, a primeira).
+- **Vários mantenedores por OS** (`os_ordem_mantenedores`; `responsavel_id` = o principal, o primeiro). Na aprovação da
+  SS escolhe-se um ou mais (nenhum = definir depois). Os **próprios mantenedores abrem e aprovam SS**; se quem aprova é
+  mantenedor, ele já vem marcado e fica sempre atribuído à OS. Quem inicia apontamento numa OS também passa a estar
+  atribuído. Use `OrdemServico::atribuirMantenedores()`, `incluirMantenedor()` e `mantenedoresAtribuidos()`.
+- SQL Server: nunca repita a mesma coluna no ORDER BY (a relação já ordenada + `orderBy` na tela = erro 169). As
+  relações do módulo não ordenam; a tela ordena. O teste `OrdensServicoTest` acusa a repetição.
 - Permissões (`config/oee.php`): `os_solicitar` (abrir SS e acompanhar as suas), `os_aprovar` (analisar SS,
   distribuir e editar OS), `solicitacoes_manutencao` (executar: apontar horas, materiais, checklist, concluir),
   `os_almoxarifado` (atender requisições de material e compras), `os_preventivas` (PAMP e planos),
@@ -63,7 +72,7 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
 - Tabelas (todas com prefixo `os_` ou nome próprio, auditoria `criado_em/criado_por_id/atualizado_em/
   atualizado_por_id`): `os_areas_executantes`, `os_mantenedores`, `os_sugestoes_descricao`, `solicitacoes_servico`,
   `ordens_servico`, `os_apontamentos_horas`, `os_materiais`, `os_historico`, `os_planos_preventiva`,
-  `os_planos_itens`, `os_checklist`, `os_justificativas_setor`. Veja `docs/banco-de-dados.md`.
+  `os_planos_itens`, `os_checklist`, `os_justificativas_setor`, `os_mantenedor_areas`, `os_ordem_mantenedores`. Veja `docs/banco-de-dados.md`.
 - Status da SS: `pendente` → `aprovada` | `rejeitada` | `cancelada`.
 - Status da OS: `aberta` → `em_execucao` ⇄ `aguardando_material` → `concluida` → `encerrada` (aceite) | `cancelada`.
   Toda troca de status grava `os_historico`.

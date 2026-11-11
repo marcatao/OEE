@@ -24,7 +24,7 @@
     <div><dt>Máquina</dt><dd>@include('manutencao._maquina', ['maquina' => $os->maquina])@if ($os->maquina_parada)<br><span class="os-parada">máquina parada</span>@endif</dd></div>
     <div><dt>Prioridade</dt><dd class="prioridade-{{ $os->prioridade }}">{{ $os->rotuloPrioridade() }}</dd></div>
     <div><dt>Área executante</dt><dd>{{ $os->areaExecutante?->nome }} <span class="etiqueta unidade-{{ $os->unidade }}">{{ config('oee.unidades')[$os->unidade] ?? $os->unidade }}</span></dd></div>
-    <div><dt>Responsável</dt><dd>{{ $os->responsavel?->nome ?? '—' }}</dd></div>
+    <div><dt>Mantenedores</dt><dd>{{ $os->mantenedoresAtribuidos()->map->nomeExibicao()->join(', ') ?: 'definir depois' }}</dd></div>
     <div><dt>Centro de custo</dt><dd>{{ $os->centro_custo ?: '—' }}</dd></div>
     <div><dt>Solicitante</dt><dd>{{ $os->solicitante?->nome ?? ($os->plano ? 'PAMP '.$os->plano->codigo : '—') }}@if ($os->solicitacao)<br><a href="{{ route('os.solicitacoes.show', $os->solicitacao) }}"><small>{{ $os->solicitacao->numeroFormatado() }}</small></a>@endif</dd></div>
     <div><dt>Aprovada por</dt><dd>{{ $os->aprovadoPor?->nome ?? '—' }}</dd></div>
@@ -52,14 +52,14 @@
       </form>
     @endif
     @if ($podeAprovar && $aberta)
-      <form method="post" action="{{ route('os.ordens.distribuir', $os) }}">
-        @csrf
-        <label>Distribuir para
-          <select name="responsavel_id"><option value="">Ninguém</option>
-            @foreach ($mantenedores as $m)<option value="{{ $m->id }}" @selected($os->responsavel_id === $m->id)>{{ $m->nome }}</option>@endforeach
-          </select></label>
-        <button class="botao secundario" type="submit">Distribuir</button>
-      </form>
+      <details style="flex-basis:100%">
+        <summary class="botao secundario">Distribuir mantenedores</summary>
+        <form method="post" action="{{ route('os.ordens.distribuir', $os) }}" class="formulario-vertical">
+          @csrf
+          @include('manutencao._escolher-mantenedores', ['mantenedores' => $mantenedores, 'marcados' => $os->mantenedoresAtribuidos()->pluck('id')->all()])
+          <div class="acoes"><button class="botao" type="submit">Salvar mantenedores</button></div>
+        </form>
+      </details>
     @endif
   </div>
 

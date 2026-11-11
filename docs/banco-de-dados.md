@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **36** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **38** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -345,6 +345,13 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
     }
+    os_mantenedor_areas {
+        bigint id PK
+        bigint mantenedor_id FK
+        bigint area_executante_id FK
+        datetime criado_em
+        bigint criado_por_id FK
+    }
     os_mantenedores {
         bigint id PK
         nvarchar(20) unidade
@@ -378,6 +385,13 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+    }
+    os_ordem_mantenedores {
+        bigint id PK
+        bigint ordem_servico_id FK
+        bigint mantenedor_id FK
+        datetime criado_em
+        bigint criado_por_id FK
     }
     os_planos_itens {
         bigint id PK
@@ -594,9 +608,13 @@ erDiagram
     ordens_servico |o--o{ os_historico : "ordem_servico_id"
     solicitacoes_servico |o--o{ os_historico : "solicitacao_id"
     usuarios |o--o{ os_historico : "usuario_id"
+    os_mantenedores ||--o{ os_mantenedor_areas : "mantenedor_id"
+    os_areas_executantes ||--o{ os_mantenedor_areas : "area_executante_id"
     usuarios |o--o{ os_mantenedores : "usuario_id"
     os_areas_executantes |o--o{ os_mantenedores : "area_executante_id"
     ordens_servico ||--o{ os_materiais : "ordem_servico_id"
+    ordens_servico ||--o{ os_ordem_mantenedores : "ordem_servico_id"
+    os_mantenedores ||--o{ os_ordem_mantenedores : "mantenedor_id"
     os_planos_preventiva ||--o{ os_planos_itens : "plano_preventiva_id"
     maquinas |o--o{ os_planos_preventiva : "maquina_id"
     os_areas_executantes ||--o{ os_planos_preventiva : "area_executante_id"
@@ -690,8 +708,10 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`os_checklist`](#os_checklist) | Sistema | `id` | 9 | 3 |
 | [`os_historico`](#os_historico) | Sistema | `id` | 9 | 3 |
 | [`os_justificativas_setor`](#os_justificativas_setor) | Sistema | `id` | 9 | 2 |
+| [`os_mantenedor_areas`](#os_mantenedor_areas) | Sistema | `id` | 5 | 3 |
 | [`os_mantenedores`](#os_mantenedores) | Sistema | `id` | 16 | 4 |
 | [`os_materiais`](#os_materiais) | Sistema | `id` | 14 | 3 |
+| [`os_ordem_mantenedores`](#os_ordem_mantenedores) | Sistema | `id` | 5 | 3 |
 | [`os_planos_itens`](#os_planos_itens) | Sistema | `id` | 9 | 3 |
 | [`os_planos_preventiva`](#os_planos_preventiva) | Sistema | `id` | 19 | 5 |
 | [`os_sugestoes_descricao`](#os_sugestoes_descricao) | Sistema | `id` | 8 | 2 |
@@ -1281,6 +1301,20 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Regras (CHECK, só no SQL Server):** `ck_os_justificativas_setor_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_os_justificativas_setor_competencia`: `DAY(competencia) = 1`
 
+### os_mantenedor_areas
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `mantenedor_id` | `bigint` | não |  | FK → `os_mantenedores.id` |
+| `area_executante_id` | `bigint` | não |  | FK → `os_areas_executantes.id` |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `os_mantenedor_areas_mantenedor_id_area_executante_id_unique` único (mantenedor_id, area_executante_id) · `os_mantenedor_areas_area_executante_id_index` (area_executante_id)
+
 ### os_mantenedores
 
 **Origem:** Sistema OEE · **Chave primária:** `id`
@@ -1332,6 +1366,20 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `os_materiais_status_id_index` (status, id) · `os_materiais_ordem_servico_id_index` (ordem_servico_id)
 
 **Regras (CHECK, só no SQL Server):** `ck_os_materiais_status`: `status IN ('requisitado', 'disponivel', 'em_compra', 'recebido', 'entregue', 'cancelado')` · `ck_os_materiais_quantidade`: `quantidade > 0` · `ck_os_materiais_custo`: `custo_unitario IS NULL OR custo_unitario >= 0`
+
+### os_ordem_mantenedores
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `ordem_servico_id` | `bigint` | não |  | FK → `ordens_servico.id` |
+| `mantenedor_id` | `bigint` | não |  | FK → `os_mantenedores.id` |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `os_ordem_mantenedores_ordem_servico_id_mantenedor_id_unique` único (ordem_servico_id, mantenedor_id) · `os_ordem_mantenedores_mantenedor_id_ordem_servico_id_index` (mantenedor_id, ordem_servico_id)
 
 ### os_planos_itens
 

@@ -16,7 +16,7 @@
     <div><dt>Prioridade</dt><dd>{{ $os->rotuloPrioridade() }}</dd></div>
     <div><dt>Máquina</dt><dd>@include('manutencao._maquina', ['maquina' => $os->maquina]){{ $os->maquina_parada ? ' (parada)' : '' }}</dd></div>
     <div><dt>Área executante</dt><dd>{{ $os->areaExecutante?->nome }}</dd></div>
-    <div><dt>Responsável</dt><dd>{{ $os->responsavel?->nome ?? '—' }}</dd></div>
+    <div><dt>Mantenedores</dt><dd>{{ $os->mantenedoresAtribuidos()->map->nomeExibicao()->join(', ') ?: '—' }}</dd></div>
     <div><dt>Centro de custo</dt><dd>{{ $os->centro_custo ?: '—' }}</dd></div>
     <div><dt>Solicitante</dt><dd>{{ $os->solicitante?->nome ?? ($os->plano ? 'PAMP '.$os->plano->codigo : '—') }}</dd></div>
     <div><dt>Emitida</dt><dd>@dataHora($os->criado_em)</dd></div>
