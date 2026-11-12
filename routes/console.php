@@ -4,6 +4,7 @@ use App\Models\ApontamentoEstado;
 use App\Models\Usuario;
 use App\Services\InfoBanco;
 use App\Services\Manutencao\GeradorPreventivas;
+use App\Services\MaquinasSemIot;
 use App\Services\Protheus\SincronizadorProtheus;
 use App\Services\SituacaoMaquina;
 use Illuminate\Support\Facades\Artisan;
@@ -130,3 +131,21 @@ Artisan::command('maquinas:situacao-pelos-apontamentos {--confirmar : Grava de v
     }
     $this->info('Situação e OP atual atualizadas pelo apontamento mais recente de cada máquina.');
 })->purpose('Preenche situação e OP atual das máquinas pelo último apontamento real (opcional)');
+
+// Inativa as máquinas ativas que não têm nenhum canal IoT (dispositivo ativo + canal). Pedido do usuário; mexe em
+// registros existentes, por isso fica num comando (sem --confirmar só lista).
+Artisan::command('maquinas:desativar-sem-iot {--confirmar : Inativa de verdade}', function () {
+    $servico = app(MaquinasSemIot::class);
+    $maquinas = $servico->encontrar();
+    $this->line("Máquinas ativas sem canal IoT ativo: {$maquinas->count()}.");
+    foreach ($maquinas as $m) {
+        $this->line("  {$m->codigo} — {$m->nome}");
+    }
+    if (! $this->option('confirmar')) {
+        $this->warn('Nada foi alterado. Para inativar: php artisan maquinas:desativar-sem-iot --confirmar');
+
+        return 0;
+    }
+    $servico->inativar();
+    $this->info("{$maquinas->count()} máquina(s) inativada(s).");
+})->purpose('Inativa as máquinas sem canal IoT (dispositivo ativo + canal)');

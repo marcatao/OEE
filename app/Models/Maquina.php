@@ -93,6 +93,34 @@ class Maquina extends Model
         return $canais;
     }
 
+    /**
+     * Canais IoT preenchidos (dispositivo + canal), pelos valores informados (ou os gravados).
+     *
+     * @return list<array{numero: int, dispositivo_id: int, canal: string}>
+     */
+    public function canaisConfigurados(?array $dados = null): array
+    {
+        $canais = [];
+        foreach (self::CANAIS_IOT as $n) {
+            // Campo que não veio nos dados (ex.: formulário sem os canais) vale o que está gravado.
+            $dispositivo = $dados !== null && array_key_exists("iot{$n}_dispositivo_id", $dados) ? $dados["iot{$n}_dispositivo_id"] : $this->{"iot{$n}_dispositivo_id"};
+            $canal = trim((string) ($dados !== null && array_key_exists("iot{$n}_canal", $dados) ? $dados["iot{$n}_canal"] : $this->{"iot{$n}_canal"}));
+            if ($dispositivo && $canal !== '') {
+                $canais[] = ['numero' => $n, 'dispositivo_id' => (int) $dispositivo, 'canal' => $canal];
+            }
+        }
+
+        return $canais;
+    }
+
+    /** Tem pelo menos um canal IoT com dispositivo ATIVO? (condição para a máquina ficar ativa) */
+    public function temCanalIotAtivo(?array $dados = null): bool
+    {
+        $ids = array_column($this->canaisConfigurados($dados), 'dispositivo_id');
+
+        return $ids && DispositivoIot::withoutGlobalScopes()->whereIn('id', $ids)->where('ativo', true)->exists();
+    }
+
     public function iot1Dispositivo(): BelongsTo
     {
         return $this->belongsTo(DispositivoIot::class, 'iot1_dispositivo_id');

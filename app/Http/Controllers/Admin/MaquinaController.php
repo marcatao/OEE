@@ -51,9 +51,9 @@ class MaquinaController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $maquina = new Maquina;
-        $this->salvar($request, $maquina);
+        $aviso = $this->salvar($request, $maquina);
 
-        return redirect()->route('admin.maquinas.index')->with('ok', "Máquina {$maquina->nome} cadastrada.");
+        return redirect()->route('admin.maquinas.index')->with('ok', trim("Máquina {$maquina->nome} cadastrada. ".$aviso));
     }
 
     public function edit(Maquina $maquina): View
@@ -63,9 +63,9 @@ class MaquinaController extends Controller
 
     public function update(Request $request, Maquina $maquina): RedirectResponse
     {
-        $this->salvar($request, $maquina);
+        $aviso = $this->salvar($request, $maquina);
 
-        return redirect()->route('admin.maquinas.index')->with('ok', "Máquina {$maquina->nome} atualizada.");
+        return redirect()->route('admin.maquinas.index')->with('ok', trim("Máquina {$maquina->nome} atualizada. ".$aviso));
     }
 
     private function formulario(Maquina $maquina): View
@@ -85,7 +85,8 @@ class MaquinaController extends Controller
         ]);
     }
 
-    private function salvar(Request $request, Maquina $maquina): void
+    /** @return string|null aviso (ex.: máquina inativada por ficar sem canal IoT) */
+    private function salvar(Request $request, Maquina $maquina): ?string
     {
         $regras = [
             'unidade' => Unidades::regras($request->user(), $maquina->exists ? $maquina->unidade : null),
@@ -107,7 +108,9 @@ class MaquinaController extends Controller
             $regras["iot{$n}_dispositivo_id"] = ['nullable', 'integer', "required_with:iot{$n}_canal,iot{$n}_tipo",
                 Rule::exists('dispositivos_iot', 'id')->where(fn ($q) => $q->where('ativo', true)
                     ->orWhere('id', (int) $maquina->{"iot{$n}_dispositivo_id"}))];
-            $regras["iot{$n}_canal"] = ['nullable', 'string', 'max:100', "required_with:iot{$n}_dispositivo_id,iot{$n}_tipo"];
+            // Canal: um dos 6 canais do dispositivo (oee.iot_canais); o texto antigo que a máquina já tinha continua aceito.
+            $regras["iot{$n}_canal"] = ['nullable', 'string', 'max:100', "required_with:iot{$n}_dispositivo_id,iot{$n}_tipo",
+                Rule::in(array_values(array_filter([...config('oee.iot_canais', []), $maquina->{"iot{$n}_canal"}])))];
             $regras["iot{$n}_tipo"] = ['nullable', Rule::in(array_keys(Maquina::TIPOS_CANAL)), "required_with:iot{$n}_dispositivo_id,iot{$n}_canal"];
         }
 
@@ -131,6 +134,7 @@ class MaquinaController extends Controller
             $mensagens["iot{$n}_canal.required_with"] = "IoT {$n}: informe o canal IoT.";
             $mensagens["iot{$n}_tipo.required_with"] = "IoT {$n}: escolha o tipo do canal.";
             $mensagens["iot{$n}_tipo.in"] = "IoT {$n}: tipo de canal inválido.";
+            $mensagens["iot{$n}_canal.in"] = "IoT {$n}: escolha um dos canais do dispositivo (chd1_value a chd6_value).";
         }
 
         // Máquina do Protheus: código, nome e centro de custo vêm da SHB e não são alterados aqui.
@@ -146,9 +150,23 @@ class MaquinaController extends Controller
             throw ValidationException::withMessages(['macro_parada_s' => 'A macro parada deve ser maior que a micro parada.']);
         }
         foreach (Maquina::CANAIS_IOT as $n) {
-            $dados["iot{$n}_canal"] = isset($dados["iot{$n}_canal"]) ? trim($dados["iot{$n}_canal"]) : null;
+            // Só o que veio do formulário (campo ausente não apaga o canal gravado).
+            if (array_key_exists("iot{$n}_canal", $dados)) {
+                $dados["iot{$n}_canal"] = isset($dados["iot{$n}_canal"]) ? trim($dados["iot{$n}_canal"]) : null;
+            }
         }
         $this->conferirCanaisRepetidos($dados, $maquina);
+
+        // Ativa só com pelo menos um canal IoT (dispositivo ATIVO + canal). Se a máquina estava ativa e ficou sem
+        // canal (o canal foi apagado), ela passa a INATIVA.
+        $aviso = null;
+        if ($dados['ativo'] && ! $maquina->temCanalIotAtivo($dados)) {
+            if (! $maquina->exists || ! $maquina->ativo) {
+                throw ValidationException::withMessages(['ativo' => 'Para ativar a máquina, informe pelo menos um canal IoT (dispositivo IoT ativo + canal).']);
+            }
+            $dados['ativo'] = false;
+            $aviso = 'A máquina ficou sem canal IoT ativo e foi INATIVADA.';
+        }
 
         // OP atual, pelo número (C2_NUM + C2_ITEM + C2_SEQUEN). Vazio = máquina sem OP.
         $numeroOp = trim((string) ($dados['ordem_producao'] ?? ''));
@@ -172,6 +190,8 @@ class MaquinaController extends Controller
         }
 
         $maquina->fill($dados)->save();
+
+        return $aviso;
     }
 
     /**
@@ -191,10 +211,10 @@ class MaquinaController extends Controller
             $usados[$chave] = $n;
 
             foreach (Maquina::CANAIS_IOT as $m) {
-                $outra = Maquina::where("iot{$m}_dispositivo_id", $dados["iot{$n}_dispositivo_id"])->where("iot{$m}_canal", $dados["iot{$n}_canal"])
+                $outra = Maquina::withoutGlobalScopes()->where("iot{$m}_dispositivo_id", $dados["iot{$n}_dispositivo_id"])->where("iot{$m}_canal", $dados["iot{$n}_canal"])
                     ->when($maquina->exists, fn ($q) => $q->whereKeyNot($maquina->id))->first(['id', 'nome']);
                 if ($outra) {
-                    $nomeDispositivo = DispositivoIot::whereKey($dados["iot{$n}_dispositivo_id"])->value('nome');
+                    $nomeDispositivo = DispositivoIot::withoutGlobalScopes()->whereKey($dados["iot{$n}_dispositivo_id"])->value('nome');
                     throw ValidationException::withMessages(["iot{$n}_canal" => "IoT {$n}: o canal {$nomeDispositivo} / {$dados["iot{$n}_canal"]} já está na máquina {$outra->nome}."]);
                 }
             }

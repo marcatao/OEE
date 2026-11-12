@@ -59,6 +59,10 @@ return [
     // abaixo, em verde.
     'custo_tolerancia' => (float) env('OEE_CUSTO_TOLERANCIA', 0.05),
 
+    // Canais de cada dispositivo IoT. Os dados das máquinas virão da tabela MQTT.dbo.IOT001 (integração futura):
+    // cada máquina usa dispositivo + canal, e um mesmo dispositivo + canal não pode estar em duas máquinas.
+    'iot_canais' => ['chd1_value', 'chd2_value', 'chd3_value', 'chd4_value', 'chd5_value', 'chd6_value'],
+
     // Perfis de acesso (um usuário pode ter vários). "area" = em que área o perfil aparece no cadastro de usuários;
     // "unidades" = ambientes dos cadastros que o perfil enxerga; "solicita" = áreas para as quais pode ABRIR SS (os
     // Solicitantes e os Administradores, cada um para a sua área); "permissoes" = telas ('*' = todas). Os grupos

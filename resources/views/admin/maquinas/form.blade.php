@@ -91,7 +91,9 @@
     <fieldset>
       <legend>Canais IoT</legend>
       <p class="suave" style="margin-top:0">De onde vêm os dados da máquina: o dispositivo (cadastro em
-        <a href="{{ route('admin.iot.index') }}">Dispositivos IoT</a>, só os ativos), o canal (ex.: <code>ch1_value</code>) e o tipo.</p>
+        <a href="{{ route('admin.iot.index') }}">Dispositivos IoT</a>, só os ativos), o canal (<code>chd1_value</code> a <code>chd6_value</code>) e o tipo.
+        Para <strong>ativar</strong> a máquina, informe pelo menos um canal com dispositivo ativo; sem canal, ela fica inativa.
+        Um dispositivo + canal só pode estar em uma máquina.</p>
       @if ($dispositivos->isEmpty())
         <p class="aviso alerta">Nenhum dispositivo IoT ativo. Cadastre em <a href="{{ route('admin.iot.index') }}">Dispositivos IoT</a>.</p>
       @endif
@@ -115,7 +117,16 @@
             @endif
           </label>
           <label>IoT {{ $n }} — Canal IoT
-            <input name="iot{{ $n }}_canal" maxlength="100" value="{{ old("iot{$n}_canal", $maquina->{"iot{$n}_canal"}) }}" placeholder="Ex.: ch1_value">
+            @php($canalAtual = (string) old("iot{$n}_canal", $maquina->{"iot{$n}_canal"}))
+            <select name="iot{{ $n }}_canal">
+              <option value="">—</option>
+              @foreach (config('oee.iot_canais') as $canal)
+                <option value="{{ $canal }}" @selected($canalAtual === $canal)>{{ $canal }}</option>
+              @endforeach
+              @if ($canalAtual !== '' && ! in_array($canalAtual, config('oee.iot_canais'), true))
+                <option value="{{ $canalAtual }}" selected>{{ $canalAtual }} (antigo)</option>
+              @endif
+            </select>
           </label>
           <label>IoT {{ $n }} — Tipo do canal
             <select name="iot{{ $n }}_tipo">

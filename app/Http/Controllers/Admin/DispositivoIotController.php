@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DispositivoIot;
 use App\Models\Maquina;
+use App\Services\MaquinasSemIot;
 use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,7 +53,11 @@ class DispositivoIotController extends Controller
     {
         $this->salvar($request, $dispositivo);
 
-        return redirect()->route('admin.iot.index')->with('ok', "Dispositivo {$dispositivo->nome} atualizado.");
+        // Dispositivo desativado: máquinas que ficaram sem nenhum canal IoT ativo passam a INATIVAS.
+        $inativadas = $dispositivo->ativo ? collect() : app(MaquinasSemIot::class)->inativar($dispositivo->id);
+
+        return redirect()->route('admin.iot.index')->with('ok', "Dispositivo {$dispositivo->nome} atualizado."
+            .($inativadas->isNotEmpty() ? ' Máquinas inativadas por ficarem sem canal IoT ativo: '.$inativadas->pluck('codigo')->join(', ').'.' : ''));
     }
 
     private function formulario(DispositivoIot $dispositivo): View

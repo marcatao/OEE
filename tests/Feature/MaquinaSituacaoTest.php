@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ApontamentoEstado;
+use App\Models\DispositivoIot;
 use App\Models\Legenda;
 use App\Models\Linha;
 use App\Models\Maquina;
@@ -27,7 +28,9 @@ class MaquinaSituacaoTest extends TestCase
         parent::setUp();
         $planta = Planta::create(['codigo' => 'P', 'nome' => 'Planta']);
         $linha = Linha::create(['planta_id' => $planta->id, 'codigo' => 'L', 'nome' => 'Linha']);
-        $this->maquina = Maquina::create(['linha_id' => $linha->id, 'codigo' => 'INJ-12', 'nome' => 'Injetora 12', 'ativo' => true]);
+        $iot = DispositivoIot::create(['codigo' => 'S1', 'nome' => 'Sensor 1', 'tipo' => 'sensor', 'protocolo' => 'mqtt', 'ativo' => true]);
+        $this->maquina = Maquina::create(['linha_id' => $linha->id, 'codigo' => 'INJ-12', 'nome' => 'Injetora 12', 'ativo' => true,
+            'iot1_dispositivo_id' => $iot->id, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao']);
         $this->op = OrdemProducao::create(['c2_num' => '062678', 'c2_item' => '01', 'c2_sequen' => '001', 'numero' => '06267801001',
             'c2_produto' => 'PA001', 'status' => 'aberta']);
         ProdutoProtheus::create(['b1_cod' => 'PA001', 'b1_desc' => 'INTERRUPTOR PARALELO', 'b1_um' => 'PC']);

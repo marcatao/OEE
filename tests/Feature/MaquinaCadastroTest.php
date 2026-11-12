@@ -65,18 +65,18 @@ class MaquinaCadastroTest extends TestCase
 
         $this->post('/admin/maquinas', $this->dados([
             'centro_custo' => '110101', 'micro_parada_s' => '60', 'macro_parada_s' => '300',
-            'iot1_dispositivo_id' => $sensor->id, 'iot1_canal' => 'ch1_value', 'iot1_tipo' => 'producao',
-            'iot2_dispositivo_id' => $sensor->id, 'iot2_canal' => 'ch2_value', 'iot2_tipo' => 'refugo',
+            'iot1_dispositivo_id' => $sensor->id, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao',
+            'iot2_dispositivo_id' => $sensor->id, 'iot2_canal' => 'chd2_value', 'iot2_tipo' => 'refugo',
         ]))->assertRedirect('/admin/maquinas');
 
         $m = Maquina::sole();
         $this->assertSame(['110101', 60, 300], [$m->centro_custo, $m->micro_parada_s, $m->macro_parada_s]);
-        $this->assertSame([$sensor->id, 'ch1_value', 'producao'], [$m->iot1_dispositivo_id, $m->iot1_canal, $m->iot1_tipo]);
+        $this->assertSame([$sensor->id, 'chd1_value', 'producao'], [$m->iot1_dispositivo_id, $m->iot1_canal, $m->iot1_tipo]);
         $this->assertSame('refugo', $m->iot2_tipo);
         $this->assertNull($m->iot3_dispositivo_id);
         $this->assertCount(2, $m->canaisIot());
         // A lista mostra a descrição (nome) do dispositivo.
-        $this->get('/admin/maquinas')->assertSee('110101 — Injeção')->assertSee('Sensor da injetora · ch1_value · Produção');
+        $this->get('/admin/maquinas')->assertSee('110101 — Injeção')->assertSee('Sensor da injetora · chd1_value · Produção');
 
         // O formulário sempre envia todos os campos; vazio limpa o valor.
         $vazios = ['centro_custo' => '', 'micro_parada_s' => '', 'macro_parada_s' => ''];
@@ -95,7 +95,7 @@ class MaquinaCadastroTest extends TestCase
         $sensor = $this->dispositivo('Teste_Alumbra', 'Sensor da injetora');
         // Máquina gravada antes da mudança: só o texto antigo, sem dispositivo.
         $m = Maquina::create(['codigo' => 'M1', 'nome' => 'Máquina antiga', 'linha_id' => $this->linha->id, 'ativo' => true]);
-        $m->forceFill(['iot1_id' => 'Teste_Alumbra', 'iot1_canal' => 'ch1_value', 'iot1_tipo' => 'producao'])->save();
+        $m->forceFill(['iot1_id' => 'Teste_Alumbra', 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao'])->save();
 
         $this->get('/admin/maquinas')->assertSee('Teste_Alumbra (antigo)');
         $this->get("/admin/maquinas/{$m->id}/editar")->assertOk()
@@ -103,7 +103,7 @@ class MaquinaCadastroTest extends TestCase
 
         // Ao salvar, grava o dispositivo; o texto antigo continua guardado (não é apagado).
         $this->put("/admin/maquinas/{$m->id}", $this->dados(['codigo' => 'M1', 'nome' => 'Máquina antiga',
-            'iot1_dispositivo_id' => $sensor->id, 'iot1_canal' => 'ch1_value', 'iot1_tipo' => 'producao']))->assertSessionDoesntHaveErrors();
+            'iot1_dispositivo_id' => $sensor->id, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao']))->assertSessionDoesntHaveErrors();
         $m->refresh();
         $this->assertSame([$sensor->id, 'Teste_Alumbra'], [$m->iot1_dispositivo_id, $m->iot1_id]);
     }
@@ -112,21 +112,21 @@ class MaquinaCadastroTest extends TestCase
     {
         $this->post('/admin/maquinas', $this->dados(['centro_custo' => '999']))->assertSessionHasErrors('centro_custo');
         $this->post('/admin/maquinas', $this->dados(['micro_parada_s' => '300', 'macro_parada_s' => '60']))->assertSessionHasErrors('macro_parada_s');
-        $this->post('/admin/maquinas', $this->dados(['macro_parada_s' => '300']))->assertSessionDoesntHaveErrors();
+        $this->post('/admin/maquinas', $this->dados(['macro_parada_s' => '300', 'ativo' => '0']))->assertSessionDoesntHaveErrors();
         Maquina::query()->delete();
 
         $x = $this->dispositivo('X', 'Dispositivo X')->id;
         $inativo = $this->dispositivo('Y', 'Inativo', false)->id;
         $this->post('/admin/maquinas', $this->dados(['iot1_dispositivo_id' => $x]))->assertSessionHasErrors(['iot1_canal', 'iot1_tipo']);
-        $this->post('/admin/maquinas', $this->dados(['iot1_canal' => 'c', 'iot1_tipo' => 'producao']))->assertSessionHasErrors('iot1_dispositivo_id');
-        $this->post('/admin/maquinas', $this->dados(['iot1_dispositivo_id' => $inativo, 'iot1_canal' => 'c', 'iot1_tipo' => 'producao']))
+        $this->post('/admin/maquinas', $this->dados(['iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao']))->assertSessionHasErrors('iot1_dispositivo_id');
+        $this->post('/admin/maquinas', $this->dados(['iot1_dispositivo_id' => $inativo, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao']))
             ->assertSessionHasErrors('iot1_dispositivo_id'); // dispositivo inativo não pode ser escolhido
-        $this->post('/admin/maquinas', $this->dados(['iot1_dispositivo_id' => $x, 'iot1_canal' => 'c', 'iot1_tipo' => 'energia']))->assertSessionHasErrors('iot1_tipo');
-        $this->post('/admin/maquinas', $this->dados(['iot1_dispositivo_id' => $x, 'iot1_canal' => 'c', 'iot1_tipo' => 'producao',
-            'iot2_dispositivo_id' => $x, 'iot2_canal' => 'c', 'iot2_tipo' => 'refugo']))->assertSessionHasErrors('iot2_canal');
+        $this->post('/admin/maquinas', $this->dados(['iot1_dispositivo_id' => $x, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'energia']))->assertSessionHasErrors('iot1_tipo');
+        $this->post('/admin/maquinas', $this->dados(['iot1_dispositivo_id' => $x, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao',
+            'iot2_dispositivo_id' => $x, 'iot2_canal' => 'chd1_value', 'iot2_tipo' => 'refugo']))->assertSessionHasErrors('iot2_canal');
 
-        $this->post('/admin/maquinas', $this->dados(['iot1_dispositivo_id' => $x, 'iot1_canal' => 'c', 'iot1_tipo' => 'producao']))->assertSessionDoesntHaveErrors();
-        $this->post('/admin/maquinas', $this->dados(['codigo' => 'INJ-02', 'iot3_dispositivo_id' => $x, 'iot3_canal' => 'c', 'iot3_tipo' => 'producao']))
+        $this->post('/admin/maquinas', $this->dados(['iot1_dispositivo_id' => $x, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao']))->assertSessionDoesntHaveErrors();
+        $this->post('/admin/maquinas', $this->dados(['codigo' => 'INJ-02', 'iot3_dispositivo_id' => $x, 'iot3_canal' => 'chd1_value', 'iot3_tipo' => 'producao']))
             ->assertSessionHasErrors('iot3_canal'); // canal já usado na INJ-01
         $this->assertSame(1, Maquina::count());
     }

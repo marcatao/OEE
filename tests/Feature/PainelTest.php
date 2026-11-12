@@ -87,7 +87,7 @@ class PainelTest extends TestCase
         $this->get('/admin/plantas-e-linhas')->assertOk()->assertSee('Planta Matriz')->assertSee('Linha 1');
 
         $this->post('/admin/maquinas', ['linha_id' => $linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01',
-            'ciclo_ideal_s' => '12.5', 'ativo' => '1'])->assertRedirect('/admin/maquinas');
+            'ciclo_ideal_s' => '12.5', 'ativo' => '0'])->assertRedirect('/admin/maquinas');
         $maquina = Maquina::sole();
         $this->assertSame(12.5, $maquina->ciclo_ideal_s);
         $this->post('/admin/maquinas', ['linha_id' => $linha->id, 'codigo' => 'INJ-01', 'nome' => 'Outra', 'ativo' => '1'])

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\DispositivoIot;
 use App\Models\Linha;
 use App\Models\Maquina;
 use App\Models\Planta;
@@ -151,9 +152,11 @@ class MaquinasProtheusTest extends TestCase
         // Ativar sem linha: não deixa.
         $this->put("/admin/maquinas/{$m->id}", ['ativo' => '1'])->assertSessionHasErrors(['linha_id' => 'Para ativar a máquina, escolha a linha.']);
 
-        // Completa e ativa; tentativa de mudar código/nome/centro de custo é ignorada.
+        // Completa (com um canal IoT) e ativa; tentativa de mudar código/nome/centro de custo é ignorada.
+        $iot = DispositivoIot::create(['codigo' => 'S1', 'nome' => 'Sensor 1', 'tipo' => 'sensor', 'protocolo' => 'mqtt', 'ativo' => true]);
         $this->put("/admin/maquinas/{$m->id}", [
             'linha_id' => $this->linha->id, 'ciclo_ideal_s' => '15', 'ativo' => '1',
+            'iot1_dispositivo_id' => $iot->id, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao',
             'codigo' => 'OUTRO', 'nome' => 'Outro nome', 'centro_custo' => '999',
         ])->assertSessionDoesntHaveErrors()->assertRedirect('/admin/maquinas');
 

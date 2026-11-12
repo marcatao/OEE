@@ -62,7 +62,7 @@ class UnidadesTest extends TestCase
     public function test_opcoes_de_unidade_no_cadastro(): void
     {
         $dados = fn (string $codigo, string $unidade) => ['codigo' => $codigo, 'nome' => $codigo, 'linha_id' => $this->linha->id,
-            'unidade' => $unidade, 'ativo' => '1'];
+            'unidade' => $unidade, 'ativo' => '0'];
 
         // Só produção: Manutenção.
         $this->actingAs($this->usuario(['admin_producao'], 'prod@empresa.com'));
@@ -84,7 +84,7 @@ class UnidadesTest extends TestCase
 
         // Editar sem mandar a unidade mantém a atual.
         $m = Maquina::where('codigo', 'M-4')->sole();
-        $this->put("/admin/maquinas/{$m->id}", ['codigo' => 'M-4', 'nome' => 'Outro nome', 'linha_id' => $this->linha->id, 'ativo' => '1'])
+        $this->put("/admin/maquinas/{$m->id}", ['codigo' => 'M-4', 'nome' => 'Outro nome', 'linha_id' => $this->linha->id, 'ativo' => '0'])
             ->assertSessionHasNoErrors();
         $this->assertSame(['Outro nome', 'ambos'], [$m->fresh()->nome, $m->fresh()->unidade]);
     }
