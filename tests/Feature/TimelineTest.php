@@ -7,7 +7,9 @@ use App\Models\Grupo;
 use App\Models\Legenda;
 use App\Models\Linha;
 use App\Models\Maquina;
+use App\Models\OrdemProducao;
 use App\Models\Planta;
+use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -138,6 +140,31 @@ class TimelineTest extends TestCase
             ->assertDontSee('/producao/apontamentos/'); // sem permissão de apontar, a barra não vira link
 
         $this->get('/dashboards/timeline?data=2026-11-04')->assertOk()->assertSee('Sem apontamentos neste período');
+    }
+
+    public function test_barra_mostra_o_codigo_da_legenda_e_a_maquina_mostra_op_produto_e_situacao(): void
+    {
+        $this->maquina->update(['ativo' => true]);
+        $op = OrdemProducao::create(['c2_num' => '062678', 'c2_item' => '01', 'c2_sequen' => '001', 'numero' => '06267801001',
+            'c2_produto' => 'PA001', 'status' => 'andamento']);
+        ProdutoProtheus::create(['b1_cod' => 'PA001', 'b1_desc' => 'TAMPA 28MM BRANCA', 'b1_um' => 'UN']);
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->legenda('PROD')->id, 'ordem_producao_id' => $op->id,
+            'referencia' => 'texto antigo', 'inicio' => Carbon::parse('2026-11-05 11:00', 'UTC'), 'fim' => Carbon::parse('2026-11-05 13:00', 'UTC')]);
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->legenda('DT')->id,
+            'inicio' => Carbon::parse('2026-11-05 13:00', 'UTC')]);
+
+        $this->actingAs($this->usuario('mantenedor_producao'));
+        $html = $this->get('/dashboards/timeline')->assertOk()
+            ->assertSee('<span>PROD</span>', false)->assertSee('<span>DT</span>', false)  // na barra, sempre o código da legenda
+            ->assertDontSee('<span>OP 06267801001</span>', false)->assertDontSee('<span>texto antigo</span>', false)
+            ->assertSee('OP 06267801001')->assertSee('TAMPA 28MM BRANCA')                    // OP e produto embaixo da máquina
+            ->assertSee('estado-parada', false)->assertSee('desde 10:00');                    // última legenda (DT) = parada
+
+        // Última legenda volta a ser de produção: a máquina aparece "Produzindo".
+        ApontamentoEstado::where('fim', null)->update(['fim' => Carbon::parse('2026-11-05 14:00', 'UTC')]);
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->legenda('PROD')->id,
+            'inicio' => Carbon::parse('2026-11-05 14:00', 'UTC')]);
+        $this->get('/dashboards/timeline')->assertSee('estado-produzindo', false)->assertSee('Produzindo')->assertSee('OP 06267801001');
     }
 
     public function test_permissoes_da_timeline_e_dos_apontamentos(): void

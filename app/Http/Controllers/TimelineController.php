@@ -105,6 +105,7 @@ class TimelineController extends Controller
             'linhas' => $dados['linhas'],
             'totais' => $dados['totais'],
             'disponibilidade' => $dados['disponibilidade'],
+            'situacoes' => $timeline->situacoes($maquinas),
             'marcas' => $timeline->marcas($inicio->utc(), $fim->utc()),
             'agora' => $agora > $inicio->getTimestamp() && $agora < $fim->getTimestamp()
                 ? round(($agora - $inicio->getTimestamp()) / ($fim->getTimestamp() - $inicio->getTimestamp()) * 100, 3) : null,

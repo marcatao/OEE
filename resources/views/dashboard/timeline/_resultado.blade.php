@@ -33,12 +33,21 @@
     <div class="tl-grade">
       <div class="tl-tabela">
         @foreach ($maquinas as $maquina)
+          @php($sit = $situacoes[$maquina->id] ?? null)
           <div class="tl-linha">
-            @if ($u->pode('dashboard_maquina'))
-              <a class="tl-maquina" href="{{ route('dashboard.maquina', $maquina) }}" title="{{ $maquina->nome }} · {{ $maquina->localizacao() }}">{{ $maquina->nome }}<small>{{ $maquina->codigo }}</small></a>
-            @else
-              <span class="tl-maquina" title="{{ $maquina->nome }} · {{ $maquina->localizacao() }}">{{ $maquina->nome }}<small>{{ $maquina->codigo }}</small></span>
-            @endif
+            <div class="tl-maquina-info" title="{{ $maquina->nome }} · {{ $maquina->localizacao() }}">
+              @if ($u->pode('dashboard_maquina'))
+                <a class="tl-maquina" href="{{ route('dashboard.maquina', $maquina) }}">{{ $maquina->nome }}<small>{{ $maquina->codigo }}</small></a>
+              @else
+                <span class="tl-maquina">{{ $maquina->nome }}<small>{{ $maquina->codigo }}</small></span>
+              @endif
+              @if ($sit && $sit['op'])
+                <span class="tl-op" title="OP {{ $sit['op']->numero }}{{ $sit['produto'] ? ' · '.$sit['produto']->codigo().' '.$sit['produto']->descricao() : '' }}">
+                  <strong>OP {{ $sit['op']->numero }}</strong>
+                  <small>{{ $sit['produto'] ? $sit['produto']->codigo().' · '.$sit['produto']->descricao() : rtrim($sit['op']->c2_produto) }}</small>
+                </span>
+              @endif
+            </div>
             <div class="tl-faixa">
               @foreach ($linhas[$maquina->id] ?? [] as $b)
                 @php($legenda = $b['legenda'])
@@ -58,15 +67,25 @@
               @endforeach
               @if ($agora !== null)<i class="tl-agora" style="left: {{ $agora }}%" title="Agora"></i>@endif
             </div>
+            @if ($sit && $sit['legenda'])
+              <div class="tl-estado estado-{{ $sit['estado'] }}" title="Última legenda apontada: {{ $sit['legenda']->codigo }} · {{ $sit['legenda']->descricao }}">
+                <span class="tl-estado-titulo"><i class="tl-pulso" aria-hidden="true"></i>{{ $sit['rotulo'] }}</span>
+                <small>{{ $sit['legenda']->codigo }} · {{ $sit['legenda']->descricao }}</small>
+                <small>{{ $sit['aberto'] ? 'desde' : 'último apontamento' }} {{ $sit['desde']->copy()->setTimezone($fuso)->format($sit['desde']->copy()->setTimezone($fuso)->isSameDay(now($fuso)) ? 'H:i' : 'd/m H:i') }}</small>
+              </div>
+            @else
+              <div class="tl-estado estado-sem"><span class="tl-estado-titulo"><i class="tl-pulso" aria-hidden="true"></i>Sem apontamento</span></div>
+            @endif
           </div>
         @endforeach
-        <div class="tl-linha">
+        <div class="tl-linha tl-linha-eixo">
           <span></span>
           <div class="tl-eixo">
             @foreach ($marcas as $marca)
               <span @class(['tl-marca', 'virada' => $marca['virada']]) style="left: {{ $marca['esquerda'] }}%">{{ $marca['rotulo'] }}</span>
             @endforeach
           </div>
+          <span></span>
         </div>
       </div>
     </div>

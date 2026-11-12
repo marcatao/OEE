@@ -41,9 +41,10 @@ class ApontamentoEstado extends Model
     }
 
     /** Texto dentro da barra da Timeline: referência digitada, senão o número da OP, senão a legenda. */
+    /** Texto dentro da barra da timeline: sempre o código da legenda (a OP fica embaixo do nome da máquina). */
     public function rotuloBarra(): string
     {
-        return $this->referencia ?: ($this->ordemProducao ? 'OP '.$this->ordemProducao->numero : (string) $this->legenda?->codigo);
+        return (string) $this->legenda?->codigo;
     }
 
     /** "2026-11-05T08:30" digitado no fuso local → UTC. */
