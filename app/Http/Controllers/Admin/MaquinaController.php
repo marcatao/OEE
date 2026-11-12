@@ -79,8 +79,6 @@ class MaquinaController extends Controller
             'centros' => CentroCusto::selecionaveis()->orderBy('ctt_custo')->get()
                 ->unique(fn ($c) => $c->codigo())->values(),
             // Combo dos canais IoT: dispositivos ativos + os que a máquina já usa (mesmo se desativados depois).
-            // OP atual: OPs que podem ser apontadas (não fechadas), mais recentes primeiro.
-            'ordens' => OrdemProducao::apontaveis()->orderByDesc('c2_emissao')->orderByDesc('numero')->limit(1000)->get(['id', 'numero', 'c2_produto', 'status']),
             'dispositivos' => DispositivoIot::where(fn ($q) => $q->where('ativo', true)
                 ->orWhereIn('id', array_filter(array_map(fn ($n) => $maquina->{"iot{$n}_dispositivo_id"}, Maquina::CANAIS_IOT))))
                 ->orderBy('nome')->get(),

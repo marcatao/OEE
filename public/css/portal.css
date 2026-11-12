@@ -578,6 +578,11 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .busca-select-lista li.ativo, .busca-select-lista li:hover { background:var(--primaria-suave); color:var(--primaria); }
 .busca-select-lista li.selecionado { font-weight:600; }
 .busca-select-vazio { margin:.4rem .55rem; }
+/* Lista com busca compacta (data-compacto), ex.: campo de OP */
+.busca-select.compacta .busca-select-botao { min-height:2.1rem; padding:.3rem 1.8rem .3rem .55rem; font-size:.84rem; }
+.busca-select.compacta .busca-select-painel { min-width:min(26rem, 90vw); padding:.4rem; }
+.busca-select.compacta .busca-select-painel input[type=search] { padding:.35rem .55rem; font-size:.85rem; }
+.busca-select.compacta .busca-select-lista li { padding:.3rem .5rem; font-size:.82rem; }
 /* Escolha de vários com busca ([data-escolha], partials/escolha-multipla) */
 .escolha { border:1px solid var(--borda); border-radius:10px; background:var(--cartao); }
 .escolha > summary { list-style:none; cursor:pointer; display:flex; flex-wrap:wrap; gap:.4rem .75rem; align-items:center; padding:.65rem .9rem; }

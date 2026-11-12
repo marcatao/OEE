@@ -6,6 +6,7 @@
  *    vêm do servidor enquanto se digita: GET url?q=texto → [{valor, texto}] (mínimo 2 letras). O <select> original continua no formulário (escondido) e é ele que
  *    envia o valor. Para mudar por código: select.value = 'x'; select.dispatchEvent(new Event('change')).
  *    select.disabled = true trava o campo (lembre que select desabilitado não é enviado no formulário).
+ *    data-compacto: caixa mais baixa e texto menor (ex.: campo de OP).
  *
  * 2) [data-escolha] — escolha de vários com busca (partial partials/escolha-multipla): <details> com o resumo do que
  *    está marcado; ao abrir, busca por nome e a lista de caixas de marcar.
@@ -46,6 +47,7 @@
     vazio.hidden = true;
     painel.append(campo, lista, vazio);
 
+    if (select.hasAttribute('data-compacto')) caixa.classList.add('compacta'); // caixa mais baixa e texto menor
     select.parentNode.insertBefore(caixa, select);
     caixa.append(botao, painel, select);
     select.classList.add('busca-select-original');

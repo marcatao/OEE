@@ -143,16 +143,8 @@
           </select>
           @if ($maquina->situacao_desde)<small>desde @dataHora($maquina->situacao_desde)@if ($maquina->situacaoLegenda) · pela legenda {{ $maquina->situacaoLegenda->codigo }} – {{ $maquina->situacaoLegenda->descricao }}@endif</small>@endif
         </label>
-        <label>OP atual
-          <input name="ordem_producao" maxlength="20" list="ordens-maquina" autocomplete="off"
-                 value="{{ old('ordem_producao', $maquina->ordemProducao?->numero) }}" placeholder="Número da OP (vazio = sem OP)">
-          <datalist id="ordens-maquina">
-            @foreach ($ordens as $op)
-              <option value="{{ $op->numero }}">{{ rtrim($op->c2_produto) }} · {{ $op->rotuloStatus() }}</option>
-            @endforeach
-          </datalist>
-          <small>OPs do Protheus que não estão fechadas. Deixe vazio para a máquina ficar sem OP.</small>
-        </label>
+        @include('partials.campo-op', ['op' => $maquina->ordemProducao, 'rotulo' => 'OP atual',
+          'ajuda' => 'Busque pela OP ou pelo produto. "Sem OP" deixa a máquina sem OP.'])
       </div>
     </fieldset>
 

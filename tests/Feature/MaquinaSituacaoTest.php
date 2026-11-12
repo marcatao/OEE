@@ -120,4 +120,27 @@ class MaquinaSituacaoTest extends TestCase
         $this->artisan('maquinas:situacao-pelos-apontamentos --confirmar')->assertSuccessful();
         $this->assertSame(['produzindo', $this->op->id], [$this->maquina->fresh()->situacao, $this->maquina->fresh()->ordem_producao_id]);
     }
+
+    public function test_campo_de_op_busca_pela_op_ou_pelo_produto(): void
+    {
+        OrdemProducao::create(['c2_num' => '062679', 'c2_item' => '01', 'c2_sequen' => '001', 'numero' => '06267901001',
+            'c2_produto' => 'PA002', 'status' => 'fechada', 'c2_datrf' => '20261101']);
+
+        // Os dois formulários usam a lista com busca compacta, ligada à busca de OP.
+        $this->get('/producao/apontamentos/novo')->assertOk()->assertSee('data-busca-url="'.route('ordens-producao.busca').'"', false)
+            ->assertSee('data-compacto', false)->assertDontSee('<datalist', false);
+        $this->get("/admin/maquinas/{$this->maquina->id}/editar")->assertOk()->assertSee('data-busca-url="'.route('ordens-producao.busca').'"', false);
+
+        // Pelo número, pelo código e pela descrição do produto; só OPs que ainda podem ser apontadas (não fechadas).
+        $this->getJson('/producao/ordens-de-producao/busca?q=062678')->assertOk()
+            ->assertJson([['valor' => '06267801001', 'texto' => '06267801001 · PA001 INTERRUPTOR PARALELO · Aberta']]);
+        $this->getJson('/producao/ordens-de-producao/busca?q=interruptor')->assertJsonCount(1)->assertJsonPath('0.valor', '06267801001');
+        $this->getJson('/producao/ordens-de-producao/busca?q=PA00')->assertJsonCount(1);  // a 062679 (fechada) não vem
+        $this->getJson('/producao/ordens-de-producao/busca?q=0')->assertExactJson([]);   // mínimo 2 letras
+
+        // Quem não aponta nem administra não usa a busca.
+        $u = Usuario::create(['entra_oid' => 'oid-m', 'nome' => 'M', 'email' => 'm@empresa.com', 'perfil' => 'operador']);
+        $u->definirPerfis(['mantenedor_producao']);
+        $this->actingAs($u)->getJson('/producao/ordens-de-producao/busca?q=0626')->assertForbidden();
+    }
 }

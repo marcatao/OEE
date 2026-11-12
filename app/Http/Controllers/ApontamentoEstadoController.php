@@ -6,8 +6,8 @@ use App\Models\ApontamentoEstado;
 use App\Models\Legenda;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
-use App\Models\ProdutoProtheus;
 use App\Providers\AppServiceProvider;
+use App\Services\CustoOrdemProducao;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use Carbon\CarbonImmutable;
@@ -96,21 +96,17 @@ class ApontamentoEstadoController extends Controller
 
     private function formulario(ApontamentoEstado $apontamento, string $voltar): View
     {
-        // Lista de OPs para escolher: as que ainda podem ser apontadas (não fechadas), mais recentes primeiro.
-        $ordens = OrdemProducao::apontaveis()->orderByDesc('c2_emissao')->orderByDesc('numero')->limit(1000)
-            ->get(['id', 'numero', 'c2_produto', 'c2_filial', 'status']);
+        $maquinas = Maquina::with('ordemProducao')->where(fn ($q) => $q->where('ativo', true)->orWhere('id', $apontamento->maquina_id))
+            ->orderBy('nome')->get(['id', 'codigo', 'nome', 'ordem_producao_id']);
 
         return view('apontamentos.form', [
             'apontamento' => $apontamento,
             'voltar' => $voltar,
-            'maquinas' => Maquina::with('ordemProducao:id,numero')->where(fn ($q) => $q->where('ativo', true)->orWhere('id', $apontamento->maquina_id))
-                ->orderBy('nome')->get(['id', 'codigo', 'nome', 'ordem_producao_id']),
+            'maquinas' => $maquinas,
             'legendas' => Legenda::where(fn ($q) => $q->where('ativo', true)->orWhere('id', $apontamento->legenda_id))
                 ->orderBy('ordem')->orderBy('codigo')->get(),
-            'ordens' => $ordens,
-            // Descrição só dos produtos dessas OPs (a SB1 inteira seria pesada demais).
-            'descricoes' => ProdutoProtheus::whereIn('b1_cod', $ordens->pluck('c2_produto')->unique()->values())
-                ->pluck('b1_desc', 'b1_cod')->map(fn ($d) => rtrim($d)),
+            // Descrição do produto das OPs atuais das máquinas (texto da OP ao trocar a máquina no formulário).
+            'produtosOp' => app(CustoOrdemProducao::class)->produtos($maquinas->pluck('ordemProducao')->filter()->map(fn ($op) => $op->c2_produto)),
         ]);
     }
 

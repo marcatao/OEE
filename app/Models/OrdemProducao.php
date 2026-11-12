@@ -50,6 +50,14 @@ class OrdemProducao extends Model
         return $q->where('status', '<>', 'fechada')->where('d_e_l_e_t_', '<>', '*');
     }
 
+    /** Texto da OP nas listas com busca: "06267801001 · PA0910755 INTERRUPTOR PARALELO · Andamento". */
+    public function textoBusca(?ProdutoProtheus $produto = null): string
+    {
+        $produto ??= $this->produto();
+
+        return $this->numero.' · '.rtrim($this->c2_produto).($produto ? ' '.$produto->descricao() : '').' · '.$this->rotuloStatus();
+    }
+
     public function rotuloStatus(): string
     {
         return self::STATUS[$this->status] ?? $this->status;

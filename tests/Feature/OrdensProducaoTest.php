@@ -178,10 +178,11 @@ class OrdensProducaoTest extends TestCase
         $dt = Legenda::where('codigo', 'DT')->sole();
         $this->actingAs($this->usuario(['apontamentos', 'timeline']));
 
-        // Formulário lista as OPs não fechadas, com a descrição do produto.
-        $this->get('/producao/apontamentos/novo')->assertOk()
-            ->assertSee('value="50985901001"', false)->assertSee('TAMPA 50MM · Aberta')
-            ->assertDontSee('value="50986101001"', false); // fechada não aparece
+        // Campo da OP com busca: acha as OPs não fechadas pelo número ou produto, com a descrição do produto.
+        $this->get('/producao/apontamentos/novo')->assertOk()->assertSee('data-busca-url', false);
+        $this->getJson('/producao/ordens-de-producao/busca?q=5098')->assertOk()
+            ->assertJsonFragment(['valor' => '50985901001', 'texto' => '50985901001 · PA001 TAMPA 50MM · Aberta'])
+            ->assertJsonMissing(['valor' => '50986101001']); // fechada não aparece
 
         $this->post('/producao/apontamentos', ['maquina_id' => $this->maquina->id, 'legenda_id' => $prod->id,
             'inicio' => '2026-11-05T08:00', 'ordem_producao' => '50985901001'])->assertSessionDoesntHaveErrors();

@@ -82,6 +82,8 @@ Route::middleware('auth')->group(function () {
             Route::put('{ferramenta}', [FerramentaController::class, 'update'])->name('update');
         });
     });
+    // Busca de OP dos campos de seleção (apontamento real, cadastro de máquinas): JSON, quem aponta ou administra.
+    Route::get('producao/ordens-de-producao/busca', [OrdemProducaoController::class, 'busca'])->name('ordens-producao.busca');
     Route::middleware('permissao:ordens_producao')->prefix('producao/ordens-de-producao')->name('ordens-producao.')->group(function () {
         Route::get('/', [OrdemProducaoController::class, 'index'])->name('index');
         Route::get('{ordem}', [OrdemProducaoController::class, 'show'])->whereNumber('ordem')->name('show'); // kardex da OP
