@@ -27,7 +27,12 @@
     </div>
     <div class="os-cabecalho">
       <a class="botao secundario" href="{{ route('os.ordens.imprimir', $os) }}" target="_blank">@include('layouts.partials.icone', ['nome' => 'imprimir']) Imprimir</a>
-      @if ($podeAprovar && $editavel)<a class="botao secundario" href="{{ route('os.ordens.edit', $os) }}">Editar</a>@endif
+      @if ($podeExecutar && $editavel)
+        <form method="post" action="{{ route('os.ordens.maquina-parada', $os) }}" style="margin:0">@csrf
+          <input type="hidden" name="maquina_parada" value="{{ $os->maquina_parada ? 0 : 1 }}">
+          <button class="botao secundario" type="submit">{{ $os->maquina_parada ? 'Máquina voltou a funcionar' : 'Marcar máquina parada' }}</button>
+        </form>
+      @endif
     </div>
   </div>
   @include('manutencao._erros')
@@ -269,7 +274,8 @@
             <form method="post" action="{{ route('os.apontamentos.encerrar', $ap) }}" class="os-acoes" style="margin:0">
               @csrf
               <input name="descricao" maxlength="1000" required placeholder="O que foi feito" value="{{ $ap->descricao }}">
-              <button class="botao pequeno" type="submit">Encerrar</button>
+              <label class="opcao ap-concluir"><input type="checkbox" name="concluir_os" value="1"> <span>Concluir a OS também</span></label>
+              <button class="botao pequeno" type="submit">Encerrar apontamento</button>
             </form>
           @else
             {{ $ap->descricao }}

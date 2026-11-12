@@ -22,6 +22,8 @@
       <form method="post" action="{{ route('os.apontamentos.encerrar', $rodando) }}" class="formulario-vertical">
         @csrf
         <label>Descrição do serviço <textarea name="descricao" rows="3" maxlength="1000" required>{{ old('descricao', $rodando->descricao) }}</textarea></label>
+        <label class="opcao"><input type="checkbox" name="concluir_os" value="1">
+          <span><strong>Concluir a OS também</strong><small>marque se o serviço terminou; desmarcado, encerra só este apontamento e a OS continua aberta</small></span></label>
         <div class="acoes"><button class="botao" type="submit">Encerrar apontamento</button></div>
       </form>
     </div>

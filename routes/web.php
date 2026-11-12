@@ -78,7 +78,7 @@ Route::middleware('auth')->group(function () {
         ->middleware('permissao:roteiros')->name('roteiros.index');
     Route::middleware('permissao:ferramentas')->prefix('producao/ferramentas')->name('ferramentas.')->group(function () {
         Route::get('/', [FerramentaController::class, 'index'])->name('index');
-        Route::middleware('perfil:admin_producao,admin_tecnologia')->group(function () {
+        Route::middleware('perfil:admin_producao,admin_tecnologia,admin_ferramentaria')->group(function () {
             Route::get('{ferramenta}/editar', [FerramentaController::class, 'edit'])->name('edit');
             Route::put('{ferramenta}', [FerramentaController::class, 'update'])->name('update');
         });
@@ -132,13 +132,12 @@ Route::middleware('auth')->group(function () {
         Route::middleware('permissao:os_aprovar')->group(function () {
             Route::post('solicitacoes/{solicitacao}/aprovar', [SolicitacaoController::class, 'aprovar'])->whereNumber('solicitacao')->name('solicitacoes.aprovar');
             Route::post('solicitacoes/{solicitacao}/rejeitar', [SolicitacaoController::class, 'rejeitar'])->whereNumber('solicitacao')->name('solicitacoes.rejeitar');
-            Route::get('ordens/{ordem}/editar', [OrdemServicoController::class, 'edit'])->whereNumber('ordem')->name('ordens.edit');
-            Route::put('ordens/{ordem}', [OrdemServicoController::class, 'update'])->whereNumber('ordem')->name('ordens.update');
             Route::post('ordens/{ordem}/distribuir', [OrdemServicoController::class, 'distribuir'])->whereNumber('ordem')->name('ordens.distribuir');
             Route::delete('apontamentos/{apontamento}', [ApontamentoHorasController::class, 'destroy'])->whereNumber('apontamento')->name('apontamentos.destroy');
         });
         Route::middleware($executa)->group(function () {
             Route::get('minhas', [ApontamentoHorasController::class, 'minhas'])->name('minhas');
+            Route::post('ordens/{ordem}/maquina-parada', [OrdemServicoController::class, 'maquinaParada'])->whereNumber('ordem')->name('ordens.maquina-parada');
             Route::put('ordens/{ordem}/checklist', [OrdemServicoController::class, 'checklist'])->whereNumber('ordem')->name('ordens.checklist');
             Route::post('ordens/{ordem}/apontamentos/iniciar', [ApontamentoHorasController::class, 'iniciar'])->whereNumber('ordem')->name('apontamentos.iniciar');
             Route::post('ordens/{ordem}/apontamentos', [ApontamentoHorasController::class, 'store'])->whereNumber('ordem')->name('apontamentos.store');
@@ -164,7 +163,7 @@ Route::middleware('auth')->group(function () {
             Route::post('relatorios/setores/justificativa', [RelatorioManutencaoController::class, 'justificar'])->name('relatorios.justificar');
         });
         // Cadastros só da manutenção (os comuns — máquinas, usuários, centros de custo — ficam em Administração).
-        Route::middleware('perfil:admin_producao,admin_tecnologia')->prefix('cadastros')->name('cadastros.')->group(function () {
+        Route::middleware('perfil:admin_producao,admin_tecnologia,admin_ferramentaria')->prefix('cadastros')->name('cadastros.')->group(function () {
             Route::get('areas', [CadastroManutencaoController::class, 'areas'])->name('areas');
             Route::post('areas', [CadastroManutencaoController::class, 'salvarArea'])->name('areas.store');
             Route::put('areas/{area}', [CadastroManutencaoController::class, 'salvarArea'])->whereNumber('area')->name('areas.update');
@@ -210,7 +209,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Administração / cadastros (Administrador de Produção ou de Tecnologia; cada um vê as unidades dele)
-    Route::middleware('perfil:admin_producao,admin_tecnologia')->prefix('admin')->name('admin.')->group(function () {
+    Route::middleware('perfil:admin_producao,admin_tecnologia,admin_ferramentaria')->prefix('admin')->name('admin.')->group(function () {
 
         Route::get('maquinas', [MaquinaController::class, 'index'])->name('maquinas.index');
         Route::get('maquinas/nova', [MaquinaController::class, 'create'])->name('maquinas.create');

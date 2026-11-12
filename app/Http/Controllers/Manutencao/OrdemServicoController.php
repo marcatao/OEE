@@ -4,10 +4,8 @@ namespace App\Http\Controllers\Manutencao;
 
 use App\Http\Controllers\Controller;
 use App\Models\CentroCusto;
-use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
-use App\Models\Maquina;
 use App\Services\Manutencao\FluxoOrdemServico;
 use App\Services\Manutencao\HorasManutencao;
 use App\Support\AcessoOs;
@@ -114,54 +112,22 @@ class OrdemServicoController extends Controller
         ]);
     }
 
-    public function edit(Request $request, int $ordem): View
+    /**
+     * Máquina parada / voltou a funcionar: único dado da OS que ainda muda depois de emitida (com a OS aberta), por quem
+     * atende a OS. O resto da OS não se altera (os dados foram revisados na aprovação da SS).
+     */
+    public function maquinaParada(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscar($request, $ordem);
         AcessoOs::exigirAberta($os);
-        abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
-
-        return view('manutencao.ordens.form', [
-            'os' => $os,
-            'maquinas' => AcessoOs::maquinas(),
-            'areas' => AcessoOs::areas(),
-            'centros' => AcessoOs::centrosCusto(),
-            'mantenedores' => AcessoOs::mantenedoresDaArea($os),
-        ]);
-    }
-
-    /** Todos os campos da OS são alteráveis por quem aprova (fica no histórico). */
-    public function update(Request $request, int $ordem): RedirectResponse
-    {
-        $os = $this->buscar($request, $ordem);
-        AcessoOs::exigirAberta($os);
-        abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
-        $dados = $request->validate([
-            'titulo' => ['nullable', 'string', 'max:120'],
-            'tipo' => ['required', Rule::in(array_keys(SolicitacaoServico::TIPOS))],
-            'maquina_id' => ['nullable', 'integer', Rule::exists('maquinas', 'id')],
-            'area_executante_id' => ['required', 'integer', Rule::exists('os_areas_executantes', 'id')],
-            'responsavel_id' => ['nullable', 'integer', Rule::exists('os_mantenedores', 'id')],
-            'centro_custo' => ['nullable', 'string', 'max:20'],
-            'centro_custo_solicitante' => ['nullable', 'string', 'max:120'],
-            'prioridade' => ['required', Rule::in(array_keys(SolicitacaoServico::PRIORIDADES))],
-            'maquina_parada' => ['nullable', 'boolean'],
-            'prevista_para' => ['nullable', 'date'],
-            'descricao' => ['required', 'string', 'max:2000'],
-            'solucao' => ['nullable', 'string', 'max:2000'],
-        ]);
-        $dados['maquina_parada'] = (bool) ($dados['maquina_parada'] ?? false);
-        $area = AreaExecutante::withoutGlobalScopes()->find($dados['area_executante_id']);
-        $maquina = isset($dados['maquina_id']) ? Maquina::withoutGlobalScopes()->find($dados['maquina_id']) : null;
-        $dados['unidade'] = OrdemServico::unidadePara($area, $maquina);
-
-        $os->fill($dados);
-        $alterados = array_keys($os->getDirty());
-        $os->save();
-        if ($alterados) {
-            $this->fluxo->registrar($os, null, 'alterada', $os->status, $os->status, 'Campos alterados: '.implode(', ', $alterados), $request->user());
+        abort_unless(AcessoOs::podeExecutar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
+        $parada = $request->boolean('maquina_parada');
+        if ($parada !== (bool) $os->maquina_parada) {
+            $os->forceFill(['maquina_parada' => $parada])->save();
+            $this->fluxo->registrar($os, null, 'maquina_parada', $os->status, $os->status, $parada ? 'Máquina parada' : 'Máquina voltou a funcionar', $request->user());
         }
 
-        return redirect()->route('os.ordens.show', $os)->with('ok', 'OS atualizada.');
+        return back()->with('ok', $parada ? 'OS marcada com máquina parada.' : 'Máquina marcada como funcionando.');
     }
 
     /** Distribui a OS para um ou mais mantenedores (nenhum = definir depois). */

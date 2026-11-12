@@ -59,10 +59,21 @@ class ApontamentoHorasController extends Controller
     {
         $ap = $this->buscar($request, $apontamento);
         abort_unless($ap->fim === null, 422, 'Este apontamento já foi encerrado.');
-        $dados = $request->validate(['descricao' => ['required', 'string', 'max:1000']], ['descricao.required' => 'Descreva o serviço feito neste apontamento.']);
+        $dados = $request->validate(['descricao' => ['required', 'string', 'max:1000'], 'concluir_os' => ['nullable', 'boolean']],
+            ['descricao.required' => 'Descreva o serviço feito neste apontamento.']);
         $this->fluxo->encerrarApontamento($ap, $dados['descricao']);
 
-        return back()->with('ok', 'Apontamento encerrado.');
+        // "Concluir a OS também": encerra os outros apontamentos rodando e conclui com a data deste (o solicitante avalia).
+        if ($request->boolean('concluir_os')) {
+            $os = $ap->ordemServico()->first();
+            abort_unless(AcessoOs::podeExecutar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
+            AcessoOs::exigirAberta($os);
+            $this->fluxo->executarAcao($os, 'concluir', $request->user(), $dados['descricao']);
+
+            return redirect()->route('os.ordens.show', $os)->with('ok', 'Apontamento encerrado e OS concluída: agora é com o solicitante, que vai avaliar.');
+        }
+
+        return back()->with('ok', 'Apontamento encerrado. A OS continua aberta.');
     }
 
     /** Lançamento manual (início e fim informados). */

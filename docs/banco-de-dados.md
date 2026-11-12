@@ -971,7 +971,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `centros_custo_ctt_filial_ctt_custo_unique` único (ctt_filial, ctt_custo) · `centros_custo_ctt_custo_index` (ctt_custo) · `centros_custo_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_centros_custo_classe`: `ctt_classe IN ('1', '2')` · `ck_centros_custo_bloq`: `ctt_bloq IN ('1', '2')` · `ck_centros_custo_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+**Regras (CHECK, só no SQL Server):** `ck_centros_custo_classe`: `ctt_classe IN ('1', '2')` · `ck_centros_custo_bloq`: `ctt_bloq IN ('1', '2')` · `ck_centros_custo_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
 
 ### dispositivos_iot
 
@@ -999,7 +999,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `dispositivos_iot_codigo_unique` único (codigo) · `dispositivos_iot_maquina_id_index` (maquina_id) · `dispositivos_iot_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_dispositivos_iot_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+**Regras (CHECK, só no SQL Server):** `ck_dispositivos_iot_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
 
 ### estruturas_produto
 
@@ -1067,7 +1067,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `ferramentas_h4_filial_h4_codigo_unique` único (h4_filial, h4_codigo) · `ferramentas_h4_codigo_index` (h4_codigo) · `ferramentas_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_ferramentas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_ferramentas_cavidades`: `h4_qtdcavativas >= 0`
+**Regras (CHECK, só no SQL Server):** `ck_ferramentas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')` · `ck_ferramentas_cavidades`: `h4_qtdcavativas >= 0`
 
 ### filtros_usuarios
 
@@ -1176,7 +1176,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `legendas_codigo_unique` único (codigo) · `legendas_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_legendas_tipo`: `tipo IN ('produzindo', 'parada', 'planejada', 'desligada')` · `ck_legendas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+**Regras (CHECK, só no SQL Server):** `ck_legendas_tipo`: `tipo IN ('produzindo', 'parada', 'planejada', 'desligada')` · `ck_legendas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
 
 ### linhas
 
@@ -1197,7 +1197,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `linhas_planta_id_codigo_unique` único (planta_id, codigo) · `linhas_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_linhas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+**Regras (CHECK, só no SQL Server):** `ck_linhas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
 
 ### maquinas
 
@@ -1245,7 +1245,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_) · `maquinas_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_maquinas_paradas`: `micro_parada_s IS NULL OR macro_parada_s IS NULL OR macro_parada_s > micro_parada_s` · `ck_maquinas_iot1_tipo`: `iot1_tipo IS NULL OR iot1_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot2_tipo`: `iot2_tipo IS NULL OR iot2_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot3_tipo`: `iot3_tipo IS NULL OR iot3_tipo IN ('producao', 'refugo')` · `ck_maquinas_d_e_l_e_t_`: `d_e_l_e_t_ IN (' ', '*')` · `ck_maquinas_ativa_com_linha`: `ativo = 0 OR linha_id IS NOT NULL` · `ck_maquinas_ativa_nao_excluida`: `ativo = 0 OR d_e_l_e_t_ <> '*'` · `ck_maquinas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_maquinas_situacao`: `situacao IS NULL OR situacao IN ('produzindo', 'parada')`
+**Regras (CHECK, só no SQL Server):** `ck_maquinas_paradas`: `micro_parada_s IS NULL OR macro_parada_s IS NULL OR macro_parada_s > micro_parada_s` · `ck_maquinas_iot1_tipo`: `iot1_tipo IS NULL OR iot1_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot2_tipo`: `iot2_tipo IS NULL OR iot2_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot3_tipo`: `iot3_tipo IS NULL OR iot3_tipo IN ('producao', 'refugo')` · `ck_maquinas_d_e_l_e_t_`: `d_e_l_e_t_ IN (' ', '*')` · `ck_maquinas_ativa_com_linha`: `ativo = 0 OR linha_id IS NOT NULL` · `ck_maquinas_ativa_nao_excluida`: `ativo = 0 OR d_e_l_e_t_ <> '*'` · `ck_maquinas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')` · `ck_maquinas_situacao`: `situacao IS NULL OR situacao IN ('produzindo', 'parada')`
 
 ### motivos_parada
 
@@ -1403,7 +1403,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `ux_ordens_servico_solicitacao` único (solicitacao_id) filtrado `WHERE solicitacao_id IS NOT NULL` (só SQL Server) · `ux_ordens_servico_plano_prevista` único (plano_preventiva_id, prevista_para) filtrado `WHERE plano_preventiva_id IS NOT NULL` (só SQL Server) · `ordens_servico_unidade_status_id_index` (unidade, status, id) · `ordens_servico_responsavel_id_status_index` (responsavel_id, status) · `ordens_servico_maquina_id_criado_em_index` (maquina_id, criado_em) · `ordens_servico_status_prevista_para_index` (status, prevista_para) · `ordens_servico_solicitante_id_index` (solicitante_id)
 
-**Regras (CHECK, só no SQL Server):** `ck_ordens_servico_unidade`: `unidade IN ('manutencao', 'tecnologia')` · `ck_ordens_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_ordens_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_ordens_servico_status`: `status IN ('aberta', 'em_execucao', 'aguardando_material', 'concluida', 'encerrada', 'cancelada')` · `ck_ordens_servico_total_minutos`: `total_minutos >= 0` · `ck_ordens_servico_avaliacao`: `avaliacao IS NULL OR avaliacao IN ('excelente', 'boa', 'ruim')`
+**Regras (CHECK, só no SQL Server):** `ck_ordens_servico_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_ordens_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_ordens_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_ordens_servico_status`: `status IN ('aberta', 'em_execucao', 'aguardando_material', 'concluida', 'encerrada', 'cancelada')` · `ck_ordens_servico_total_minutos`: `total_minutos >= 0` · `ck_ordens_servico_avaliacao`: `avaliacao IS NULL OR avaliacao IN ('excelente', 'boa', 'ruim')`
 
 ### os_apontamentos_horas
 
@@ -1446,7 +1446,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `os_areas_executantes_codigo_unique` único (codigo) · `os_areas_executantes_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_os_areas_executantes_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+**Regras (CHECK, só no SQL Server):** `ck_os_areas_executantes_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
 
 ### os_checklist
 
@@ -1491,7 +1491,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `os_ferramentas_codigo_unique` único (codigo) · `os_ferramentas_unidade_index` (unidade) · `os_ferramentas_mantenedor_id_ativo_index` (mantenedor_id, ativo)
 
-**Regras (CHECK, só no SQL Server):** `ck_os_ferramentas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+**Regras (CHECK, só no SQL Server):** `ck_os_ferramentas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
 
 ### os_historico
 
@@ -1561,7 +1561,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `os_justificativas_setor_unidade_centro_custo_competencia_unique` único (unidade, centro_custo, competencia)
 
-**Regras (CHECK, só no SQL Server):** `ck_os_justificativas_setor_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_os_justificativas_setor_competencia`: `DAY(competencia) = 1`
+**Regras (CHECK, só no SQL Server):** `ck_os_justificativas_setor_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')` · `ck_os_justificativas_setor_competencia`: `DAY(competencia) = 1`
 
 ### os_mantenedor_areas
 
@@ -1602,7 +1602,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `ux_os_mantenedores_usuario` único (usuario_id) filtrado `WHERE usuario_id IS NOT NULL` (só SQL Server) · `os_mantenedores_unidade_index` (unidade) · `os_mantenedores_area_executante_id_index` (area_executante_id)
 
-**Regras (CHECK, só no SQL Server):** `ck_os_mantenedores_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_os_mantenedores_jornada`: `jornada_inicio LIKE '[0-2][0-9]:[0-5][0-9]' AND jornada_fim LIKE '[0-2][0-9]:[0-5][0-9]'` · `ck_os_mantenedores_dias_semana`: `dias_semana NOT LIKE '%[^1-7]%'` · `ck_os_mantenedores_intervalo`: `intervalo_min >= 0`
+**Regras (CHECK, só no SQL Server):** `ck_os_mantenedores_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')` · `ck_os_mantenedores_jornada`: `jornada_inicio LIKE '[0-2][0-9]:[0-5][0-9]' AND jornada_fim LIKE '[0-2][0-9]:[0-5][0-9]'` · `ck_os_mantenedores_dias_semana`: `dias_semana NOT LIKE '%[^1-7]%'` · `ck_os_mantenedores_intervalo`: `intervalo_min >= 0`
 
 ### os_materiais
 
@@ -1689,7 +1689,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `os_planos_preventiva_codigo_unique` único (codigo) · `os_planos_preventiva_unidade_index` (unidade) · `os_planos_preventiva_ativo_proxima_em_index` (ativo, proxima_em) · `os_planos_preventiva_maquina_id_index` (maquina_id)
 
-**Regras (CHECK, só no SQL Server):** `ck_os_planos_preventiva_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_os_planos_preventiva_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_os_planos_preventiva_periodicidade`: `periodicidade IN ('semanal', 'quinzenal', 'meses')` · `ck_os_planos_preventiva_meses`: `LEN(meses) = 12 AND meses NOT LIKE '%[^01]%'` · `ck_os_planos_preventiva_dia_mes`: `dia_mes BETWEEN 1 AND 31` · `ck_os_planos_preventiva_antecedencia`: `antecedencia_dias >= 0` · `ck_os_planos_preventiva_duracao`: `duracao_prevista_min IS NULL OR duracao_prevista_min > 0`
+**Regras (CHECK, só no SQL Server):** `ck_os_planos_preventiva_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')` · `ck_os_planos_preventiva_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_os_planos_preventiva_periodicidade`: `periodicidade IN ('semanal', 'quinzenal', 'meses')` · `ck_os_planos_preventiva_meses`: `LEN(meses) = 12 AND meses NOT LIKE '%[^01]%'` · `ck_os_planos_preventiva_dia_mes`: `dia_mes BETWEEN 1 AND 31` · `ck_os_planos_preventiva_antecedencia`: `antecedencia_dias >= 0` · `ck_os_planos_preventiva_duracao`: `duracao_prevista_min IS NULL OR duracao_prevista_min > 0`
 
 ### os_sugestoes_descricao
 
@@ -1708,7 +1708,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `os_sugestoes_descricao_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_os_sugestoes_descricao_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+**Regras (CHECK, só no SQL Server):** `ck_os_sugestoes_descricao_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
 
 ### paradas
 
@@ -1749,7 +1749,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `plantas_codigo_unique` único (codigo) · `plantas_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_plantas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+**Regras (CHECK, só no SQL Server):** `ck_plantas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
 
 ### produtos
 
@@ -1893,7 +1893,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `solicitacoes_material_unidade_status_id_index` (unidade, status, id) · `solicitacoes_material_solicitante_id_id_index` (solicitante_id, id)
 
-**Regras (CHECK, só no SQL Server):** `ck_solicitacoes_material_unidade`: `unidade IN ('manutencao', 'tecnologia')` · `ck_solicitacoes_material_status`: `status IN ('pendente', 'em_analise', 'analisada', 'cancelada')`
+**Regras (CHECK, só no SQL Server):** `ck_solicitacoes_material_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_solicitacoes_material_status`: `status IN ('pendente', 'em_analise', 'analisada', 'cancelada')`
 
 ### solicitacoes_material_itens
 
@@ -1955,7 +1955,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `solicitacoes_servico_unidade_status_id_index` (unidade, status, id) · `solicitacoes_servico_solicitante_id_id_index` (solicitante_id, id) · `solicitacoes_servico_maquina_id_index` (maquina_id)
 
-**Regras (CHECK, só no SQL Server):** `ck_solicitacoes_servico_unidade`: `unidade IN ('manutencao', 'tecnologia')` · `ck_solicitacoes_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_solicitacoes_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_solicitacoes_servico_status`: `status IN ('pendente', 'aprovada', 'rejeitada', 'cancelada')`
+**Regras (CHECK, só no SQL Server):** `ck_solicitacoes_servico_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_solicitacoes_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_solicitacoes_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_solicitacoes_servico_status`: `status IN ('pendente', 'aprovada', 'rejeitada', 'cancelada')`
 
 ### turnos
 
@@ -1989,7 +1989,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Índices:** `usuario_perfis_usuario_id_perfil_unique` único (usuario_id, perfil)
 
-**Regras (CHECK, só no SQL Server):** `ck_usuario_perfis_perfil`: `perfil IN ('operador', 'admin_producao', 'admin_tecnologia', 'mantenedor_producao', 'mantenedor_tecnologia', 'solicitante_manutencao', 'solicitante_tecnologia')`
+**Regras (CHECK, só no SQL Server):** `ck_usuario_perfis_perfil`: `perfil IN ('operador', 'admin_producao', 'admin_tecnologia', 'mantenedor_producao', 'mantenedor_tecnologia', 'solicitante_manutencao', 'solicitante_tecnologia', 'solicitante_ferramentaria', 'mantenedor_ferramentaria', 'admin_ferramentaria')`
 
 ### usuarios
 

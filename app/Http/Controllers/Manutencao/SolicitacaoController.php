@@ -78,9 +78,13 @@ class SolicitacaoController extends Controller
     public function show(Request $request, int $solicitacao): View
     {
         $ss = $this->buscar($request, $solicitacao);
+        $revisar = $ss->status === 'pendente' && AcessoOs::podeAprovar($request->user(), $ss);
 
         return view('manutencao.solicitacoes.show', [
             'ss' => $ss,
+            // Aprovador revisa a SS no próprio detalhe: os campos vêm editáveis.
+            'revisar' => $revisar,
+            'campos' => $revisar ? $this->dadosFormulario($ss, $request) : [],
             'historico' => $ss->historico()->with('usuario')->orderByDesc('criado_em')->orderByDesc('id')->get(),
             'mantenedores' => AcessoOs::mantenedoresDaArea($ss),
             'meuMantenedor' => AcessoOs::mantenedorDo($request->user()),
@@ -111,6 +115,23 @@ class SolicitacaoController extends Controller
     {
         $ss = $this->buscar($request, $solicitacao);
         $this->exigirArea($request, $ss);
+        // Revisão no detalhe: o aprovador pode alterar qualquer campo antes de aprovar (fica no histórico).
+        if ($request->has('descricao')) {
+            $this->fluxo->exigirPendente($ss);
+            $this->salvar($request, $ss);
+            $alterados = array_keys($ss->getChanges());
+            $alterados = array_values(array_diff($alterados, ['atualizado_em', 'atualizado_por_id']));
+            if ($alterados) {
+                $this->fluxo->registrar(null, $ss, 'alterada', 'pendente', 'pendente', 'Revisada pelo aprovador: '.implode(', ', $alterados), $request->user());
+            }
+            if ($request->input('acao') === 'salvar') {
+                return redirect()->route('os.solicitacoes.show', $ss)->with('ok', 'Alterações salvas. A SS continua aguardando aprovação.');
+            }
+            $ss->refresh();
+            if (! AcessoOs::podeAprovar($request->user(), $ss)) {
+                return redirect()->route('os.solicitacoes.show', $ss)->with('ok', 'Alterações salvas. A SS agora é de uma área executante que você não atende: o aprovador dela vai analisar.');
+            }
+        }
         $dados = $request->validate([
             'mantenedores' => ['nullable', 'array'],
             'mantenedores.*' => ['integer', Rule::exists('os_mantenedores', 'id')],

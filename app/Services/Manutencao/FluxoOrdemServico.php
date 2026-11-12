@@ -43,6 +43,12 @@ final class FluxoOrdemServico
         ]);
     }
 
+    /** Só SS aguardando análise pode ser revisada/aprovada. */
+    public function exigirPendente(SolicitacaoServico $ss): void
+    {
+        $this->exigirStatus($ss->status, ['pendente'], 'Esta solicitação já foi analisada.');
+    }
+
     /**
      * SS aprovada: grava quem aprovou e cria a OS com todos os dados da SS, atribuída aos mantenedores escolhidos (vazio =
      * definir depois). Se quem aprova é um mantenedor, ele fica sempre atribuído à OS (é o primeiro, o principal).

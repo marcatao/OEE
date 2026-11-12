@@ -30,7 +30,7 @@
         solicitações de serviço (SS) para ela.</p>
       @php($perfisMarcados = old('perfis', $usuario->perfisAcesso()))
       <div class="perfis-areas">
-      @foreach (['manutencao' => 'Manutenção (produção)', 'tecnologia' => 'Tecnologia'] as $area => $tituloArea)
+      @foreach (['manutencao' => 'Manutenção (produção)', 'tecnologia' => 'Tecnologia', 'ferramentaria' => 'Ferramentaria'] as $area => $tituloArea)
         <fieldset class="perfis-area">
           <legend><span class="etiqueta unidade-{{ $area }}">{{ $tituloArea }}</span></legend>
           @foreach ($perfis as $valor => $perfil)

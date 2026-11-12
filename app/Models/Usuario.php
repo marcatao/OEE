@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Unidades;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -106,7 +107,7 @@ class Usuario extends Authenticatable
             }
             $this->forceFill(['perfil' => match (true) {
                 $perfis === [] => 'sem_acesso',
-                (bool) array_intersect($perfis, ['admin_producao', 'admin_tecnologia']) => 'admin',
+                (bool) array_intersect($perfis, array_values(config('oee.admins_area'))) => 'admin',
                 default => 'operador',
             }])->save();
         });
@@ -129,10 +130,21 @@ class Usuario extends Authenticatable
         return $this->temPerfil('admin_producao');
     }
 
-    /** Pode abrir os cadastros (máquinas, legendas, IoT...): Administrador de Produção ou de Tecnologia. */
+    public function ehAdminFerramentaria(): bool
+    {
+        return $this->temPerfil('admin_ferramentaria');
+    }
+
+    /** Pode abrir os cadastros (máquinas, legendas, IoT...): Administrador de Produção, de Tecnologia ou de Ferramentaria. */
     public function ehAdmin(): bool
     {
-        return $this->temPerfil('admin_producao', 'admin_tecnologia');
+        return $this->temPerfil(...array_values(config('oee.admins_area')));
+    }
+
+    /** Áreas em que o usuário tem o perfil de administrador (sem o "pode tudo" do Adm. de Tecnologia). @return list<string> */
+    public function areasAdministradas(): array
+    {
+        return array_keys(array_filter(config('oee.admins_area'), fn ($perfil) => $this->temPerfil($perfil)));
     }
 
     /** Aba Segurança (usuários, grupos, histórico de acessos, banco de dados): só o Administrador de Tecnologia. */
@@ -147,7 +159,7 @@ class Usuario extends Authenticatable
         return $this->ativo && $this->perfisAcesso() !== [];
     }
 
-    /** Ambientes que o usuário enxerga (manutencao, tecnologia). @return list<string> */
+    /** Áreas que o usuário enxerga (manutencao, tecnologia, ferramentaria). @return list<string> */
     public function unidades(): array
     {
         $unidades = [];
@@ -159,8 +171,8 @@ class Usuario extends Authenticatable
     }
 
     /**
-     * Filtro dos cadastros por unidade: null = vê tudo (os dois ambientes); senão as unidades visíveis (as dele e
-     * "ambos").
+     * Filtro dos cadastros por unidade: null = vê tudo (todas as áreas); senão as unidades visíveis (as dele e "ambos",
+     * que é o cadastro de todas as áreas).
      *
      * @return list<string>|null
      */
@@ -168,25 +180,20 @@ class Usuario extends Authenticatable
     {
         $unidades = $this->temAcesso() ? $this->unidades() : [];
 
-        return count(array_intersect(['manutencao', 'tecnologia'], $unidades)) === 2 ? null : [...$unidades, 'ambos'];
+        return array_diff(Unidades::areas(), $unidades) === [] ? null : [...$unidades, 'ambos'];
     }
 
     /**
-     * Unidades que o usuário pode escolher num cadastro: Manutenção só com Administrador de Produção, Tecnologia só
-     * com Administrador de Tecnologia, Ambos só com os dois.
+     * Unidades que o usuário pode escolher num cadastro: cada área só com o administrador dela (Produção = Manutenção,
+     * Tecnologia, Ferramentaria); "Todas" (valor ambos) só para quem administra mais de uma área.
      *
      * @return list<string>
      */
     public function unidadesParaCadastro(): array
     {
-        $producao = $this->ehAdminProducao();
-        $tecnologia = $this->ehAdminTecnologia();
+        $areas = $this->areasAdministradas();
 
-        return array_values(array_filter([
-            $producao ? 'manutencao' : null,
-            $tecnologia ? 'tecnologia' : null,
-            $producao && $tecnologia ? 'ambos' : null,
-        ]));
+        return count($areas) > 1 ? [...$areas, 'ambos'] : $areas;
     }
 
     /**

@@ -75,7 +75,7 @@ class RelatorioManutencaoController extends Controller
     {
         $dados = $request->validate([
             'mes' => ['required', 'date_format:Y-m'],
-            'unidade' => ['required', Rule::in(['manutencao', 'tecnologia', 'ambos'])],
+            'unidade' => ['required', Rule::in(array_keys(config('oee.unidades')))],
             'centro_custo' => ['nullable', 'string', 'max:120'],
             'texto' => ['nullable', 'string', 'max:1000'],
         ]);

@@ -96,6 +96,6 @@ class UnidadesTest extends TestCase
         $this->assertSame(array_keys(Usuario::perfisDisponiveis()), $marcato->perfisAcesso());
         $this->assertTrue($marcato->podeSeguranca());
         $this->assertNull($marcato->unidadesVisiveis()); // vê as duas unidades
-        $this->assertSame(['manutencao', 'tecnologia', 'ambos'], $marcato->unidadesParaCadastro());
+        $this->assertSame(['manutencao', 'tecnologia', 'ferramentaria', 'ambos'], $marcato->unidadesParaCadastro());
     }
 }

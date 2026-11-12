@@ -66,7 +66,8 @@ return [
     // Perfis de acesso (um usuário pode ter vários). "area" = em que área o perfil aparece no cadastro de usuários;
     // "unidades" = ambientes dos cadastros que o perfil enxerga; "solicita" = áreas para as quais pode ABRIR SS (os
     // Solicitantes e os Administradores, cada um para a sua área); "permissoes" = telas ('*' = todas). Os grupos
-    // continuam somando permissões. O Administrador de Tecnologia vê tudo de tudo, inclusive a Segurança.
+    // continuam somando permissões. Três áreas: Manutenção, Tecnologia e Ferramentaria. O Administrador de Tecnologia vê
+    // tudo de tudo, inclusive a Segurança.
     'perfis_acesso' => [
         // ----- Área Manutenção (produção) -----
         'operador' => [
@@ -119,17 +120,56 @@ return [
             'rotulo' => 'Administrador de Tecnologia',
             'area' => 'tecnologia',
             'descricao' => 'Vê tudo de tudo, inclusive a Segurança (usuários, grupos, acessos e banco de dados).',
-            'unidades' => ['manutencao', 'tecnologia'],
-            'solicita' => ['manutencao', 'tecnologia'],
+            'unidades' => ['manutencao', 'tecnologia', 'ferramentaria'],
+            'solicita' => ['manutencao', 'tecnologia', 'ferramentaria'],
+            'permissoes' => ['*'],
+        ],
+        // ----- Área Ferramentaria -----
+        'solicitante_ferramentaria' => [
+            'rotulo' => 'Solicitante de Ferramentaria',
+            'area' => 'ferramentaria',
+            'descricao' => 'Abre solicitações de serviço (SS) para as áreas da Ferramentaria e acompanha as suas e as do seu centro de custo.',
+            'unidades' => [],
+            'solicita' => ['ferramentaria'],
+            'permissoes' => ['os_solicitar'],
+        ],
+        'mantenedor_ferramentaria' => [
+            'rotulo' => 'Mantenedor de Ferramentaria',
+            'area' => 'ferramentaria',
+            'descricao' => 'Vê, aprova e executa as SS/OS das áreas executantes dele e vê as máquinas da ferramentaria nos dashboards.',
+            'unidades' => ['ferramentaria'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material'],
+        ],
+        'admin_ferramentaria' => [
+            'rotulo' => 'Administrador de Ferramentaria',
+            'area' => 'ferramentaria',
+            'descricao' => 'Vê e cadastra tudo da ferramentaria (abre e vê todas as SS/OS da Ferramentaria), exceto a Segurança.',
+            'unidades' => ['ferramentaria'],
+            'solicita' => ['ferramentaria'],
             'permissoes' => ['*'],
         ],
     ],
 
-    // Unidades (ambientes) dos cadastros.
+    // Unidades (áreas) dos cadastros. "ambos" (valor gravado) = cadastro de TODAS as áreas.
     'unidades' => [
         'manutencao' => 'Manutenção',
         'tecnologia' => 'Tecnologia',
-        'ambos' => 'Ambos',
+        'ferramentaria' => 'Ferramentaria',
+        'ambos' => 'Todas',
+    ],
+
+    // Perfil de administrador de cada área (cadastros da área, aprovações e tudo o que é da área).
+    'admins_area' => [
+        'manutencao' => 'admin_producao',
+        'tecnologia' => 'admin_tecnologia',
+        'ferramentaria' => 'admin_ferramentaria',
+    ],
+
+    // Perfil de mantenedor de cada área.
+    'mantenedores_area' => [
+        'manutencao' => 'mantenedor_producao',
+        'tecnologia' => 'mantenedor_tecnologia',
+        'ferramentaria' => 'mantenedor_ferramentaria',
     ],
 
     // Hora em que o "dia de produção" começa na Timeline (o dia vai desta hora até a mesma hora do dia seguinte).

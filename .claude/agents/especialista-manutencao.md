@@ -110,6 +110,14 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   pode mudar) ou reprova com motivo; grava quem e quando (`aprovado_por_id`, `aprovado_em`); solicitação = pendente →
   em análise → analisada (ou cancelada enquanto nada foi analisado). Próxima etapa (pendente): gerar a requisição ao
   almoxarifado ou a solicitação de compra a partir do item aprovado (botões "em breve").
+- **Três áreas**: Manutenção, Tecnologia e **Ferramentaria** (perfis solicitante/mantenedor/admin de cada uma). Nunca
+  liste as áreas fixas no código: `Unidades::areas()`, `config('oee.admins_area')`, `config('oee.mantenedores_area')`.
+- **Aprovação = revisão**: o aprovador abre a SS e altera o que precisar no próprio detalhe (campos editáveis; "Só
+  salvar" ou "Aprovar e emitir OS"; alterações no histórico). Depois de emitida, **a OS não se altera** (nem por
+  administradores: não existe edição da OS). Enquanto aberta só mudam: máquina parada (`os.ordens.maquina-parada`),
+  apontamentos de horas, mantenedores e interações.
+- **Encerrar apontamento** tem a opção "Concluir a OS também" (conclui com a descrição do apontamento como serviço
+  realizado); desmarcada, encerra só o apontamento e a OS continua aberta.
 - **Vários mantenedores por OS** (`os_ordem_mantenedores`; `responsavel_id` = o principal, o primeiro). Na aprovação da
   SS escolhe-se um ou mais (nenhum = definir depois). Os **próprios mantenedores abrem e aprovam SS**; se quem aprova é
   mantenedor, ele já vem marcado e fica sempre atribuído à OS. Quem inicia apontamento numa OS também passa a estar

@@ -6,7 +6,7 @@
   'concluir' => 'Serviço concluído', 'reabrir' => 'OS reaberta', 'cancelar' => 'OS cancelada',
   'avaliada' => 'Avaliada pelo solicitante', 'avaliada_ruim' => 'Avaliada como Ruim — OS reaberta',
   'aceite' => 'Aceite do solicitante', 'servico_recusado' => 'Serviço recusado pelo solicitante',
-  'horas_lancadas' => 'Horas lançadas', 'horas_excluidas' => 'Horas excluídas', 'material_requisitado' => 'Material requisitado',
+  'maquina_parada' => 'Máquina parada / liberada', 'horas_lancadas' => 'Horas lançadas', 'horas_excluidas' => 'Horas excluídas', 'material_requisitado' => 'Material requisitado',
 ])
 <div class="rolagem">
 <table class="tabela">

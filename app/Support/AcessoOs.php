@@ -49,10 +49,10 @@ final class AcessoOs
     public static function unidadesAdmin(Usuario $u): array
     {
         if ($u->ehAdminTecnologia()) {
-            return ['manutencao', 'tecnologia'];
+            return Unidades::areas();
         }
 
-        return $u->ehAdminProducao() ? ['manutencao'] : [];
+        return $u->areasAdministradas();
     }
 
     public static function ehAdminDa(Usuario $u, ?string $unidade): bool
@@ -129,10 +129,7 @@ final class AcessoOs
     /** Unidades dos perfis de mantenedor do usuário. @return list<string> */
     private static function unidadesMantenedor(Usuario $u): array
     {
-        return array_values(array_filter([
-            $u->temPerfil('mantenedor_producao') ? 'manutencao' : null,
-            $u->temPerfil('mantenedor_tecnologia') ? 'tecnologia' : null,
-        ]));
+        return array_keys(array_filter(config('oee.mantenedores_area'), fn ($perfil) => $u->temPerfil($perfil)));
     }
 
     /** Filtra uma consulta de SS ou OS pelo que o usuário pode ver. */
@@ -149,7 +146,7 @@ final class AcessoOs
         $areas = $mantenedor ? $mantenedor->areas()->pluck('os_areas_executantes.id')->all() : [];
         $unidadesMant = self::unidadesMantenedor($u);
         // Almoxarifado/compras (dado por grupo) atende as OS das unidades dos perfis do usuário (sem perfil de unidade: todas).
-        $almox = $u->pode('os_almoxarifado') ? ($u->unidades() ?: ['manutencao', 'tecnologia']) : [];
+        $almox = $u->pode('os_almoxarifado') ? ($u->unidades() ?: Unidades::areas()) : [];
 
         return $consulta->where(function (Builder $w) use ($u, $col, $cc, $admin, $mantenedor, $areas, $unidadesMant, $almox, $modelo) {
             $w->where($col('solicitante_id'), $u->id);
@@ -181,10 +178,10 @@ final class AcessoOs
     {
         $unidades = array_values(array_unique([...self::unidadesAdmin($u), ...self::unidadesMantenedor($u)]));
         if ($unidades === []) {
-            $unidades = array_values(array_intersect(['manutencao', 'tecnologia'], $u->unidades())) ?: ['manutencao'];
+            $unidades = array_values(array_intersect(Unidades::areas(), $u->unidades())) ?: ['manutencao'];
         }
 
-        return array_values(array_intersect(['manutencao', 'tecnologia'], $unidades));
+        return array_values(array_intersect(Unidades::areas(), $unidades));
     }
 
     /**
@@ -193,7 +190,7 @@ final class AcessoOs
      */
     public static function unidadesMaterial(Usuario $u): array
     {
-        return array_values(array_intersect(['manutencao', 'tecnologia'], [...self::unidadesAdmin($u), ...self::unidadesMantenedor($u)]));
+        return array_values(array_intersect(Unidades::areas(), [...self::unidadesAdmin($u), ...self::unidadesMantenedor($u)]));
     }
 
     /** OS fechada (concluída, encerrada ou cancelada) não se altera: nada de editar, conversar, apontar ou requisitar. */

@@ -299,8 +299,9 @@ class OrdensServicoTest extends TestCase
         $this->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => 'oi'])->assertSessionHasErrors('os');
         $this->post("/ordens-de-servico/ordens/{$os->id}/apontamentos/iniciar")->assertSessionHasErrors('os');
         $this->post("/ordens-de-servico/ordens/{$os->id}/materiais", ['descricao' => 'Fita', 'quantidade' => 1])->assertSessionHasErrors('os');
-        $this->actingAs($adm)->put("/ordens-de-servico/ordens/{$os->id}", ['tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
-            'prioridade' => 'baixa', 'descricao' => 'mudou'])->assertSessionHasErrors('os');
+        // Nem o administrador altera os dados da OS (não existe mais edição da OS).
+        $this->actingAs($adm)->put("/ordens-de-servico/ordens/{$os->id}", ['descricao' => 'mudou'])->assertStatus(405);
+        $this->get("/ordens-de-servico/ordens/{$os->id}/editar")->assertNotFound();
         $this->post("/ordens-de-servico/ordens/{$os->id}/distribuir", ['mantenedores' => [$m->id]])->assertSessionHasErrors('os');
         $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertSee('reabra a OS')->assertDontSee('id="chat-form"', false);
         $this->assertSame('concluida', $os->fresh()->status);
@@ -349,6 +350,71 @@ class OrdensServicoTest extends TestCase
         // Solicitante sem perfil de gestão não vê o painel.
         $this->actingAs($operador)->get('/ordens-de-servico/painel')->assertForbidden();
         $this->assertNotNull($pendente->id);
+    }
+
+    public function test_aprovador_revisa_a_ss_no_detalhe_e_a_os_nao_muda_mais(): void
+    {
+        $operador = $this->usuario(['solicitante_manutencao'], 'operador@empresa.com');
+        $adm = $this->usuario(['admin_producao'], 'adm@empresa.com');
+        $mecanico = $this->usuario(['mantenedor_producao'], 'mecanico@empresa.com');
+        $m = Mantenedor::create(['nome' => 'Mecânico', 'usuario_id' => $mecanico->id]);
+        $m->definirAreas([$this->mecanica->id]);
+        $ss = $this->abrirSs($operador);
+
+        // O aprovador vê os campos editáveis no detalhe; "só salvar" mantém a SS pendente.
+        $this->actingAs($adm)->get("/ordens-de-servico/solicitacoes/{$ss->id}")->assertOk()->assertSee('Revise a solicitação')->assertSee('name="titulo"', false);
+        $campos = ['titulo' => 'Vazamento no cilindro principal', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'maquina_id' => $this->injetora->id, 'prioridade' => 'urgente', 'descricao' => 'Vazamento forte de óleo'];
+        $this->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar", $campos + ['acao' => 'salvar'])->assertRedirect();
+        $this->assertSame('pendente', $ss->fresh()->status);
+        $this->assertSame('urgente', $ss->fresh()->prioridade);
+        // Aprovar com novas alterações: a OS nasce com os dados revisados.
+        $this->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar", ['titulo' => 'Título final'] + $campos + ['acao' => 'aprovar', 'mantenedores' => [$m->id]])->assertRedirect();
+        $os = OrdemServico::where('solicitacao_id', $ss->id)->firstOrFail();
+        $this->assertSame('Título final', $os->titulo);
+        $this->assertSame('urgente', $os->prioridade);
+        $this->assertTrue($ss->historico()->where('acao', 'alterada')->exists());
+
+        // OS emitida: sem edição; só máquina parada, horas, mantenedores e mensagens enquanto aberta.
+        $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertDontSee('/editar"', false);
+        $this->actingAs($mecanico)->post("/ordens-de-servico/ordens/{$os->id}/maquina-parada", ['maquina_parada' => 0])->assertRedirect();
+        $this->assertFalse($os->fresh()->maquina_parada);
+
+        // Encerrar apontamento sem concluir mantém a OS aberta; com "Concluir a OS também", conclui.
+        $this->post("/ordens-de-servico/ordens/{$os->id}/apontamentos/iniciar")->assertRedirect();
+        $ap = ApontamentoHoras::where('ordem_servico_id', $os->id)->whereNull('fim')->firstOrFail();
+        $this->post("/ordens-de-servico/apontamentos/{$ap->id}/encerrar", ['descricao' => 'Desmontado o cilindro'])->assertRedirect();
+        $this->assertSame('em_execucao', $os->fresh()->status);
+        $this->post("/ordens-de-servico/ordens/{$os->id}/apontamentos/iniciar")->assertRedirect();
+        $ap2 = ApontamentoHoras::where('ordem_servico_id', $os->id)->whereNull('fim')->firstOrFail();
+        $this->post("/ordens-de-servico/apontamentos/{$ap2->id}/encerrar", ['descricao' => 'Trocadas as vedações e testado', 'concluir_os' => '1'])->assertRedirect();
+        $this->assertSame('concluida', $os->fresh()->status);
+        $this->assertSame('Trocadas as vedações e testado', $os->fresh()->solucao);
+        // Concluída: nem máquina parada muda mais.
+        $this->post("/ordens-de-servico/ordens/{$os->id}/maquina-parada", ['maquina_parada' => 1])->assertSessionHasErrors('os');
+    }
+
+    public function test_area_ferramentaria_com_os_mesmos_perfis(): void
+    {
+        $ferr = AreaExecutante::create(['codigo' => 'MOL', 'nome' => 'Moldes', 'unidade' => 'ferramentaria']);
+        $solicitante = $this->usuario(['solicitante_ferramentaria'], 'sf@empresa.com');
+        $mantenedor = $this->usuario(['mantenedor_ferramentaria'], 'mf@empresa.com');
+        $admF = $this->usuario(['admin_ferramentaria'], 'af@empresa.com');
+        $mantProd = $this->usuario(['mantenedor_producao'], 'mp@empresa.com');
+
+        // Solicitante de Ferramentaria só abre para as áreas da Ferramentaria.
+        $this->actingAs($solicitante)->get('/ordens-de-servico/solicitacoes/nova')->assertOk()->assertSee('Moldes')->assertDontSee('Mecânica');
+        $ss = $this->abrirSs($solicitante, ['area_executante_id' => $ferr->id, 'titulo' => 'Molde 12 com rebarba']);
+        $this->assertSame('ferramentaria', $ss->unidade);
+        // Mantenedor de Ferramentaria vê; o de Produção não; o admin de Ferramentaria aprova.
+        $this->actingAs($mantenedor)->get("/ordens-de-servico/solicitacoes/{$ss->id}")->assertOk();
+        $this->actingAs($mantProd)->get("/ordens-de-servico/solicitacoes/{$ss->id}")->assertNotFound();
+        $this->actingAs($admF)->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar")->assertRedirect();
+        $this->assertSame('ferramentaria', OrdemServico::where('solicitacao_id', $ss->id)->value('unidade'));
+        // Admin de Ferramentaria cadastra só na Ferramentaria e vê o painel dela.
+        $this->assertSame(['ferramentaria'], $admF->unidadesParaCadastro());
+        $this->get('/ordens-de-servico/painel')->assertOk()->assertSee('Painel — Ferramentaria');
+        $this->get('/admin/maquinas')->assertOk();
     }
 
     public function test_rejeicao_volta_ao_solicitante_com_motivo(): void

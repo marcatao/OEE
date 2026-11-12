@@ -6,9 +6,8 @@ use App\Models\Usuario;
 use Illuminate\Validation\Rule;
 
 /**
- * Campo "unidade" (ambiente) dos cadastros: manutencao | tecnologia | ambos.
- * Opções no formulário: Manutenção só para o Administrador de Produção, Tecnologia só para o Administrador de
- * Tecnologia e Ambos só para quem tem os dois. Ao editar, a unidade atual do registro continua aceita (não se perde).
+ * Campo "unidade" (área) dos cadastros: manutencao | tecnologia | ferramentaria | ambos (= todas).
+ * Opções no formulário: cada área só para o administrador dela e "Todas" só para quem administra mais de uma. Ao editar, a unidade atual do registro continua aceita (não se perde).
  */
 final class Unidades
 {
@@ -33,6 +32,12 @@ final class Unidades
         request()->mergeIfMissing(['unidade' => $atual ?? self::padrao($usuario)]);
 
         return ['required', Rule::in(array_keys(self::opcoes($usuario, $atual)))];
+    }
+
+    /** As áreas (sem o "ambos" = todas): manutencao, tecnologia, ferramentaria. @return list<string> */
+    public static function areas(): array
+    {
+        return array_keys(config('oee.admins_area'));
     }
 
     /** Unidade sugerida num cadastro novo: a primeira que o usuário pode escolher. */
