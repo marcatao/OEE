@@ -129,6 +129,33 @@
       @endforeach
     </fieldset>
 
+    <fieldset>
+      <legend>Situação atual</legend>
+      <p class="suave">Atualizada sozinha pelo apontamento real mais recente (o tipo da legenda diz se a máquina está produzindo ou parada,
+        e a OP do apontamento vira a OP da máquina; apontamento sem OP desvincula). Também pode ser informada aqui. A Timeline mostra estes dados.</p>
+      <div class="campos">
+        <label>Máquina trabalhando ou parada
+          <select name="situacao">
+            <option value="">Sem informação</option>
+            @foreach (\App\Models\Maquina::SITUACOES as $valor => $rotulo)
+              <option value="{{ $valor }}" @selected(old('situacao', $maquina->situacao) === $valor)>{{ $rotulo }}</option>
+            @endforeach
+          </select>
+          @if ($maquina->situacao_desde)<small>desde @dataHora($maquina->situacao_desde)@if ($maquina->situacaoLegenda) · pela legenda {{ $maquina->situacaoLegenda->codigo }} – {{ $maquina->situacaoLegenda->descricao }}@endif</small>@endif
+        </label>
+        <label>OP atual
+          <input name="ordem_producao" maxlength="20" list="ordens-maquina" autocomplete="off"
+                 value="{{ old('ordem_producao', $maquina->ordemProducao?->numero) }}" placeholder="Número da OP (vazio = sem OP)">
+          <datalist id="ordens-maquina">
+            @foreach ($ordens as $op)
+              <option value="{{ $op->numero }}">{{ rtrim($op->c2_produto) }} · {{ $op->rotuloStatus() }}</option>
+            @endforeach
+          </datalist>
+          <small>OPs do Protheus que não estão fechadas. Deixe vazio para a máquina ficar sem OP.</small>
+        </label>
+      </div>
+    </fieldset>
+
     <fieldset class="opcoes-linha">
       <legend>Máquina ativa ou inativa</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @disabled($maquina->excluidaNoProtheus()) @checked(old('ativo', (int) $maquina->ativo) == 1)> <span>Ativa</span></label>

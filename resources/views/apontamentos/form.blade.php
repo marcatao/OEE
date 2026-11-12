@@ -22,7 +22,7 @@
         <select name="maquina_id" required>
           <option value="">Escolha…</option>
           @foreach ($maquinas as $m)
-            <option value="{{ $m->id }}" @selected((int) old('maquina_id', $apontamento->maquina_id) === $m->id)>{{ $m->nome }} ({{ $m->codigo }})</option>
+            <option value="{{ $m->id }}" data-op="{{ $m->ordemProducao?->numero }}" @selected((int) old('maquina_id', $apontamento->maquina_id) === $m->id)>{{ $m->nome }} ({{ $m->codigo }})@if ($m->ordemProducao) · OP {{ $m->ordemProducao->numero }}@endif</option>
           @endforeach
         </select>
       </label>
@@ -49,7 +49,8 @@
             <option value="{{ $op->numero }}">{{ $descricoes[$op->c2_produto] ?? $op->c2_produto }} · {{ $op->rotuloStatus() }}</option>
           @endforeach
         </datalist>
-        <small data-ajuda-op>OPs do Protheus que não estão fechadas. Obrigatória quando a legenda exige OP.</small>
+        <small data-ajuda-op>OPs do Protheus que não estão fechadas. Vem preenchida com a OP atual da máquina; deixe vazio para
+          desvincular a OP da máquina. Obrigatória quando a legenda exige OP.</small>
       </label>
       <label>Referência
         <input name="referencia" maxlength="40" value="{{ old('referencia', $apontamento->referencia) }}" placeholder="Ex.: OP 509859">
@@ -88,6 +89,18 @@
     };
     legenda.addEventListener('change', aplicar);
     aplicar();
+
+    // Ao trocar a máquina num apontamento novo, preenche a OP atual dela (se o campo estiver vazio ou com a OP
+    // que veio da máquina anterior).
+    var maquina = document.querySelector('select[name="maquina_id"]');
+    var opDaMaquina = maquina && maquina.options[maquina.selectedIndex] ? (maquina.options[maquina.selectedIndex].dataset.op || '') : '';
+    if (maquina && !{{ $apontamento->exists ? 'true' : 'false' }}) {
+      maquina.addEventListener('change', function () {
+        var nova = maquina.options[maquina.selectedIndex] ? (maquina.options[maquina.selectedIndex].dataset.op || '') : '';
+        if (op.value === '' || op.value === opDaMaquina) op.value = nova;
+        opDaMaquina = nova;
+      });
+    }
   })();
 </script>
 @endsection

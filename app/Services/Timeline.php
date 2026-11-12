@@ -9,7 +9,6 @@ use App\Models\OrdemProducao;
 use App\Models\ProdutoProtheus;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Monta a timeline: para cada máquina, os blocos de estado (legenda) dentro da janela, já cortados nos limites
@@ -21,60 +20,39 @@ use Illuminate\Support\Facades\DB;
 class Timeline
 {
     /**
-     * Situação atual de cada máquina pela ÚLTIMA legenda apontada (o apontamento mais recente, em qualquer período):
-     * o tipo da legenda diz se ela está produzindo ou parada. Também traz a OP e o produto desse apontamento (ou do
-     * último que teve OP).
+     * Situação atual de cada máquina, lida do CADASTRO da máquina (campos situacao e ordem_producao_id, atualizados pelo
+     * cadastro e pelo apontamento real mais recente). Produzindo ou parada; a legenda que deu a situação só refina a
+     * cor (parada planejada em âmbar, desligada em cinza). Traz a OP atual e o produto dela.
      *
      * @param  Collection<int, Maquina>  $maquinas
-     * @return array<int, array{estado: string, rotulo: string, legenda: Legenda, desde: CarbonInterface, aberto: bool,
+     * @return array<int, array{estado: string, rotulo: string, legenda: ?Legenda, desde: ?CarbonInterface,
      *     op: ?OrdemProducao, produto: ?ProdutoProtheus}>
      */
     public function situacoes(Collection $maquinas): array
     {
-        $ids = $maquinas->modelKeys();
-        if (! $ids) {
-            return [];
-        }
-        $ultimo = fn () => ApontamentoEstado::query()->whereIn('maquina_id', $ids)->groupBy('maquina_id')
-            ->select('maquina_id', DB::raw('max(inicio) as ultimo'));
+        $maquinas->loadMissing(['ordemProducao', 'situacaoLegenda']);
+        $produtos = app(CustoOrdemProducao::class)
+            ->produtos($maquinas->pluck('ordemProducao')->filter()->map(fn ($op) => $op->c2_produto));
 
-        $ultimos = ApontamentoEstado::with(['legenda', 'ordemProducao'])
-            ->joinSub($ultimo(), 'u', fn ($j) => $j->on('u.maquina_id', '=', 'apontamentos_estado.maquina_id')
-                ->on('u.ultimo', '=', 'apontamentos_estado.inicio'))
-            ->orderByDesc('apontamentos_estado.id')->get(['apontamentos_estado.*'])->unique('maquina_id')->keyBy('maquina_id');
-
-        // OP de referência: a do último apontamento ou, se ele não tem, a do último apontamento com OP.
-        $semOp = $ultimos->filter(fn ($a) => $a->ordem_producao_id === null)->keys()->all();
-        $ultimasOps = $semOp ? ApontamentoEstado::with('ordemProducao')->whereIn('maquina_id', $semOp)->whereNotNull('ordem_producao_id')
-            ->orderByDesc('inicio')->get()->unique('maquina_id')->keyBy('maquina_id') : collect();
-
-        $ops = [];
-        foreach ($ids as $id) {
-            $ops[$id] = $ultimos->get($id)?->ordemProducao ?? $ultimasOps->get($id)?->ordemProducao;
-        }
-        $produtos = app(CustoOrdemProducao::class)->produtos(collect($ops)->filter()->map(fn ($op) => $op->c2_produto));
-
-        $rotulos = ['produzindo' => 'Produzindo', 'parada' => 'Parada', 'planejada' => 'Parada planejada', 'desligada' => 'Desligada'];
         $situacoes = [];
-        foreach ($ultimos as $id => $a) {
-            if (! $a->legenda) {
-                continue;
-            }
-            $situacoes[$id] = [
-                'estado' => $a->legenda->tipo,
-                'rotulo' => $rotulos[$a->legenda->tipo] ?? $a->legenda->rotuloTipo(),
-                'legenda' => $a->legenda,
-                'desde' => $a->inicio,
-                'aberto' => $a->fim === null,
-                'op' => $ops[$id],
-                'produto' => $ops[$id] ? ($produtos[rtrim($ops[$id]->c2_produto)] ?? null) : null,
+        foreach ($maquinas as $m) {
+            $legenda = $m->situacaoLegenda;
+            [$estado, $rotulo] = match (true) {
+                $m->situacao === 'produzindo' => ['produzindo', 'Produzindo'],
+                $m->situacao === 'parada' && $legenda?->tipo === 'planejada' => ['planejada', 'Parada planejada'],
+                $m->situacao === 'parada' && $legenda?->tipo === 'desligada' => ['desligada', 'Desligada'],
+                $m->situacao === 'parada' => ['parada', 'Parada'],
+                default => ['sem', 'Sem informação'],
+            };
+            $op = $m->ordemProducao;
+            $situacoes[$m->id] = [
+                'estado' => $estado,
+                'rotulo' => $rotulo,
+                'legenda' => $legenda,
+                'desde' => $m->situacao_desde,
+                'op' => $op,
+                'produto' => $op ? ($produtos[rtrim($op->c2_produto)] ?? null) : null,
             ];
-        }
-        foreach (array_diff($ids, array_keys($situacoes)) as $id) {
-            if ($ops[$id] ?? null) {
-                $situacoes[$id] = ['estado' => 'sem', 'rotulo' => 'Sem apontamento', 'legenda' => null, 'desde' => null, 'aberto' => false,
-                    'op' => $ops[$id], 'produto' => $produtos[rtrim($ops[$id]->c2_produto)] ?? null];
-            }
         }
 
         return $situacoes;

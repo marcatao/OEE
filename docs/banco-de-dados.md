@@ -206,6 +206,10 @@ erDiagram
         bigint iot2_dispositivo_id FK
         bigint iot3_dispositivo_id FK
         nvarchar(20) unidade
+        nvarchar(12) situacao
+        datetime situacao_desde
+        bigint situacao_legenda_id FK
+        bigint ordem_producao_id FK
     }
     motivos_parada {
         bigint id PK
@@ -712,6 +716,8 @@ erDiagram
     dispositivos_iot |o--o{ maquinas : "iot1_dispositivo_id"
     dispositivos_iot |o--o{ maquinas : "iot2_dispositivo_id"
     dispositivos_iot |o--o{ maquinas : "iot3_dispositivo_id"
+    legendas |o--o{ maquinas : "situacao_legenda_id"
+    ordens_producao |o--o{ maquinas : "ordem_producao_id"
     solicitacoes_servico |o--o{ ordens_servico : "solicitacao_id"
     os_planos_preventiva |o--o{ ordens_servico : "plano_preventiva_id"
     maquinas |o--o{ ordens_servico : "maquina_id"
@@ -833,7 +839,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
 | [`legendas`](#legendas) | Sistema | `id` | 13 | 2 |
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
-| [`maquinas`](#maquinas) | Mista | `id` | 33 | 6 |
+| [`maquinas`](#maquinas) | Mista | `id` | 37 | 8 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
@@ -1232,10 +1238,14 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `iot2_dispositivo_id` | `bigint` | sim |  | FK → `dispositivos_iot.id` |
 | `iot3_dispositivo_id` | `bigint` | sim |  | FK → `dispositivos_iot.id` |
 | `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
+| `situacao` | `nvarchar(12)` | sim |  |  |
+| `situacao_desde` | `datetime` | sim |  |  |
+| `situacao_legenda_id` | `bigint` | sim |  | FK → `legendas.id` |
+| `ordem_producao_id` | `bigint` | sim |  | FK → `ordens_producao.id` |
 
 **Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_) · `maquinas_unidade_index` (unidade)
 
-**Regras (CHECK, só no SQL Server):** `ck_maquinas_paradas`: `micro_parada_s IS NULL OR macro_parada_s IS NULL OR macro_parada_s > micro_parada_s` · `ck_maquinas_iot1_tipo`: `iot1_tipo IS NULL OR iot1_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot2_tipo`: `iot2_tipo IS NULL OR iot2_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot3_tipo`: `iot3_tipo IS NULL OR iot3_tipo IN ('producao', 'refugo')` · `ck_maquinas_d_e_l_e_t_`: `d_e_l_e_t_ IN (' ', '*')` · `ck_maquinas_ativa_com_linha`: `ativo = 0 OR linha_id IS NOT NULL` · `ck_maquinas_ativa_nao_excluida`: `ativo = 0 OR d_e_l_e_t_ <> '*'` · `ck_maquinas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
+**Regras (CHECK, só no SQL Server):** `ck_maquinas_paradas`: `micro_parada_s IS NULL OR macro_parada_s IS NULL OR macro_parada_s > micro_parada_s` · `ck_maquinas_iot1_tipo`: `iot1_tipo IS NULL OR iot1_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot2_tipo`: `iot2_tipo IS NULL OR iot2_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot3_tipo`: `iot3_tipo IS NULL OR iot3_tipo IN ('producao', 'refugo')` · `ck_maquinas_d_e_l_e_t_`: `d_e_l_e_t_ IN (' ', '*')` · `ck_maquinas_ativa_com_linha`: `ativo = 0 OR linha_id IS NOT NULL` · `ck_maquinas_ativa_nao_excluida`: `ativo = 0 OR d_e_l_e_t_ <> '*'` · `ck_maquinas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_maquinas_situacao`: `situacao IS NULL OR situacao IN ('produzindo', 'parada')`
 
 ### motivos_parada
 

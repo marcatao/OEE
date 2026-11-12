@@ -821,3 +821,7 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .sm-col-analise input { font-size:.88rem; }
 .sm-tabela td:nth-child(3) { min-width:7.5rem; }
 .sm-pilha .botao[disabled] { opacity:.5; cursor:not-allowed; }
+
+/* Máquina produzindo ou parada (lista de máquinas) */
+.maq-produzindo { color:var(--ok); background:var(--ok-suave); border-color:transparent; font-weight:600; }
+.maq-parada { color:var(--erro); background:var(--erro-suave); border-color:transparent; font-weight:600; }

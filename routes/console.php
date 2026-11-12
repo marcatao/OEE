@@ -1,9 +1,11 @@
 <?php
 
+use App\Models\ApontamentoEstado;
 use App\Models\Usuario;
 use App\Services\InfoBanco;
 use App\Services\Manutencao\GeradorPreventivas;
 use App\Services\Protheus\SincronizadorProtheus;
+use App\Services\SituacaoMaquina;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
@@ -111,3 +113,20 @@ Artisan::command('os:gerar-preventivas', function (GeradorPreventivas $gerador) 
     $this->info(count($criadas).' OS preventiva(s) gerada(s).');
 })->purpose('Gera as OS preventivas programadas nos planos de preventiva (PAMP)');
 Schedule::command('os:gerar-preventivas')->dailyAt('05:10')->withoutOverlapping();
+
+// Preenche a situação (produzindo | parada) e a OP atual das máquinas pelo apontamento real mais recente de cada uma.
+// Opcional e só quando pedido: mexe em registros existentes (sem --confirmar só mostra).
+Artisan::command('maquinas:situacao-pelos-apontamentos {--confirmar : Grava de verdade}', function () {
+    $situacao = app(SituacaoMaquina::class);
+    $ids = ApontamentoEstado::query()->distinct()->pluck('maquina_id');
+    $this->line("Máquinas com apontamento: {$ids->count()}.");
+    if (! $this->option('confirmar')) {
+        $this->warn('Nada foi alterado. Para gravar: php artisan maquinas:situacao-pelos-apontamentos --confirmar');
+
+        return 0;
+    }
+    foreach ($ids as $id) {
+        $situacao->recalcular((int) $id);
+    }
+    $this->info('Situação e OP atual atualizadas pelo apontamento mais recente de cada máquina.');
+})->purpose('Preenche situação e OP atual das máquinas pelo último apontamento real (opcional)');

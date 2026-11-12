@@ -67,14 +67,14 @@
               @endforeach
               @if ($agora !== null)<i class="tl-agora" style="left: {{ $agora }}%" title="Agora"></i>@endif
             </div>
-            @if ($sit && $sit['legenda'])
-              <div class="tl-estado estado-{{ $sit['estado'] }}" title="Última legenda apontada: {{ $sit['legenda']->codigo }} · {{ $sit['legenda']->descricao }}">
+            @if ($sit && $sit['estado'] !== 'sem')
+              <div class="tl-estado estado-{{ $sit['estado'] }}" title="Situação no cadastro da máquina{{ $sit['legenda'] ? ' (pela legenda '.$sit['legenda']->codigo.' · '.$sit['legenda']->descricao.')' : ' (informada no cadastro)' }}">
                 <span class="tl-estado-titulo"><i class="tl-pulso" aria-hidden="true"></i>{{ $sit['rotulo'] }}</span>
-                <small>{{ $sit['legenda']->codigo }} · {{ $sit['legenda']->descricao }}</small>
-                <small>{{ $sit['aberto'] ? 'desde' : 'último apontamento' }} {{ $sit['desde']->copy()->setTimezone($fuso)->format($sit['desde']->copy()->setTimezone($fuso)->isSameDay(now($fuso)) ? 'H:i' : 'd/m H:i') }}</small>
+                <small>{{ $sit['legenda'] ? $sit['legenda']->codigo.' · '.$sit['legenda']->descricao : 'informada no cadastro' }}</small>
+                @if ($sit['desde'])<small>desde {{ $sit['desde']->copy()->setTimezone($fuso)->format($sit['desde']->copy()->setTimezone($fuso)->isSameDay(now($fuso)) ? 'H:i' : 'd/m H:i') }}</small>@endif
               </div>
             @else
-              <div class="tl-estado estado-sem"><span class="tl-estado-titulo"><i class="tl-pulso" aria-hidden="true"></i>Sem apontamento</span></div>
+              <div class="tl-estado estado-sem"><span class="tl-estado-titulo"><i class="tl-pulso" aria-hidden="true"></i>Sem informação</span></div>
             @endif
           </div>
         @endforeach

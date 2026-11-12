@@ -76,6 +76,10 @@ class SubstituirLegendas extends Command
                 DB::table($tabela)->whereNotNull('apontamento_estado_id')->update(['apontamento_estado_id' => null]);
             }
             DB::table('apontamentos_estado')->delete();
+            // A máquina guarda a legenda que deu a situação atual: solta o vínculo (a situação e a OP continuam).
+            if (DB::getSchemaBuilder()->hasColumn('maquinas', 'situacao_legenda_id')) {
+                DB::table('maquinas')->whereNotNull('situacao_legenda_id')->update(['situacao_legenda_id' => null]);
+            }
             DB::table('legendas')->delete();
             foreach (self::LEGENDAS as $codigo => [$descricao, $tipo, $cor]) {
                 Legenda::create(['codigo' => (string) $codigo, 'descricao' => $descricao, 'tipo' => $tipo, 'cor' => $cor,

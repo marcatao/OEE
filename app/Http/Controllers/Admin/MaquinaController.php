@@ -7,6 +7,7 @@ use App\Models\CentroCusto;
 use App\Models\DispositivoIot;
 use App\Models\Linha;
 use App\Models\Maquina;
+use App\Models\OrdemProducao;
 use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class MaquinaController extends Controller
         return view('admin.maquinas.index', [
             'busca' => $busca,
             'situacao' => $situacao,
-            'maquinas' => Maquina::with(['linha.planta', 'centroCusto', 'iot1Dispositivo', 'iot2Dispositivo', 'iot3Dispositivo'])
+            'maquinas' => Maquina::with(['linha.planta', 'centroCusto', 'iot1Dispositivo', 'iot2Dispositivo', 'iot3Dispositivo', 'ordemProducao'])
                 ->when($busca !== '', fn ($q) => $q->where(fn ($w) => $w
                     ->where('nome', 'like', "%{$busca}%")->orWhere('codigo', 'like', "%{$busca}%")))
                 ->when($situacao === 'aguardando', $aguardando)
@@ -78,6 +79,8 @@ class MaquinaController extends Controller
             'centros' => CentroCusto::selecionaveis()->orderBy('ctt_custo')->get()
                 ->unique(fn ($c) => $c->codigo())->values(),
             // Combo dos canais IoT: dispositivos ativos + os que a máquina já usa (mesmo se desativados depois).
+            // OP atual: OPs que podem ser apontadas (não fechadas), mais recentes primeiro.
+            'ordens' => OrdemProducao::apontaveis()->orderByDesc('c2_emissao')->orderByDesc('numero')->limit(1000)->get(['id', 'numero', 'c2_produto', 'status']),
             'dispositivos' => DispositivoIot::where(fn ($q) => $q->where('ativo', true)
                 ->orWhereIn('id', array_filter(array_map(fn ($n) => $maquina->{"iot{$n}_dispositivo_id"}, Maquina::CANAIS_IOT))))
                 ->orderBy('nome')->get(),
@@ -98,6 +101,8 @@ class MaquinaController extends Controller
             'micro_parada_s' => ['nullable', 'integer', 'min:1', 'max:86400'],
             'macro_parada_s' => ['nullable', 'integer', 'min:1', 'max:86400'],
             'ativo' => ['required', 'boolean'],
+            'situacao' => ['nullable', Rule::in(array_keys(Maquina::SITUACOES))],
+            'ordem_producao' => ['nullable', 'string', 'max:20'],
         ];
         foreach (Maquina::CANAIS_IOT as $n) {
             // Dispositivo ativo do cadastro (ou o que a máquina já usa, mesmo que tenha sido desativado depois).
@@ -146,6 +151,27 @@ class MaquinaController extends Controller
             $dados["iot{$n}_canal"] = isset($dados["iot{$n}_canal"]) ? trim($dados["iot{$n}_canal"]) : null;
         }
         $this->conferirCanaisRepetidos($dados, $maquina);
+
+        // OP atual, pelo número (C2_NUM + C2_ITEM + C2_SEQUEN). Vazio = máquina sem OP.
+        $numeroOp = trim((string) ($dados['ordem_producao'] ?? ''));
+        unset($dados['ordem_producao']);
+        $op = null;
+        if ($numeroOp !== '') {
+            $op = OrdemProducao::where('numero', $numeroOp)->where('d_e_l_e_t_', '<>', '*')->orderBy('status')->first();
+            if (! $op) {
+                throw ValidationException::withMessages(['ordem_producao' => "Ordem de produção {$numeroOp} não encontrada."]);
+            }
+            if ($op->status === 'fechada' && $op->id !== $maquina->ordem_producao_id) {
+                throw ValidationException::withMessages(['ordem_producao' => "A ordem de produção {$numeroOp} está fechada no Protheus."]);
+            }
+        }
+        $dados['ordem_producao_id'] = $op?->id;
+        // Situação mudada no cadastro: vale a partir de agora e deixa de seguir a legenda do último apontamento.
+        $dados['situacao'] = ($dados['situacao'] ?? null) ?: null;
+        if ($dados['situacao'] !== $maquina->situacao) {
+            $dados['situacao_desde'] = $dados['situacao'] ? now() : null;
+            $dados['situacao_legenda_id'] = null;
+        }
 
         $maquina->fill($dados)->save();
     }

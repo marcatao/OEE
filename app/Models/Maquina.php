@@ -28,12 +28,17 @@ class Maquina extends Model
         // ficam só para consulta: não são mais gravadas pelo portal.
         'iot1_dispositivo_id', 'iot1_canal', 'iot1_tipo', 'iot2_dispositivo_id', 'iot2_canal', 'iot2_tipo',
         'iot3_dispositivo_id', 'iot3_canal', 'iot3_tipo',
+        // Situação atual (produzindo | parada) e OP atual: pelo cadastro ou pelo apontamento real mais recente.
+        'situacao', 'situacao_desde', 'situacao_legenda_id', 'ordem_producao_id',
     ];
+
+    public const SITUACOES = ['produzindo' => 'Produzindo', 'parada' => 'Parada'];
 
     protected function casts(): array
     {
         return ['ativo' => 'boolean', 'ciclo_ideal_s' => 'float', 'micro_parada_s' => 'integer', 'macro_parada_s' => 'integer',
-            'r_e_c_n_o_' => 'integer', 'sincronizado_em' => 'datetime', 'excluida_protheus_em' => 'datetime'];
+            'r_e_c_n_o_' => 'integer', 'sincronizado_em' => 'datetime', 'excluida_protheus_em' => 'datetime',
+            'situacao_desde' => 'datetime'];
     }
 
     /**
@@ -117,5 +122,22 @@ class Maquina extends Model
     public function localizacao(): string
     {
         return collect([$this->linha?->nome, $this->linha?->planta?->nome])->filter()->join(' · ');
+    }
+
+    /** OP atual da máquina. */
+    public function ordemProducao(): BelongsTo
+    {
+        return $this->belongsTo(OrdemProducao::class, 'ordem_producao_id');
+    }
+
+    /** Legenda do apontamento que deu a situação atual (vazio = situação informada no cadastro). */
+    public function situacaoLegenda(): BelongsTo
+    {
+        return $this->belongsTo(Legenda::class, 'situacao_legenda_id');
+    }
+
+    public function rotuloSituacao(): string
+    {
+        return self::SITUACOES[$this->situacao] ?? 'Sem informação';
     }
 }

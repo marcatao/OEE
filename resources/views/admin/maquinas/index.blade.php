@@ -41,13 +41,15 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Código</th><th>Unidade</th><th>Nome</th><th>Situação</th><th>Origem</th><th>Linha · Planta</th><th>Centro de custo</th><th class="num">Ciclo ideal (s)</th><th class="num">Micro / macro (s)</th><th>Canais IoT</th><th></th></tr></thead>
+    <thead><tr><th>Código</th><th>Unidade</th><th>Nome</th><th>Produzindo / parada</th><th>Situação</th><th>Origem</th><th>Linha · Planta</th><th>Centro de custo</th><th class="num">Ciclo ideal (s)</th><th class="num">Micro / macro (s)</th><th>Canais IoT</th><th></th></tr></thead>
     <tbody>
     @forelse ($maquinas as $maquina)
       <tr>
         <td><a href="{{ route('admin.maquinas.edit', $maquina) }}"><code>{{ $maquina->codigo }}</code></a></td>
         <td><span class="etiqueta unidade-{{ $maquina->unidade }}">{{ $maquina->rotuloUnidade() }}</span></td>
         <td><a href="{{ route('admin.maquinas.edit', $maquina) }}">{{ $maquina->nome }}</a></td>
+        <td class="quebra">@if ($maquina->situacao)<span class="etiqueta maq-{{ $maquina->situacao }}"><i class="ponto"></i>{{ $maquina->rotuloSituacao() }}</span>@else<span class="suave">Sem informação</span>@endif
+          @if ($maquina->ordemProducao)<br><small>OP <code>{{ $maquina->ordemProducao->numero }}</code></small>@endif</td>
         <td>
           @if ($maquina->excluidaNoProtheus())
             <span class="etiqueta sinc-erro">Excluída no Protheus</span>
@@ -66,7 +68,7 @@
         <td><a class="botao pequeno {{ $maquina->aguardandoCadastro() ? '' : 'secundario' }}" href="{{ route('admin.maquinas.edit', $maquina) }}">{{ $maquina->aguardandoCadastro() ? 'Completar' : 'Editar' }}</a></td>
       </tr>
     @empty
-      <tr><td colspan="11" class="suave">Nenhuma máquina encontrada.</td></tr>
+      <tr><td colspan="12" class="suave">Nenhuma máquina encontrada.</td></tr>
     @endforelse
     </tbody>
   </table>

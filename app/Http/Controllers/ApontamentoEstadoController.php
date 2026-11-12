@@ -8,6 +8,7 @@ use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\ProdutoProtheus;
 use App\Providers\AppServiceProvider;
+use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -50,6 +51,11 @@ class ApontamentoEstadoController extends Controller
             'maquina_id' => $request->integer('maquina_id') ?: null,
             'inicio' => now()->startOfMinute(),
         ]);
+        // Máquina com OP ativa: o apontamento novo já vem com ela.
+        if ($apontamento->maquina_id && ($maquina = Maquina::with('ordemProducao')->find($apontamento->maquina_id))?->ordemProducao) {
+            $apontamento->ordem_producao_id = $maquina->ordem_producao_id;
+            $apontamento->setRelation('ordemProducao', $maquina->ordemProducao);
+        }
 
         return $this->formulario($apontamento, $request->query('voltar') === 'timeline' ? 'timeline' : 'lista');
     }
@@ -74,11 +80,16 @@ class ApontamentoEstadoController extends Controller
         return $this->voltar($request, $apontamento, 'Apontamento atualizado.');
     }
 
-    public function destroy(Request $request, ApontamentoEstado $apontamento, StatusOrdemProducao $status): RedirectResponse
+    public function destroy(Request $request, ApontamentoEstado $apontamento, StatusOrdemProducao $status, SituacaoMaquina $situacao): RedirectResponse
     {
         $op = $apontamento->ordemProducao;
+        $eraOMaisRecente = ApontamentoEstado::where('maquina_id', $apontamento->maquina_id)
+            ->orderByDesc('inicio')->orderByDesc('id')->value('id') === $apontamento->id;
         $apontamento->delete();
         $status->atualizar($op);
+        if ($eraOMaisRecente) {
+            $situacao->recalcular($apontamento->maquina_id); // a máquina volta a seguir o apontamento anterior
+        }
 
         return $this->voltar($request, $apontamento, 'Apontamento excluído.');
     }
@@ -92,8 +103,8 @@ class ApontamentoEstadoController extends Controller
         return view('apontamentos.form', [
             'apontamento' => $apontamento,
             'voltar' => $voltar,
-            'maquinas' => Maquina::where(fn ($q) => $q->where('ativo', true)->orWhere('id', $apontamento->maquina_id))
-                ->orderBy('nome')->get(['id', 'codigo', 'nome']),
+            'maquinas' => Maquina::with('ordemProducao:id,numero')->where(fn ($q) => $q->where('ativo', true)->orWhere('id', $apontamento->maquina_id))
+                ->orderBy('nome')->get(['id', 'codigo', 'nome', 'ordem_producao_id']),
             'legendas' => Legenda::where(fn ($q) => $q->where('ativo', true)->orWhere('id', $apontamento->legenda_id))
                 ->orderBy('ordem')->orderBy('codigo')->get(),
             'ordens' => $ordens,
@@ -190,6 +201,9 @@ class ApontamentoEstadoController extends Controller
 
             return $encerrado;
         });
+
+        // Máquina: situação (pelo tipo da legenda) e OP atual, se este for o apontamento mais recente dela.
+        app(SituacaoMaquina::class)->aplicar($apontamento);
 
         // Status das OPs envolvidas (a nova, a anterior deste apontamento e a do estado encerrado).
         $status = app(StatusOrdemProducao::class);

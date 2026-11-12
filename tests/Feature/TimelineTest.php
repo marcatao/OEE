@@ -153,6 +153,10 @@ class TimelineTest extends TestCase
         ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->legenda('DT')->id,
             'inicio' => Carbon::parse('2026-11-05 13:00', 'UTC')]);
 
+        // A Timeline lê a situação e a OP do cadastro da máquina (o apontamento mais recente atualiza; aqui direto).
+        $this->maquina->update(['situacao' => 'parada', 'situacao_legenda_id' => $this->legenda('DT')->id,
+            'situacao_desde' => Carbon::parse('2026-11-05 13:00', 'UTC'), 'ordem_producao_id' => $op->id]);
+
         $this->actingAs($this->usuario('mantenedor_producao'));
         $html = $this->get('/dashboards/timeline')->assertOk()
             ->assertSee('<b>PROD</b>', false)->assertSee('<b>DT</b>', false)  // na barra, sempre o código da legenda
@@ -160,10 +164,8 @@ class TimelineTest extends TestCase
             ->assertSee('OP 06267801001')->assertSee('TAMPA 28MM BRANCA')                    // OP e produto embaixo da máquina
             ->assertSee('estado-parada', false)->assertSee('desde 10:00');                    // última legenda (DT) = parada
 
-        // Última legenda volta a ser de produção: a máquina aparece "Produzindo".
-        ApontamentoEstado::where('fim', null)->update(['fim' => Carbon::parse('2026-11-05 14:00', 'UTC')]);
-        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->legenda('PROD')->id,
-            'inicio' => Carbon::parse('2026-11-05 14:00', 'UTC')]);
+        // Máquina produzindo: o cartão aparece "Produzindo".
+        $this->maquina->update(['situacao' => 'produzindo', 'situacao_legenda_id' => $this->legenda('PROD')->id]);
         $this->get('/dashboards/timeline')->assertSee('estado-produzindo', false)->assertSee('Produzindo')->assertSee('OP 06267801001');
     }
 
