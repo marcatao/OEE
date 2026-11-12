@@ -830,3 +830,10 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 /* Máquina produzindo ou parada (lista de máquinas) */
 .maq-produzindo { color:var(--ok); background:var(--ok-suave); border-color:transparent; font-weight:600; }
 .maq-parada { color:var(--erro); background:var(--erro-suave); border-color:transparent; font-weight:600; }
+/* Prioridade da solicitação de material (código + descrição) */
+.sm-nivel-critica { color:var(--erro); } .sm-nivel-alta { color:var(--alerta); } .sm-nivel-normal { color:var(--texto); }
+.sm-nivel-critica small, .sm-nivel-alta small, .sm-nivel-normal small { display:block; font-size:.76rem; line-height:1.25; color:inherit; opacity:.85; }
+.sm-tabela td:nth-child(5) { min-width:6rem; max-width:8.5rem; white-space:normal; }
+.sm-item { grid-template-columns:1.6rem minmax(0, 2.2fr) minmax(0, 1.5fr) 6.5rem minmax(9rem, 1.3fr) minmax(0, 1.8fr) auto; }
+.sm-tabela td:nth-child(2) { min-width:11rem; }
+.sm-col-analise { min-width:9rem; }

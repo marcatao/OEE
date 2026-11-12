@@ -21,8 +21,8 @@
     <input type="number" name="itens[{{ $i }}][quantidade]" min="0" step="any" value="{{ $item['quantidade'] ?? '' }}" placeholder="0">
   </label>
   <label class="sm-prio">Prioridade
-    <select name="itens[{{ $i }}][prioridade]">
-      @foreach (\App\Models\Manutencao\SolicitacaoMaterialItem::PRIORIDADES as $v => $r)<option value="{{ $v }}" @selected(($item['prioridade'] ?? 'media') === $v)>{{ $r }}</option>@endforeach
+    <select name="itens[{{ $i }}][prioridade]" title="Prioridade do item">
+      @foreach (\App\Models\Manutencao\SolicitacaoMaterialItem::prioridades() as $v => $r)<option value="{{ $v }}" @selected(($item['prioridade'] ?? \App\Models\Manutencao\SolicitacaoMaterialItem::PRIORIDADE_PADRAO) === $v)>{{ $v }} — {{ $r }}</option>@endforeach
     </select>
   </label>
   <label class="sm-obs">Observação / utilização

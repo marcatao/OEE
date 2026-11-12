@@ -82,13 +82,14 @@ class SolicitacaoMaterialController extends Controller
             'itens.*.produto_codigo' => ['required', 'string', 'max:30'],
             'itens.*.centro_custo' => ['required', 'string', 'max:20'],
             'itens.*.quantidade' => ['required', 'numeric', 'gt:0', 'max:9999999'],
-            'itens.*.prioridade' => ['required', Rule::in(array_keys(SolicitacaoMaterialItem::PRIORIDADES))],
+            'itens.*.prioridade' => ['required', Rule::in(array_keys(SolicitacaoMaterialItem::prioridades()))],
             'itens.*.observacao' => ['nullable', 'string', 'max:1000'],
         ], [
             'itens.required' => 'Inclua pelo menos um item (escolha o produto).',
             'itens.*.centro_custo.required' => 'Escolha o centro de custo de cada item.',
             'itens.*.quantidade.required' => 'Informe a quantidade de cada item.',
             'itens.*.quantidade.gt' => 'A quantidade precisa ser maior que zero.',
+            'itens.*.prioridade.in' => 'Escolha uma prioridade da lista.',
         ]);
 
         $produtos = $this->consultaProdutos()->whereIn('b1_cod', collect($dados['itens'])->pluck('produto_codigo')->map(fn ($c) => trim($c))->unique())->get()

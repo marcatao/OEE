@@ -12,7 +12,10 @@ class SolicitacaoMaterialItem extends Model
 {
     use Auditavel;
 
-    public const PRIORIDADES = ['alta' => 'Alta', 'media' => 'Média', 'baixa' => 'Baixa'];
+    /** Prioridades antigas (antes dos códigos da empresa): só para exibir os itens já gravados. */
+    public const PRIORIDADES_ANTIGAS = ['alta' => 'Alta (antiga)', 'media' => 'Média (antiga)', 'baixa' => 'Baixa (antiga)'];
+
+    public const PRIORIDADE_PADRAO = 'NO';
 
     public const STATUS = ['pendente' => 'Aguardando análise', 'aprovado' => 'Aprovado', 'reprovado' => 'Reprovado'];
 
@@ -34,6 +37,28 @@ class SolicitacaoMaterialItem extends Model
     public function aprovadoPor(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'aprovado_por_id');
+    }
+
+    /** Prioridades atuais: código => descrição (config oee.prioridades_material). @return array<string, string> */
+    public static function prioridades(): array
+    {
+        return array_map(fn ($p) => $p['descricao'], config('oee.prioridades_material', []));
+    }
+
+    /** "MP — Máquina parada" (ou a antiga, para itens gravados antes dos códigos). */
+    public function rotuloPrioridade(): string
+    {
+        $atuais = self::prioridades();
+
+        return isset($atuais[$this->prioridade]) ? $this->prioridade.' — '.$atuais[$this->prioridade]
+            : (self::PRIORIDADES_ANTIGAS[$this->prioridade] ?? (string) $this->prioridade);
+    }
+
+    /** critica | alta | normal (cor na tela). */
+    public function nivelPrioridade(): string
+    {
+        return config('oee.prioridades_material.'.$this->prioridade.'.nivel')
+            ?? ['alta' => 'alta', 'media' => 'normal', 'baixa' => 'normal'][$this->prioridade] ?? 'normal';
     }
 
     public function rotuloStatus(): string

@@ -46,7 +46,8 @@
             @if ($item->observacao)<small class="sm-utilizacao">Utilização: {{ $item->observacao }}</small>@endif</td>
           <td>{{ $item->centro_custo }}@if (isset($centros[$item->centro_custo]))<br><small class="suave">{{ $centros[$item->centro_custo]->descricao() }}</small>@endif</td>
           <td class="num"><strong>{{ SolicitacaoMaterialItem::quantidade($item->quantidade_solicitada) }}</strong> {{ $item->um }}</td>
-          <td><span class="sm-prio-{{ $item->prioridade }}">{{ SolicitacaoMaterialItem::PRIORIDADES[$item->prioridade] ?? $item->prioridade }}</span></td>
+          <td>@php($descricaoPrioridade = SolicitacaoMaterialItem::prioridades()[$item->prioridade] ?? null)
+            <span class="sm-nivel-{{ $item->nivelPrioridade() }}" title="{{ $item->rotuloPrioridade() }}">@if ($descricaoPrioridade)<strong>{{ $item->prioridade }}</strong> <small>{{ $descricaoPrioridade }}</small>@else<small>{{ $item->rotuloPrioridade() }}</small>@endif</span></td>
           @if ($item->status === 'pendente' && $podeAnalisar)
             <td class="num sm-col-qtd"><span class="sm-qtd-campo"><input type="number" name="quantidade[{{ $item->id }}]" min="0" step="any"
               value="{{ old('quantidade.'.$item->id, (float) $item->quantidade_solicitada) }}" aria-label="Quantidade aprovada do item {{ $n + 1 }}"> <span class="suave">{{ $item->um }}</span></span></td>

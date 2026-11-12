@@ -103,7 +103,9 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   mantenedor e por área executante. Quem tem as duas áreas grava a **área padrão** (`filtros_usuarios`, tela `os_painel`).
 - **Solicitação de material** (`solicitacoes_material` + `solicitacoes_material_itens`, permissão `os_material`):
   mantenedores NÃO pedem direto ao almoxarifado/compras — pedem à administração da área (Manutenção ou Tecnologia) uma
-  ficha com N itens (produto do SB1 com busca no servidor, centro de custo, quantidade, prioridade alta/média/baixa,
+  ficha com N itens (produto do SB1 com busca no servidor, centro de custo, quantidade, prioridade pelos códigos da empresa (AD, AL, DG, IO, IP, MP, NO, PD, PF, PU, RI, SE —
+  `config('oee.prioridades_material')`, com o nível crítica/alta/normal que pinta a tela; padrão NO; itens antigos
+  com alta/média/baixa aparecem como "(antiga)"),
   observação/utilização). O **administrador da área** analisa **item a item**: aprova uma quantidade (vem a solicitada,
   pode mudar) ou reprova com motivo; grava quem e quando (`aprovado_por_id`, `aprovado_em`); solicitação = pendente →
   em análise → analisada (ou cancelada enquanto nada foi analisado). Próxima etapa (pendente): gerar a requisição ao

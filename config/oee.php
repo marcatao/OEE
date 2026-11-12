@@ -38,6 +38,23 @@ return [
         'os_relatorios' => 'Ordens de serviço: relatórios de horas (intranet, contabilidade e diretoria)',
     ],
 
+    // Prioridades da solicitação de material (código => descrição), na ordem da lista. "nivel" pinta a prioridade na tela:
+    // critica (vermelho), alta (laranja) ou normal.
+    'prioridades_material' => [
+        'AD' => ['descricao' => 'Atendimento administrativo prioritário', 'nivel' => 'alta'],
+        'AL' => ['descricao' => 'Atendimento à legislação', 'nivel' => 'alta'],
+        'DG' => ['descricao' => 'Solicitado por diretoria/gerência — prioritário', 'nivel' => 'alta'],
+        'IO' => ['descricao' => 'Impede a operação com contorno', 'nivel' => 'alta'],
+        'IP' => ['descricao' => 'Iminente paralisação de máquina', 'nivel' => 'critica'],
+        'MP' => ['descricao' => 'Máquina parada', 'nivel' => 'critica'],
+        'NO' => ['descricao' => 'Normal', 'nivel' => 'normal'],
+        'PD' => ['descricao' => 'Projeto e desenvolvimento', 'nivel' => 'normal'],
+        'PF' => ['descricao' => 'Paralisa faturamento', 'nivel' => 'critica'],
+        'PU' => ['descricao' => 'Manutenção predial de urgência', 'nivel' => 'critica'],
+        'RI' => ['descricao' => 'Risco à integridade física', 'nivel' => 'critica'],
+        'SE' => ['descricao' => 'Sem estoque', 'nivel' => 'alta'],
+    ],
+
     // Custo da OP × custo meta (SB9): divergência dentro desta faixa (0,05 = ±5%) fica neutra; acima, em vermelho;
     // abaixo, em verde.
     'custo_tolerancia' => (float) env('OEE_CUSTO_TOLERANCIA', 0.05),

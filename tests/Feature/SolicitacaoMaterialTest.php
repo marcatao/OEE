@@ -37,8 +37,8 @@ class SolicitacaoMaterialTest extends TestCase
     private function pedir(Usuario $u): SolicitacaoMaterial
     {
         $this->actingAs($u)->post('/ordens-de-servico/solicitacoes-de-material', ['itens' => [
-            ['produto_codigo' => 'MP0001', 'centro_custo' => '1001', 'quantidade' => 4, 'prioridade' => 'alta', 'observacao' => 'Motor da injetora 12'],
-            ['produto_codigo' => 'MP0002', 'centro_custo' => '2002', 'quantidade' => 2.5, 'prioridade' => 'baixa'],
+            ['produto_codigo' => 'MP0001', 'centro_custo' => '1001', 'quantidade' => 4, 'prioridade' => 'MP', 'observacao' => 'Motor da injetora 12'],
+            ['produto_codigo' => 'MP0002', 'centro_custo' => '2002', 'quantidade' => 2.5, 'prioridade' => 'NO'],
             ['produto_codigo' => '', 'centro_custo' => '', 'quantidade' => ''], // linha vazia é ignorada
         ]])->assertRedirect()->assertSessionHasNoErrors();
 
@@ -82,7 +82,7 @@ class SolicitacaoMaterialTest extends TestCase
         $this->post("/ordens-de-servico/solicitacoes-de-material/{$sm->id}/analisar", ['acao' => 'aprovar', 'item' => $item2->id])->assertSessionHasErrors('item');
 
         // O solicitante vê o resultado.
-        $this->actingAs($mecanico)->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk()->assertSee('Aprovado')->assertSee('<strong>3</strong> PC', false)->assertSee('Tem no estoque da manutenção');
+        $this->actingAs($mecanico)->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk()->assertSee('Máquina parada')->assertSee('Aprovado')->assertSee('<strong>3</strong> PC', false)->assertSee('Tem no estoque da manutenção');
     }
 
     public function test_aprovar_todos_validacoes_e_quem_ve(): void
@@ -95,8 +95,12 @@ class SolicitacaoMaterialTest extends TestCase
 
         // Produto bloqueado, inexistente e CC fora da lista são recusados.
         $this->actingAs($mecanico)->post('/ordens-de-servico/solicitacoes-de-material', ['itens' => [
-            ['produto_codigo' => 'MP0003', 'centro_custo' => '9999', 'quantidade' => 1, 'prioridade' => 'media'],
+            ['produto_codigo' => 'MP0003', 'centro_custo' => '9999', 'quantidade' => 1, 'prioridade' => 'IP'],
         ]])->assertSessionHasErrors(['itens.0.produto_codigo', 'itens.0.centro_custo']);
+        // As prioridades antigas (alta/média/baixa) não são mais aceitas: só os códigos da lista.
+        $this->post('/ordens-de-servico/solicitacoes-de-material', ['itens' => [
+            ['produto_codigo' => 'MP0001', 'centro_custo' => '1001', 'quantidade' => 1, 'prioridade' => 'alta'],
+        ]])->assertSessionHasErrors('itens.0.prioridade');
         $this->post('/ordens-de-servico/solicitacoes-de-material', ['itens' => []])->assertSessionHasErrors('itens');
 
         $sm = $this->pedir($mecanico);
