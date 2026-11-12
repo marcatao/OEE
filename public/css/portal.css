@@ -338,7 +338,12 @@ a.tl-maquina:hover { color:var(--primaria); }
 .tl-faixa { position:relative; align-self:stretch; min-height:3rem; background:var(--tl-vazio); border-radius:6px; overflow:hidden; }
 .tl-bloco { position:absolute; top:0; bottom:0; display:flex; align-items:center; justify-content:center; overflow:hidden; white-space:nowrap; font-size:.8rem; font-weight:700; letter-spacing:.02em; text-decoration:none; box-shadow:inset -1px 0 0 var(--tl-separador); }
 .tl-bloco:hover { filter:brightness(1.08); outline:2px solid var(--texto); outline-offset:-2px; z-index:2; }
-.tl-bloco span { padding:0 3px; overflow:hidden; text-overflow:ellipsis; }
+.tl-bloco span { padding:0 .4rem; overflow:hidden; text-overflow:ellipsis; }
+/* Barra estreita: só o código da legenda. Com espaço: código · descrição (cada barra mede a própria largura). */
+.tl-bloco { container-type:inline-size; }
+.tl-bloco b { font-weight:700; }
+.tl-desc { display:none; font-style:normal; font-weight:600; }
+@container (min-width: 7rem) { .tl-desc { display:inline; } }
 .tl-bloco.aberto { background-image:repeating-linear-gradient(135deg, transparent 0 6px, var(--tl-separador) 6px 8px); }
 .tl-texto-claro { color:var(--tl-texto-claro); }
 .tl-texto-escuro { color:var(--tl-texto-escuro); }

@@ -60,9 +60,9 @@
                 @php($estilo = 'left: '.$b['esquerda'].'%; width: '.$b['largura'].'%; background-color: '.$legenda->cor)
                 @if ($podeApontar)
                   <a class="tl-bloco {{ $legenda->classeTexto() }} {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="{{ $dica }}"
-                     href="{{ route('apontamentos.edit', ['apontamento' => $b['apontamento'], 'voltar' => 'timeline']) }}"><span>{{ $b['apontamento']->rotuloBarra() }}</span></a>
+                     href="{{ route('apontamentos.edit', ['apontamento' => $b['apontamento'], 'voltar' => 'timeline']) }}"><span><b>{{ $b['apontamento']->rotuloBarra() }}</b><em class="tl-desc"> · {{ $legenda->descricao }}</em></span></a>
                 @else
-                  <div class="tl-bloco {{ $legenda->classeTexto() }} {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="{{ $dica }}"><span>{{ $b['apontamento']->rotuloBarra() }}</span></div>
+                  <div class="tl-bloco {{ $legenda->classeTexto() }} {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="{{ $dica }}"><span><b>{{ $b['apontamento']->rotuloBarra() }}</b><em class="tl-desc"> · {{ $legenda->descricao }}</em></span></div>
                 @endif
               @endforeach
               @if ($agora !== null)<i class="tl-agora" style="left: {{ $agora }}%" title="Agora"></i>@endif

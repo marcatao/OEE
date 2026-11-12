@@ -155,7 +155,7 @@ class TimelineTest extends TestCase
 
         $this->actingAs($this->usuario('mantenedor_producao'));
         $html = $this->get('/dashboards/timeline')->assertOk()
-            ->assertSee('<span>PROD</span>', false)->assertSee('<span>DT</span>', false)  // na barra, sempre o código da legenda
+            ->assertSee('<b>PROD</b>', false)->assertSee('<b>DT</b>', false)  // na barra, sempre o código da legenda
             ->assertDontSee('<span>OP 06267801001</span>', false)->assertDontSee('<span>texto antigo</span>', false)
             ->assertSee('OP 06267801001')->assertSee('TAMPA 28MM BRANCA')                    // OP e produto embaixo da máquina
             ->assertSee('estado-parada', false)->assertSee('desde 10:00');                    // última legenda (DT) = parada
