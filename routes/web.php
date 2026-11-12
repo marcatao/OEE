@@ -24,6 +24,7 @@ use App\Http\Controllers\Manutencao\PainelController;
 use App\Http\Controllers\Manutencao\PlanoPreventivaController;
 use App\Http\Controllers\Manutencao\RelatorioManutencaoController;
 use App\Http\Controllers\Manutencao\SolicitacaoController;
+use App\Http\Controllers\Manutencao\SolicitacaoMaterialController;
 use App\Http\Controllers\OrdemProducaoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PortalController;
@@ -94,6 +95,15 @@ Route::middleware('auth')->group(function () {
         $todos = 'permissao:os_solicitar,os_aprovar,solicitacoes_manutencao,os_almoxarifado';
         $executa = 'permissao:solicitacoes_manutencao,os_aprovar';
 
+        Route::middleware('permissao:os_material')->prefix('solicitacoes-de-material')->name('materiais-solicitacao.')->group(function () {
+            Route::get('/', [SolicitacaoMaterialController::class, 'index'])->name('index');
+            Route::get('nova', [SolicitacaoMaterialController::class, 'create'])->name('create');
+            Route::post('/', [SolicitacaoMaterialController::class, 'store'])->name('store');
+            Route::get('produtos', [SolicitacaoMaterialController::class, 'buscarProdutos'])->name('produtos'); // JSON da busca
+            Route::get('{solicitacao}', [SolicitacaoMaterialController::class, 'show'])->whereNumber('solicitacao')->name('show');
+            Route::post('{solicitacao}/analisar', [SolicitacaoMaterialController::class, 'analisar'])->whereNumber('solicitacao')->name('analisar');
+            Route::post('{solicitacao}/cancelar', [SolicitacaoMaterialController::class, 'cancelar'])->whereNumber('solicitacao')->name('cancelar');
+        });
         Route::middleware('permissao:os_painel')->group(function () {
             Route::get('painel', [PainelController::class, 'index'])->name('painel');
             Route::post('painel/area-padrao', [PainelController::class, 'salvarPadrao'])->name('painel.padrao');

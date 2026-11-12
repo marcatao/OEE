@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **44** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **46** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -598,6 +598,37 @@ erDiagram
         datetime sinal_em
         bigint ultimo_recno
     }
+    solicitacoes_material {
+        bigint id PK
+        nvarchar(20) unidade
+        bigint solicitante_id FK
+        nvarchar(12) status
+        nvarchar(1000) observacao
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    solicitacoes_material_itens {
+        bigint id PK
+        bigint solicitacao_material_id FK
+        nvarchar(30) produto_codigo
+        nvarchar(120) produto_descricao
+        nvarchar(4) um
+        nvarchar(20) centro_custo
+        decimal(14, quantidade_solicitada
+        nvarchar(10) prioridade
+        nvarchar(1000) observacao
+        nvarchar(12) status
+        decimal(14, quantidade_aprovada
+        nvarchar(500) motivo_reprovacao
+        bigint aprovado_por_id FK
+        datetime aprovado_em
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     solicitacoes_servico {
         bigint id PK
         nvarchar(20) unidade
@@ -717,6 +748,9 @@ erDiagram
     motivos_parada |o--o{ paradas : "motivo_id"
     usuarios |o--o{ registros_login : "usuario_id"
     usuarios |o--o{ sincronizacoes : "usuario_id"
+    usuarios ||--o{ solicitacoes_material : "solicitante_id"
+    solicitacoes_material ||--o{ solicitacoes_material_itens : "solicitacao_material_id"
+    usuarios |o--o{ solicitacoes_material_itens : "aprovado_por_id"
     usuarios ||--o{ solicitacoes_servico : "solicitante_id"
     maquinas |o--o{ solicitacoes_servico : "maquina_id"
     os_areas_executantes ||--o{ solicitacoes_servico : "area_executante_id"
@@ -827,6 +861,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`roteiros_operacao`](#roteiros_operacao) | Protheus | `id` | 17 | 0 |
 | [`sessions`](#sessions) | Infra | `id` | 6 | 0 |
 | [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 16 | 1 |
+| [`solicitacoes_material`](#solicitacoes_material) | Sistema | `id` | 9 | 3 |
+| [`solicitacoes_material_itens`](#solicitacoes_material_itens) | Sistema | `id` | 18 | 4 |
 | [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 22 | 8 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
@@ -1826,6 +1862,55 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `sincronizacoes_chave_iniciado_em_index` (chave, iniciado_em)
 
 **Regras (CHECK, só no SQL Server):** `ck_sincronizacoes_situacao`: `situacao IN ('executando', 'sucesso', 'erro')` · `ck_sincronizacoes_disparo`: `disparo IN ('manual', 'agendado', 'comando')`
+
+### solicitacoes_material
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não |  |  |
+| `solicitante_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `status` | `nvarchar(12)` | não | `'pendente'` |  |
+| `observacao` | `nvarchar(1000)` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `solicitacoes_material_unidade_status_id_index` (unidade, status, id) · `solicitacoes_material_solicitante_id_id_index` (solicitante_id, id)
+
+**Regras (CHECK, só no SQL Server):** `ck_solicitacoes_material_unidade`: `unidade IN ('manutencao', 'tecnologia')` · `ck_solicitacoes_material_status`: `status IN ('pendente', 'em_analise', 'analisada', 'cancelada')`
+
+### solicitacoes_material_itens
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `solicitacao_material_id` | `bigint` | não |  | FK → `solicitacoes_material.id` |
+| `produto_codigo` | `nvarchar(30)` | não |  |  |
+| `produto_descricao` | `nvarchar(120)` | não | `''` |  |
+| `um` | `nvarchar(4)` | não | `''` |  |
+| `centro_custo` | `nvarchar(20)` | não |  |  |
+| `quantidade_solicitada` | `decimal(14,` | sim |  |  |
+| `prioridade` | `nvarchar(10)` | não | `'media'` |  |
+| `observacao` | `nvarchar(1000)` | sim |  |  |
+| `status` | `nvarchar(12)` | não | `'pendente'` |  |
+| `quantidade_aprovada` | `decimal(14,` | sim |  |  |
+| `motivo_reprovacao` | `nvarchar(500)` | sim |  |  |
+| `aprovado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `aprovado_em` | `datetime` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `solicitacoes_material_itens_solicitacao_material_id_id_index` (solicitacao_material_id, id) · `solicitacoes_material_itens_status_prioridade_index` (status, prioridade) · `solicitacoes_material_itens_produto_codigo_index` (produto_codigo)
+
+**Regras (CHECK, só no SQL Server):** `ck_solicitacoes_material_itens_prioridade`: `prioridade IN ('alta', 'media', 'baixa')` · `ck_solicitacoes_material_itens_status`: `status IN ('pendente', 'aprovado', 'reprovado')` · `ck_solicitacoes_material_itens_quantidades`: `quantidade_solicitada > 0 AND (quantidade_aprovada IS NULL OR quantidade_aprovada >= 0)`
 
 ### solicitacoes_servico
 

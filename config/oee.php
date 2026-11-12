@@ -28,6 +28,7 @@ return [
         'ferramentas' => 'Ferramentas (SH4: consulta; administradores editam as cavidades ativas)',
         'calculadora' => 'Calculadora de OEE',
         // Ordens de serviço (manutenção de produção e de tecnologia; cada um vê a fila da sua unidade)
+        'os_material' => 'Ordens de serviço: solicitação de material (mantenedores pedem; o administrador da área aprova item a item)',
         'os_painel' => 'Ordens de serviço: painel da área (chamados, OS por mantenedor, mensagens sem resposta)',
         'os_solicitar' => 'Ordens de serviço: abrir solicitações de serviço (SS) e acompanhar as suas',
         'os_aprovar' => 'Ordens de serviço: analisar SS (aprovar/rejeitar), distribuir e editar OS',
@@ -67,7 +68,7 @@ return [
             'area' => 'manutencao',
             'descricao' => 'Vê, aprova e executa as SS/OS das áreas executantes dele e as máquinas de manutenção nos dashboards.',
             'unidades' => ['manutencao'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material'],
         ],
         'admin_producao' => [
             'rotulo' => 'Administrador de Produção',
@@ -91,7 +92,7 @@ return [
             'area' => 'tecnologia',
             'descricao' => 'Vê, aprova e executa as SS/OS das áreas executantes dele e vê equipamentos e dashboards de tecnologia.',
             'unidades' => ['tecnologia'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material'],
         ],
         'admin_tecnologia' => [
             'rotulo' => 'Administrador de Tecnologia',

@@ -2,7 +2,8 @@
  * Componentes das telas do portal (sem dependências nem etapa de build).
  *
  * 1) <select data-busca> — lista com busca: troca a caixa de seleção por um botão que abre um painel com um campo de
- *    busca (por código ou nome) e a lista filtrada. O <select> original continua no formulário (escondido) e é ele que
+ *    busca (por código ou nome) e a lista filtrada. Com data-busca-url="..." (listas enormes, ex.: produtos) as opções
+ *    vêm do servidor enquanto se digita: GET url?q=texto → [{valor, texto}] (mínimo 2 letras). O <select> original continua no formulário (escondido) e é ele que
  *    envia o valor. Para mudar por código: select.value = 'x'; select.dispatchEvent(new Event('change')).
  *    select.disabled = true trava o campo (lembre que select desabilitado não é enviado no formulário).
  *
@@ -107,7 +108,9 @@
       painel.hidden = false;
       botao.setAttribute('aria-expanded', 'true');
       campo.value = '';
+      ultimaBusca = '';
       filtrar();
+      if (url) { vazio.textContent = 'Digite ao menos 2 letras do código ou da descrição.'; vazio.hidden = false; }
       var atual = itens.findIndex(function (li) { return li.classList.contains('selecionado'); });
       if (atual >= 0) marcar(atual);
       campo.focus();
@@ -128,7 +131,35 @@
     botao.addEventListener('click', function () { painel.hidden ? abrir() : fechar(); });
     // Dentro de um <label>, o clique no painel seria repassado ao botão (e reabriria a lista): bloqueia esse repasse.
     painel.addEventListener('click', function (e) { if (e.target !== campo) e.preventDefault(); });
-    campo.addEventListener('input', filtrar);
+    // Busca no servidor (data-busca-url): troca as opções do <select> pelas encontradas, mantendo a escolhida.
+    var url = select.dataset.buscaUrl, espera = null, ultimaBusca = '';
+    function buscarNoServidor() {
+      var termo = campo.value.trim();
+      if (termo.length < 2) { vazio.textContent = 'Digite ao menos 2 letras do código ou da descrição.'; vazio.hidden = false; return; }
+      if (termo === ultimaBusca) return;
+      ultimaBusca = termo;
+      vazio.textContent = 'Buscando…'; vazio.hidden = false;
+      fetch(url + (url.indexOf('?') === -1 ? '?' : '&') + 'q=' + encodeURIComponent(termo), { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (dados) {
+          if (campo.value.trim() !== termo) return; // já digitou outra coisa
+          var atual = select.selectedOptions[0];
+          Array.prototype.slice.call(select.options).forEach(function (op) { if (op !== atual && op.value !== '') op.remove(); });
+          dados.forEach(function (d) { if (!atual || d.valor !== atual.value) select.add(new Option(d.texto, d.valor)); });
+          montarLista();
+          itens.forEach(function (li) { li.hidden = li.dataset.valor === '' ; });
+          var visiveis = itens.filter(function (li) { return !li.hidden; }).length;
+          vazio.textContent = 'Nada encontrado.';
+          vazio.hidden = visiveis > 0;
+          marcar(itens.findIndex(function (li) { return !li.hidden; }));
+        })
+        .catch(function () { vazio.textContent = 'Não foi possível buscar agora.'; vazio.hidden = false; });
+    }
+    campo.addEventListener('input', function () {
+      if (!url) { filtrar(); return; }
+      clearTimeout(espera);
+      espera = setTimeout(buscarNoServidor, 250);
+    });
     campo.addEventListener('keydown', function (e) {
       if (e.key === 'ArrowDown') { e.preventDefault(); mover(1); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); mover(-1); }

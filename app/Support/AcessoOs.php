@@ -187,6 +187,15 @@ final class AcessoOs
         return array_values(array_intersect(['manutencao', 'tecnologia'], $unidades));
     }
 
+    /**
+     * Áreas para as quais o usuário pede material: as dos perfis de mantenedor e de administrador (Adm. Tecnologia: as
+     * duas). @return list<string>
+     */
+    public static function unidadesMaterial(Usuario $u): array
+    {
+        return array_values(array_intersect(['manutencao', 'tecnologia'], [...self::unidadesAdmin($u), ...self::unidadesMantenedor($u)]));
+    }
+
     /** OS fechada (concluída, encerrada ou cancelada) não se altera: nada de editar, conversar, apontar ou requisitar. */
     public static function exigirAberta(OrdemServico $os): void
     {

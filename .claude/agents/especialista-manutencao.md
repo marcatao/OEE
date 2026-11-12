@@ -99,6 +99,13 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   mensagens sem resposta (última mensagem do solicitante ou de fora da equipe), aguardando avaliação, sem mantenedor,
   preventivas atrasadas, 30 dias (encerradas, tempo médio emissão→conclusão, avaliações), horas do mês, OS abertas por
   mantenedor e por área executante. Quem tem as duas áreas grava a **área padrão** (`filtros_usuarios`, tela `os_painel`).
+- **Solicitação de material** (`solicitacoes_material` + `solicitacoes_material_itens`, permissão `os_material`):
+  mantenedores NÃO pedem direto ao almoxarifado/compras — pedem à administração da área (Manutenção ou Tecnologia) uma
+  ficha com N itens (produto do SB1 com busca no servidor, centro de custo, quantidade, prioridade alta/média/baixa,
+  observação/utilização). O **administrador da área** analisa **item a item**: aprova uma quantidade (vem a solicitada,
+  pode mudar) ou reprova com motivo; grava quem e quando (`aprovado_por_id`, `aprovado_em`); solicitação = pendente →
+  em análise → analisada (ou cancelada enquanto nada foi analisado). Próxima etapa (pendente): gerar a requisição ao
+  almoxarifado ou a solicitação de compra a partir do item aprovado (botões "em breve").
 - **Vários mantenedores por OS** (`os_ordem_mantenedores`; `responsavel_id` = o principal, o primeiro). Na aprovação da
   SS escolhe-se um ou mais (nenhum = definir depois). Os **próprios mantenedores abrem e aprovam SS**; se quem aprova é
   mantenedor, ele já vem marcado e fica sempre atribuído à OS. Quem inicia apontamento numa OS também passa a estar

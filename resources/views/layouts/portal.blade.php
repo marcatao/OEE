@@ -69,7 +69,7 @@
           </div>
         @endif
 
-        @if ($u->pode('os_painel') || $u->pode('os_solicitar') || $u->pode('os_aprovar') || $u->pode('solicitacoes_manutencao') || $u->pode('os_almoxarifado') || $u->pode('os_preventivas') || $u->pode('os_relatorios') || $u->ehAdmin())
+        @if ($u->pode('os_painel') || $u->pode('os_material') || $u->pode('os_solicitar') || $u->pode('os_aprovar') || $u->pode('solicitacoes_manutencao') || $u->pode('os_almoxarifado') || $u->pode('os_preventivas') || $u->pode('os_relatorios') || $u->ehAdmin())
           <div class="menu-bloco" data-bloco="ordens-servico">
             @include('layouts.partials.menu-secao', ['titulo' => 'Ordens de serviço'])
             <div class="menu-itens">
@@ -82,6 +82,9 @@
               @endif
               @if ($u->pode('solicitacoes_manutencao') || $u->pode('os_aprovar'))
                 @include('layouts.partials.menu-link', ['rota' => 'os.minhas', 'rotulo' => 'Apontar horas', 'icone' => 'cronometro'])
+              @endif
+              @if ($u->pode('os_material'))
+                @include('layouts.partials.menu-link', ['rota' => 'os.materiais-solicitacao.index', 'rotulo' => 'Solicitação de material', 'icone' => 'caixa', 'ativo' => 'os.materiais-solicitacao.*'])
               @endif
               @if ($u->pode('os_almoxarifado') || $u->pode('solicitacoes_manutencao') || $u->pode('os_aprovar'))
                 @include('layouts.partials.menu-link', ['rota' => 'os.materiais.index', 'rotulo' => 'Materiais', 'icone' => 'caixa', 'ativo' => 'os.materiais.*'])
