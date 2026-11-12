@@ -189,6 +189,18 @@ php artisan usuarios:ativar fulano@alumbra.com.br --desativar
 
 Ao mudar o `.env` com o portal em produção, rode `php artisan config:clear` (ou `config:cache`).
 
+### Legendas da Alumbra
+
+As legendas do apontamento real (menu **Produção › Legendas**) foram trocadas pela lista da fábrica (1 Limpeza, 2 Produção
+Normal, 3 Manutenção, … 29 Falta Trocar o Molde) com o comando abaixo, rodado uma vez no servidor. Ele **apaga todas as
+legendas antigas e os apontamentos reais que as usam** (decisão do usuário: o histórico desses apontamentos se perde);
+SS/OS ligadas a esses apontamentos continuam, só sem o vínculo. Sem `--confirmar` ele só mostra o que faria.
+
+```sh
+php artisan legendas:substituir              # mostra o que seria feito
+php artisan legendas:substituir --confirmar  # faz de verdade
+```
+
 ### Atualizar o banco
 
 Depois de baixar uma versão nova, rode só `php artisan migrate --force`: as migrações apenas **acrescentam** tabelas e

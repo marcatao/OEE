@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Administração › <a href="{{ route('admin.legendas.index') }}">Legendas</a></p>
+  <p class="trilha">Produção › <a href="{{ route('admin.legendas.index') }}">Legendas</a></p>
   <h1>{{ $legenda->exists ? $legenda->codigo.' — '.$legenda->descricao : 'Nova legenda' }}</h1>
 
   @if ($errors->any())<p class="aviso erro" role="alert">{{ $errors->first() }}</p>@endif

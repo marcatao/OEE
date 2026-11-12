@@ -40,7 +40,7 @@
           </div>
         @endif
 
-        @if ($u->pode('apontamentos') || $u->pode('apontamentos_producao') || $u->pode('ordens_producao') || $u->pode('estruturas') || $u->pode('roteiros') || $u->pode('ferramentas') || $u->pode('calculadora'))
+        @if ($u->pode('apontamentos') || $u->pode('apontamentos_producao') || $u->pode('ordens_producao') || $u->pode('estruturas') || $u->pode('roteiros') || $u->pode('ferramentas') || $u->pode('calculadora') || $u->ehAdmin())
           <div class="menu-bloco" data-bloco="producao">
             @include('layouts.partials.menu-secao', ['titulo' => 'Produção'])
             <div class="menu-itens">
@@ -61,6 +61,9 @@
               @endif
               @if ($u->pode('ferramentas'))
                 @include('layouts.partials.menu-link', ['rota' => 'ferramentas.index', 'rotulo' => 'Ferramentas', 'icone' => 'ferramenta', 'ativo' => 'ferramentas.*'])
+              @endif
+              @if ($u->ehAdmin())
+                @include('layouts.partials.menu-link', ['rota' => 'admin.legendas.index', 'rotulo' => 'Legendas', 'icone' => 'legenda', 'ativo' => 'admin.legendas.*'])
               @endif
               @if ($u->pode('calculadora'))
                 @include('layouts.partials.menu-link', ['rota' => 'calculadora', 'rotulo' => 'Calculadora de OEE', 'icone' => 'calculadora'])
@@ -113,7 +116,6 @@
               @include('layouts.partials.menu-link', ['rota' => 'admin.maquinas.index', 'rotulo' => 'Máquinas', 'icone' => 'maquina', 'ativo' => 'admin.maquinas.*'])
               @include('layouts.partials.menu-link', ['rota' => 'admin.centros-custo.index', 'rotulo' => 'Centros de custo', 'icone' => 'centro_custo', 'ativo' => 'admin.centros-custo.*'])
               @include('layouts.partials.menu-link', ['rota' => 'admin.estrutura', 'rotulo' => 'Plantas e linhas', 'icone' => 'estrutura', 'ativo' => 'admin.estrutura*'])
-              @include('layouts.partials.menu-link', ['rota' => 'admin.legendas.index', 'rotulo' => 'Legendas', 'icone' => 'legenda', 'ativo' => 'admin.legendas.*'])
               @include('layouts.partials.menu-link', ['rota' => 'admin.iot.index', 'rotulo' => 'Dispositivos IoT', 'icone' => 'iot', 'ativo' => 'admin.iot.*'])
             </div>
           </div>

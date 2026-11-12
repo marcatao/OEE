@@ -4,7 +4,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Administração</p>
+  <p class="trilha">Produção</p>
   <div class="titulo-com-acao">
     <h1>Legendas</h1>
     <a class="botao" href="{{ route('admin.legendas.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova legenda</a>

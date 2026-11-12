@@ -49,8 +49,8 @@ class PainelTest extends TestCase
     public function test_menu_do_admin_tem_producao_e_administracao(): void
     {
         $this->actingAs($this->usuario('admin', 'admin@empresa.com'))->get('/')->assertOk()
-            ->assertSeeInOrder(['Dashboards', 'Dashboard por máquina', 'Timeline', 'Produção', 'Apontamento real', 'Apontamentos OP', 'Ordens de produção', 'Calculadora de OEE',
-                'Administração', 'Máquinas', 'Plantas e linhas', 'Legendas', 'Dispositivos IoT',
+            ->assertSeeInOrder(['Dashboards', 'Dashboard por máquina', 'Timeline', 'Produção', 'Apontamento real', 'Apontamentos OP', 'Ordens de produção',
+                'Legendas', 'Calculadora de OEE', 'Administração', 'Máquinas', 'Plantas e linhas', 'Dispositivos IoT',
                 'Segurança', 'Usuários', 'Grupos', 'Histórico de acessos', 'Banco de dados']);
     }
 
