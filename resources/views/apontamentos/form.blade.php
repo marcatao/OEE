@@ -30,7 +30,7 @@
         <select name="legenda_id" required>
           <option value="">Escolha…</option>
           @foreach ($legendas as $l)
-            <option value="{{ $l->id }}" @selected((int) old('legenda_id', $apontamento->legenda_id) === $l->id)>{{ $l->codigo }} — {{ $l->descricao }}</option>
+            <option value="{{ $l->id }}" data-exige-op="{{ $l->exige_op ? 1 : 0 }}" @selected((int) old('legenda_id', $apontamento->legenda_id) === $l->id)>{{ $l->codigo }} — {{ $l->descricao }}@if ($l->exige_op) (exige OP)@endif</option>
           @endforeach
         </select>
       </label>
@@ -49,7 +49,7 @@
             <option value="{{ $op->numero }}">{{ $descricoes[$op->c2_produto] ?? $op->c2_produto }} · {{ $op->rotuloStatus() }}</option>
           @endforeach
         </datalist>
-        <small>OPs do Protheus que não estão fechadas. Opcional.</small>
+        <small data-ajuda-op>OPs do Protheus que não estão fechadas. Obrigatória quando a legenda exige OP.</small>
       </label>
       <label>Referência
         <input name="referencia" maxlength="40" value="{{ old('referencia', $apontamento->referencia) }}" placeholder="Ex.: OP 509859">
@@ -76,4 +76,18 @@
     </form>
   @endif
 </section>
+<script>
+  // Legenda que exige OP: o campo da ordem de produção fica obrigatório.
+  (function () {
+    var legenda = document.querySelector('select[name="legenda_id"]');
+    var op = document.querySelector('input[name="ordem_producao"]');
+    if (!legenda || !op) return;
+    var aplicar = function () {
+      var opcao = legenda.options[legenda.selectedIndex];
+      op.required = !!(opcao && opcao.dataset.exigeOp === '1');
+    };
+    legenda.addEventListener('change', aplicar);
+    aplicar();
+  })();
+</script>
 @endsection

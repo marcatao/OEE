@@ -25,13 +25,13 @@ class Legenda extends Model
 
     protected $table = 'legendas';
 
-    protected $fillable = ['unidade', 'codigo', 'descricao', 'tipo', 'cor', 'ordem', 'ativo'];
+    protected $fillable = ['unidade', 'codigo', 'descricao', 'tipo', 'cor', 'ordem', 'ativo', 'exige_op'];
 
     protected $attributes = ['ativo' => true, 'ordem' => 0];
 
     protected function casts(): array
     {
-        return ['ativo' => 'boolean', 'ordem' => 'integer'];
+        return ['exige_op' => 'boolean', 'ativo' => 'boolean', 'ordem' => 'integer'];
     }
 
     public function apontamentos(): HasMany

@@ -131,6 +131,10 @@ class ApontamentoEstadoController extends Controller
 
         // Ordem de produção: digitada ou escolhida pelo número (C2_NUM + C2_ITEM + C2_SEQUEN).
         $numeroOp = trim((string) ($dados['ordem_producao'] ?? ''));
+        $legenda = Legenda::find($dados['legenda_id']);
+        if ($numeroOp === '' && $legenda?->exige_op) {
+            throw ValidationException::withMessages(['ordem_producao' => "A legenda {$legenda->codigo} — {$legenda->descricao} exige a ordem de produção."]);
+        }
         $op = null;
         if ($numeroOp !== '') {
             $op = OrdemProducao::where('numero', $numeroOp)->where('d_e_l_e_t_', '<>', '*')->orderBy('status')->first();

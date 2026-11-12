@@ -158,6 +158,7 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
         nvarchar(20) unidade
+        bit exige_op
     }
     linhas {
         bigint id PK
@@ -830,7 +831,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`grupos`](#grupos) | Sistema | `id` | 8 | 2 |
 | [`job_batches`](#job_batches) | Infra | `id` | 10 | 0 |
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
-| [`legendas`](#legendas) | Sistema | `id` | 12 | 2 |
+| [`legendas`](#legendas) | Sistema | `id` | 13 | 2 |
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
 | [`maquinas`](#maquinas) | Mista | `id` | 33 | 6 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
@@ -1165,6 +1166,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
+| `exige_op` | `bit` | não | `'0'` |  |
 
 **Índices:** `legendas_codigo_unique` único (codigo) · `legendas_unidade_index` (unidade)
 

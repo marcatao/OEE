@@ -44,6 +44,12 @@
     </div>
 
     <fieldset class="opcoes-linha">
+      <legend>Exige OP</legend>
+      <label class="opcao"><input type="radio" name="exige_op" value="1" @checked(old('exige_op', (int) $legenda->exige_op) == 1)> <span>Sim <small>o apontamento real com esta legenda precisa da ordem de produção</small></span></label>
+      <label class="opcao"><input type="radio" name="exige_op" value="0" @checked(old('exige_op', (int) $legenda->exige_op) == 0)> <span>Não</span></label>
+    </fieldset>
+
+    <fieldset class="opcoes-linha">
       <legend>Situação</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @checked(old('ativo', (int) $legenda->ativo) == 1)> <span>Ativa</span></label>
       <label class="opcao"><input type="radio" name="ativo" value="0" @checked(old('ativo', (int) $legenda->ativo) == 0)> <span>Inativa <small>não aparece em apontamentos novos; o histórico continua com a cor</small></span></label>
