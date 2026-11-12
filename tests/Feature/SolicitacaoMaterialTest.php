@@ -82,7 +82,7 @@ class SolicitacaoMaterialTest extends TestCase
         $this->post("/ordens-de-servico/solicitacoes-de-material/{$sm->id}/analisar", ['acao' => 'aprovar', 'item' => $item2->id])->assertSessionHasErrors('item');
 
         // O solicitante vê o resultado.
-        $this->actingAs($mecanico)->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk()->assertSee('Aprovado: 3')->assertSee('Tem no estoque da manutenção');
+        $this->actingAs($mecanico)->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk()->assertSee('Aprovado')->assertSee('<strong>3</strong> PC', false)->assertSee('Tem no estoque da manutenção');
     }
 
     public function test_aprovar_todos_validacoes_e_quem_ve(): void

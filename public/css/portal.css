@@ -761,3 +761,33 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .sm-tabela th, .sm-tabela td { padding-left:.5rem; padding-right:.5rem; }
 .sm-analisar input[type=number] { width:5.5rem; }
 .sm-tabela td:nth-child(2), .sm-tabela td:nth-child(3), .sm-tabela td:nth-child(6) { white-space:normal; overflow-wrap:anywhere; }
+/* Aprovação da solicitação de material: colunas alinhadas (quantidade | motivo/resultado | ações) */
+.sm-tabela td { vertical-align:middle; }
+.sm-tabela td:first-child { width:1.5rem; }
+.sm-col-qtd { white-space:nowrap; width:1%; }
+.sm-qtd-campo { display:inline-flex; align-items:center; gap:.35rem; }
+.sm-qtd-campo input { width:5.5rem; text-align:right; }
+.sm-col-analise { min-width:14rem; }
+.sm-col-analise input { width:100%; }
+.sm-col-analise .etiqueta { margin-right:.4rem; }
+.sm-motivo { display:block; margin-top:.25rem; font-size:.85rem; }
+.sm-quem { display:block; margin-top:.2rem; }
+.sm-col-acoes { white-space:nowrap; width:1%; }
+.sm-col-acoes .botao { margin:.15rem .25rem .15rem 0; }
+.sm-tabela td:nth-child(2), .sm-tabela td:nth-child(3), .sm-tabela td:nth-child(6) { overflow-wrap:normal; }
+.sm-tabela td:nth-child(2) { min-width:12rem; }
+.sm-tabela td:nth-child(3) { min-width:8.5rem; }
+.sm-tabela td:nth-child(6) { min-width:9rem; }
+.sm-tabela th { white-space:nowrap; }
+.sm-col-analise { min-width:12rem; }
+.sm-col-acoes .botao[disabled] { display:block; width:100%; margin:.15rem 0; font-size:.78rem; }
+.sm-tabela td:nth-child(6) { min-width:0; max-width:none; white-space:nowrap; }
+.sm-col-produto { min-width:13rem; }
+.sm-utilizacao { display:block; margin-top:.3rem; color:var(--suave); font-size:.8rem; line-height:1.35; }
+.sm-pilha { display:flex; flex-direction:column; gap:.3rem; min-width:7.5rem; }
+.sm-pilha .botao { margin:0; width:100%; justify-content:center; }
+.sm-col-acoes .botao[disabled] { display:flex; font-size:.78rem; }
+.sm-col-analise { min-width:10rem; }
+.sm-col-analise input { font-size:.88rem; }
+.sm-tabela td:nth-child(3) { min-width:7.5rem; }
+.sm-pilha .botao[disabled] { opacity:.5; cursor:not-allowed; }

@@ -36,41 +36,45 @@
     @csrf
     <div class="rolagem">
     <table class="tabela sm-tabela">
-      <thead><tr><th>#</th><th>Produto</th><th>Centro de custo</th><th class="num">Solicitada</th><th>Prioridade</th><th>Observação / utilização</th>
-        <th>Análise</th></tr></thead>
+      <thead><tr><th>#</th><th>Produto</th><th>Centro de custo</th><th class="num">Solicitada</th><th>Prioridade</th>
+        <th class="num">Qtd. aprovada</th><th>{{ $podeAnalisar && $pendentes->isNotEmpty() ? 'Motivo (para reprovar)' : 'Análise' }}</th><th></th></tr></thead>
       <tbody>
       @foreach ($sm->itens->sortBy('id')->values() as $n => $item)
         <tr @class(['sm-reprovado' => $item->status === 'reprovado'])>
           <td class="suave">{{ $n + 1 }}</td>
-          <td><code>{{ $item->produto_codigo }}</code><br>{{ $item->produto_descricao }}</td>
+          <td class="sm-col-produto"><code>{{ $item->produto_codigo }}</code><br>{{ $item->produto_descricao }}
+            @if ($item->observacao)<small class="sm-utilizacao">Utilização: {{ $item->observacao }}</small>@endif</td>
           <td>{{ $item->centro_custo }}@if (isset($centros[$item->centro_custo]))<br><small class="suave">{{ $centros[$item->centro_custo]->descricao() }}</small>@endif</td>
           <td class="num"><strong>{{ SolicitacaoMaterialItem::quantidade($item->quantidade_solicitada) }}</strong> {{ $item->um }}</td>
           <td><span class="sm-prio-{{ $item->prioridade }}">{{ SolicitacaoMaterialItem::PRIORIDADES[$item->prioridade] ?? $item->prioridade }}</span></td>
-          <td class="os-texto">{{ $item->observacao }}</td>
-          <td>
-            @if ($item->status === 'pendente' && $podeAnalisar)
-              <div class="sm-analisar">
-                <label>Qtd. aprovada <input type="number" name="quantidade[{{ $item->id }}]" min="0" step="any" value="{{ old('quantidade.'.$item->id, (float) $item->quantidade_solicitada) }}"> {{ $item->um }}</label>
-                <div class="sm-botoes">
-                  <button class="botao pequeno" type="submit" name="acao" value="aprovar" onclick="this.form.item.value='{{ $item->id }}'">@include('layouts.partials.icone', ['nome' => 'check']) Aprovar</button>
-                  <button class="botao pequeno secundario" type="submit" name="acao" value="reprovar" onclick="this.form.item.value='{{ $item->id }}'">Reprovar</button>
-                </div>
-                <input name="motivo[{{ $item->id }}]" maxlength="500" placeholder="Motivo (obrigatório para reprovar)" value="{{ old('motivo.'.$item->id) }}" aria-label="Motivo da reprovação">
-              </div>
-            @elseif ($item->status === 'pendente')
-              <span class="etiqueta sm-pendente">Aguardando análise</span>
-            @else
-              <span class="etiqueta sm-item-{{ $item->status }}">{{ $item->rotuloStatus() }}@if ($item->status === 'aprovado'): {{ SolicitacaoMaterialItem::quantidade($item->quantidade_aprovada) }} {{ $item->um }}@endif</span>
-              @if ($item->motivo_reprovacao)<br><small>{{ $item->motivo_reprovacao }}</small>@endif
-              <br><small class="suave">{{ $item->aprovadoPor?->nome }} · @dataHora($item->aprovado_em)</small>
+          @if ($item->status === 'pendente' && $podeAnalisar)
+            <td class="num sm-col-qtd"><span class="sm-qtd-campo"><input type="number" name="quantidade[{{ $item->id }}]" min="0" step="any"
+              value="{{ old('quantidade.'.$item->id, (float) $item->quantidade_solicitada) }}" aria-label="Quantidade aprovada do item {{ $n + 1 }}"> <span class="suave">{{ $item->um }}</span></span></td>
+            <td class="sm-col-analise"><input name="motivo[{{ $item->id }}]" maxlength="500" placeholder="Motivo (obrigatório para reprovar)" value="{{ old('motivo.'.$item->id) }}" aria-label="Motivo da reprovação do item {{ $n + 1 }}"></td>
+            <td class="sm-col-acoes"><div class="sm-pilha">
+              <button class="botao pequeno" type="submit" name="acao" value="aprovar" onclick="this.form.item.value='{{ $item->id }}'">@include('layouts.partials.icone', ['nome' => 'check']) Aprovar</button>
+              <button class="botao pequeno secundario" type="submit" name="acao" value="reprovar" onclick="this.form.item.value='{{ $item->id }}'">Reprovar</button>
+            </div></td>
+          @elseif ($item->status === 'pendente')
+            <td class="num suave sm-col-qtd">—</td>
+            <td class="sm-col-analise"><span class="etiqueta sm-pendente">Aguardando análise</span></td>
+            <td></td>
+          @else
+            <td class="num sm-col-qtd"><strong>{{ SolicitacaoMaterialItem::quantidade($item->quantidade_aprovada) }}</strong> {{ $item->um }}</td>
+            <td class="sm-col-analise">
+              <span class="etiqueta sm-item-{{ $item->status }}">{{ $item->rotuloStatus() }}</span>
+              @if ($item->motivo_reprovacao)<span class="sm-motivo">{{ $item->motivo_reprovacao }}</span>@endif
+              <small class="suave sm-quem">{{ $item->aprovadoPor?->nome }} · @dataHora($item->aprovado_em)</small>
+            </td>
+            <td class="sm-col-acoes">
               @if ($item->status === 'aprovado' && $podeAnalisar)
-                <div class="sm-botoes">
+                <div class="sm-pilha">
                   <button class="botao pequeno secundario" type="button" disabled title="Em breve">Gerar requisição</button>
-                  <button class="botao pequeno secundario" type="button" disabled title="Em breve">Gerar pedido de compra</button>
+                  <button class="botao pequeno secundario" type="button" disabled title="Em breve">Pedido de compra</button>
                 </div>
               @endif
-            @endif
-          </td>
+            </td>
+          @endif
         </tr>
       @endforeach
       </tbody>
