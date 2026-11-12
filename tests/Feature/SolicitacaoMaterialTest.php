@@ -62,10 +62,10 @@ class SolicitacaoMaterialTest extends TestCase
         $item1 = $sm->itens()->where('produto_codigo', 'MP0001')->first();
         $item2 = $sm->itens()->where('produto_codigo', 'MP0002')->first();
         $this->post("/ordens-de-servico/solicitacoes-de-material/{$sm->id}/analisar", ['acao' => 'aprovar', 'item' => $item1->id])->assertForbidden();
-        $this->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk()->assertDontSee('Qtd. aprovada');
+        $this->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk()->assertDontSee('name="acao" value="aprovar"', false);
 
         // Administrador aprova 3 de 4 (quantidade alterada) e reprova o outro com motivo.
-        $this->actingAs($adm)->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk()->assertSee('Qtd. aprovada');
+        $this->actingAs($adm)->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk()->assertSee('name="acao" value="aprovar"', false);
         $this->post("/ordens-de-servico/solicitacoes-de-material/{$sm->id}/analisar", ['acao' => 'aprovar', 'item' => $item1->id, 'quantidade' => [$item1->id => 3]])->assertRedirect();
         $item1->refresh();
         $this->assertSame('aprovado', $item1->status);
