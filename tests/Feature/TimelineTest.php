@@ -110,16 +110,18 @@ class TimelineTest extends TestCase
 
         $this->post('/producao/apontamentos', ['maquina_id' => $this->maquina->id, 'legenda_id' => $this->legenda('DT')->id,
             'inicio' => '2026-11-05T10:00', 'voltar' => 'timeline'])->assertRedirect('/dashboards/timeline?data=2026-11-05');
-        $this->assertSame('2026-11-05 13:00:00', $producao->refresh()->fim->format('Y-m-d H:i:s'));
+        // O estado em aberto é encerrado 1 segundo antes do novo.
+        $this->assertSame('2026-11-05 12:59:59', $producao->refresh()->fim->format('Y-m-d H:i:s'));
 
+        // Antes do último apontamento do dia: recusado (o novo tem de vir depois dele).
         $this->post('/producao/apontamentos', ['maquina_id' => $this->maquina->id, 'legenda_id' => $this->legenda('OFF')->id,
-            'inicio' => '2026-11-05T09:00', 'fim' => '2026-11-05T09:30'])->assertSessionHasErrors('inicio');
+            'inicio' => '2026-11-05T09:00', 'fim' => '2026-11-05T09:30'])->assertSessionHasErrors('hora_inicio');
         $this->post('/producao/apontamentos', ['maquina_id' => $this->maquina->id, 'legenda_id' => $this->legenda('OFF')->id,
-            'inicio' => '2026-11-05T07:00', 'fim' => '2026-11-05T06:00'])->assertSessionHasErrors('fim');
+            'inicio' => '2026-11-05T07:00', 'fim' => '2026-11-05T06:00'])->assertSessionHasErrors('hora_fim');
         $this->assertSame(2, ApontamentoEstado::count());
 
         $this->get('/producao/apontamentos')->assertOk()->assertSee('OP 509859')->assertSee('em andamento');
-        $this->get("/producao/apontamentos/{$producao->id}/editar")->assertOk()->assertSee('2026-11-05T08:00');
+        $this->get("/producao/apontamentos/{$producao->id}/editar")->assertOk()->assertSee('value="2026-11-05"', false)->assertSee('value="08:00:00"', false);
     }
 
     public function test_timeline_pinta_as_maquinas_com_a_cor_da_legenda(): void

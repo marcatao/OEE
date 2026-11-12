@@ -8,9 +8,11 @@ use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Providers\AppServiceProvider;
 use App\Services\CustoOrdemProducao;
+use App\Services\HorarioApontamento;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -94,14 +96,31 @@ class ApontamentoEstadoController extends Controller
         return $this->voltar($request, $apontamento, 'Apontamento excluído.');
     }
 
+    /** Horário inicial para a máquina no dia (a tela preenche e trava o campo). JSON. */
+    public function proximoInicio(Request $request, HorarioApontamento $regra): JsonResponse
+    {
+        $dados = $request->validate(['maquina_id' => ['required', 'integer'], 'dia' => ['required', 'date_format:Y-m-d'],
+            'apontamento' => ['nullable', 'integer']]);
+        $editando = isset($dados['apontamento']) ? ApontamentoEstado::find($dados['apontamento']) : null;
+
+        return response()->json($regra->proximoInicio((int) $dados['maquina_id'], $dados['dia'], $editando));
+    }
+
     private function formulario(ApontamentoEstado $apontamento, string $voltar): View
     {
         $maquinas = Maquina::with('ordemProducao')->where(fn ($q) => $q->where('ativo', true)->orWhere('id', $apontamento->maquina_id))
             ->orderBy('nome')->get(['id', 'codigo', 'nome', 'ordem_producao_id']);
 
+        $fuso = HorarioApontamento::fuso();
+        $dia = $apontamento->inicio?->copy()->setTimezone($fuso)->format('Y-m-d') ?? now($fuso)->format('Y-m-d');
+
         return view('apontamentos.form', [
             'apontamento' => $apontamento,
             'voltar' => $voltar,
+            'dia' => $dia,
+            'horaInicio' => $apontamento->inicio?->copy()->setTimezone($fuso)->format('H:i:s'),
+            'horaFim' => $apontamento->fim?->copy()->setTimezone($fuso)->format('H:i:s'),
+            'proximo' => $apontamento->maquina_id ? app(HorarioApontamento::class)->proximoInicio((int) $apontamento->maquina_id, $dia, $apontamento) : null,
             'maquinas' => $maquinas,
             'legendas' => Legenda::where(fn ($q) => $q->where('ativo', true)->orWhere('id', $apontamento->legenda_id))
                 ->orderBy('ordem')->orderBy('codigo')->get(),
@@ -118,23 +137,56 @@ class ApontamentoEstadoController extends Controller
      */
     private function salvar(Request $request, ApontamentoEstado $apontamento): ?string
     {
+        // Compatibilidade: "inicio"/"fim" no formato antigo (data e hora juntos) viram dia + horários.
+        if (! $request->filled('dia') && $request->filled('inicio')) {
+            $ini = preg_split('/[T ]/', (string) $request->input('inicio'));
+            $fimAntigo = $request->filled('fim') ? preg_split('/[T ]/', (string) $request->input('fim')) : null;
+            if ($fimAntigo && ($fimAntigo[0] ?? '') !== ($ini[0] ?? '')) {
+                throw ValidationException::withMessages(['hora_fim' => 'O apontamento não pode passar de um dia: início e fim no mesmo dia.']);
+            }
+            $request->merge(['dia' => $ini[0] ?? null, 'hora_inicio' => $ini[1] ?? null, 'hora_fim' => $fimAntigo[1] ?? null]);
+        }
+
+        $hora = 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/';
         $dados = $request->validate([
             'maquina_id' => ['required', 'integer', Rule::exists('maquinas', 'id')],
             'legenda_id' => ['required', 'integer', Rule::exists('legendas', 'id')],
-            'inicio' => ['required', 'date_format:Y-m-d\TH:i'],
-            'fim' => ['nullable', 'date_format:Y-m-d\TH:i', 'after:inicio'],
+            'dia' => ['required', 'date_format:Y-m-d'],
+            'hora_inicio' => ['required', $hora],
+            'hora_fim' => ['nullable', $hora],
             'referencia' => ['nullable', 'string', 'max:40'],
             'ordem_producao' => ['nullable', 'string', 'max:20'],
             'observacao' => ['nullable', 'string', 'max:500'],
         ], [
             'maquina_id.required' => 'Escolha a máquina.',
             'legenda_id.required' => 'Escolha a legenda.',
-            'inicio.required' => 'Informe o horário inicial.',
-            'inicio.date_format' => 'Horário inicial inválido.',
-            'fim.date_format' => 'Horário final inválido.',
-            'fim.after' => 'O horário final deve ser depois do inicial.',
+            'dia.required' => 'Informe o dia.',
+            'dia.date_format' => 'Dia inválido.',
+            'hora_inicio.required' => 'Informe o horário inicial.',
+            'hora_inicio.regex' => 'Horário inicial inválido.',
+            'hora_fim.regex' => 'Horário final inválido.',
             '*.max' => 'Texto muito longo.',
         ]);
+
+        // Horários no dia escolhido (o apontamento não passa de um dia). Regra do encadeamento: se a máquina já tem
+        // apontamento nesse dia, o início é 1 segundo depois do fim do último (ver HorarioApontamento).
+        $inicio = HorarioApontamento::montar($dados['dia'], $dados['hora_inicio']);
+        $fim = filled($dados['hora_fim'] ?? null) ? HorarioApontamento::montar($dados['dia'], $dados['hora_fim']) : null;
+        if ($fim && $fim->lessThanOrEqualTo($inicio)) {
+            throw ValidationException::withMessages(['hora_fim' => 'O horário final deve ser depois do inicial (no mesmo dia).']);
+        }
+        $regra = app(HorarioApontamento::class);
+        $proximo = $regra->proximoInicio((int) $dados['maquina_id'], $dados['dia'], $apontamento);
+        if ($proximo['completo']) {
+            throw ValidationException::withMessages(['hora_inicio' => $proximo['mensagem']]);
+        }
+        if ($proximo['travado'] && HorarioApontamento::montar($dados['dia'], $proximo['hora'])->notEqualTo($inicio)) {
+            throw ValidationException::withMessages(['hora_inicio' => 'O horário inicial deve ser '.$proximo['hora'].'. '.$proximo['mensagem']]);
+        }
+        $anterior = $regra->anteriorNoDia((int) $dados['maquina_id'], $dados['dia'], $apontamento);
+        if ($anterior && $anterior->fim === null && $inicio->lessThanOrEqualTo($anterior->inicio)) {
+            throw ValidationException::withMessages(['hora_inicio' => $proximo['mensagem']]);
+        }
 
         // Ordem de produção: digitada ou escolhida pelo número (C2_NUM + C2_ITEM + C2_SEQUEN).
         $numeroOp = trim((string) ($dados['ordem_producao'] ?? ''));
@@ -154,9 +206,6 @@ class ApontamentoEstadoController extends Controller
         }
         $opAnterior = $apontamento->ordemProducao;
 
-        $inicio = ApontamentoEstado::deHoraLocal($dados['inicio']);
-        $fim = ApontamentoEstado::deHoraLocal($dados['fim'] ?? null);
-
         $afetadas = [];
         $encerrado = DB::transaction(function () use ($apontamento, $dados, $inicio, $fim, $op, &$afetadas) {
             $encerrado = null;
@@ -164,7 +213,8 @@ class ApontamentoEstadoController extends Controller
                 $aberto = ApontamentoEstado::with('legenda')->where('maquina_id', $dados['maquina_id'])
                     ->whereNull('fim')->where('inicio', '<', $inicio)->latest('inicio')->first();
                 if ($aberto) {
-                    $aberto->update(['fim' => $inicio]);
+                    // Encerra 1 segundo antes do novo, sem passar do dia dele (23:59:59).
+                    $aberto->update(['fim' => HorarioApontamento::fimAutomatico($aberto, $inicio)]);
                     $encerrado = $aberto->legenda?->codigo;
                     $afetadas[] = $aberto->ordem_producao_id;
                 }

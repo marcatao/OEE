@@ -34,18 +34,25 @@
           @endforeach
         </select>
       </label>
+      <label>Dia
+        <input type="date" name="dia" required value="{{ old('dia', $dia) }}">
+      </label>
       <label>Horário inicial
-        <input type="datetime-local" name="inicio" required value="{{ old('inicio', $E::paraHoraLocal($apontamento->inicio)) }}">
+        @php($travado = $proximo['travado'] ?? false)
+        <input type="time" name="hora_inicio" step="1" required data-hora-inicio
+               value="{{ old('hora_inicio', $travado && ! $apontamento->exists ? $proximo['hora'] : ($horaInicio ?? now(config('oee.fuso_exibicao'))->format('H:i:00'))) }}"
+               @readonly($travado)>
+        <small data-ajuda-inicio @class(['texto-alerta' => $proximo['completo'] ?? false])>{{ $proximo['mensagem'] ?? 'Primeiro apontamento do dia: horário livre.' }}</small>
       </label>
       <label>Horário final
-        <input type="datetime-local" name="fim" value="{{ old('fim', $E::paraHoraLocal($apontamento->fim)) }}">
-        <small>Deixe vazio se a máquina ainda está nesse estado.</small>
+        <input type="time" name="hora_fim" step="1" value="{{ old('hora_fim', $horaFim) }}">
+        <small>Até, no mesmo dia (no máximo 23:59:59). Deixe vazio se a máquina ainda está nesse estado.</small>
       </label>
       @include('partials.campo-op', ['op' => $apontamento->ordemProducao,
         'ajuda' => 'Busque pela OP ou pelo produto. Vem com a OP atual da máquina; "Sem OP" desvincula a OP da máquina. Obrigatória quando a legenda exige OP.'])
       <label>Referência
         <input name="referencia" maxlength="40" value="{{ old('referencia', $apontamento->referencia) }}" placeholder="Ex.: OP 509859">
-        <small>Aparece dentro da barra na timeline (ordem de produção, lote ou produto).</small>
+        <small>Aparece na dica da barra na timeline (ordem de produção, lote ou produto).</small>
       </label>
     </div>
     <label>Observação
@@ -83,6 +90,30 @@
     legenda.addEventListener('change', aplicar);
     op.addEventListener('change', aplicar);
     aplicar();
+
+    // Horário inicial: se a máquina já tem apontamento no dia, começa 1 segundo depois do fim do último (travado);
+    // primeiro do dia = livre. Recalcula ao trocar a máquina ou o dia.
+    var campoDia = document.querySelector('input[name="dia"]');
+    var horaInicio = document.querySelector('[data-hora-inicio]');
+    var ajudaInicio = document.querySelector('[data-ajuda-inicio]');
+    var urlProximo = @json(route('apontamentos.proximo-inicio'));
+    var editando = @json($apontamento->exists ? $apontamento->id : null);
+    function atualizarInicio() {
+      var maq = document.querySelector('select[name="maquina_id"]');
+      if (!maq || !maq.value || !campoDia.value) return;
+      var q = '?maquina_id=' + encodeURIComponent(maq.value) + '&dia=' + encodeURIComponent(campoDia.value) + (editando ? '&apontamento=' + editando : '');
+      fetch(urlProximo + q, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d) return;
+          horaInicio.readOnly = d.travado;
+          if (d.travado && d.hora) horaInicio.value = d.hora;
+          ajudaInicio.textContent = d.mensagem;
+          ajudaInicio.classList.toggle('texto-alerta', !!d.completo);
+        });
+    }
+    campoDia.addEventListener('change', atualizarInicio);
+    document.querySelector('select[name="maquina_id"]').addEventListener('change', atualizarInicio);
 
     // Apontamento novo: ao trocar a máquina, a OP vira a OP atual dela (se estava vazia ou com a da máquina anterior).
     var maquina = document.querySelector('select[name="maquina_id"]');

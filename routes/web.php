@@ -63,6 +63,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permissao:apontamentos')->prefix('producao/apontamentos')->name('apontamentos.')->group(function () {
         Route::get('/', [ApontamentoEstadoController::class, 'index'])->name('index');
         Route::get('novo', [ApontamentoEstadoController::class, 'create'])->name('create');
+        Route::get('proximo-inicio', [ApontamentoEstadoController::class, 'proximoInicio'])->name('proximo-inicio');
         Route::post('/', [ApontamentoEstadoController::class, 'store'])->name('store');
         Route::get('{apontamento}/editar', [ApontamentoEstadoController::class, 'edit'])->name('edit');
         Route::put('{apontamento}', [ApontamentoEstadoController::class, 'update'])->name('update');

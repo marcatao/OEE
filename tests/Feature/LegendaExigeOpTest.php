@@ -42,15 +42,13 @@ class LegendaExigeOpTest extends TestCase
         $this->assertTrue($producao->fresh()->exige_op);
 
         // Apontamento: com a legenda que exige OP, sem OP é recusado; com OP passa. A outra não exige.
-        $base = ['maquina_id' => $maquina->id, 'inicio' => now('America/Sao_Paulo')->subHour()->format('Y-m-d\TH:i')];
+        $base = ['maquina_id' => $maquina->id, 'dia' => '2026-11-05'];
         $this->get('/producao/apontamentos/novo')->assertSee('(exige OP)')->assertSee('data-exige-op="1"', false);
-        $this->post('/producao/apontamentos', $base + ['legenda_id' => $producao->id])->assertSessionHasErrors('ordem_producao');
+        $this->post('/producao/apontamentos', $base + ['legenda_id' => $producao->id, 'hora_inicio' => '08:00:00'])->assertSessionHasErrors('ordem_producao');
         $this->assertSame(0, ApontamentoEstado::count());
-        $agora = now('America/Sao_Paulo');
-        $this->post('/producao/apontamentos', ['maquina_id' => $maquina->id, 'legenda_id' => $producao->id, 'ordem_producao' => '50985901001',
-            'inicio' => $agora->copy()->subHours(3)->format('Y-m-d\TH:i'), 'fim' => $agora->copy()->subHours(2)->format('Y-m-d\TH:i')])
-            ->assertSessionHasNoErrors();
-        $this->post('/producao/apontamentos', $base + ['legenda_id' => $refeicao->id])->assertSessionHasNoErrors();
+        $this->post('/producao/apontamentos', $base + ['legenda_id' => $producao->id, 'ordem_producao' => '50985901001',
+            'hora_inicio' => '08:00:00', 'hora_fim' => '09:00:00'])->assertSessionHasNoErrors();
+        $this->post('/producao/apontamentos', $base + ['legenda_id' => $refeicao->id, 'hora_inicio' => '09:00:01'])->assertSessionHasNoErrors();
         $this->assertSame(2, ApontamentoEstado::count());
     }
 }

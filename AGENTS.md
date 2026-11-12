@@ -58,6 +58,10 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   daqui. O apontamento real MAIS RECENTE atualiza as duas (`App\Services\SituacaoMaquina`: tipo da legenda produzindo =
   produzindo, os outros = parada; apontamento sem OP desvincula); editar um antigo não muda; excluir o mais recente volta
   ao anterior. Apontamento novo já vem com a OP da máquina.
+- Horário do apontamento real (`App\Services\HorarioApontamento`): campos Dia + horário inicial/final (com segundos);
+  um apontamento não passa de um dia (máx. 23:59:59). Se a máquina já tem apontamento no dia, o novo começa
+  OBRIGATORIAMENTE 1 segundo depois do fim do último (campo travado; rota `apontamentos.proximo-inicio`); o primeiro do
+  dia é livre. Em aberto é encerrado 1 s antes do novo, sem passar do dia dele.
 - Custo das OPs (`App\Services\CustoOrdemProducao`, com `ResumoCustoOp` e `TiposMovimento`): `movimentos_producao`
   (SD3 com OP, campo `protheus.sd3_campo_op` = D3_ORDEM) e `notas_fiscais_op` (SD2 com OP, `protheus.sd2_campo_op`)
   são cópias por R_E_C_N_O_; as telas só usam os não excluídos e, na SD3, não estornados (`D3_ESTORNO = 'S'`). O
