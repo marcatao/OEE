@@ -139,7 +139,7 @@ class CadastroManutencaoController extends Controller
         }
     }
 
-    // ---------- Ferramentas ----------
+    // ---------- Equipamentos (tabela os_ferramentas) ----------
     public function ferramentas(Request $request): View
     {
         $situacao = (string) $request->input('situacao', '');
@@ -185,13 +185,13 @@ class CadastroManutencaoController extends Controller
             'mantenedor_id' => ['nullable', 'integer', Rule::exists('os_mantenedores', 'id')],
             'observacao' => ['nullable', 'string', 'max:500'],
             'ativo' => ['required', 'boolean'],
-        ], ['codigo.required' => 'Informe o código ou patrimônio.', 'codigo.unique' => 'Já existe uma ferramenta com esse código.',
+        ], ['codigo.required' => 'Informe o código ou patrimônio.', 'codigo.unique' => 'Já existe um equipamento com esse código.',
             'descricao.required' => 'Informe a descrição.']);
         $f->fill(collect($dados)->except('mantenedor_id')->all());
         $f->entregarPara($dados['mantenedor_id'] ?? null);
         $f->save();
 
-        return redirect()->route('os.cadastros.ferramentas')->with('ok', "Ferramenta {$f->codigo} salva".($f->mantenedor_id ? ' com '.$f->mantenedor?->nomeExibicao() : ' (avulsa)').'.');
+        return redirect()->route('os.cadastros.ferramentas')->with('ok', "Equipamento {$f->codigo} salvo".($f->mantenedor_id ? ' com '.$f->mantenedor?->nomeExibicao() : ' (avulso)').'.');
     }
 
     // ---------- Sugestões de descrição ----------

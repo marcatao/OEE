@@ -170,11 +170,12 @@ Route::middleware('auth')->group(function () {
             Route::post('mantenedores', [CadastroManutencaoController::class, 'salvarMantenedor'])->name('mantenedores.store');
             Route::get('mantenedores/{mantenedor}/editar', [CadastroManutencaoController::class, 'mantenedor'])->whereNumber('mantenedor')->name('mantenedores.edit');
             Route::put('mantenedores/{mantenedor}', [CadastroManutencaoController::class, 'salvarMantenedor'])->whereNumber('mantenedor')->name('mantenedores.update');
-            Route::get('ferramentas', [CadastroManutencaoController::class, 'ferramentas'])->name('ferramentas');
-            Route::get('ferramentas/nova', [CadastroManutencaoController::class, 'ferramenta'])->name('ferramentas.create');
-            Route::post('ferramentas', [CadastroManutencaoController::class, 'salvarFerramenta'])->name('ferramentas.store');
-            Route::get('ferramentas/{ferramenta}/editar', [CadastroManutencaoController::class, 'ferramenta'])->whereNumber('ferramenta')->name('ferramentas.edit');
-            Route::put('ferramentas/{ferramenta}', [CadastroManutencaoController::class, 'salvarFerramenta'])->whereNumber('ferramenta')->name('ferramentas.update');
+            // Equipamentos dos mantenedores (tabela os_ferramentas; os nomes internos seguem "ferramentas").
+            Route::get('equipamentos', [CadastroManutencaoController::class, 'ferramentas'])->name('ferramentas');
+            Route::get('equipamentos/novo', [CadastroManutencaoController::class, 'ferramenta'])->name('ferramentas.create');
+            Route::post('equipamentos', [CadastroManutencaoController::class, 'salvarFerramenta'])->name('ferramentas.store');
+            Route::get('equipamentos/{ferramenta}/editar', [CadastroManutencaoController::class, 'ferramenta'])->whereNumber('ferramenta')->name('ferramentas.edit');
+            Route::put('equipamentos/{ferramenta}', [CadastroManutencaoController::class, 'salvarFerramenta'])->whereNumber('ferramenta')->name('ferramentas.update');
             Route::get('sugestoes', [CadastroManutencaoController::class, 'sugestoes'])->name('sugestoes');
             Route::post('sugestoes', [CadastroManutencaoController::class, 'salvarSugestao'])->name('sugestoes.store');
             Route::put('sugestoes/{sugestao}', [CadastroManutencaoController::class, 'salvarSugestao'])->whereNumber('sugestao')->name('sugestoes.update');

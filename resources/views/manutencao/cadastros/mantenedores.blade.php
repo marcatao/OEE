@@ -14,7 +14,7 @@
   <p class="suave">Usuários do portal que executam as OS. A <strong>jornada</strong> separa hora normal × extra e dá as horas disponíveis.</p>
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Mantenedor</th><th>Unidade</th><th>Áreas executantes</th><th>Ferramentas</th><th>Matrícula</th><th>Jornada</th><th class="num">Horas/dia</th><th>Situação</th><th></th></tr></thead>
+    <thead><tr><th>Mantenedor</th><th>Unidade</th><th>Áreas executantes</th><th>Equipamentos</th><th>Matrícula</th><th>Jornada</th><th class="num">Horas/dia</th><th>Situação</th><th></th></tr></thead>
     <tbody>
     @forelse ($mantenedores as $m)
       <tr>
@@ -26,7 +26,7 @@
         </td>
         <td><span class="etiqueta unidade-{{ $m->unidade }}">{{ $m->rotuloUnidade() }}</span></td>
         <td>{{ $m->areas->pluck('nome')->join(', ') ?: '—' }}</td>
-        <td>@if ($m->ferramentas->isNotEmpty())<a href="{{ route('os.cadastros.ferramentas', ['mantenedor' => $m->id]) }}" title="{{ $m->ferramentas->map(fn ($f) => $f->codigo.' — '.$f->descricao)->join("\n") }}">{{ $m->ferramentas->count() }} {{ $m->ferramentas->count() === 1 ? 'ferramenta' : 'ferramentas' }}</a>@else<span class="suave">—</span>@endif</td>
+        <td>@if ($m->ferramentas->isNotEmpty())<a href="{{ route('os.cadastros.ferramentas', ['mantenedor' => $m->id]) }}" title="{{ $m->ferramentas->map(fn ($f) => $f->codigo.' — '.$f->descricao)->join("\n") }}">{{ $m->ferramentas->count() }} {{ $m->ferramentas->count() === 1 ? 'equipamento' : 'equipamentos' }}</a>@else<span class="suave">—</span>@endif</td>
         <td>{{ $m->matricula }}</td>
         <td>{{ $m->jornada_inicio }}–{{ $m->jornada_fim }}<br><small class="suave">{{ collect(str_split((string) $m->dias_semana))->map(fn ($d) => \App\Models\Manutencao\Mantenedor::DIAS_SEMANA[$d] ?? $d)->join(', ') }}</small></td>
         <td class="num">{{ HorasManutencao::hhmm(HorasManutencao::de($m)->minutosPorDia()) }}</td>

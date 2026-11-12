@@ -51,13 +51,13 @@
     @php($ferramentasMarcadas = array_map('intval', old('ferramentas', $m->exists ? $m->ferramentas()->pluck('id')->all() : [])))
     <div class="formulario-bloco">
       @include('partials.escolha-multipla', [
-        'nome' => 'ferramentas[]', 'titulo' => 'Ferramentas que estão com ele', 'vazio' => 'Nenhuma',
-        'busca' => 'Buscar ferramenta por código ou descrição…',
-        'semItens' => 'Nenhuma ferramenta avulsa. Cadastre em Ordens de serviço › Ferramentas.',
+        'nome' => 'ferramentas[]', 'titulo' => 'Equipamentos que estão com ele', 'vazio' => 'Nenhum',
+        'busca' => 'Buscar equipamento por código ou descrição…',
+        'semItens' => 'Nenhum equipamento avulso. Cadastre em Ordens de serviço › Equipamentos.',
         'itens' => $ferramentas->map(fn ($f) => ['valor' => $f->id, 'nome' => $f->codigo.' — '.$f->descricao,
-          'detalhe' => trim(($f->marca_modelo ?? '').($f->mantenedor_id ? '' : ' · avulsa'), ' ·'), 'marcado' => in_array($f->id, $ferramentasMarcadas, true)])->all(),
+          'detalhe' => trim(($f->marca_modelo ?? '').($f->mantenedor_id ? '' : ' · avulso'), ' ·'), 'marcado' => in_array($f->id, $ferramentasMarcadas, true)])->all(),
       ])
-      <small class="suave">Aparecem as ferramentas avulsas e as que já estão com ele. Desmarcar devolve a ferramenta (fica avulsa).</small>
+      <small class="suave">Aparecem os equipamentos avulsos e os que já estão com ele. Desmarcar devolve o equipamento (fica avulso).</small>
     </div>
 
     <div class="campos">

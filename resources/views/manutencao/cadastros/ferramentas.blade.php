@@ -1,22 +1,22 @@
 @extends('layouts.portal')
 
-@section('titulo', 'Ferramentas')
+@section('titulo', 'Equipamentos')
 
 @section('conteudo')
 <section class="cartao">
   <p class="trilha">Ordens de serviço › Cadastros</p>
   <div class="titulo-com-acao">
-    <h1>Ferramentas</h1>
-    <a class="botao" href="{{ route('os.cadastros.ferramentas.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova ferramenta</a>
+    <h1>Equipamentos</h1>
+    <a class="botao" href="{{ route('os.cadastros.ferramentas.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Novo equipamento</a>
   </div>
-  <p class="suave">Ferramentas da manutenção e com qual mantenedor cada uma está. <strong>Avulsa</strong> = sem mantenedor (no almoxarifado ou na
-    ferramentaria). Amarre pelo cadastro da ferramenta ou pelo cadastro do mantenedor.</p>
+  <p class="suave">Equipamentos da manutenção (instrumentos, ferramentas, notebooks…) e com qual mantenedor cada um está. <strong>Avulso</strong> =
+    sem mantenedor (no almoxarifado ou na ferramentaria). Amarre pelo cadastro do equipamento ou pelo cadastro do mantenedor.</p>
 
   <div class="os-totais">
-    <a href="{{ route('os.cadastros.ferramentas') }}" @class(['ativo' => $situacao === ''])>Todas <strong>{{ $totais['todas'] }}</strong></a>
+    <a href="{{ route('os.cadastros.ferramentas') }}" @class(['ativo' => $situacao === ''])>Todos <strong>{{ $totais['todas'] }}</strong></a>
     <a href="{{ route('os.cadastros.ferramentas', ['situacao' => 'com_mantenedor']) }}" @class(['ativo' => $situacao === 'com_mantenedor'])><span class="etiqueta os-em_execucao">Com mantenedor</span> <strong>{{ $totais['com_mantenedor'] }}</strong></a>
-    <a href="{{ route('os.cadastros.ferramentas', ['situacao' => 'avulsas']) }}" @class(['ativo' => $situacao === 'avulsas'])><span class="etiqueta os-aberta">Avulsas</span> <strong>{{ $totais['avulsas'] }}</strong></a>
-    <a href="{{ route('os.cadastros.ferramentas', ['situacao' => 'inativas']) }}" @class(['ativo' => $situacao === 'inativas'])>Inativas</a>
+    <a href="{{ route('os.cadastros.ferramentas', ['situacao' => 'avulsas']) }}" @class(['ativo' => $situacao === 'avulsas'])><span class="etiqueta os-aberta">Avulsos</span> <strong>{{ $totais['avulsas'] }}</strong></a>
+    <a href="{{ route('os.cadastros.ferramentas', ['situacao' => 'inativas']) }}" @class(['ativo' => $situacao === 'inativas'])>Inativos</a>
   </div>
 
   <form method="get" class="filtros">
@@ -37,18 +37,18 @@
     @forelse ($ferramentas as $f)
       <tr @class(['suave' => ! $f->ativo])>
         <td><strong>{{ $f->codigo }}</strong></td>
-        <td>{{ $f->descricao }}@if (! $f->ativo) <small>(inativa)</small>@endif</td>
+        <td>{{ $f->descricao }}@if (! $f->ativo) <small>(inativo)</small>@endif</td>
         <td>{{ $f->marca_modelo }}</td>
         <td>{{ $f->numero_serie }}</td>
         <td>@if ($f->mantenedor)
               <span style="display:inline-flex;gap:.5rem;align-items:center">@if ($f->mantenedor->usuario)@include('partials.avatar', ['usuario' => $f->mantenedor->usuario])@endif {{ $f->mantenedor->nomeExibicao() }}</span>
-            @else<span class="etiqueta os-aberta">Avulsa</span>@endif</td>
+            @else<span class="etiqueta os-aberta">Avulso</span>@endif</td>
         <td>{{ $f->atribuida_em ? \App\Providers\AppServiceProvider::dataHora($f->atribuida_em) : '—' }}</td>
         <td><span class="etiqueta unidade-{{ $f->unidade }}">{{ $f->rotuloUnidade() }}</span></td>
         <td><a class="botao pequeno secundario" href="{{ route('os.cadastros.ferramentas.edit', $f) }}">Editar</a></td>
       </tr>
     @empty
-      <tr><td colspan="8" class="suave">Nenhuma ferramenta encontrada.</td></tr>
+      <tr><td colspan="8" class="suave">Nenhum equipamento encontrado.</td></tr>
     @endforelse
     </tbody>
   </table>

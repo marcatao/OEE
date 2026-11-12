@@ -225,8 +225,8 @@ class OrdensServicoTest extends TestCase
         $admin = $this->usuario(['admin_producao'], 'adm@empresa.com');
         $maria = $this->usuario(['mantenedor_producao'], 'maria@empresa.com');
         $this->actingAs($admin);
-        $this->post('/ordens-de-servico/cadastros/ferramentas', ['unidade' => 'manutencao', 'codigo' => 'fer-01', 'descricao' => 'Multímetro', 'ativo' => '1'])->assertRedirect();
-        $this->post('/ordens-de-servico/cadastros/ferramentas', ['unidade' => 'manutencao', 'codigo' => 'FER-02', 'descricao' => 'Torquímetro', 'ativo' => '1'])->assertRedirect();
+        $this->post('/ordens-de-servico/cadastros/equipamentos', ['unidade' => 'manutencao', 'codigo' => 'fer-01', 'descricao' => 'Multímetro', 'ativo' => '1'])->assertRedirect();
+        $this->post('/ordens-de-servico/cadastros/equipamentos', ['unidade' => 'manutencao', 'codigo' => 'FER-02', 'descricao' => 'Torquímetro', 'ativo' => '1'])->assertRedirect();
         $multimetro = Ferramenta::where('codigo', 'FER-01')->firstOrFail();
         $this->assertTrue($multimetro->avulsa());
 
@@ -238,15 +238,15 @@ class OrdensServicoTest extends TestCase
         $m = Mantenedor::where('usuario_id', $maria->id)->firstOrFail();
         $this->assertSame($m->id, $multimetro->fresh()->mantenedor_id);
         $this->assertNotNull($multimetro->fresh()->atribuida_em);
-        $this->get('/ordens-de-servico/cadastros/ferramentas?situacao=avulsas')->assertOk()->assertSee('Torquímetro')->assertDontSee('Multímetro');
-        $this->get('/ordens-de-servico/cadastros/ferramentas?situacao=com_mantenedor')->assertOk()->assertSee('Multímetro')->assertSee('Maria');
-        $this->get('/ordens-de-servico/cadastros/mantenedores')->assertOk()->assertSee('1 ferramenta');
+        $this->get('/ordens-de-servico/cadastros/equipamentos?situacao=avulsas')->assertOk()->assertSee('Torquímetro')->assertDontSee('Multímetro');
+        $this->get('/ordens-de-servico/cadastros/equipamentos?situacao=com_mantenedor')->assertOk()->assertSee('Multímetro')->assertSee('Maria');
+        $this->get('/ordens-de-servico/cadastros/mantenedores')->assertOk()->assertSee('1 equipamento');
 
         // Desmarcar no mantenedor devolve (fica avulsa); pelo cadastro da ferramenta também se troca o dono.
         $this->put("/ordens-de-servico/cadastros/mantenedores/{$m->id}", ['unidade' => 'manutencao', 'usuario_id' => $maria->id, 'jornada_inicio' => '07:00',
             'jornada_fim' => '17:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'areas' => [$this->mecanica->id], 'ativo' => '1'])->assertRedirect();
         $this->assertNull($multimetro->fresh()->mantenedor_id);
-        $this->put("/ordens-de-servico/cadastros/ferramentas/{$multimetro->id}", ['unidade' => 'manutencao', 'codigo' => 'FER-01', 'descricao' => 'Multímetro',
+        $this->put("/ordens-de-servico/cadastros/equipamentos/{$multimetro->id}", ['unidade' => 'manutencao', 'codigo' => 'FER-01', 'descricao' => 'Multímetro',
             'mantenedor_id' => $m->id, 'ativo' => '1'])->assertRedirect();
         $this->assertSame($m->id, $multimetro->fresh()->mantenedor_id);
     }
@@ -485,7 +485,7 @@ class OrdensServicoTest extends TestCase
         $this->actingAs($admin);
         foreach (['/ordens-de-servico/ordens', '/ordens-de-servico/materiais', '/ordens-de-servico/relatorios/horas', '/ordens-de-servico/relatorios/setores',
             '/ordens-de-servico/cadastros/areas', '/ordens-de-servico/cadastros/mantenedores', '/ordens-de-servico/cadastros/mantenedores/novo',
-            '/ordens-de-servico/cadastros/sugestoes', '/ordens-de-servico/cadastros/ferramentas', '/ordens-de-servico/cadastros/ferramentas/nova', '/ordens-de-servico/solicitacoes/nova', '/ordens-de-servico/preventivas/nova'] as $url) {
+            '/ordens-de-servico/cadastros/sugestoes', '/ordens-de-servico/cadastros/equipamentos', '/ordens-de-servico/cadastros/equipamentos/novo', '/ordens-de-servico/solicitacoes/nova', '/ordens-de-servico/preventivas/nova'] as $url) {
             $this->get($url)->assertOk();
         }
         $this->get('/ordens-de-servico/relatorios/horas?formato=csv')->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');

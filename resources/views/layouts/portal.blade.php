@@ -99,7 +99,7 @@
               @if ($u->ehAdmin())
                 @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.areas', 'rotulo' => 'Áreas executantes', 'icone' => 'estrutura'])
                 @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.mantenedores', 'rotulo' => 'Mantenedores', 'icone' => 'usuarios', 'ativo' => 'os.cadastros.mantenedores*'])
-                @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.ferramentas', 'rotulo' => 'Ferramentas', 'icone' => 'ferramenta', 'ativo' => 'os.cadastros.ferramentas*'])
+                @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.ferramentas', 'rotulo' => 'Equipamentos', 'icone' => 'caixa', 'ativo' => 'os.cadastros.ferramentas*'])
                 @include('layouts.partials.menu-link', ['rota' => 'os.cadastros.sugestoes', 'rotulo' => 'Sugestões de descrição', 'icone' => 'legenda'])
               @endif
             </div>

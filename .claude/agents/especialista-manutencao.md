@@ -76,9 +76,11 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   checklist e mudar status exigem `AcessoOs::podeExecutar($u, $registro)` (área dele OU atribuído à OS). O administrador
   da área atende todas da unidade. Mantenedor sem áreas cadastradas: vale a unidade do perfil. Na aprovação, a lista de
   mantenedores mostra só os da área executante da SS (`AcessoOs::mantenedoresDaArea`).
-- **Ferramentas** (`os_ferramentas`, cadastro em Ordens de serviço › Ferramentas): cada uma fica com UM mantenedor
-  (`mantenedor_id`, com `atribuida_em`) ou **avulsa** (vazio). Amarra-se pelo cadastro da ferramenta ou pelo do
-  mantenedor (lá aparecem as avulsas e as dele; desmarcar devolve = fica avulsa).
+- **Equipamentos** dos mantenedores (tela Ordens de serviço › Equipamentos, URL `cadastros/equipamentos`; por dentro a
+  tabela é `os_ferramentas`, o modelo `Manutencao\Ferramenta` e as rotas `os.cadastros.ferramentas*`): cada um fica com UM
+  mantenedor (`mantenedor_id`, com `atribuida_em`) ou **avulso** (vazio). Amarra-se pelo cadastro do equipamento ou pelo
+  do mantenedor (lá aparecem os avulsos e os dele; desmarcar devolve = fica avulso). Não confundir com "Ferramentas" de
+  Produção (ferramental SH4 do Protheus, tabela `ferramentas`).
 - **Avaliação** (substitui o antigo "aceite"): OS concluída → o solicitante avalia **Excelente**, **Boa** ou **Ruim**
   (`ordens_servico.avaliacao`; quem e quando em `aceite_por_id`/`aceite_em`, comentário em `aceite_observacao`).
   Excelente/Boa encerram; **Ruim exige motivo e reabre** (volta para em execução). Aviso em todas as telas
