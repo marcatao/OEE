@@ -33,6 +33,7 @@
     'ordem_producao' => '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 3v3h8V3"/><path d="M8 11h8M8 15h5"/><path d="M15.5 17.5l1.5 1.5 3-3"/>',
     'filtro' => '<path d="M4 5h16l-6 7.5V19l-4 2v-8.5z"/>',
     'movimento' => '<path d="M7 4v13"/><path d="M3.5 13.5L7 17l3.5-3.5"/><path d="M17 20V7"/><path d="M13.5 10.5L17 7l3.5 3.5"/>',
+    'roteiro' => '<circle cx="5" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 6h10M6.3 7.6l4.4 8.8M17.7 7.6l-4.4 8.8"/>',
     'ferramenta' => '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3.5 17.5a2.1 2.1 0 0 0 3 3l5.8-5.8a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
     'solicitacao' => '<path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4z"/><path d="M8 8h8M8 12h5"/>',
     'calendario' => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 14h2M12 14h2M16 14h0M8 17.5h2M12 17.5h2"/>',

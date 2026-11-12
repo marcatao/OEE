@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **41** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **44** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -80,6 +80,42 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
         nvarchar(20) unidade
+    }
+    estruturas_produto {
+        bigint id PK
+        nvarchar(8) g1_filial
+        nvarchar(30) g1_cod
+        nvarchar(30) g1_comp
+        nvarchar(3) g1_trt
+        float(53) g1_quant
+        float(53) g1_perda
+        nchar(8) g1_ini
+        nchar(8) g1_fim
+        nchar(1) g1_fixvar
+        nvarchar(3) g1_revini
+        nvarchar(3) g1_revfim
+        nchar(1) d_e_l_e_t_
+        int r_e_c_n_o_
+        datetime sincronizado_em
+    }
+    ferramentas {
+        bigint id PK
+        nvarchar(8) h4_filial
+        nvarchar(10) h4_codigo
+        nvarchar(120) h4_descri
+        float(53) h4_quant
+        float(53) h4_vidauti
+        nchar(1) h4_tipovid
+        int h4_qtdcav
+        int h4_qtdcavativas
+        nvarchar(20) unidade
+        nchar(1) d_e_l_e_t_
+        int r_e_c_n_o_
+        datetime sincronizado_em
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
     }
     filtros_usuarios {
         bigint id PK
@@ -525,6 +561,25 @@ erDiagram
         nvarchar(45) ip
         nvarchar(400) navegador
     }
+    roteiros_operacao {
+        bigint id PK
+        nvarchar(8) g2_filial
+        nvarchar(30) g2_produto
+        nvarchar(4) g2_codigo
+        nvarchar(4) g2_operac
+        nvarchar(120) g2_descri
+        nvarchar(10) g2_recurso
+        nvarchar(10) g2_ctrab
+        nvarchar(10) g2_ferram
+        nchar(1) g2_tpoper
+        float(53) g2_setup
+        float(53) g2_tempad
+        float(53) g2_lotepad
+        float(53) g2_maoobra
+        nchar(1) d_e_l_e_t_
+        int r_e_c_n_o_
+        datetime sincronizado_em
+    }
     sincronizacoes {
         bigint id PK
         nvarchar(40) chave
@@ -676,6 +731,11 @@ erDiagram
     produtos_protheus |o..o{ movimentos_producao : "d3_cod (código)"
     ordens_producao |o..o{ notas_fiscais_op : "op_numero (código)"
     produtos_protheus |o..o{ notas_fiscais_op : "d2_cod (código)"
+    produtos_protheus |o..o{ estruturas_produto : "g1_cod (código)"
+    produtos_protheus |o..o{ estruturas_produto : "g1_comp (código)"
+    produtos_protheus |o..o{ roteiros_operacao : "g2_produto (código)"
+    maquinas |o..o{ roteiros_operacao : "g2_ctrab (código)"
+    ferramentas |o..o{ roteiros_operacao : "g2_ferram (código)"
     centros_custo |o..o{ os_mantenedores : "centro_custo (código)"
     centros_custo |o..o{ solicitacoes_servico : "centro_custo (código)"
     centros_custo |o..o{ ordens_servico : "centro_custo (código)"
@@ -727,7 +787,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`cache_locks`](#cache_locks) | Infra | `key` | 3 | 0 |
 | [`centros_custo`](#centros_custo) | Protheus | `id` | 16 | 2 |
 | [`dispositivos_iot`](#dispositivos_iot) | Sistema | `id` | 17 | 3 |
+| [`estruturas_produto`](#estruturas_produto) | Protheus | `id` | 15 | 0 |
 | [`failed_jobs`](#failed_jobs) | Infra | `id` | 7 | 0 |
+| [`ferramentas`](#ferramentas) | Mista | `id` | 17 | 2 |
 | [`filtros_usuarios`](#filtros_usuarios) | Sistema | `id` | 8 | 1 |
 | [`grupo_permissoes`](#grupo_permissoes) | Sistema | `grupo_id, permissao` | 2 | 1 |
 | [`grupo_usuario`](#grupo_usuario) | Sistema | `grupo_id, usuario_id` | 2 | 2 |
@@ -762,6 +824,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
 | [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 11 | 0 |
 | [`registros_login`](#registros_login) | Sistema | `id` | 8 | 1 |
+| [`roteiros_operacao`](#roteiros_operacao) | Protheus | `id` | 17 | 0 |
 | [`sessions`](#sessions) | Infra | `id` | 6 | 0 |
 | [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 16 | 1 |
 | [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 22 | 8 |
@@ -895,6 +958,30 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Regras (CHECK, só no SQL Server):** `ck_dispositivos_iot_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')`
 
+### estruturas_produto
+
+**Origem:** Protheus — sincronizada de `Compras.SG1` · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `g1_filial` | `nvarchar(8)` | não | `''` |  |
+| `g1_cod` | `nvarchar(30)` | não |  | código → `produtos_protheus.b1_cod` (sem FK) |
+| `g1_comp` | `nvarchar(30)` | não | `''` | código → `produtos_protheus.b1_cod` (sem FK) |
+| `g1_trt` | `nvarchar(3)` | não | `''` |  |
+| `g1_quant` | `float(53)` | não | `'0'` |  |
+| `g1_perda` | `float(53)` | não | `'0'` |  |
+| `g1_ini` | `nchar(8)` | não | `''` |  |
+| `g1_fim` | `nchar(8)` | não | `''` |  |
+| `g1_fixvar` | `nchar(1)` | não | `''` |  |
+| `g1_revini` | `nvarchar(3)` | não | `''` |  |
+| `g1_revfim` | `nvarchar(3)` | não | `''` |  |
+| `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
+| `r_e_c_n_o_` | `int` | sim |  |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `estruturas_produto_g1_filial_g1_cod_g1_comp_g1_trt_unique` único (g1_filial, g1_cod, g1_comp, g1_trt) · `estruturas_produto_g1_cod_index` (g1_cod) · `estruturas_produto_g1_comp_index` (g1_comp)
+
 ### failed_jobs
 
 **Origem:** Infraestrutura do Laravel · **Chave primária:** `id`
@@ -910,6 +997,34 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `failed_at` | `datetime` | não | `CURRENT_TIMESTAMP` |  |
 
 **Índices:** `failed_jobs_uuid_unique` único (uuid) · `failed_jobs_connection_queue_failed_at_index` (connection, queue, failed_at)
+
+### ferramentas
+
+**Origem:** Mista — parte dos campos vem de `Compras.SH4` (Protheus), o resto é do Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `h4_filial` | `nvarchar(8)` | não | `''` |  |
+| `h4_codigo` | `nvarchar(10)` | não |  |  |
+| `h4_descri` | `nvarchar(120)` | não | `''` |  |
+| `h4_quant` | `float(53)` | não | `'0'` |  |
+| `h4_vidauti` | `float(53)` | não | `'0'` |  |
+| `h4_tipovid` | `nchar(1)` | não | `''` |  |
+| `h4_qtdcav` | `int` | não | `'0'` |  |
+| `h4_qtdcavativas` | `int` | não | `'0'` |  |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
+| `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
+| `r_e_c_n_o_` | `int` | sim |  |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `ferramentas_h4_filial_h4_codigo_unique` único (h4_filial, h4_codigo) · `ferramentas_h4_codigo_index` (h4_codigo) · `ferramentas_unidade_index` (unidade)
+
+**Regras (CHECK, só no SQL Server):** `ck_ferramentas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ambos')` · `ck_ferramentas_cavidades`: `h4_qtdcavativas >= 0`
 
 ### filtros_usuarios
 
@@ -1643,6 +1758,32 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `navegador` | `nvarchar(400)` | sim |  |  |
 
 **Índices:** `registros_login_data_hora_index` (data_hora)
+
+### roteiros_operacao
+
+**Origem:** Protheus — sincronizada de `Compras.SG2` · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `g2_filial` | `nvarchar(8)` | não | `''` |  |
+| `g2_produto` | `nvarchar(30)` | não |  | código → `produtos_protheus.b1_cod` (sem FK) |
+| `g2_codigo` | `nvarchar(4)` | não | `''` |  |
+| `g2_operac` | `nvarchar(4)` | não | `''` |  |
+| `g2_descri` | `nvarchar(120)` | não | `''` |  |
+| `g2_recurso` | `nvarchar(10)` | não | `''` |  |
+| `g2_ctrab` | `nvarchar(10)` | não | `''` | código → `maquinas.codigo` (sem FK) |
+| `g2_ferram` | `nvarchar(10)` | não | `''` | código → `ferramentas.h4_codigo` (sem FK) |
+| `g2_tpoper` | `nchar(1)` | não | `''` |  |
+| `g2_setup` | `float(53)` | não | `'0'` |  |
+| `g2_tempad` | `float(53)` | não | `'0'` |  |
+| `g2_lotepad` | `float(53)` | não | `'0'` |  |
+| `g2_maoobra` | `float(53)` | não | `'0'` |  |
+| `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
+| `r_e_c_n_o_` | `int` | sim |  |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `roteiros_operacao_g2_filial_g2_produto_g2_codigo_g2_operac_unique` único (g2_filial, g2_produto, g2_codigo, g2_operac) · `roteiros_operacao_g2_produto_index` (g2_produto) · `roteiros_operacao_g2_ferram_index` (g2_ferram) · `roteiros_operacao_g2_ctrab_index` (g2_ctrab)
 
 ### sessions
 

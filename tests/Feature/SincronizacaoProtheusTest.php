@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Models\CentroCusto;
 use App\Models\Sincronizacao;
 use App\Models\Usuario;
+use App\Services\Protheus\ImportadorEstruturas;
+use App\Services\Protheus\ImportadorFerramentas;
 use App\Services\Protheus\ImportadorMovimentosProducao;
 use App\Services\Protheus\ImportadorNotasFiscaisOp;
 use App\Services\Protheus\ImportadorOrdensProducao;
 use App\Services\Protheus\ImportadorProdutos;
+use App\Services\Protheus\ImportadorRoteiros;
 use App\Services\Protheus\SincronizadorProtheus;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,7 +49,8 @@ class SincronizacaoProtheusTest extends TestCase
         });
         // SB1, SC2, SD3 e SD2 vazias (produtos, OPs e movimentos têm teste próprio).
         foreach (['SB1' => ImportadorProdutos::CAMPOS, 'SC2' => ImportadorOrdensProducao::CAMPOS,
-            'SD3' => [...ImportadorMovimentosProducao::CAMPOS, 'D3_ORDEM'], 'SD2' => [...ImportadorNotasFiscaisOp::CAMPOS, 'D2_OP']] as $tabela => $campos) {
+            'SD3' => [...ImportadorMovimentosProducao::CAMPOS, 'D3_ORDEM'], 'SD2' => [...ImportadorNotasFiscaisOp::CAMPOS, 'D2_OP'],
+            'SG1' => ImportadorEstruturas::CAMPOS, 'SG2' => ImportadorRoteiros::CAMPOS, 'SH4' => [...ImportadorFerramentas::CAMPOS, 'H4_QTDCAV']] as $tabela => $campos) {
             Schema::connection('protheus')->create($tabela, function (Blueprint $t) use ($campos) {
                 foreach ($campos as $c) {
                     $c === 'R_E_C_N_O_' ? $t->integer($c) : $t->string($c)->default('');
@@ -82,7 +86,7 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertSame(['1001', '1002'], CentroCusto::orderBy('ctt_custo')->pluck('ctt_custo')->all());
         $this->assertSame('USINAGEM', rtrim(CentroCusto::where('ctt_custo', '1001')->value('ctt_desc01')));
 
-        $this->assertSame(['centros_custo', 'maquinas', 'produtos', 'ordens_producao', 'movimentos_producao', 'notas_fiscais_op'],
+        $this->assertSame(['centros_custo', 'maquinas', 'produtos', 'estruturas', 'ferramentas', 'roteiros', 'ordens_producao', 'movimentos_producao', 'notas_fiscais_op'],
             Sincronizacao::orderBy('id')->pluck('chave')->all());
         $s = Sincronizacao::where('chave', 'centros_custo')->sole();
         $this->assertSame(['centros_custo', 'manual', 'sucesso', 3, 2, 0, 1, $admin->id],
@@ -193,6 +197,6 @@ class SincronizacaoProtheusTest extends TestCase
         $this->artisan('protheus:sincronizar centros_custo --agendado')->assertSuccessful();
         $this->artisan('protheus:sincronizar inexistente')->assertFailed();
 
-        $this->assertSame([...array_fill(0, 6, 'comando'), 'agendado'], Sincronizacao::orderBy('id')->pluck('disparo')->all());
+        $this->assertSame([...array_fill(0, 9, 'comando'), 'agendado'], Sincronizacao::orderBy('id')->pluck('disparo')->all());
     }
 }

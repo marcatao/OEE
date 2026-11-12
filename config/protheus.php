@@ -1,11 +1,14 @@
 <?php
 
 use App\Services\ImportadorCentrosCusto;
+use App\Services\Protheus\ImportadorEstruturas;
+use App\Services\Protheus\ImportadorFerramentas;
 use App\Services\Protheus\ImportadorMaquinas;
 use App\Services\Protheus\ImportadorMovimentosProducao;
 use App\Services\Protheus\ImportadorNotasFiscaisOp;
 use App\Services\Protheus\ImportadorOrdensProducao;
 use App\Services\Protheus\ImportadorProdutos;
+use App\Services\Protheus\ImportadorRoteiros;
 
 /*
  * Integração com o Protheus (só leitura). A conexão fica em config/database.php ("protheus").
@@ -38,6 +41,30 @@ return [
             'importador' => ImportadorProdutos::class,
             'modo' => 'espelho',
         ],
+        // Estrutura de produto (lista de materiais).
+        'estruturas' => [
+            'descricao' => 'Estruturas de produto',
+            'tabela_origem' => env('PROTHEUS_TABELA_SG1') ?: 'SG1',
+            'tabela_destino' => 'estruturas_produto',
+            'importador' => ImportadorEstruturas::class,
+            'modo' => 'espelho',
+        ],
+        // Ferramentas: mista. Os campos do Protheus são atualizados; as cavidades ativas e a unidade são do portal.
+        'ferramentas' => [
+            'descricao' => 'Ferramentas',
+            'tabela_origem' => env('PROTHEUS_TABELA_SH4') ?: 'SH4',
+            'tabela_destino' => 'ferramentas',
+            'importador' => ImportadorFerramentas::class,
+            'modo' => 'mista',
+        ],
+        // Roteiro de operações (depois das ferramentas, que ele cita).
+        'roteiros' => [
+            'descricao' => 'Roteiros de operação',
+            'tabela_origem' => env('PROTHEUS_TABELA_SG2') ?: 'SG2',
+            'tabela_destino' => 'roteiros_operacao',
+            'importador' => ImportadorRoteiros::class,
+            'modo' => 'espelho',
+        ],
         // Depois dos produtos: a OP mostra o produto (SB1) pelo código.
         'ordens_producao' => [
             'descricao' => 'Ordens de produção',
@@ -67,6 +94,9 @@ return [
     // Campo da OP nos movimentos (SD3) e nas notas (SD2). Só entram as linhas com esse campo preenchido.
     'sd3_campo_op' => env('PROTHEUS_SD3_CAMPO_OP', 'D3_ORDEM'),
     'sd2_campo_op' => env('PROTHEUS_SD2_CAMPO_OP', 'D2_OP'),
+
+    // Campo de quantidade de cavidades da ferramenta na SH4.
+    'sh4_campo_cavidades' => env('PROTHEUS_SH4_CAMPO_CAVIDADES', 'H4_QTDCAV'),
 
     // Saldos de fechamento (SB9): só lidos para preencher ordens_producao.custo_meta. A SB9 não é copiada.
     'tabela_sb9' => env('PROTHEUS_TABELA_SB9') ?: 'SB9',

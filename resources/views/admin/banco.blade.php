@@ -91,7 +91,8 @@
   <p class="suave"><small><strong>Centros de custo</strong>: cópia da CTT, atualizada a cada sincronização.
     <strong>Máquinas</strong> (mista): código, nome e centro de custo vêm da SHB só na primeira vez e a máquina chega
     <strong>inativa</strong> — complete o cadastro em Máquinas e ative. Depois disso a sincronização só mexe na máquina se
-    ela for excluída no Protheus (aí ela é desativada).</small></p>
+    ela for excluída no Protheus (aí ela é desativada). <strong>Ferramentas</strong> (mista): os campos da SH4 são atualizados a
+    cada sincronização; as cavidades ativas e a unidade são do portal e não são sobrepostas.</small></p>
 
   @if ($historico->isNotEmpty())
     <h3>Últimas sincronizações</h3>
@@ -141,7 +142,7 @@
           @if ($o['tipo'] === 'protheus')
             <span class="etiqueta origem-protheus">Protheus</span> <small class="suave">de <code>{{ $o['origem'] }}</code></small>
           @elseif ($o['tipo'] === 'mista')
-            <span class="etiqueta origem-mista">Mista</span> <small class="suave">código, nome e centro de custo de <code>{{ $o['origem'] }}</code></small>
+            <span class="etiqueta origem-mista">Mista</span> <small class="suave">{{ $nome === 'ferramentas' ? 'campos h4_* de' : 'código, nome e centro de custo de' }} <code>{{ $o['origem'] }}</code></small>
           @else
             <span class="etiqueta origem-sistema">Sistema OEE</span>
           @endif

@@ -13,6 +13,8 @@ use App\Http\Controllers\Cadastros\AcessoController;
 use App\Http\Controllers\Cadastros\GrupoController;
 use App\Http\Controllers\Cadastros\UsuarioController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EstruturaProdutoController;
+use App\Http\Controllers\FerramentaController;
 use App\Http\Controllers\Manutencao\ApontamentoHorasController;
 use App\Http\Controllers\Manutencao\CadastroManutencaoController;
 use App\Http\Controllers\Manutencao\InteracaoController;
@@ -25,6 +27,7 @@ use App\Http\Controllers\Manutencao\SolicitacaoController;
 use App\Http\Controllers\OrdemProducaoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PortalController;
+use App\Http\Controllers\RoteiroOperacaoController;
 use App\Http\Controllers\TimelineController;
 use Illuminate\Support\Facades\Route;
 
@@ -66,6 +69,18 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('producao/apontamentos-de-producao', [ApontamentoProducaoController::class, 'index'])
         ->middleware('permissao:apontamentos_producao')->name('apontamentos-producao.index');
+    // Estruturas (SG1) e roteiros (SG2): consulta. Ferramentas (SH4): consulta; administradores editam cavidades ativas.
+    Route::get('producao/estruturas', [EstruturaProdutoController::class, 'index'])
+        ->middleware('permissao:estruturas')->name('estruturas.index');
+    Route::get('producao/roteiros', [RoteiroOperacaoController::class, 'index'])
+        ->middleware('permissao:roteiros')->name('roteiros.index');
+    Route::middleware('permissao:ferramentas')->prefix('producao/ferramentas')->name('ferramentas.')->group(function () {
+        Route::get('/', [FerramentaController::class, 'index'])->name('index');
+        Route::middleware('perfil:admin_producao,admin_tecnologia')->group(function () {
+            Route::get('{ferramenta}/editar', [FerramentaController::class, 'edit'])->name('edit');
+            Route::put('{ferramenta}', [FerramentaController::class, 'update'])->name('update');
+        });
+    });
     Route::middleware('permissao:ordens_producao')->prefix('producao/ordens-de-producao')->name('ordens-producao.')->group(function () {
         Route::get('/', [OrdemProducaoController::class, 'index'])->name('index');
         Route::get('{ordem}', [OrdemProducaoController::class, 'show'])->whereNumber('ordem')->name('show'); // kardex da OP

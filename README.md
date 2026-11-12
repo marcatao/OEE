@@ -206,6 +206,9 @@ sincronizadas duas tabelas (nesta ordem):
 | `maquinas` | `Compras.SHB` | **Mista** | Máquinas (centros de trabalho) |
 | `produtos_protheus` | `Compras.SB1` | **Protheus** (cópia) | Produtos (itens das OPs) |
 | `ordens_producao` | `Compras.SC2` | **Protheus** (cópia) + `status` e `custo_meta` do portal | Ordens de produção |
+| `estruturas_produto` | `Compras.SG1` | **Protheus** (cópia) | Estrutura de produto (lista de materiais) |
+| `roteiros_operacao` | `Compras.SG2` | **Protheus** (cópia) | Roteiro de operações (centro de trabalho, ferramenta, tempos) |
+| `ferramentas` | `Compras.SH4` | **Mista** | Ferramentas: campos `h4_*` do Protheus + `h4_qtdcavativas` e `unidade` do portal |
 | `movimentos_producao` | `Compras.SD3` | **Protheus** (cópia, só com OP) + `custo_medio` (SB2) | Produções, baixas/consumos e devoluções das OPs |
 | `notas_fiscais_op` | `Compras.SD2` | **Protheus** (cópia, só com OP) + `custo_medio` (SB2) | Itens de nota fiscal que citam uma OP |
 
@@ -216,6 +219,16 @@ apontamentos) ou **aberta**. A cada sincronização, toda OP recebe do Protheus 
 datas, encerramento…) e tem o status recalculado. A tela **Produção › Ordens de produção** mostra as OPs com o produto (SB1); nos
 **apontamentos** dá para informar a OP. Para não trazer anos de histórico, use `PROTHEUS_SC2_DESDE` (AAAAMMDD).
 A tabela antiga `produtos` (do Sistema OEE) continua como estava.
+
+**Estruturas, roteiros e ferramentas** (menu Produção):
+- **Estruturas de produto** (SG1, consulta): componentes de cada produto, quantidade, perda e validade (padrão: só as
+  vigentes hoje). Clicar num componente que também tem estrutura mostra o nível seguinte.
+- **Roteiros de operação** (SG2, consulta): operações de cada produto com centro de trabalho (`G2_CTRAB`, a máquina do
+  portal), recurso, ferramenta e tempos (setup, tempo padrão, lote padrão, mão de obra).
+- **Ferramentas** (SH4, **mista**): código, descrição, quantidade, vida útil e **cavidades** (`H4_QTDCAV`, ou o campo de
+  `PROTHEUS_SH4_CAMPO_CAVIDADES`) vêm do Protheus a cada sincronização. As **cavidades ativas** (`h4_qtdcavativas`) são do
+  portal: nascem iguais às cavidades, os administradores ajustam (de 0 até as cavidades) e a sincronização **nunca**
+  as sobrepõe. Se o Protheus diminuir as cavidades para menos que as ativas, a tela avisa para ajustar.
 
 **Apontamentos OP e custo por peça**: a tela **Produção › Apontamentos OP** mostra os movimentos do Protheus ligados
 a uma OP: da **SD3**, as linhas com o campo da OP preenchido (`D3_ORDEM`, ou o campo de `PROTHEUS_SD3_CAMPO_OP`) que não
@@ -290,12 +303,15 @@ GRANT SELECT ON dbo.SD3 TO oee_app;      -- apontamentos de produção (moviment
 GRANT SELECT ON dbo.SD2 TO oee_app;      -- notas fiscais com OP
 GRANT SELECT ON dbo.SB9 TO oee_app;      -- custo meta (fechamento mais recente)
 GRANT SELECT ON dbo.SB2 TO oee_app;      -- custo médio de estoque (movimentos ainda sem custo no Protheus)
+GRANT SELECT ON dbo.SG1 TO oee_app;      -- estruturas de produto
+GRANT SELECT ON dbo.SG2 TO oee_app;      -- roteiros de operação
+GRANT SELECT ON dbo.SH4 TO oee_app;      -- ferramentas
 ```
 
 Se um dia o Protheus estiver em outro servidor ou com outro usuário, preencha `PROTHEUS_DB_HOST`,
 `PROTHEUS_DB_USERNAME` e `PROTHEUS_DB_PASSWORD` no `.env`. Os nomes das tabelas ficam em `PROTHEUS_TABELA_CTT`,
 `PROTHEUS_TABELA_SHB`, `PROTHEUS_TABELA_SB1`, `PROTHEUS_TABELA_SC2`, `PROTHEUS_TABELA_SD3`, `PROTHEUS_TABELA_SD2` e
-`PROTHEUS_TABELA_SB9` e `PROTHEUS_TABELA_SB2`.
+`PROTHEUS_TABELA_SB9`, `PROTHEUS_TABELA_SB2`, `PROTHEUS_TABELA_SG1`, `PROTHEUS_TABELA_SG2` e `PROTHEUS_TABELA_SH4`.
 
 Pelo terminal:
 

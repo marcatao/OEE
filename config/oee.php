@@ -23,6 +23,9 @@ return [
         'apontamentos' => 'Apontamento real (registrar estados das máquinas)',
         'apontamentos_producao' => 'Apontamentos OP (produções, baixas e notas das OPs no Protheus)',
         'ordens_producao' => 'Ordens de produção (consulta, custos e kardex)',
+        'estruturas' => 'Estruturas de produto (SG1, consulta)',
+        'roteiros' => 'Roteiros de operação (SG2, consulta)',
+        'ferramentas' => 'Ferramentas (SH4: consulta; administradores editam as cavidades ativas)',
         'calculadora' => 'Calculadora de OEE',
         // Ordens de serviço (manutenção de produção e de tecnologia; cada um vê a fila da sua unidade)
         'os_painel' => 'Ordens de serviço: painel da área (chamados, OS por mantenedor, mensagens sem resposta)',

@@ -40,7 +40,7 @@
           </div>
         @endif
 
-        @if ($u->pode('apontamentos') || $u->pode('apontamentos_producao') || $u->pode('ordens_producao') || $u->pode('calculadora'))
+        @if ($u->pode('apontamentos') || $u->pode('apontamentos_producao') || $u->pode('ordens_producao') || $u->pode('estruturas') || $u->pode('roteiros') || $u->pode('ferramentas') || $u->pode('calculadora'))
           <div class="menu-bloco" data-bloco="producao">
             @include('layouts.partials.menu-secao', ['titulo' => 'Produção'])
             <div class="menu-itens">
@@ -52,6 +52,15 @@
               @endif
               @if ($u->pode('ordens_producao'))
                 @include('layouts.partials.menu-link', ['rota' => 'ordens-producao.index', 'rotulo' => 'Ordens de produção', 'icone' => 'ordem_producao', 'ativo' => 'ordens-producao.*'])
+              @endif
+              @if ($u->pode('estruturas'))
+                @include('layouts.partials.menu-link', ['rota' => 'estruturas.index', 'rotulo' => 'Estruturas de produto', 'icone' => 'estrutura', 'ativo' => 'estruturas.*'])
+              @endif
+              @if ($u->pode('roteiros'))
+                @include('layouts.partials.menu-link', ['rota' => 'roteiros.index', 'rotulo' => 'Roteiros de operação', 'icone' => 'roteiro', 'ativo' => 'roteiros.*'])
+              @endif
+              @if ($u->pode('ferramentas'))
+                @include('layouts.partials.menu-link', ['rota' => 'ferramentas.index', 'rotulo' => 'Ferramentas', 'icone' => 'ferramenta', 'ativo' => 'ferramentas.*'])
               @endif
               @if ($u->pode('calculadora'))
                 @include('layouts.partials.menu-link', ['rota' => 'calculadora', 'rotulo' => 'Calculadora de OEE', 'icone' => 'calculadora'])
