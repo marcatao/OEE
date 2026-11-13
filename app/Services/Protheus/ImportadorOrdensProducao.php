@@ -4,6 +4,7 @@ namespace App\Services\Protheus;
 
 use App\Models\OrdemProducao;
 use App\Services\CustoOrdemProducao;
+use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use App\Support\Cronometro;
 use Illuminate\Database\Query\Builder;
@@ -105,6 +106,12 @@ class ImportadorOrdensProducao extends ImportadorEspelho
         return array_values(array_unique([
             ...Cronometro::medir('status', fn () => $this->status->atualizarLote($idsDoLote)),
             ...Cronometro::medir('custo meta', fn () => $this->custo->atualizarMetas($idsDoLote)),
+            // OP que fechou no Protheus sai da máquina (os apontamentos continuam com ela).
+            ...Cronometro::medir('desvincular OPs fechadas', function () use ($idsDoLote) {
+                app(SituacaoMaquina::class)->desvincularOpsFechadas($idsDoLote);
+
+                return [];
+            }),
         ]));
     }
 }

@@ -6,6 +6,7 @@ use App\Models\FiltroUsuario;
 use App\Models\Legenda;
 use App\Models\Turno;
 use App\Services\Filtros\FiltroTimeline;
+use App\Services\SituacaoMaquina;
 use App\Services\Timeline;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,9 @@ class TimelineController extends Controller
             $escolhido = $salvos->firstWhere('padrao', true);
         }
         $filtro = $escolhido ? FiltroTimeline::doSalvo($escolhido->filtros) : FiltroTimeline::daRequisicao($request);
+
+        // OP fechada (ou excluída) no Protheus sai da máquina antes de mostrar a situação.
+        app(SituacaoMaquina::class)->desvincularOpsFechadas();
 
         $dados = $this->resultado($filtro, $timeline);
         if ($request->boolean('parcial')) {
@@ -105,6 +109,7 @@ class TimelineController extends Controller
             'linhas' => $dados['linhas'],
             'totais' => $dados['totais'],
             'disponibilidade' => $dados['disponibilidade'],
+            'pendentesOp' => $dados['pendentesOp'],
             'situacoes' => $timeline->situacoes($maquinas),
             'marcas' => $timeline->marcas($inicio->utc(), $fim->utc()),
             'agora' => $agora > $inicio->getTimestamp() && $agora < $fim->getTimestamp()

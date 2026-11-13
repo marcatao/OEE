@@ -103,6 +103,23 @@
     @include('dashboard.timeline._resultado')
   </div>
 
+  @if ($u->pode('apontamentos'))
+    {{-- Informar a OP de um apontamento cuja legenda exige OP (aberto pelo bloco piscando). Só OPs abertas. --}}
+    <dialog id="tl-dialogo-op" class="dialogo">
+      <form method="dialog" id="tl-form-op">
+        <h2>Informar ordem de produção</h2>
+        <p class="suave" data-op-descricao></p>
+        @include('partials.campo-op', ['op' => null, 'ajuda' => 'Só ordens abertas (não fechadas no Protheus). Digite o número da OP ou o produto.'])
+        <p class="erro" data-op-erro hidden></p>
+        <div class="acoes">
+          <button class="botao" type="submit" value="gravar">Gravar OP</button>
+          <button class="botao secundario" type="button" data-op-cancelar>Cancelar</button>
+        </div>
+        <small class="suave">A OP é gravada no apontamento e passa a ser a OP atual da máquina.</small>
+      </form>
+    </dialog>
+  @endif
+
   @if ($legendas->isNotEmpty())
     <div class="tl-resumo" style="background:none">
       <span class="suave">Legendas:</span>
@@ -212,6 +229,35 @@
       var i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v; i.setAttribute('data-copia', ''); destino.appendChild(i);
     });
   });
+
+  // Bloco piscando (legenda exige OP e o apontamento está sem): abre a escolha da OP; ao gravar, atualiza a timeline.
+  var dialogo = document.getElementById('tl-dialogo-op');
+  if (dialogo) {
+    var formOp = document.getElementById('tl-form-op'), selOp = formOp.querySelector('select'), erroOp = formOp.querySelector('[data-op-erro]');
+    var urlOp = null;
+    resultado.addEventListener('click', function (e) {
+      var bloco = e.target.closest('[data-informar-op]');
+      if (!bloco) return;
+      urlOp = bloco.dataset.informarOp;
+      formOp.querySelector('[data-op-descricao]').textContent = bloco.dataset.maquina + ' · ' + bloco.dataset.descricao;
+      selOp.value = ''; selOp.dispatchEvent(new Event('change'));
+      erroOp.hidden = true;
+      dialogo.showModal();
+    });
+    formOp.querySelector('[data-op-cancelar]').addEventListener('click', function () { dialogo.close(); });
+    formOp.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!selOp.value) { erroOp.textContent = 'Escolha a ordem de produção.'; erroOp.hidden = false; return; }
+      fetch(urlOp, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: JSON.stringify({ ordem_producao: selOp.value }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { erroOp.textContent = (res.j.errors && res.j.errors.ordem_producao) ? res.j.errors.ordem_producao[0] : (res.j.message || 'Não foi possível gravar.'); erroOp.hidden = false; return; }
+          dialogo.close(); atualizar();
+        })
+        .catch(function () { erroOp.textContent = 'Não foi possível gravar. Tente de novo.'; erroOp.hidden = false; });
+    });
+  }
 
   // Período que inclui agora: atualiza sozinho a cada minuto (só com a aba visível).
   setInterval(function () {

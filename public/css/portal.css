@@ -874,3 +874,18 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .jornada-semanal .opcao { margin:0; }
 .jornada-semanal tr.folga td:not(:first-child) { opacity:.45; }
 .jornada-semanal [data-horas] { color:var(--suave); font-variant-numeric:tabular-nums; }
+
+/* Timeline: apontamento cuja legenda exige OP e está sem — pisca até informar a OP */
+.tl-bloco.tl-pendente-op { border:0; cursor:pointer; font:inherit; font-size:.78rem; font-weight:800; color:var(--branco);
+  background-color:var(--erro) !important; animation:tl-piscar-op 1s steps(2, start) infinite; z-index:1; }
+.tl-bloco.tl-pendente-op:focus-visible { outline:2px solid var(--texto); outline-offset:-2px; }
+@keyframes tl-piscar-op { 0%, 100% { background-color:var(--erro); } 50% { background-color:var(--alerta); } }
+@media (prefers-reduced-motion: reduce) { .tl-bloco.tl-pendente-op { animation:none; } }
+.tl-aviso-op { margin:.5rem 0; }
+
+/* Janela (dialog) simples */
+.dialogo { border:1px solid var(--borda); border-radius:.8rem; padding:1.25rem; width:min(36rem, 92vw); background:var(--cartao); color:var(--texto); box-shadow:var(--sombra-forte); overflow:visible; }
+.dialogo::backdrop { background:var(--fundo-escurecido); }
+.dialogo h2 { margin-top:0; font-size:1.15rem; }
+.dialogo label { display:flex; flex-direction:column; gap:.3rem; }
+.dialogo .acoes { margin-top:1rem; }

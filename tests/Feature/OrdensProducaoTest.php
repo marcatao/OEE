@@ -138,10 +138,15 @@ class OrdensProducaoTest extends TestCase
     public function test_status_muda_quando_a_op_muda_no_protheus(): void
     {
         $this->sincronizar('ordens_producao');
+        // A OP 509860 está na máquina; ao fechar no Protheus, sai dela (a 509859, aberta, fica).
+        $m1 = Maquina::create(['codigo' => 'M1', 'nome' => 'M1', 'ativo' => false, 'ordem_producao_id' => OrdemProducao::where('c2_num', '509860')->value('id')]);
+        $m2 = Maquina::create(['codigo' => 'M2', 'nome' => 'M2', 'ativo' => false, 'ordem_producao_id' => OrdemProducao::where('c2_num', '509859')->value('id')]);
         DB::connection('protheus')->table('SC2')->where('C2_NUM', '509859')->update(['C2_QUJE' => 10]);
         DB::connection('protheus')->table('SC2')->where('C2_NUM', '509860')->update(['C2_DATRF' => '20261105']);
         $r = $this->sincronizar('ordens_producao');
 
+        $this->assertNull($m1->fresh()->ordem_producao_id);
+        $this->assertNotNull($m2->fresh()->ordem_producao_id);
         $this->assertSame(2, $r->atualizados);
         $this->assertSame('andamento', OrdemProducao::where('c2_num', '509859')->value('status'));
         $this->assertSame('fechada', OrdemProducao::where('c2_num', '509860')->value('status'));

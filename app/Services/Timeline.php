@@ -60,7 +60,7 @@ class Timeline
 
     /**
      * @param  Collection<int, Maquina>  $maquinas
-     * @return array{linhas: array<int, list<array>>, totais: list<array>, disponibilidade: ?float, segundos: array<string, int>}
+     * @return array{linhas: array<int, list<array>>, totais: list<array>, disponibilidade: ?float, segundos: array<string, int>, pendentesOp: int}
      */
     public function montar(Collection $maquinas, CarbonInterface $inicio, CarbonInterface $fim): array
     {
@@ -78,6 +78,7 @@ class Timeline
             ->groupBy('maquina_id');
 
         $linhas = [];
+        $pendentesOp = 0;
         $porLegenda = [];
         $porTipo = array_fill_keys(array_keys(Legenda::TIPOS), 0);
 
@@ -98,7 +99,10 @@ class Timeline
                     'esquerda' => round(($a0 - $ini) / $duracao * 100, 4),
                     'largura' => round(($a1 - $a0) / $duracao * 100, 4),
                     'aberto' => $a->fim === null,
+                    // Legenda exige OP e o apontamento está sem: pisca na timeline com "Informar OP".
+                    'pendenteOp' => (bool) $a->legenda?->exige_op && $a->ordem_producao_id === null,
                 ];
+                $pendentesOp += (int) end($blocos)['pendenteOp'];
 
                 $id = $a->legenda_id;
                 $porLegenda[$id] ??= ['legenda' => $a->legenda, 'segundos' => 0];
@@ -119,6 +123,7 @@ class Timeline
             'totais' => $totais,
             'disponibilidade' => $base > 0 ? $porTipo['produzindo'] / $base : null,
             'segundos' => $porTipo,
+            'pendentesOp' => $pendentesOp,
         ];
     }
 

@@ -270,4 +270,27 @@ class ApontamentoEstadoController extends Controller
 
         return redirect()->route('apontamentos.index')->with('ok', $mensagem);
     }
+
+    /**
+     * Timeline › "Informar OP": grava a OP num apontamento cuja legenda exige OP e que ficou sem. A OP precisa estar
+     * aberta (não fechada no Protheus). A máquina passa a ter essa OP (ver SituacaoMaquina::informarOp). Resposta JSON.
+     */
+    public function informarOp(Request $request, ApontamentoEstado $apontamento, StatusOrdemProducao $status, SituacaoMaquina $situacao): JsonResponse
+    {
+        $dados = $request->validate(['ordem_producao' => ['required', 'string', 'max:20']],
+            ['ordem_producao.required' => 'Escolha a ordem de produção.']);
+        abort_unless(Maquina::whereKey($apontamento->maquina_id)->exists(), 404); // máquina de outra unidade
+        $op = OrdemProducao::apontaveis()->where('numero', trim($dados['ordem_producao']))->orderBy('status')->first();
+        if (! $op) {
+            throw ValidationException::withMessages(['ordem_producao' => 'Ordem de produção não encontrada ou fechada no Protheus.']);
+        }
+        $anterior = $apontamento->ordem_producao_id;
+        $apontamento->update(['ordem_producao_id' => $op->id]);
+        $situacao->informarOp($apontamento);
+        foreach (array_unique(array_filter([$op->id, $anterior])) as $id) {
+            $status->atualizar(OrdemProducao::find($id));
+        }
+
+        return response()->json(['ok' => true, 'mensagem' => "OP {$op->numero} informada no apontamento."]);
+    }
 }

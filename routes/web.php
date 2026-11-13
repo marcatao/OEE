@@ -69,6 +69,8 @@ Route::middleware('auth')->group(function () {
         Route::get('{apontamento}/editar', [ApontamentoEstadoController::class, 'edit'])->name('edit');
         Route::put('{apontamento}', [ApontamentoEstadoController::class, 'update'])->name('update');
         Route::delete('{apontamento}', [ApontamentoEstadoController::class, 'destroy'])->name('destroy');
+        // Timeline: informar a OP num apontamento cuja legenda exige OP (JSON)
+        Route::post('{apontamento}/informar-op', [ApontamentoEstadoController::class, 'informarOp'])->name('informar-op');
     });
     Route::get('producao/apontamentos-de-producao', [ApontamentoProducaoController::class, 'index'])
         ->middleware('permissao:apontamentos_producao')->name('apontamentos-producao.index');

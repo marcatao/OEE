@@ -11,6 +11,10 @@
     atualizado às {{ $atualizadoEm->format('H:i:s') }}
   </p>
   @if ($filtro->aviso)<p class="aviso alerta">{{ $filtro->aviso }}</p>@endif
+  @if ($pendentesOp > 0)
+    <p class="aviso alerta tl-aviso-op">{{ $pendentesOp }} {{ $pendentesOp === 1 ? 'apontamento exige' : 'apontamentos exigem' }} ordem de produção e
+      {{ $pendentesOp === 1 ? 'está' : 'estão' }} sem. @if ($podeApontar) Clique no bloco piscando (<strong>INFORMAR OP</strong>) para escolher a OP. @endif</p>
+  @endif
 
   <div class="tl-resumo">
     <span class="{{ Formato::nivel($disponibilidade) }}">Disponibilidade: <strong class="texto-nivel">{{ Formato::pct($disponibilidade) }}</strong></span>
@@ -58,7 +62,13 @@
                     .($b['apontamento']->ordemProducao ? ' · OP '.$b['apontamento']->ordemProducao->numero : '')
                     .($b['apontamento']->referencia ? ' · '.$b['apontamento']->referencia : ''))
                 @php($estilo = 'left: '.$b['esquerda'].'%; width: '.$b['largura'].'%; background-color: '.$legenda->cor)
-                @if ($podeApontar)
+                @if ($b['pendenteOp'] && $podeApontar)
+                  <button type="button" class="tl-bloco tl-pendente-op {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="INFORMAR OP · {{ $dica }}"
+                     data-informar-op="{{ route('apontamentos.informar-op', $b['apontamento']) }}" data-maquina="{{ $maquina->nome }}"
+                     data-descricao="{{ $dica }}"><span><b>INFORMAR OP</b><em class="tl-desc"> · {{ $legenda->codigo }}</em></span></button>
+                @elseif ($b['pendenteOp'])
+                  <div class="tl-bloco tl-pendente-op {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="Sem OP · {{ $dica }}"><span><b>SEM OP</b><em class="tl-desc"> · {{ $legenda->codigo }}</em></span></div>
+                @elseif ($podeApontar)
                   <a class="tl-bloco {{ $legenda->classeTexto() }} {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="{{ $dica }}"
                      href="{{ route('apontamentos.edit', ['apontamento' => $b['apontamento'], 'voltar' => 'timeline']) }}"><span><b>{{ $b['apontamento']->rotuloBarra() }}</b><em class="tl-desc"> · {{ $legenda->descricao }}</em></span></a>
                 @else
