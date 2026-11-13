@@ -95,7 +95,7 @@ class SincronizadorProtheus
         } catch (Throwable $e) {
             Log::warning("Falha ao sincronizar {$chave} com o Protheus", ['erro' => $e->getMessage()]);
 
-            return $this->terminar($registro, 'erro', mensagem: $e->getMessage());
+            return $this->terminar($registro, 'erro', mensagem: $this->explicarErro($e, $chave));
         }
 
         return $registro;
@@ -205,10 +205,29 @@ class SincronizadorProtheus
 
             return $this->terminar($registro, 'erro', ['lidos' => $registro->lidos, 'novos' => $registro->novos,
                 'atualizados' => $registro->atualizados, 'ignorados' => $registro->ignorados, 'excluidos' => $registro->excluidos],
-                $e->getMessage());
+                $this->explicarErro($e, $registro->chave));
         } finally {
             $passo->release();
         }
+    }
+
+    /**
+     * Mensagem do erro para a tela. Tabela que não existe no banco do Protheus (SQL Server: "Invalid object name";
+     * SQLite: "no such table") ganha a explicação de como resolver: o nome certo vai em PROTHEUS_TABELA_xxx no .env.
+     */
+    private function explicarErro(Throwable $e, string $chave): string
+    {
+        $mensagem = $e->getMessage();
+        if (! preg_match('/Invalid object name|no such table/i', $mensagem)) {
+            return $mensagem;
+        }
+        $tabela = (string) (config("protheus.sincronizacoes.{$chave}.tabela_origem") ?? '');
+        $sigla = strtoupper(substr((string) preg_replace('/^.*\./', '', $tabela), 0, 3));
+        $banco = (string) config('database.connections.protheus.database');
+
+        return "A tabela {$tabela} não existe no banco do Protheus ({$banco}) ou o usuário da conexão não tem acesso a ela. "
+            .'Peça ao TI para disponibilizá-la nesse banco (como as outras tabelas já sincronizadas) ou, se ela tem outro nome '
+            ."(ex.: {$sigla}010 ou dbo.{$sigla}010), informe em PROTHEUS_TABELA_{$sigla} no .env. Erro original: ".$mensagem;
     }
 
     private function tabelaOrigem(array $item): string

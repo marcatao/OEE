@@ -161,4 +161,14 @@ class EmpenhosEngenhariaOpTest extends TestCase
         $op = Usuario::create(['entra_oid' => 'op', 'nome' => 'Op', 'email' => 'op@empresa.com', 'perfil' => 'operador']);
         $this->actingAs($op)->get('/producao/empenhos-op')->assertForbidden();
     }
+
+    public function test_tabela_inexistente_no_protheus_explica_como_resolver(): void
+    {
+        Schema::connection('protheus')->drop('SD4');
+        $r = app(SincronizadorProtheus::class)->sincronizar('empenhos_op', 'comando');
+
+        $this->assertSame('erro', $r->situacao);
+        $this->assertStringContainsString('A tabela SD4 não existe no banco do Protheus', $r->mensagem);
+        $this->assertStringContainsString('PROTHEUS_TABELA_SD4', $r->mensagem);
+    }
 }
