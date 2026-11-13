@@ -10,10 +10,12 @@ use App\Models\Planta;
 use App\Models\Usuario;
 use App\Services\ImportadorCentrosCusto;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\CalendarioDeTeste;
 use Tests\TestCase;
 
 class MaquinaCadastroTest extends TestCase
 {
+    use CalendarioDeTeste;
     use RefreshDatabase;
 
     private Linha $linha;
@@ -28,7 +30,7 @@ class MaquinaCadastroTest extends TestCase
 
     private function dados(array $extra = []): array
     {
-        return $extra + ['linha_id' => $this->linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ativo' => '1'];
+        return $extra + ['linha_id' => $this->linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ativo' => '1'] + $this->jornada();
     }
 
     public function test_cadastra_centro_de_custo_no_formato_do_protheus(): void

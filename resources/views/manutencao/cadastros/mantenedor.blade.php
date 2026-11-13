@@ -67,6 +67,12 @@
         <select name="centro_custo" data-busca><option value="">—</option>
           @foreach ($centros as $c)<option value="{{ $c->codigo() }}" @selected(old('centro_custo', trim((string) $m->centro_custo)) === $c->codigo())>{{ $c->codigo() }} — {{ $c->descricao() }}</option>@endforeach
         </select></label>
+      <label>Calendário
+        <select name="calendario_id" data-busca="Buscar calendário…">
+          <option value="">— escolha —</option>
+          @foreach ($calendarios as $c)<option value="{{ $c->id }}" @selected((int) old('calendario_id', $m->calendario_id) === $c->id)>{{ $c->nome }} {{ $c->ano }} · {{ $c->rotuloUnidade() }}</option>@endforeach
+        </select>
+        <small>Obrigatório para ativar: dias úteis, feriados e pontes (Administração › Calendários).</small></label>
       <label>Início da jornada <input type="time" name="jornada_inicio" required value="{{ old('jornada_inicio', $m->jornada_inicio) }}"></label>
       <label>Fim da jornada <input type="time" name="jornada_fim" required value="{{ old('jornada_fim', $m->jornada_fim) }}"><small>Antes do início = jornada noturna (vira o dia).</small></label>
       <label>Intervalo (min) <input type="number" name="intervalo_min" min="0" max="600" required value="{{ old('intervalo_min', $m->intervalo_min) }}"></label>

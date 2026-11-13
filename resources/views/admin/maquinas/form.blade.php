@@ -159,6 +159,13 @@
       </div>
     </fieldset>
 
+    <fieldset>
+      <legend>Calendário e jornada</legend>
+      <p class="suave" style="margin-top:0">Obrigatórios para <strong>ativar</strong> a máquina: o calendário diz os dias úteis, feriados e pontes;
+        os dias da semana e o horário dizem quando a máquina trabalha.</p>
+      @include('partials.campo-calendario-jornada', ['registro' => $maquina, 'calendarios' => $calendarios])
+    </fieldset>
+
     <fieldset class="opcoes-linha">
       <legend>Máquina ativa ou inativa</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @disabled($maquina->excluidaNoProtheus()) @checked(old('ativo', (int) $maquina->ativo) == 1)> <span>Ativa</span></label>

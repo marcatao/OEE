@@ -13,6 +13,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Concerns\CalendarioDeTeste;
 use Tests\TestCase;
 
 /**
@@ -20,6 +21,7 @@ use Tests\TestCase;
  */
 class MaquinasProtheusTest extends TestCase
 {
+    use CalendarioDeTeste;
     use RefreshDatabase;
 
     private Usuario $admin;
@@ -156,7 +158,7 @@ class MaquinasProtheusTest extends TestCase
         $iot = DispositivoIot::create(['codigo' => 'S1', 'nome' => 'Sensor 1', 'tipo' => 'sensor', 'protocolo' => 'mqtt', 'ativo' => true]);
         $this->put("/admin/maquinas/{$m->id}", [
             'linha_id' => $this->linha->id, 'ciclo_ideal_s' => '15', 'ativo' => '1',
-            'iot1_dispositivo_id' => $iot->id, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao',
+            'iot1_dispositivo_id' => $iot->id, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao', ...$this->jornada(),
             'codigo' => 'OUTRO', 'nome' => 'Outro nome', 'centro_custo' => '999',
         ])->assertSessionDoesntHaveErrors()->assertRedirect('/admin/maquinas');
 

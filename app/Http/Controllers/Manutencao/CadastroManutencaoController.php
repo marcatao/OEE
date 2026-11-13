@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Manutencao;
 
 use App\Http\Controllers\Controller;
+use App\Models\Calendario;
 use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\Ferramenta;
 use App\Models\Manutencao\Mantenedor;
@@ -15,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -68,6 +70,9 @@ class CadastroManutencaoController extends Controller
             'usuarios' => Usuario::where('ativo', true)->whereNotIn('id', $ocupados)->orderBy('nome')->get(),
             'areas' => AreaExecutante::where('ativo', true)->orWhereIn('id', $m->exists ? $m->areas->pluck('id') : [])->orderBy('nome')->get(),
             'centros' => AcessoOs::centrosCusto(),
+            // Calendários que o usuário enxerga (ativos) + o que o mantenedor já usa.
+            'calendarios' => Calendario::where(fn ($q) => $q->where('ativo', true)->orWhere('id', (int) $m->calendario_id))
+                ->orderByDesc('ano')->orderBy('nome')->get(),
             // Ferramentas que podem ser amarradas: as avulsas e as que já estão com ele.
             'ferramentas' => Ferramenta::where('ativo', true)
                 ->where(fn ($q) => $q->whereNull('mantenedor_id')->when($m->exists, fn ($q) => $q->orWhere('mantenedor_id', $m->id)))
@@ -93,17 +98,27 @@ class CadastroManutencaoController extends Controller
             'dias' => ['required', 'array', 'min:1'], 'dias.*' => ['integer', 'between:1,7'],
             'ferramentas' => ['nullable', 'array'], 'ferramentas.*' => ['integer', Rule::exists('os_ferramentas', 'id')],
             'ativo' => ['required', 'boolean'],
+            'calendario_id' => ['nullable', 'integer'],
         ], [
             'usuario_id.required' => 'Escolha o usuário (login) do mantenedor.',
             'usuario_id.unique' => 'Esse usuário já é mantenedor.',
             'areas.required' => 'Marque pelo menos uma área executante.',
             'dias.required' => 'Marque os dias de trabalho.',
         ]);
+        // Calendário: obrigatório para ativar; só os que o usuário enxerga (ativos) ou o que ele já usa.
+        // Campo ausente (o formulário sempre envia) mantém o calendário gravado.
+        $calendarioId = $request->has('calendario_id') ? ($dados['calendario_id'] ?? null) : $m->calendario_id;
+        if ($calendarioId && ! Calendario::whereKey($calendarioId)->where(fn ($q) => $q->where('ativo', true)->orWhere('id', (int) $m->calendario_id))->exists()) {
+            throw ValidationException::withMessages(['calendario_id' => 'Calendário não encontrado ou inativo.']);
+        }
+        if ($dados['ativo'] && ! $calendarioId) {
+            throw ValidationException::withMessages(['calendario_id' => 'Para ativar o mantenedor, escolha o calendário.']);
+        }
         $dias = array_unique(array_map('intval', $dados['dias']));
         sort($dias);
         $usuario = ! empty($dados['usuario_id']) ? Usuario::find($dados['usuario_id']) : null;
 
-        DB::transaction(function () use ($m, $dados, $dias, $usuario) {
+        DB::transaction(function () use ($m, $dados, $dias, $usuario, $calendarioId) {
             $m->fill([
                 'unidade' => $dados['unidade'],
                 'usuario_id' => $usuario?->id,
@@ -116,6 +131,7 @@ class CadastroManutencaoController extends Controller
                 'intervalo_min' => $dados['intervalo_min'],
                 'dias_semana' => implode('', $dias),
                 'ativo' => (bool) $dados['ativo'],
+                'calendario_id' => $calendarioId,
             ])->save();
             $m->definirAreas($dados['areas']);
             $this->amarrarFerramentas($m, $dados['ferramentas'] ?? []);

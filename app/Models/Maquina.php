@@ -30,6 +30,8 @@ class Maquina extends Model
         'iot3_dispositivo_id', 'iot3_canal', 'iot3_tipo',
         // Situação atual (produzindo | parada) e OP atual: pelo cadastro ou pelo apontamento real mais recente.
         'situacao', 'situacao_desde', 'situacao_legenda_id', 'ordem_producao_id',
+        // Calendário de dias úteis e jornada (dias da semana ISO "12345", HH:MM). Obrigatórios para ativar.
+        'calendario_id', 'dias_semana', 'jornada_inicio', 'jornada_fim',
     ];
 
     public const SITUACOES = ['produzindo' => 'Produzindo', 'parada' => 'Parada'];
@@ -167,5 +169,11 @@ class Maquina extends Model
     public function rotuloSituacao(): string
     {
         return self::SITUACOES[$this->situacao] ?? 'Sem informação';
+    }
+
+    /** Calendário de dias úteis da máquina (Administração › Calendários). */
+    public function calendario(): BelongsTo
+    {
+        return $this->belongsTo(Calendario::class);
     }
 }

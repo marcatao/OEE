@@ -117,6 +117,7 @@
               @include('layouts.partials.menu-link', ['rota' => 'admin.centros-custo.index', 'rotulo' => 'Centros de custo', 'icone' => 'centro_custo', 'ativo' => 'admin.centros-custo.*'])
               @include('layouts.partials.menu-link', ['rota' => 'admin.estrutura', 'rotulo' => 'Plantas e linhas', 'icone' => 'estrutura', 'ativo' => 'admin.estrutura*'])
               @include('layouts.partials.menu-link', ['rota' => 'admin.iot.index', 'rotulo' => 'Dispositivos IoT', 'icone' => 'iot', 'ativo' => 'admin.iot.*'])
+              @include('layouts.partials.menu-link', ['rota' => 'admin.calendarios.index', 'rotulo' => 'Calendários', 'icone' => 'calendario', 'ativo' => 'admin.calendarios.*'])
             </div>
           </div>
         @endif

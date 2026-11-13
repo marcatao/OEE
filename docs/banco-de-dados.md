@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **46** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **48** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -43,6 +43,29 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
         bigint ordem_producao_id FK
+    }
+    calendario_dias {
+        bigint id PK
+        bigint calendario_id FK
+        date data
+        nvarchar(12) tipo
+        nvarchar(120) descricao
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    calendarios {
+        bigint id PK
+        nvarchar(20) unidade
+        nvarchar(80) nome
+        smallint ano
+        nvarchar(300) descricao
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
     }
     centros_custo {
         bigint id PK
@@ -210,6 +233,10 @@ erDiagram
         datetime situacao_desde
         bigint situacao_legenda_id FK
         bigint ordem_producao_id FK
+        bigint calendario_id FK
+        nvarchar(7) dias_semana
+        nvarchar(5) jornada_inicio
+        nvarchar(5) jornada_fim
     }
     motivos_parada {
         bigint id PK
@@ -444,6 +471,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        bigint calendario_id FK
     }
     os_materiais {
         bigint id PK
@@ -706,6 +734,7 @@ erDiagram
     maquinas ||--o{ apontamentos_estado : "maquina_id"
     legendas ||--o{ apontamentos_estado : "legenda_id"
     ordens_producao |o--o{ apontamentos_estado : "ordem_producao_id"
+    calendarios ||--o{ calendario_dias : "calendario_id"
     maquinas |o--o{ dispositivos_iot : "maquina_id"
     usuarios ||--o{ filtros_usuarios : "usuario_id"
     grupos ||--o{ grupo_permissoes : "grupo_id"
@@ -718,6 +747,7 @@ erDiagram
     dispositivos_iot |o--o{ maquinas : "iot3_dispositivo_id"
     legendas |o--o{ maquinas : "situacao_legenda_id"
     ordens_producao |o--o{ maquinas : "ordem_producao_id"
+    calendarios |o--o{ maquinas : "calendario_id"
     solicitacoes_servico |o--o{ ordens_servico : "solicitacao_id"
     os_planos_preventiva |o--o{ ordens_servico : "plano_preventiva_id"
     maquinas |o--o{ ordens_servico : "maquina_id"
@@ -744,6 +774,7 @@ erDiagram
     os_areas_executantes ||--o{ os_mantenedor_areas : "area_executante_id"
     usuarios |o--o{ os_mantenedores : "usuario_id"
     os_areas_executantes |o--o{ os_mantenedores : "area_executante_id"
+    calendarios |o--o{ os_mantenedores : "calendario_id"
     ordens_servico ||--o{ os_materiais : "ordem_servico_id"
     ordens_servico ||--o{ os_ordem_mantenedores : "ordem_servico_id"
     os_mantenedores ||--o{ os_ordem_mantenedores : "mantenedor_id"
@@ -826,6 +857,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 12 | 5 |
 | [`cache`](#cache) | Infra | `key` | 3 | 0 |
 | [`cache_locks`](#cache_locks) | Infra | `key` | 3 | 0 |
+| [`calendario_dias`](#calendario_dias) | Sistema | `id` | 9 | 3 |
+| [`calendarios`](#calendarios) | Sistema | `id` | 10 | 2 |
 | [`centros_custo`](#centros_custo) | Protheus | `id` | 16 | 2 |
 | [`dispositivos_iot`](#dispositivos_iot) | Sistema | `id` | 17 | 3 |
 | [`estruturas_produto`](#estruturas_produto) | Protheus | `id` | 15 | 0 |
@@ -839,7 +872,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
 | [`legendas`](#legendas) | Sistema | `id` | 13 | 2 |
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
-| [`maquinas`](#maquinas) | Mista | `id` | 37 | 8 |
+| [`maquinas`](#maquinas) | Mista | `id` | 41 | 9 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
@@ -854,7 +887,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`os_interacoes`](#os_interacoes) | Sistema | `id` | 5 | 2 |
 | [`os_justificativas_setor`](#os_justificativas_setor) | Sistema | `id` | 9 | 2 |
 | [`os_mantenedor_areas`](#os_mantenedor_areas) | Sistema | `id` | 5 | 3 |
-| [`os_mantenedores`](#os_mantenedores) | Sistema | `id` | 16 | 4 |
+| [`os_mantenedores`](#os_mantenedores) | Sistema | `id` | 17 | 5 |
 | [`os_materiais`](#os_materiais) | Sistema | `id` | 14 | 3 |
 | [`os_ordem_mantenedores`](#os_ordem_mantenedores) | Sistema | `id` | 5 | 3 |
 | [`os_planos_itens`](#os_planos_itens) | Sistema | `id` | 9 | 3 |
@@ -945,6 +978,47 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `expiration` | `bigint` | não |  |  |
 
 **Índices:** `cache_locks_expiration_index` (expiration)
+
+### calendario_dias
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `calendario_id` | `bigint` | não |  | FK → `calendarios.id` |
+| `data` | `date` | não |  |  |
+| `tipo` | `nvarchar(12)` | não |  |  |
+| `descricao` | `nvarchar(120)` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `calendario_dias_calendario_id_data_unique` único (calendario_id, data)
+
+**Regras (CHECK, só no SQL Server):** `ck_calendario_dias_tipo`: `tipo IN ('feriado', 'ponte', 'folga', 'compensacao', 'util')`
+
+### calendarios
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
+| `nome` | `nvarchar(80)` | não |  |  |
+| `ano` | `smallint` | não |  |  |
+| `descricao` | `nvarchar(300)` | sim |  |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `calendarios_unidade_nome_ano_unique` único (unidade, nome, ano) · `calendarios_unidade_ano_index` (unidade, ano)
+
+**Regras (CHECK, só no SQL Server):** `ck_calendarios_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
 
 ### centros_custo
 
@@ -1242,6 +1316,10 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `situacao_desde` | `datetime` | sim |  |  |
 | `situacao_legenda_id` | `bigint` | sim |  | FK → `legendas.id` |
 | `ordem_producao_id` | `bigint` | sim |  | FK → `ordens_producao.id` |
+| `calendario_id` | `bigint` | sim |  | FK → `calendarios.id` |
+| `dias_semana` | `nvarchar(7)` | sim |  |  |
+| `jornada_inicio` | `nvarchar(5)` | sim |  |  |
+| `jornada_fim` | `nvarchar(5)` | sim |  |  |
 
 **Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_) · `maquinas_unidade_index` (unidade)
 
@@ -1599,6 +1677,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `calendario_id` | `bigint` | sim |  | FK → `calendarios.id` |
 
 **Índices:** `ux_os_mantenedores_usuario` único (usuario_id) filtrado `WHERE usuario_id IS NOT NULL` (só SQL Server) · `os_mantenedores_unidade_index` (unidade) · `os_mantenedores_area_executante_id_index` (area_executante_id)
 

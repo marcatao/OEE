@@ -22,6 +22,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\CalendarioDeTeste;
 use Tests\TestCase;
 
 /**
@@ -29,6 +30,7 @@ use Tests\TestCase;
  */
 class OrdensServicoTest extends TestCase
 {
+    use CalendarioDeTeste;
     use RefreshDatabase;
 
     private Maquina $injetora;
@@ -234,7 +236,7 @@ class OrdensServicoTest extends TestCase
         $this->get('/ordens-de-servico/cadastros/mantenedores/novo')->assertOk()->assertSee('FER-01 — Multímetro')->assertSee('Torquímetro');
         $this->post('/ordens-de-servico/cadastros/mantenedores', ['unidade' => 'manutencao', 'usuario_id' => $maria->id, 'jornada_inicio' => '07:00',
             'jornada_fim' => '17:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'areas' => [$this->mecanica->id],
-            'ferramentas' => [$multimetro->id], 'ativo' => '1'])->assertRedirect();
+            'ferramentas' => [$multimetro->id], 'ativo' => '1', 'calendario_id' => $this->jornada()['calendario_id']])->assertRedirect();
         $m = Mantenedor::where('usuario_id', $maria->id)->firstOrFail();
         $this->assertSame($m->id, $multimetro->fresh()->mantenedor_id);
         $this->assertNotNull($multimetro->fresh()->atribuida_em);
@@ -560,7 +562,7 @@ class OrdensServicoTest extends TestCase
         $this->actingAs($admin)->post('/ordens-de-servico/cadastros/mantenedores', ['unidade' => 'manutencao', 'jornada_inicio' => '06:00',
             'jornada_fim' => '14:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'ativo' => '1'])->assertSessionHasErrors(['usuario_id', 'areas']);
         $this->post('/ordens-de-servico/cadastros/mantenedores', ['unidade' => 'manutencao', 'usuario_id' => $maria->id, 'jornada_inicio' => '06:00',
-            'jornada_fim' => '14:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'areas' => [$this->mecanica->id, $this->ti->id], 'ativo' => '1'])->assertRedirect();
+            'jornada_fim' => '14:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'areas' => [$this->mecanica->id, $this->ti->id], 'ativo' => '1', 'calendario_id' => $this->jornada()['calendario_id']])->assertRedirect();
         $m = Mantenedor::where('usuario_id', $maria->id)->firstOrFail();
         $this->assertSame('Maria', $m->nome);
         $this->assertSame('12345', $m->dias_semana);

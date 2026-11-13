@@ -2,6 +2,7 @@
 
 namespace App\Models\Manutencao;
 
+use App\Models\Calendario;
 use App\Models\Concerns\Auditavel;
 use App\Models\Concerns\TemUnidade;
 use App\Models\Usuario;
@@ -23,7 +24,7 @@ class Mantenedor extends Model
 
     protected $table = 'os_mantenedores';
 
-    protected $fillable = ['unidade', 'usuario_id', 'nome', 'matricula', 'area_executante_id', 'centro_custo',
+    protected $fillable = ['calendario_id', 'unidade', 'usuario_id', 'nome', 'matricula', 'area_executante_id', 'centro_custo',
         'jornada_inicio', 'jornada_fim', 'intervalo_min', 'dias_semana', 'ativo'];
 
     protected $attributes = ['unidade' => 'manutencao', 'jornada_inicio' => '07:00', 'jornada_fim' => '17:00',
@@ -92,5 +93,11 @@ class Mantenedor extends Model
     public function trabalhaNoDia(int $diaIso): bool
     {
         return str_contains((string) $this->dias_semana, (string) $diaIso);
+    }
+
+    /** Calendário de dias úteis do mantenedor (Administração › Calendários). */
+    public function calendario(): BelongsTo
+    {
+        return $this->belongsTo(Calendario::class);
     }
 }

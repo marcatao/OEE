@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BancoController;
+use App\Http\Controllers\Admin\CalendarioController;
 use App\Http\Controllers\Admin\CentroCustoController;
 use App\Http\Controllers\Admin\DispositivoIotController;
 use App\Http\Controllers\Admin\EstruturaController;
@@ -210,6 +211,13 @@ Route::middleware('auth')->group(function () {
 
     // Administração / cadastros (Administrador de Produção ou de Tecnologia; cada um vê as unidades dele)
     Route::middleware('perfil:admin_producao,admin_tecnologia,admin_ferramentaria')->prefix('admin')->name('admin.')->group(function () {
+        // Calendários de dias úteis (anuais, por unidade).
+        Route::get('calendarios', [CalendarioController::class, 'index'])->name('calendarios.index');
+        Route::post('calendarios', [CalendarioController::class, 'store'])->name('calendarios.store');
+        Route::get('calendarios/{calendario}', [CalendarioController::class, 'show'])->whereNumber('calendario')->name('calendarios.show');
+        Route::put('calendarios/{calendario}', [CalendarioController::class, 'update'])->whereNumber('calendario')->name('calendarios.update');
+        Route::post('calendarios/{calendario}/dia', [CalendarioController::class, 'salvarDia'])->whereNumber('calendario')->name('calendarios.dia');
+        Route::post('calendarios/{calendario}/proximo-ano', [CalendarioController::class, 'proximoAno'])->whereNumber('calendario')->name('calendarios.proximo-ano');
 
         Route::get('maquinas', [MaquinaController::class, 'index'])->name('maquinas.index');
         Route::get('maquinas/nova', [MaquinaController::class, 'create'])->name('maquinas.create');

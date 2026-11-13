@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Calendario;
 use App\Models\CentroCusto;
 use App\Models\DispositivoIot;
 use App\Models\Linha;
@@ -79,6 +80,9 @@ class MaquinaController extends Controller
             'centros' => CentroCusto::selecionaveis()->orderBy('ctt_custo')->get()
                 ->unique(fn ($c) => $c->codigo())->values(),
             // Combo dos canais IoT: dispositivos ativos + os que a máquina já usa (mesmo se desativados depois).
+            // Calendários que o usuário enxerga (ativos) + o que a máquina já usa.
+            'calendarios' => Calendario::where(fn ($q) => $q->where('ativo', true)->orWhere('id', (int) $maquina->calendario_id))
+                ->orderByDesc('ano')->orderBy('nome')->get(),
             'dispositivos' => DispositivoIot::where(fn ($q) => $q->where('ativo', true)
                 ->orWhereIn('id', array_filter(array_map(fn ($n) => $maquina->{"iot{$n}_dispositivo_id"}, Maquina::CANAIS_IOT))))
                 ->orderBy('nome')->get(),
@@ -101,6 +105,11 @@ class MaquinaController extends Controller
             'macro_parada_s' => ['nullable', 'integer', 'min:1', 'max:86400'],
             'ativo' => ['required', 'boolean'],
             'situacao' => ['nullable', Rule::in(array_keys(Maquina::SITUACOES))],
+            // Calendário e jornada: obrigatórios para ativar (conferido abaixo).
+            'calendario_id' => ['nullable', 'integer'],
+            'dias' => ['nullable', 'array'], 'dias.*' => ['integer', 'between:1,7'],
+            'jornada_inicio' => ['nullable', 'date_format:H:i'],
+            'jornada_fim' => ['nullable', 'date_format:H:i'],
             'ordem_producao' => ['nullable', 'string', 'max:20'],
         ];
         foreach (Maquina::CANAIS_IOT as $n) {
@@ -156,6 +165,29 @@ class MaquinaController extends Controller
             }
         }
         $this->conferirCanaisRepetidos($dados, $maquina);
+
+        // Calendário (dos que o usuário enxerga e ativos, ou o que a máquina já usa), dias da semana e horário.
+        $calendarioId = $dados['calendario_id'] ?? null;
+        if ($calendarioId && ! Calendario::whereKey($calendarioId)->where(fn ($q) => $q->where('ativo', true)->orWhere('id', (int) $maquina->calendario_id))->exists()) {
+            throw ValidationException::withMessages(['calendario_id' => 'Calendário não encontrado ou inativo.']);
+        }
+        if (array_key_exists('dias', $dados) || $request->has('jornada_inicio')) {
+            $dias = array_unique(array_map('intval', $dados['dias'] ?? []));
+            sort($dias);
+            $dados['dias_semana'] = $dias ? implode('', $dias) : null;
+        }
+        unset($dados['dias']);
+        if ($dados['ativo']) {
+            $faltam = array_filter([
+                'calendario_id' => ($calendarioId ?? $maquina->calendario_id) ? null : 'Para ativar a máquina, escolha o calendário.',
+                'dias' => ($dados['dias_semana'] ?? $maquina->dias_semana) ? null : 'Para ativar a máquina, marque os dias da semana em que ela trabalha.',
+                'jornada_inicio' => (($dados['jornada_inicio'] ?? $maquina->jornada_inicio) && ($dados['jornada_fim'] ?? $maquina->jornada_fim))
+                    ? null : 'Para ativar a máquina, informe o horário em que ela começa e termina.',
+            ]);
+            if ($faltam) {
+                throw ValidationException::withMessages($faltam);
+            }
+        }
 
         // Ativa só com pelo menos um canal IoT (dispositivo ATIVO + canal). Se a máquina estava ativa e ficou sem
         // canal (o canal foi apagado), ela passa a INATIVA.

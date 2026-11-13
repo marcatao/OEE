@@ -8,11 +8,13 @@ use App\Models\Maquina;
 use App\Models\Planta;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\CalendarioDeTeste;
 use Tests\TestCase;
 
 /** Máquina ativa precisa de canal IoT (dispositivo ativo + canal chd1..6); dispositivo + canal só em uma máquina. */
 class MaquinaIotObrigatorioTest extends TestCase
 {
+    use CalendarioDeTeste;
     use RefreshDatabase;
 
     private Linha $linha;
@@ -30,7 +32,7 @@ class MaquinaIotObrigatorioTest extends TestCase
 
     private function dados(string $codigo, array $extra = []): array
     {
-        return $extra + ['codigo' => $codigo, 'nome' => "Máquina {$codigo}", 'linha_id' => $this->linha->id, 'ativo' => '1'];
+        return $extra + ['codigo' => $codigo, 'nome' => "Máquina {$codigo}", 'linha_id' => $this->linha->id, 'ativo' => '1'] + $this->jornada();
     }
 
     private function canal(int $n, string $canal, ?int $dispositivo = null): array

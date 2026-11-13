@@ -841,3 +841,28 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .ss-revisao { margin-top:1rem; }
 .ap-concluir { white-space:nowrap; font-size:.85rem; padding:0; }
 .perfis-areas { grid-template-columns:repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); }
+
+/* Calendários: visão do ano (12 meses) com os dias coloridos pelo tipo */
+.cal-resumo { display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; align-items:center; margin:.75rem 0 1rem; }
+.cal-legenda { display:flex; flex-wrap:wrap; align-items:center; gap:.3rem .9rem; font-size:.82rem; color:var(--suave); }
+.cal-amostra { display:inline-block; width:.9rem; height:.9rem; border-radius:3px; margin-right:.3rem; vertical-align:-.1rem; border:1px solid var(--borda); }
+.cal-ano { position:relative; display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap:1rem 1.25rem; }
+.cal-mes { border:1px solid var(--borda); border-radius:10px; padding:.6rem .7rem .7rem; background:var(--cartao); }
+.cal-mes h3 { margin:0 0 .4rem; font-size:.95rem; display:flex; justify-content:space-between; align-items:baseline; }
+.cal-grade { display:grid; grid-template-columns:repeat(7, 1fr); gap:.2rem; }
+.cal-semana { font-size:.68rem; text-align:center; color:var(--suave); font-weight:600; }
+.cal-dia { aspect-ratio:1; border:1px solid transparent; border-radius:6px; font:inherit; font-size:.8rem; cursor:pointer; padding:0; font-variant-numeric:tabular-nums; }
+.cal-dia:hover, .cal-dia.cal-editando { outline:2px solid var(--primaria); outline-offset:-1px; }
+.cal-normal { background:var(--cartao); color:var(--texto); border-color:var(--borda); }
+.cal-fds { background:var(--fundo); color:var(--suave); }
+.cal-feriado { background:var(--erro-suave); color:var(--erro); font-weight:700; }
+.cal-ponte { background:var(--alerta-suave); color:var(--alerta); font-weight:700; }
+.cal-folga { background:var(--borda); color:var(--suave); font-weight:700; }
+.cal-compensacao { background:var(--protheus-suave); color:var(--protheus); font-weight:700; }
+.cal-util { background:var(--ok-suave); color:var(--ok); font-weight:700; }
+.cal-hoje { box-shadow:inset 0 0 0 2px var(--primaria); }
+.cal-editor { position:absolute; z-index:20; width:min(18rem, 90vw); display:flex; flex-direction:column; gap:.5rem; padding:.75rem; background:var(--cartao);
+  border:1px solid var(--borda-forte); border-radius:10px; box-shadow:var(--sombra-forte); }
+.cal-editor label { display:flex; flex-direction:column; gap:.25rem; font-size:.85rem; color:var(--suave); }
+.cal-editor[hidden] { display:none; }
+.etiqueta.cal-feriado, .etiqueta.cal-ponte, .etiqueta.cal-folga, .etiqueta.cal-compensacao, .etiqueta.cal-util { border-color:transparent; }

@@ -12,11 +12,13 @@ use App\Models\Planta;
 use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\CalendarioDeTeste;
 use Tests\TestCase;
 
 /** Situação (produzindo | parada) e OP atual no cadastro da máquina, atualizadas pelo apontamento real mais recente. */
 class MaquinaSituacaoTest extends TestCase
 {
+    use CalendarioDeTeste;
     use RefreshDatabase;
 
     private Maquina $maquina;
@@ -30,7 +32,7 @@ class MaquinaSituacaoTest extends TestCase
         $linha = Linha::create(['planta_id' => $planta->id, 'codigo' => 'L', 'nome' => 'Linha']);
         $iot = DispositivoIot::create(['codigo' => 'S1', 'nome' => 'Sensor 1', 'tipo' => 'sensor', 'protocolo' => 'mqtt', 'ativo' => true]);
         $this->maquina = Maquina::create(['linha_id' => $linha->id, 'codigo' => 'INJ-12', 'nome' => 'Injetora 12', 'ativo' => true,
-            'iot1_dispositivo_id' => $iot->id, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao']);
+            'iot1_dispositivo_id' => $iot->id, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao'] + $this->jornadaGravada());
         $this->op = OrdemProducao::create(['c2_num' => '062678', 'c2_item' => '01', 'c2_sequen' => '001', 'numero' => '06267801001',
             'c2_produto' => 'PA001', 'status' => 'aberta']);
         ProdutoProtheus::create(['b1_cod' => 'PA001', 'b1_desc' => 'INTERRUPTOR PARALELO', 'b1_um' => 'PC']);

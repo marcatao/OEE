@@ -94,6 +94,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (chd1_value…chd6_value; dados virão de MQTT.dbo.IOT001). Dispositivo + canal só em UMA máquina (todas as unidades).
   Máquina só fica ATIVA com pelo menos um canal com dispositivo ativo; sem canal ela é inativada (ao apagar os canais
   ou desativar o dispositivo: `App\Services\MaquinasSemIot`; em massa: `maquinas:desativar-sem-iot --confirmar`).
+- **Calendários** (Administração › Calendários, `calendarios` + `calendario_dias`, `App\Services\Calendario\DiasUteis` e
+  `Feriados`): anuais, por unidade (TemUnidade), vários por unidade. Nascem com os feriados nacionais, de SP e de São
+  Bernardo do Campo (Carnaval como ponto facultativo); só as EXCEÇÕES são gravadas (feriado, ponte, folga = não útil;
+  compensação, útil = útil); o resto segue os dias da semana de quem usa. Máquina (`calendario_id`, `dias_semana`
+  "12345" ISO, `jornada_inicio|fim`) e mantenedor (`os_mantenedores.calendario_id` + jornada/dias dele) só ficam ATIVOS
+  com calendário, dias e horário. Para saber se trabalha num dia: `DiasUteis::trabalha($maquinaOuMantenedor, $data)`.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
 
 ## Git
