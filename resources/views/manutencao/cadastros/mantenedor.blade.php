@@ -5,7 +5,6 @@
 @use('App\Models\Manutencao\Mantenedor')
 
 @section('conteudo')
-@php($dias = array_map('intval', old('dias', str_split((string) $m->dias_semana))))
 @php($areasMarcadas = array_map('intval', old('areas', $m->exists ? $m->areas->pluck('id')->all() : [])))
 <section class="cartao">
   <p class="trilha">Ordens de serviço › <a href="{{ route('os.cadastros.mantenedores') }}">Mantenedores</a></p>
@@ -73,16 +72,9 @@
           @foreach ($calendarios as $c)<option value="{{ $c->id }}" @selected((int) old('calendario_id', $m->calendario_id) === $c->id)>{{ $c->nome }} {{ $c->ano }} · {{ $c->rotuloUnidade() }}</option>@endforeach
         </select>
         <small>Obrigatório para ativar: dias úteis, feriados e pontes (Administração › Calendários).</small></label>
-      <label>Início da jornada <input type="time" name="jornada_inicio" required value="{{ old('jornada_inicio', $m->jornada_inicio) }}"></label>
-      <label>Fim da jornada <input type="time" name="jornada_fim" required value="{{ old('jornada_fim', $m->jornada_fim) }}"><small>Antes do início = jornada noturna (vira o dia).</small></label>
       <label>Intervalo (min) <input type="number" name="intervalo_min" min="0" max="600" required value="{{ old('intervalo_min', $m->intervalo_min) }}"></label>
     </div>
-    <fieldset class="opcoes-linha">
-      <legend>Dias de trabalho</legend>
-      @foreach (Mantenedor::DIAS_SEMANA as $n => $nome)
-        <label class="opcao"><input type="checkbox" name="dias[]" value="{{ $n }}" @checked(in_array((int) $n, $dias, true))> <span>{{ $nome }}</span></label>
-      @endforeach
-    </fieldset>
+    @include('partials.jornada-semanal', ['registro' => $m])
     <fieldset class="opcoes-linha">
       <legend>Situação</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @checked(old('ativo', (int) $m->ativo) == 1)> <span>Ativo</span></label>

@@ -237,6 +237,7 @@ erDiagram
         nvarchar(7) dias_semana
         nvarchar(5) jornada_inicio
         nvarchar(5) jornada_fim
+        nvarchar(200) horarios_semana
     }
     motivos_parada {
         bigint id PK
@@ -472,6 +473,7 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
         bigint calendario_id FK
+        nvarchar(200) horarios_semana
     }
     os_materiais {
         bigint id PK
@@ -872,7 +874,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
 | [`legendas`](#legendas) | Sistema | `id` | 13 | 2 |
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
-| [`maquinas`](#maquinas) | Mista | `id` | 41 | 9 |
+| [`maquinas`](#maquinas) | Mista | `id` | 42 | 9 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
@@ -887,7 +889,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`os_interacoes`](#os_interacoes) | Sistema | `id` | 5 | 2 |
 | [`os_justificativas_setor`](#os_justificativas_setor) | Sistema | `id` | 9 | 2 |
 | [`os_mantenedor_areas`](#os_mantenedor_areas) | Sistema | `id` | 5 | 3 |
-| [`os_mantenedores`](#os_mantenedores) | Sistema | `id` | 17 | 5 |
+| [`os_mantenedores`](#os_mantenedores) | Sistema | `id` | 18 | 5 |
 | [`os_materiais`](#os_materiais) | Sistema | `id` | 14 | 3 |
 | [`os_ordem_mantenedores`](#os_ordem_mantenedores) | Sistema | `id` | 5 | 3 |
 | [`os_planos_itens`](#os_planos_itens) | Sistema | `id` | 9 | 3 |
@@ -1320,6 +1322,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `dias_semana` | `nvarchar(7)` | sim |  |  |
 | `jornada_inicio` | `nvarchar(5)` | sim |  |  |
 | `jornada_fim` | `nvarchar(5)` | sim |  |  |
+| `horarios_semana` | `nvarchar(200)` | sim |  |  |
 
 **Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_) · `maquinas_unidade_index` (unidade)
 
@@ -1678,6 +1681,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `calendario_id` | `bigint` | sim |  | FK → `calendarios.id` |
+| `horarios_semana` | `nvarchar(200)` | sim |  |  |
 
 **Índices:** `ux_os_mantenedores_usuario` único (usuario_id) filtrado `WHERE usuario_id IS NOT NULL` (só SQL Server) · `os_mantenedores_unidade_index` (unidade) · `os_mantenedores_area_executante_id_index` (area_executante_id)
 

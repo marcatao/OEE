@@ -31,7 +31,7 @@ class Maquina extends Model
         // Situação atual (produzindo | parada) e OP atual: pelo cadastro ou pelo apontamento real mais recente.
         'situacao', 'situacao_desde', 'situacao_legenda_id', 'ordem_producao_id',
         // Calendário de dias úteis e jornada (dias da semana ISO "12345", HH:MM). Obrigatórios para ativar.
-        'calendario_id', 'dias_semana', 'jornada_inicio', 'jornada_fim',
+        'calendario_id', 'dias_semana', 'jornada_inicio', 'jornada_fim', 'horarios_semana',
     ];
 
     public const SITUACOES = ['produzindo' => 'Produzindo', 'parada' => 'Parada'];

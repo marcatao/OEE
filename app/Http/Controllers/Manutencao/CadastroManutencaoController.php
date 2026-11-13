@@ -11,6 +11,7 @@ use App\Models\Manutencao\SugestaoDescricao;
 use App\Models\Usuario;
 use App\Services\Manutencao\HorasManutencao;
 use App\Support\AcessoOs;
+use App\Support\JornadaSemanal;
 use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -92,10 +93,11 @@ class CadastroManutencaoController extends Controller
             'areas' => ['required', 'array', 'min:1'],
             'areas.*' => ['integer', Rule::exists('os_areas_executantes', 'id')],
             'centro_custo' => ['nullable', 'string', 'max:20'],
-            'jornada_inicio' => ['required', 'date_format:H:i'],
-            'jornada_fim' => ['required', 'date_format:H:i'],
+            'jornada_inicio' => ['nullable', 'date_format:H:i'],
+            'jornada_fim' => ['nullable', 'date_format:H:i'],
             'intervalo_min' => ['required', 'integer', 'between:0,600'],
-            'dias' => ['required', 'array', 'min:1'], 'dias.*' => ['integer', 'between:1,7'],
+            ...JornadaSemanal::regras(),
+            'dias' => ['required', 'array', 'min:1'],
             'ferramentas' => ['nullable', 'array'], 'ferramentas.*' => ['integer', Rule::exists('os_ferramentas', 'id')],
             'ativo' => ['required', 'boolean'],
             'calendario_id' => ['nullable', 'integer'],
@@ -114,11 +116,11 @@ class CadastroManutencaoController extends Controller
         if ($dados['ativo'] && ! $calendarioId) {
             throw ValidationException::withMessages(['calendario_id' => 'Para ativar o mantenedor, escolha o calendário.']);
         }
-        $dias = array_unique(array_map('intval', $dados['dias']));
-        sort($dias);
+        // Cada dia marcado com o horário em que começa e termina.
+        $jornada = JornadaSemanal::colunas(JornadaSemanal::doFormulario($dados));
         $usuario = ! empty($dados['usuario_id']) ? Usuario::find($dados['usuario_id']) : null;
 
-        DB::transaction(function () use ($m, $dados, $dias, $usuario, $calendarioId) {
+        DB::transaction(function () use ($m, $dados, $jornada, $usuario, $calendarioId) {
             $m->fill([
                 'unidade' => $dados['unidade'],
                 'usuario_id' => $usuario?->id,
@@ -126,10 +128,8 @@ class CadastroManutencaoController extends Controller
                 'nome' => $usuario?->nome ?: ($m->nome ?: 'Sem nome'),
                 'matricula' => $dados['matricula'] ?? null,
                 'centro_custo' => $dados['centro_custo'] ?? null,
-                'jornada_inicio' => $dados['jornada_inicio'],
-                'jornada_fim' => $dados['jornada_fim'],
+                ...$jornada,
                 'intervalo_min' => $dados['intervalo_min'],
-                'dias_semana' => implode('', $dias),
                 'ativo' => (bool) $dados['ativo'],
                 'calendario_id' => $calendarioId,
             ])->save();

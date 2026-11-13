@@ -2,6 +2,7 @@
 
 namespace App\Services\Manutencao;
 
+use App\Support\JornadaSemanal;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
@@ -20,9 +21,11 @@ final class HorasManutencao
         public readonly string $jornadaFim = '17:00',
         public readonly int $intervaloMin = 60,
         public readonly string $diasSemana = '12345',
+        /** Horário por dia da semana (dia ISO => [início, fim]); sem ele, jornadaInicio/jornadaFim nos diasSemana. */
+        public readonly array $horarios = [],
     ) {}
 
-    /** Jornada de um mantenedor (qualquer objeto com jornada_inicio, jornada_fim, intervalo_min e dias_semana). */
+    /** Jornada de um mantenedor (jornada_inicio, jornada_fim, intervalo_min, dias_semana e o horário de cada dia). */
     public static function de(object $mantenedor): self
     {
         return new self(
@@ -30,6 +33,7 @@ final class HorasManutencao
             (string) ($mantenedor->jornada_fim ?: '17:00'),
             (int) ($mantenedor->intervalo_min ?? 60),
             (string) ($mantenedor->dias_semana ?? '12345'),
+            JornadaSemanal::de($mantenedor),
         );
     }
 
@@ -86,22 +90,39 @@ final class HorasManutencao
         return $minutos;
     }
 
-    /** Minutos de jornada num dia de trabalho (sem o intervalo). */
+    /** Minutos de jornada num dia de trabalho (sem o intervalo); com horários diferentes por dia, a média dos dias. */
     public function minutosPorDia(): int
     {
-        [$a, $b] = $this->janela(CarbonImmutable::parse('2026-01-05', self::fuso()), true);
+        if (! $this->horarios) {
+            [$a, $b] = $this->janela(CarbonImmutable::parse('2026-01-05', self::fuso()), true);
 
-        return max(0, intdiv($b->getTimestamp() - $a->getTimestamp(), 60) - $this->intervaloMin);
+            return max(0, intdiv($b->getTimestamp() - $a->getTimestamp(), 60) - $this->intervaloMin);
+        }
+        $total = 0;
+        foreach (array_keys($this->horarios) as $dia) {
+            // 2026-01-05 é uma segunda-feira: + (dia − 1) cai no dia da semana certo.
+            [$a, $b] = $this->janela(CarbonImmutable::parse('2026-01-05', self::fuso())->addDays($dia - 1));
+            $total += max(0, intdiv($b->getTimestamp() - $a->getTimestamp(), 60) - $this->intervaloMin);
+        }
+
+        return intdiv($total, count($this->horarios));
     }
 
     /** @return array{0: ?CarbonImmutable, 1: ?CarbonImmutable} */
     private function janela(CarbonImmutable $dia, bool $qualquerDia = false): array
     {
-        if (! $qualquerDia && ! str_contains($this->diasSemana, (string) $dia->isoWeekday())) {
+        if ($this->horarios) {
+            if (! isset($this->horarios[$dia->isoWeekday()])) {
+                return [null, null];
+            }
+            [$hIni, $hFim] = $this->horarios[$dia->isoWeekday()];
+        } elseif (! $qualquerDia && ! str_contains($this->diasSemana, (string) $dia->isoWeekday())) {
             return [null, null];
+        } else {
+            [$hIni, $hFim] = [$this->jornadaInicio, $this->jornadaFim];
         }
-        $ini = $dia->setTimeFromTimeString($this->jornadaInicio);
-        $fim = $dia->setTimeFromTimeString($this->jornadaFim);
+        $ini = $dia->setTimeFromTimeString($hIni);
+        $fim = $dia->setTimeFromTimeString($hFim);
         if ($fim <= $ini) {
             $fim = $fim->addDay();
         }

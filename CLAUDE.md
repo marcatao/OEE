@@ -97,9 +97,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - **Calendários** (Administração › Calendários, `calendarios` + `calendario_dias`, `App\Services\Calendario\DiasUteis` e
   `Feriados`): anuais, por unidade (TemUnidade), vários por unidade. Nascem com os feriados nacionais, de SP e de São
   Bernardo do Campo (Carnaval como ponto facultativo); só as EXCEÇÕES são gravadas (feriado, ponte, folga = não útil;
-  compensação, útil = útil); o resto segue os dias da semana de quem usa. Máquina (`calendario_id`, `dias_semana`
-  "12345" ISO, `jornada_inicio|fim`) e mantenedor (`os_mantenedores.calendario_id` + jornada/dias dele) só ficam ATIVOS
-  com calendário, dias e horário. Para saber se trabalha num dia: `DiasUteis::trabalha($maquinaOuMantenedor, $data)`.
+  compensação, útil = útil); o resto segue os dias da semana de quem usa. Máquina e mantenedor (`calendario_id`) só
+  ficam ATIVOS com calendário e dias de trabalho, CADA DIA com o horário em que começa e termina
+  (`App\Support\JornadaSemanal` + partial `partials.jornada-semanal`; coluna `horarios_semana` JSON; `dias_semana` e
+  `jornada_inicio|fim` = dias marcados e horário do 1º dia, lidos quando não há `horarios_semana`). As horas normais ×
+  extras do mantenedor (`HorasManutencao`) usam o horário de cada dia. Para saber se trabalha num dia: `DiasUteis::trabalha($maquinaOuMantenedor, $data)`.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
 
 ## Git

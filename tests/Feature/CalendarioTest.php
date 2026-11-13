@@ -12,6 +12,8 @@ use App\Models\Planta;
 use App\Models\Usuario;
 use App\Services\Calendario\DiasUteis;
 use App\Services\Calendario\Feriados;
+use App\Services\Manutencao\HorasManutencao;
+use App\Support\JornadaSemanal;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -91,11 +93,25 @@ class CalendarioTest extends TestCase
             'iot1_dispositivo_id' => $iot->id, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao'];
 
         $this->get('/admin/maquinas/nova')->assertOk()->assertSee('Calendário e jornada')->assertSee('Padrão 2026');
-        $this->post('/admin/maquinas', $base)->assertSessionHasErrors(['calendario_id', 'dias', 'jornada_inicio']);
+        $this->post('/admin/maquinas', $base)->assertSessionHasErrors(['calendario_id', 'dias']);
         $this->post('/admin/maquinas', $base + ['calendario_id' => $c->id, 'dias' => [1, 2, 3, 4, 5, 6], 'jornada_inicio' => '06:00', 'jornada_fim' => '22:00'])
             ->assertSessionHasNoErrors();
         $m = Maquina::sole();
         $this->assertSame([$c->id, '123456', '06:00', '22:00'], [$m->calendario_id, $m->dias_semana, $m->jornada_inicio, $m->jornada_fim]);
+
+        // Horário por dia da semana: sábado só de manhã; dia marcado sem horário = erro.
+        $this->put("/admin/maquinas/{$m->id}", $base + ['calendario_id' => $c->id, 'dias' => [1, 6],
+            'horario' => [1 => ['inicio' => '06:00', 'fim' => '22:00'], 6 => ['inicio' => '', 'fim' => '']]])->assertSessionHasErrors('horario.6');
+        $this->put("/admin/maquinas/{$m->id}", $base + ['calendario_id' => $c->id, 'dias' => [1, 2, 3, 4, 5, 6],
+            'horario' => [1 => ['inicio' => '06:00', 'fim' => '22:00'], 2 => ['inicio' => '06:00', 'fim' => '22:00'], 3 => ['inicio' => '06:00', 'fim' => '22:00'],
+                4 => ['inicio' => '06:00', 'fim' => '22:00'], 5 => ['inicio' => '06:00', 'fim' => '18:00'], 6 => ['inicio' => '07:00', 'fim' => '11:00'],
+                7 => ['inicio' => '08:00', 'fim' => '09:00']]])->assertSessionHasNoErrors();
+        $m->refresh();
+        $this->assertSame([1 => ['06:00', '22:00'], 2 => ['06:00', '22:00'], 3 => ['06:00', '22:00'], 4 => ['06:00', '22:00'], 5 => ['06:00', '18:00'], 6 => ['07:00', '11:00']],
+            JornadaSemanal::de($m)); // domingo desmarcado não grava
+        $this->assertSame('123456', $m->dias_semana);
+        $this->assertSame('Seg–Qui 06:00–22:00 · Sex 06:00–18:00 · Sáb 07:00–11:00', JornadaSemanal::texto(JornadaSemanal::de($m)));
+        $this->get("/admin/maquinas/{$m->id}/editar")->assertOk()->assertSee('name="horario[6][fim]" value="11:00"', false);
 
         // A máquina entende os dias úteis: trabalha no sábado (dias dela), não no feriado; compensação num domingo, sim.
         $dias = app(DiasUteis::class);
@@ -114,6 +130,18 @@ class CalendarioTest extends TestCase
         $this->post('/ordens-de-servico/cadastros/mantenedores', $dadosM + ['calendario_id' => ''])->assertSessionHasErrors('calendario_id');
         $this->post('/ordens-de-servico/cadastros/mantenedores', $dadosM + ['calendario_id' => $c->id])->assertSessionHasNoErrors();
         $this->assertSame($c->id, Mantenedor::sole()->calendario_id);
+        // Mantenedor com horário diferente na sexta: a sexta conta 07:00–16:00 nas horas normais.
+        $mant = Mantenedor::sole();
+        $this->put("/ordens-de-servico/cadastros/mantenedores/{$mant->id}", ['calendario_id' => $c->id, 'jornada_inicio' => null, 'jornada_fim' => null,
+            'horario' => [1 => ['inicio' => '07:00', 'fim' => '17:00'], 5 => ['inicio' => '07:00', 'fim' => '16:00']], 'dias' => [1, 5]] + $dadosM)
+            ->assertSessionHasNoErrors();
+        $h = HorasManutencao::de($mant->fresh());
+        $fuso = HorasManutencao::fuso();
+        $this->assertSame(['normais' => 60, 'extras' => 60],
+            $h->dividir(CarbonImmutable::parse('2026-06-12 15:00', $fuso), CarbonImmutable::parse('2026-06-12 17:00', $fuso))); // sexta
+        $this->assertSame(['normais' => 120, 'extras' => 0],
+            $h->dividir(CarbonImmutable::parse('2026-06-08 15:00', $fuso), CarbonImmutable::parse('2026-06-08 17:00', $fuso))); // segunda
+        $this->assertSame(510, $h->minutosPorDia()); // (540 + 480) ÷ 2
 
         // Próximo ano: cria o de 2027 com os feriados e leva máquinas e mantenedores.
         $this->post("/admin/calendarios/{$c->id}/proximo-ano", ['mover' => '1'])->assertRedirect();

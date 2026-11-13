@@ -866,3 +866,11 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .cal-editor label { display:flex; flex-direction:column; gap:.25rem; font-size:.85rem; color:var(--suave); }
 .cal-editor[hidden] { display:none; }
 .etiqueta.cal-feriado, .etiqueta.cal-ponte, .etiqueta.cal-folga, .etiqueta.cal-compensacao, .etiqueta.cal-util { border-color:transparent; }
+
+/* Jornada por dia da semana (máquinas e mantenedores) */
+.jornada-semanal table { width:auto; min-width:min(100%, 34rem); }
+.jornada-semanal td, .jornada-semanal th { padding:.3rem .6rem; vertical-align:middle; }
+.jornada-semanal input[type=time] { width:auto; min-width:7.5rem; }
+.jornada-semanal .opcao { margin:0; }
+.jornada-semanal tr.folga td:not(:first-child) { opacity:.45; }
+.jornada-semanal [data-horas] { color:var(--suave); font-variant-numeric:tabular-nums; }

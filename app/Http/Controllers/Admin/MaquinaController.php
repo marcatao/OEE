@@ -9,6 +9,7 @@ use App\Models\DispositivoIot;
 use App\Models\Linha;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
+use App\Support\JornadaSemanal;
 use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -107,7 +108,7 @@ class MaquinaController extends Controller
             'situacao' => ['nullable', Rule::in(array_keys(Maquina::SITUACOES))],
             // Calendário e jornada: obrigatórios para ativar (conferido abaixo).
             'calendario_id' => ['nullable', 'integer'],
-            'dias' => ['nullable', 'array'], 'dias.*' => ['integer', 'between:1,7'],
+            ...JornadaSemanal::regras(),
             'jornada_inicio' => ['nullable', 'date_format:H:i'],
             'jornada_fim' => ['nullable', 'date_format:H:i'],
             'ordem_producao' => ['nullable', 'string', 'max:20'],
@@ -171,18 +172,16 @@ class MaquinaController extends Controller
         if ($calendarioId && ! Calendario::whereKey($calendarioId)->where(fn ($q) => $q->where('ativo', true)->orWhere('id', (int) $maquina->calendario_id))->exists()) {
             throw ValidationException::withMessages(['calendario_id' => 'Calendário não encontrado ou inativo.']);
         }
-        if (array_key_exists('dias', $dados) || $request->has('jornada_inicio')) {
-            $dias = array_unique(array_map('intval', $dados['dias'] ?? []));
-            sort($dias);
-            $dados['dias_semana'] = $dias ? implode('', $dias) : null;
+        // Dias da semana, cada um com o horário em que começa e termina (só se vieram do formulário).
+        if (array_key_exists('dias', $dados) || $request->has('jornada_inicio') || $request->has('horario')) {
+            $dados = array_merge($dados, JornadaSemanal::colunas(JornadaSemanal::doFormulario($dados)));
         }
-        unset($dados['dias']);
+        unset($dados['dias'], $dados['horario']);
         if ($dados['ativo']) {
             $faltam = array_filter([
                 'calendario_id' => ($calendarioId ?? $maquina->calendario_id) ? null : 'Para ativar a máquina, escolha o calendário.',
-                'dias' => ($dados['dias_semana'] ?? $maquina->dias_semana) ? null : 'Para ativar a máquina, marque os dias da semana em que ela trabalha.',
-                'jornada_inicio' => (($dados['jornada_inicio'] ?? $maquina->jornada_inicio) && ($dados['jornada_fim'] ?? $maquina->jornada_fim))
-                    ? null : 'Para ativar a máquina, informe o horário em que ela começa e termina.',
+                'dias' => (array_key_exists('dias_semana', $dados) ? $dados['dias_semana'] : $maquina->dias_semana)
+                    ? null : 'Para ativar a máquina, marque os dias da semana em que ela trabalha e o horário de cada um.',
             ]);
             if ($faltam) {
                 throw ValidationException::withMessages($faltam);

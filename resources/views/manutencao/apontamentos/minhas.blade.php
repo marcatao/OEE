@@ -12,7 +12,7 @@
   @if (! $mantenedor)
     <p class="aviso erro">Seu login não está ligado a um mantenedor. Peça para um administrador ligar em Ordens de serviço › Mantenedores.</p>
   @else
-    <p class="suave">{{ $mantenedor->nome }} · jornada {{ $mantenedor->jornada_inicio }}–{{ $mantenedor->jornada_fim }}. Hoje: <strong>{{ HorasManutencao::hhmm($hoje->sum(fn ($a) => $a->minutosTotais())) }}</strong> apontadas.</p>
+    <p class="suave">{{ $mantenedor->nome }} · jornada {{ \App\Support\JornadaSemanal::texto(\App\Support\JornadaSemanal::de($mantenedor)) }}. Hoje: <strong>{{ HorasManutencao::hhmm($hoje->sum(fn ($a) => $a->minutosTotais())) }}</strong> apontadas.</p>
   @endif
 
   @if ($rodando)
