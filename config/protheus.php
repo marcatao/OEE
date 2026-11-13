@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\ImportadorCentrosCusto;
+use App\Services\Protheus\ImportadorEmpenhos;
 use App\Services\Protheus\ImportadorEstruturas;
 use App\Services\Protheus\ImportadorFerramentas;
 use App\Services\Protheus\ImportadorMaquinas;
@@ -72,6 +73,14 @@ return [
             'tabela_destino' => 'ordens_producao',
             'importador' => ImportadorOrdensProducao::class,
             'modo' => 'espelho', // cópia da SC2 + "status" e "custo_meta" (SB9) calculados pelo portal
+        ],
+        // Empenhos (SD4): materiais reservados para cada OP; o saldo (D4_QUANT) cai com as baixas.
+        'empenhos_op' => [
+            'descricao' => 'Empenhos OP',
+            'tabela_origem' => env('PROTHEUS_TABELA_SD4') ?: 'SD4',
+            'tabela_destino' => 'empenhos_op',
+            'importador' => ImportadorEmpenhos::class,
+            'modo' => 'espelho',
         ],
         // Movimentos internos (SD3) que têm OP: produções e consumos (baixas) das ordens de produção.
         'movimentos_producao' => [

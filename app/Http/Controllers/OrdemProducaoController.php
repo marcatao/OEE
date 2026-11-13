@@ -6,6 +6,7 @@ use App\Models\OrdemProducao;
 use App\Models\ProdutoProtheus;
 use App\Models\Sincronizacao;
 use App\Services\CustoOrdemProducao;
+use App\Services\EngenhariaOrdemProducao;
 use App\Services\TiposMovimento;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -49,13 +50,17 @@ class OrdemProducaoController extends Controller
         ]);
     }
 
-    /** Detalhes da OP: kardex com os movimentos (SD3 e SD2), resumos e comparação com o custo meta (SB9). */
-    public function show(OrdemProducao $ordem, CustoOrdemProducao $custo, TiposMovimento $tipos): View
+    /**
+     * Detalhes da OP: kardex com os movimentos (SD3 e SD2), resumos e comparação com o custo meta (SB9); empenhos (SD4),
+     * estrutura atual (SG1), roteiro (SG2) e ferramenta/molde (SH4) da OP.
+     */
+    public function show(OrdemProducao $ordem, CustoOrdemProducao $custo, TiposMovimento $tipos, EngenhariaOrdemProducao $engenharia): View
     {
         abort_if($ordem->d_e_l_e_t_ === '*', 404);
 
+        // Kardex e custo; depois empenhos (SD4), estrutura (SG1), roteiro (SG2) e ferramentas/moldes (SH4) da OP.
         return view('ordens-producao.show', ['op' => $ordem, 'tipos' => $tipos, 'apontamentos' => $ordem->apontamentos()->count()]
-            + $custo->kardex($ordem));
+            + $custo->kardex($ordem) + $engenharia->daOp($ordem));
     }
 
     /**

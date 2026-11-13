@@ -14,6 +14,7 @@ use App\Http\Controllers\Cadastros\AcessoController;
 use App\Http\Controllers\Cadastros\GrupoController;
 use App\Http\Controllers\Cadastros\UsuarioController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmpenhoOpController;
 use App\Http\Controllers\EstruturaProdutoController;
 use App\Http\Controllers\FerramentaController;
 use App\Http\Controllers\Manutencao\ApontamentoHorasController;
@@ -74,6 +75,8 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('producao/apontamentos-de-producao', [ApontamentoProducaoController::class, 'index'])
         ->middleware('permissao:apontamentos_producao')->name('apontamentos-producao.index');
+    Route::get('producao/empenhos-op', [EmpenhoOpController::class, 'index'])
+        ->middleware('permissao:empenhos_op')->name('empenhos-op.index');
     // Estruturas (SG1) e roteiros (SG2): consulta. Ferramentas (SH4): consulta; administradores editam cavidades ativas.
     Route::get('producao/estruturas', [EstruturaProdutoController::class, 'index'])
         ->middleware('permissao:estruturas')->name('estruturas.index');

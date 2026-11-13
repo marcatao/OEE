@@ -40,7 +40,7 @@
           </div>
         @endif
 
-        @if ($u->pode('apontamentos') || $u->pode('apontamentos_producao') || $u->pode('ordens_producao') || $u->pode('estruturas') || $u->pode('roteiros') || $u->pode('ferramentas') || $u->pode('calculadora') || $u->ehAdmin())
+        @if ($u->pode('apontamentos') || $u->pode('apontamentos_producao') || $u->pode('empenhos_op') || $u->pode('ordens_producao') || $u->pode('estruturas') || $u->pode('roteiros') || $u->pode('ferramentas') || $u->pode('calculadora') || $u->ehAdmin())
           <div class="menu-bloco" data-bloco="producao">
             @include('layouts.partials.menu-secao', ['titulo' => 'Produção'])
             <div class="menu-itens">
@@ -49,6 +49,9 @@
               @endif
               @if ($u->pode('apontamentos_producao'))
                 @include('layouts.partials.menu-link', ['rota' => 'apontamentos-producao.index', 'rotulo' => 'Apontamentos OP', 'icone' => 'movimento', 'ativo' => 'apontamentos-producao.*'])
+              @endif
+              @if ($u->pode('empenhos_op'))
+                @include('layouts.partials.menu-link', ['rota' => 'empenhos-op.index', 'rotulo' => 'Empenhos OP', 'icone' => 'caixa', 'ativo' => 'empenhos-op.*'])
               @endif
               @if ($u->pode('ordens_producao'))
                 @include('layouts.partials.menu-link', ['rota' => 'ordens-producao.index', 'rotulo' => 'Ordens de produção', 'icone' => 'ordem_producao', 'ativo' => 'ordens-producao.*'])

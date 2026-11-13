@@ -889,3 +889,7 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .dialogo h2 { margin-top:0; font-size:1.15rem; }
 .dialogo label { display:flex; flex-direction:column; gap:.3rem; }
 .dialogo .acoes { margin-top:1rem; }
+
+/* OP: ferramenta/molde em destaque no cabeçalho */
+.op-molde { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; padding:.55rem .75rem; border-radius:.6rem; background:var(--primaria-suave); }
+.op-molde svg { width:1.1rem; height:1.1rem; }

@@ -23,6 +23,7 @@ return [
         'apontamentos' => 'Apontamento real (registrar estados das máquinas)',
         'apontamentos_producao' => 'Apontamentos OP (produções, baixas e notas das OPs no Protheus)',
         'ordens_producao' => 'Ordens de produção (consulta, custos e kardex)',
+        'empenhos_op' => 'Empenhos OP (SD4: materiais reservados para cada OP, consulta)',
         'estruturas' => 'Estruturas de produto (SG1, consulta)',
         'roteiros' => 'Roteiros de operação (SG2, consulta)',
         'ferramentas' => 'Ferramentas (SH4: consulta; administradores editam as cavidades ativas)',

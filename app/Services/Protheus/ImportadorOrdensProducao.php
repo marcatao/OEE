@@ -19,6 +19,7 @@ class ImportadorOrdensProducao extends ImportadorEspelho
 {
     public const CAMPOS = ['C2_FILIAL', 'C2_NUM', 'C2_ITEM', 'C2_SEQUEN', 'C2_PRODUTO', 'C2_LOCAL', 'C2_CC', 'C2_UM',
         'C2_QUANT', 'C2_QUJE', 'C2_PERDA', 'C2_EMISSAO', 'C2_DATPRI', 'C2_DATPRF', 'C2_DATRF', 'C2_TPOP', 'C2_STATUS', 'C2_OBS',
+        'C2_ROTEIRO', 'C2_REVISAO',
         'D_E_L_E_T_', 'R_E_C_N_O_'];
 
     public function __construct(private StatusOrdemProducao $status, private CustoOrdemProducao $custo) {}
@@ -81,6 +82,8 @@ class ImportadorOrdensProducao extends ImportadorEspelho
             'c2_tpop' => self::texto($l, 'C2_TPOP', 1),
             'c2_status' => self::texto($l, 'C2_STATUS', 1),
             'c2_obs' => self::texto($l, 'C2_OBS', 120),
+            'c2_roteiro' => self::texto($l, 'C2_ROTEIRO', 2),
+            'c2_revisao' => self::texto($l, 'C2_REVISAO', 3),
             'd_e_l_e_t_' => self::excluida($l),
             'r_e_c_n_o_' => isset($l['R_E_C_N_O_']) ? (int) $l['R_E_C_N_O_'] : null,
         ];

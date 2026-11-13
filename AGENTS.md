@@ -54,6 +54,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `C2_DATRF` preenchido; vazio = aberta/andamento/parada). Toda sincronização atualiza qualquer campo da OP que mudou
   no Protheus e recalcula o status de TODAS as OPs, por lote (`StatusOrdemProducao::atualizarLote`, autorizado pelo
   usuário); recalcule também ao gravar/excluir apontamentos com OP. A tabela antiga `produtos` (Sistema OEE) não é a do Protheus.
+- `empenhos_op` é cópia da SD4 (`ImportadorEmpenhos`, por R_E_C_N_O_, lida inteira: o saldo D4_QUANT muda; tela
+  Produção › Empenhos OP, permissão `empenhos_op`). Na tela da OP, abaixo do kardex: empenhos, estrutura atual, roteiro e
+  ferramenta/molde, pelos relacionamentos do Protheus em `App\Services\EngenhariaOrdemProducao` (D4_OP = número da OP;
+  SG1 por C2_PRODUTO vigente hoje e C2_REVISAO; SG2 por C2_PRODUTO + C2_ROTEIRO, em branco = "01"; G2_CTRAB = máquina;
+  G2_FERRAM = SH4; SG1/SG2/SH4 na filial da OP ou em branco). `ordens_producao.c2_roteiro|c2_revisao` vêm da SC2.
 - `estruturas_produto` (SG1) e `roteiros_operacao` (SG2) são cópias (só consulta). `ferramentas` (SH4) é **mista**:
   campos `h4_*` vêm do Protheus a cada sincronização; `h4_qtdcavativas` (nasce = `h4_qtdcav`, nunca maior, editável
   pelos administradores) e `unidade` são do portal e a sincronização NÃO os sobrepõe (`ImportadorFerramentas`).

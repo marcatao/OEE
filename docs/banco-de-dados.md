@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **48** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **49** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -103,6 +103,23 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
         nvarchar(20) unidade
+    }
+    empenhos_op {
+        bigint id PK
+        nvarchar(8) d4_filial
+        nvarchar(30) d4_cod
+        nvarchar(20) d4_op
+        nvarchar(20) op_numero
+        nvarchar(4) d4_local
+        nchar(8) d4_data
+        float(53) d4_qtdeori
+        float(53) d4_quant
+        nvarchar(3) d4_trt
+        nvarchar(20) d4_lotectl
+        nvarchar(20) d4_oporig
+        nchar(1) d_e_l_e_t_
+        int r_e_c_n_o_ UK
+        datetime sincronizado_em
     }
     estruturas_produto {
         bigint id PK
@@ -322,6 +339,8 @@ erDiagram
         datetime status_em
         datetime sincronizado_em
         float(53) custo_meta
+        nvarchar(2) c2_roteiro
+        nvarchar(3) c2_revisao
     }
     ordens_servico {
         bigint id PK
@@ -863,6 +882,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`calendarios`](#calendarios) | Sistema | `id` | 10 | 2 |
 | [`centros_custo`](#centros_custo) | Protheus | `id` | 16 | 2 |
 | [`dispositivos_iot`](#dispositivos_iot) | Sistema | `id` | 17 | 3 |
+| [`empenhos_op`](#empenhos_op) | Protheus | `id` | 15 | 0 |
 | [`estruturas_produto`](#estruturas_produto) | Protheus | `id` | 15 | 0 |
 | [`failed_jobs`](#failed_jobs) | Infra | `id` | 7 | 0 |
 | [`ferramentas`](#ferramentas) | Mista | `id` | 17 | 2 |
@@ -878,7 +898,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
-| [`ordens_producao`](#ordens_producao) | Protheus | `id` | 26 | 0 |
+| [`ordens_producao`](#ordens_producao) | Protheus | `id` | 28 | 0 |
 | [`ordens_servico`](#ordens_servico) | Sistema | `id` | 33 | 12 |
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
 | [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 9 | 2 |
@@ -1076,6 +1096,30 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `dispositivos_iot_codigo_unique` único (codigo) · `dispositivos_iot_maquina_id_index` (maquina_id) · `dispositivos_iot_unidade_index` (unidade)
 
 **Regras (CHECK, só no SQL Server):** `ck_dispositivos_iot_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
+
+### empenhos_op
+
+**Origem:** Protheus — sincronizada de `Compras.SD4` · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `d4_filial` | `nvarchar(8)` | não | `''` |  |
+| `d4_cod` | `nvarchar(30)` | não | `''` |  |
+| `d4_op` | `nvarchar(20)` | não | `''` |  |
+| `op_numero` | `nvarchar(20)` | não | `''` |  |
+| `d4_local` | `nvarchar(4)` | não | `''` |  |
+| `d4_data` | `nchar(8)` | não | `''` |  |
+| `d4_qtdeori` | `float(53)` | não | `'0'` |  |
+| `d4_quant` | `float(53)` | não | `'0'` |  |
+| `d4_trt` | `nvarchar(3)` | não | `''` |  |
+| `d4_lotectl` | `nvarchar(20)` | não | `''` |  |
+| `d4_oporig` | `nvarchar(20)` | não | `''` |  |
+| `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
+| `r_e_c_n_o_` | `int` | não |  |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `empenhos_op_r_e_c_n_o__unique` único (r_e_c_n_o_) · `empenhos_op_op_numero_d4_filial_index` (op_numero, d4_filial) · `empenhos_op_d4_cod_index` (d4_cod)
 
 ### estruturas_produto
 
@@ -1437,6 +1481,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `status_em` | `datetime` | sim |  |  |
 | `sincronizado_em` | `datetime` | sim |  |  |
 | `custo_meta` | `float(53)` | sim |  |  |
+| `c2_roteiro` | `nvarchar(2)` | não | `''` |  |
+| `c2_revisao` | `nvarchar(3)` | não | `''` |  |
 
 **Índices:** `ordens_producao_c2_filial_c2_num_c2_item_c2_sequen_unique` único (c2_filial, c2_num, c2_item, c2_sequen) · `ordens_producao_numero_index` (numero) · `ordens_producao_status_c2_datprf_index` (status, c2_datprf) · `ordens_producao_c2_produto_index` (c2_produto)
 
