@@ -33,6 +33,7 @@ class BancoController extends Controller
             'origens' => $banco->origens(),
             'conexaoProtheus' => $banco->descricao('protheus'),
             'sincronizacoes' => $sincronizador->itens(),
+            'vias' => collect($sincronizador->itens())->keys()->mapWithKeys(fn ($c) => [$c => $sincronizador->via($c)])->all(),
             'ultimas' => $temHistorico ? $sincronizador->ultimas() : [],
             'historico' => $temHistorico ? Sincronizacao::with('usuario')->latest('iniciado_em')->latest('id')->limit(10)->get() : collect(),
             'agenda' => config('protheus.agenda'),

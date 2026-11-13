@@ -8,6 +8,7 @@ use App\Services\MaquinasSemIot;
 use App\Services\Protheus\SincronizadorProtheus;
 use App\Services\SituacaoMaquina;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('banco:testar', function (InfoBanco $banco) {
@@ -19,6 +20,24 @@ Artisan::command('banco:testar', function (InfoBanco $banco) {
 
     return $ok ? 0 : 1;
 })->purpose('Mostra a conexão com o banco configurada no .env e testa se ela funciona');
+
+// Recria as procedures do portal a partir de database/procedures/*.sql (cada arquivo começa com ALTER PROCEDURE).
+// Use depois de atualizar o código, se um desses arquivos mudou. Só no SQL Server; não mexe em registros.
+Artisan::command('banco:procedures', function () {
+    if (DB::getDriverName() !== 'sqlsrv') {
+        $this->warn('As procedures só existem no SQL Server; este banco é '.DB::getDriverName().'.');
+
+        return 0;
+    }
+    foreach (glob(database_path('procedures/*.sql')) as $arquivo) {
+        $nome = 'dbo.'.basename($arquivo, '.sql');
+        DB::unprepared("IF OBJECT_ID('{$nome}', 'P') IS NULL EXEC('CREATE PROCEDURE {$nome} AS RETURN 0')");
+        DB::unprepared(file_get_contents($arquivo));
+        $this->info("{$nome}: atualizada.");
+    }
+
+    return 0;
+})->purpose('Recria as procedures do banco do portal (database/procedures)');
 
 Artisan::command('usuarios:listar', function () {
     $this->table(

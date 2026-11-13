@@ -1484,7 +1484,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `c2_roteiro` | `nvarchar(2)` | não | `''` |  |
 | `c2_revisao` | `nvarchar(3)` | não | `''` |  |
 
-**Índices:** `ordens_producao_c2_filial_c2_num_c2_item_c2_sequen_unique` único (c2_filial, c2_num, c2_item, c2_sequen) · `ordens_producao_numero_index` (numero) · `ordens_producao_status_c2_datprf_index` (status, c2_datprf) · `ordens_producao_c2_produto_index` (c2_produto)
+**Índices:** `ordens_producao_c2_filial_c2_num_c2_item_c2_sequen_unique` único (c2_filial, c2_num, c2_item, c2_sequen) · `ordens_producao_numero_index` (numero) · `ordens_producao_status_c2_datprf_index` (status, c2_datprf) · `ordens_producao_c2_produto_index` (c2_produto) · `ordens_producao_r_e_c_n_o__index` (r_e_c_n_o_)
 
 **Regras (CHECK, só no SQL Server):** `ck_ordens_producao_status`: `status IN ('aberta', 'andamento', 'fechada', 'parada')`
 

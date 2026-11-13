@@ -177,6 +177,29 @@ class SincronizacaoProtheusTest extends TestCase
             ->assertSee('PHP do servidor')->assertSee('php.ini carregado')->assertSee('max_execution_time');
     }
 
+    public function test_tela_mostra_se_a_sincronizacao_e_por_php_ou_procedure(): void
+    {
+        $this->actingAs($this->admin())->get('/admin/banco')->assertOk()
+            ->assertSee('<th>Sincronização</th>', false)
+            ->assertSee('PHP')
+            // Ordens de produção estão configuradas para a procedure, mas no SQLite dos testes vale o PHP.
+            ->assertSee('procedure só no SQL Server');
+    }
+
+    public function test_ordens_de_producao_vao_pela_procedure_so_no_sql_server(): void
+    {
+        $sincronizador = app(SincronizadorProtheus::class);
+        $this->assertSame('procedure', config('protheus.sincronizacoes.ordens_producao.via'));
+        $this->assertSame('php', $sincronizador->via('ordens_producao')); // SQLite
+        $this->assertSame('php', $sincronizador->via('centros_custo'));
+
+        // A procedure instalada pela migração é a configurada e usa MERGE pelo R_E_C_N_O_.
+        $sql = file_get_contents(database_path('procedures/sp_sincronizar_ordens_producao.sql'));
+        $this->assertStringContainsString('ALTER PROCEDURE '.config('protheus.sincronizacoes.ordens_producao.procedure'), $sql);
+        $this->assertStringContainsString('MERGE dbo.ordens_producao', $sql);
+        $this->assertStringContainsString('t.r_e_c_n_o_ = s.r_e_c_n_o_', $sql);
+    }
+
     public function test_sincroniza_so_a_tabela_escolhida_e_rejeita_tabela_desconhecida(): void
     {
         $admin = $this->admin();

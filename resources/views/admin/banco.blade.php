@@ -52,7 +52,7 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Tabela do portal</th><th>Origem no Protheus</th><th>Última sincronização</th><th>Resultado</th><th></th></tr></thead>
+    <thead><tr><th>Tabela do portal</th><th>Origem no Protheus</th><th>Sincronização</th><th>Última sincronização</th><th>Resultado</th><th></th></tr></thead>
     <tbody>
     @foreach ($sincronizacoes as $chave => $item)
       @php($u = $ultimas[$chave] ?? null)
@@ -61,6 +61,14 @@
           @if (($item['modo'] ?? 'espelho') === 'mista')<span class="etiqueta origem-mista">Mista</span>@endif
           <br><code class="suave">{{ $item['tabela_destino'] }}</code></td>
         <td><code>{{ $conexaoProtheus['Banco'] ?? '' }}.{{ $item['tabela_origem'] }}</code></td>
+        <td>
+          @if (($vias[$chave] ?? 'php') === 'procedure')
+            <span class="etiqueta">Procedure</span><br><code class="suave">{{ $item['procedure'] }}</code>
+          @else
+            <span class="etiqueta">PHP</span>
+            @if (($item['via'] ?? 'php') === 'procedure')<br><small class="suave">procedure só no SQL Server</small>@endif
+          @endif
+        </td>
         <td>@if ($u)@dataHora($u->iniciado_em)@else <span class="suave">nunca</span>@endif</td>
         <td class="resultado">
           @if ($u)
@@ -92,7 +100,9 @@
     <strong>Máquinas</strong> (mista): código, nome e centro de custo vêm da SHB só na primeira vez e a máquina chega
     <strong>inativa</strong> — complete o cadastro em Máquinas e ative. Depois disso a sincronização só mexe na máquina se
     ela for excluída no Protheus (aí ela é desativada). <strong>Ferramentas</strong> (mista): os campos da SH4 são atualizados a
-    cada sincronização; as cavidades ativas e a unidade são do portal e não são sobrepostas.</small></p>
+    cada sincronização; as cavidades ativas e a unidade são do portal e não são sobrepostas.
+    <strong>Sincronização</strong>: <em>PHP</em> = o portal lê o Protheus e grava em lotes; <em>Procedure</em> = o portal só
+    chama a procedure do banco, que lê o Protheus e grava com MERGE pelo R_E_C_N_O_ (mais rápido).</small></p>
 
   @if ($historico->isNotEmpty())
     <h3>Últimas sincronizações</h3>

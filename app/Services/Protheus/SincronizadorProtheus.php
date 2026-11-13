@@ -25,6 +25,18 @@ class SincronizadorProtheus
         return config('protheus.sincronizacoes', []);
     }
 
+    /**
+     * Como a tabela é sincronizada: "procedure" (procedure do banco, chamada pelo PHP) ou "php" (importador).
+     * A procedure só existe no SQL Server: em outro banco (ex.: testes em SQLite) vale sempre o PHP.
+     */
+    public function via(string $chave): string
+    {
+        $item = $this->item($chave);
+
+        return ($item['via'] ?? 'php') === 'procedure' && ! empty($item['procedure']) && DB::getDriverName() === 'sqlsrv'
+            ? 'procedure' : 'php';
+    }
+
     /** "Compras.CTT": banco e tabela de origem no Protheus. */
     public function origem(string $chave): string
     {
@@ -134,6 +146,9 @@ class SincronizadorProtheus
             }
             $item = $this->item($registro->chave);
             $tabela = $this->tabelaOrigem($item);
+            if ($this->via($registro->chave) === 'procedure') {
+                return $this->continuarPorProcedure($registro, $item, $tabela, $segundos);
+            }
 
             /** @var ImportadorProtheus $importador */
             $importador = app($item['importador']);
@@ -212,12 +227,66 @@ class SincronizadorProtheus
     }
 
     /**
+     * Sincronização pela procedure do banco (ex.: dbo.sp_sincronizar_ordens_producao): o PHP só a chama, um lote de
+     * protheus.lote_procedure linhas por vez, a partir do último R_E_C_N_O_, até o fim da tabela ou até o tempo da
+     * etapa acabar. A procedure lê o Protheus no mesmo servidor (banco.tabela) e grava com MERGE.
+     */
+    private function continuarPorProcedure(Sincronizacao $registro, array $item, string $tabela, ?float $segundos): Sincronizacao
+    {
+        $procedure = (string) $item['procedure'];
+        $sb9 = (string) config('protheus.tabela_sb9', 'SB9');
+        foreach ([$procedure, $sb9] as $nome) {
+            if (! preg_match('/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?$/', $nome)) {
+                throw new InvalidArgumentException("Nome inválido: {$nome}");
+            }
+        }
+        $banco = (string) config('database.connections.protheus.database');
+        $desde = preg_replace('/\D/', '', (string) config('protheus.sc2_desde'));
+        $lote = max(50, (int) config('protheus.lote_procedure', 10000));
+        $limite = $segundos !== null ? microtime(true) + $segundos : null;
+
+        $totais = ['lidos' => (int) $registro->lidos];
+        foreach (['novos', 'atualizados', 'ignorados', 'excluidos'] as $campo) {
+            $totais[$campo] = (int) $registro->{$campo};
+        }
+        $ultimo = (int) ($registro->ultimo_recno ?? 0);
+        do {
+            $linha = Cronometro::medir('procedure', fn () => DB::select("EXEC {$procedure} @banco = ?, @tabela = ?, @tabela_sb9 = ?, @desde = ?, @ultimo_recno = ?, @lote = ?",
+                [$banco, $tabela, $sb9, strlen($desde) === 8 ? $desde : '', $ultimo, $lote])[0] ?? null);
+            if ($linha === null) {
+                throw new \RuntimeException("A procedure {$procedure} não devolveu o resumo do lote.");
+            }
+            $r = array_change_key_case((array) $linha, CASE_LOWER);
+            foreach (['lidos', 'novos', 'atualizados', 'ignorados', 'excluidos'] as $campo) {
+                $totais[$campo] += (int) ($r[$campo] ?? 0);
+            }
+            $ultimo = (int) $r['ultimo_recno'];
+            $terminou = (bool) (int) $r['terminou'];
+            $ausentes = trim((string) ($r['campos_ausentes'] ?? ''));
+            // Sinal de vida e ponto de parada a cada lote (o lote já foi gravado pela procedure).
+            $registro->update($totais + ['ultimo_recno' => $ultimo, 'sinal_em' => now()]);
+        } while (! $terminou && ($limite === null || microtime(true) < $limite));
+
+        if (! $terminou) {
+            return $registro; // tempo desta etapa acabou: a próxima continua do último R_E_C_N_O_
+        }
+        $aviso = $ausentes !== ''
+            ? "Campos que não existem em {$banco}.{$tabela} e ficaram em branco: {$ausentes}." : null;
+
+        return $this->terminar($registro, 'sucesso', $totais + ['ultimo_recno' => $ultimo], $aviso);
+    }
+
+    /**
      * Mensagem do erro para a tela. Tabela que não existe no banco do Protheus (SQL Server: "Invalid object name";
      * SQLite: "no such table") ganha a explicação de como resolver: o nome certo vai em PROTHEUS_TABELA_xxx no .env.
      */
     private function explicarErro(Throwable $e, string $chave): string
     {
         $mensagem = $e->getMessage();
+        if (preg_match('/Could not find stored procedure/i', $mensagem)) {
+            return 'A procedure de sincronização ainda não foi criada no banco do portal. Rode "php artisan migrate" (ou '
+                .'"php artisan banco:procedures" para recriá-la). Erro original: '.$mensagem;
+        }
         if (! preg_match('/Invalid object name|no such table/i', $mensagem)) {
             return $mensagem;
         }

@@ -24,6 +24,7 @@ return [
             'tabela_destino' => 'centros_custo',                   // tabela do portal
             'importador' => ImportadorCentrosCusto::class,
             'modo' => 'espelho', // o portal é cópia da tabela do Protheus
+            'via' => 'php',
         ],
         // Depois dos centros de custo, porque a máquina usa o código do centro de custo.
         'maquinas' => [
@@ -34,6 +35,7 @@ return [
             // Mista: código, nome e centro de custo vêm da SHB só na primeira vez; o resto é do sistema OEE.
             // Máquina nova chega inativa; depois só a exclusão no Protheus altera o registro.
             'modo' => 'mista',
+            'via' => 'php',
         ],
         'produtos' => [
             'descricao' => 'Produtos',
@@ -41,6 +43,7 @@ return [
             'tabela_destino' => 'produtos_protheus',
             'importador' => ImportadorProdutos::class,
             'modo' => 'espelho',
+            'via' => 'php',
         ],
         // Estrutura de produto (lista de materiais).
         'estruturas' => [
@@ -49,6 +52,7 @@ return [
             'tabela_destino' => 'estruturas_produto',
             'importador' => ImportadorEstruturas::class,
             'modo' => 'espelho',
+            'via' => 'php',
         ],
         // Ferramentas: mista. Os campos do Protheus são atualizados; as cavidades ativas e a unidade são do portal.
         'ferramentas' => [
@@ -57,6 +61,7 @@ return [
             'tabela_destino' => 'ferramentas',
             'importador' => ImportadorFerramentas::class,
             'modo' => 'mista',
+            'via' => 'php',
         ],
         // Roteiro de operações (depois das ferramentas, que ele cita).
         'roteiros' => [
@@ -65,6 +70,7 @@ return [
             'tabela_destino' => 'roteiros_operacao',
             'importador' => ImportadorRoteiros::class,
             'modo' => 'espelho',
+            'via' => 'php',
         ],
         // Depois dos produtos: a OP mostra o produto (SB1) pelo código.
         'ordens_producao' => [
@@ -73,6 +79,10 @@ return [
             'tabela_destino' => 'ordens_producao',
             'importador' => ImportadorOrdensProducao::class,
             'modo' => 'espelho', // cópia da SC2 + "status" e "custo_meta" (SB9) calculados pelo portal
+            // Sincronização pela procedure do banco (MERGE pelo R_E_C_N_O_), chamada pelo PHP em etapas. "php" = pelo
+            // importador (ImportadorOrdensProducao). Sem SQL Server (ex.: testes em SQLite), sempre pelo PHP.
+            'via' => env('PROTHEUS_VIA_SC2') ?: 'procedure',
+            'procedure' => 'dbo.sp_sincronizar_ordens_producao',
         ],
         // Empenhos (SD4): materiais reservados para cada OP; o saldo (D4_QUANT) cai com as baixas.
         'empenhos_op' => [
@@ -81,6 +91,7 @@ return [
             'tabela_destino' => 'empenhos_op',
             'importador' => ImportadorEmpenhos::class,
             'modo' => 'espelho',
+            'via' => 'php',
         ],
         // Movimentos internos (SD3) que têm OP: produções e consumos (baixas) das ordens de produção.
         'movimentos_producao' => [
@@ -89,6 +100,7 @@ return [
             'tabela_destino' => 'movimentos_producao',
             'importador' => ImportadorMovimentosProducao::class,
             'modo' => 'espelho',
+            'via' => 'php',
         ],
         // Itens de nota fiscal de saída (SD2) que citam uma OP.
         'notas_fiscais_op' => [
@@ -97,6 +109,7 @@ return [
             'tabela_destino' => 'notas_fiscais_op',
             'importador' => ImportadorNotasFiscaisOp::class,
             'modo' => 'espelho',
+            'via' => 'php',
         ],
     ],
 
@@ -169,6 +182,10 @@ return [
 
     // Ordens de produção, movimentos (SD3) e notas (SD2): só os emitidos a partir desta data (AAAAMMDD). Vazio = todos.
     'sc2_desde' => env('PROTHEUS_SC2_DESDE', ''),
+
+    // Linhas da origem por chamada da procedure (tabelas com 'via' => 'procedure'). Cada etapa do botão chama a
+    // procedure quantas vezes couber em segundos_por_etapa.
+    'lote_procedure' => (int) env('PROTHEUS_LOTE_PROCEDURE', 10000),
 
     // Linhas por lote: o Protheus é lido e gravado de tantas em tantas linhas, para a memória não crescer com o
     // tamanho da tabela (ex.: SC2 com anos de OPs).
