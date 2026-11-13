@@ -50,6 +50,17 @@ final class Formato
         return number_format($valor, abs($valor - round($valor)) < 0.00001 ? 0 : 2, ',', '.');
     }
 
+    /** Quantidade pequena (ex.: por peça na estrutura): até 6 casas, sem zeros sobrando: 0.0025 → "0,0025"; 2 → "2". */
+    public static function quantidadeFina(?float $valor): string
+    {
+        if ($valor === null) {
+            return '—';
+        }
+        $texto = rtrim(rtrim(number_format($valor, 6, ',', '.'), '0'), ',');
+
+        return $texto === '-0' ? '0' : $texto;
+    }
+
     /** Divergência do custo com a meta: 0.123 → "+12,3%"; -0.05 → "−5,0%". */
     public static function divergencia(?float $valor): string
     {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ferramenta;
+use App\Models\OrdemProducao;
 use App\Models\RoteiroOperacao;
 use App\Models\Sincronizacao;
 use App\Support\Unidades;
@@ -60,6 +61,12 @@ class FerramentaController extends Controller
             'h4_qtdcavativas.*' => 'Informe as cavidades ativas (número inteiro, a partir de 0).',
         ]);
         $ferramenta->fill($dados)->save();
+
+        // Editada na tela da OP (aba Ferramenta): volta para lá.
+        if ($request->filled('op') && ($op = OrdemProducao::find((int) $request->input('op')))) {
+            return redirect()->to(route('ordens-producao.show', $op).'#aba-ferramenta')
+                ->with('ok', "Cavidades ativas da ferramenta {$ferramenta->codigo()}: {$ferramenta->h4_qtdcavativas}.");
+        }
 
         return redirect()->route('ferramentas.index')->with('ok', "Ferramenta {$ferramenta->codigo()} atualizada.");
     }

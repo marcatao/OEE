@@ -8,6 +8,9 @@
  *    select.disabled = true trava o campo (lembre que select desabilitado não é enviado no formulário).
  *    data-compacto: caixa mais baixa e texto menor (ex.: campo de OP).
  *
+ * 3) [data-abas] — abas: botões [data-aba="x"] em .abas-lista e painéis [data-painel="x"]. Abre a aba do endereço
+ *    (#aba-x), senão a de data-aba-inicial; trocar de aba atualiza o endereço (o link e o voltar levam à mesma aba).
+ *
  * 2) [data-escolha] — escolha de vários com busca (partial partials/escolha-multipla): <details> com o resumo do que
  *    está marcado; ao abrir, busca por nome e a lista de caixas de marcar.
  */
@@ -228,9 +231,36 @@
   function iniciar(raiz) {
     (raiz || document).querySelectorAll('select[data-busca]').forEach(montarBusca);
     (raiz || document).querySelectorAll('[data-escolha]').forEach(montarEscolha);
+    (raiz || document).querySelectorAll('[data-abas]').forEach(function (c) { if (!c.dataset.abasProntas) { c.dataset.abasProntas = '1'; montarAbas(c); } });
   }
 
   window.OeeComponentes = { iniciar: iniciar };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { iniciar(); });
   else iniciar();
+  // ---------- 3) Abas ----------
+  function montarAbas(caixa) {
+    var botoes = Array.prototype.slice.call(caixa.querySelectorAll('[data-aba]'));
+    var paineis = caixa.querySelectorAll('[data-painel]');
+    function abrir(nome, guardar) {
+      if (!botoes.some(function (b) { return b.dataset.aba === nome; })) return false;
+      botoes.forEach(function (b) {
+        var ativa = b.dataset.aba === nome;
+        b.classList.toggle('ativa', ativa); b.setAttribute('aria-selected', ativa ? 'true' : 'false'); b.tabIndex = ativa ? 0 : -1;
+      });
+      paineis.forEach(function (p) { p.hidden = p.dataset.painel !== nome; });
+      if (guardar) history.replaceState(null, '', '#aba-' + nome);
+      return true;
+    }
+    botoes.forEach(function (b, i) {
+      b.addEventListener('click', function () { abrir(b.dataset.aba, true); });
+      b.addEventListener('keydown', function (e) {
+        var passo = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+        if (!passo) return;
+        var outro = botoes[(i + passo + botoes.length) % botoes.length];
+        abrir(outro.dataset.aba, true); outro.focus(); e.preventDefault();
+      });
+    });
+    var pedida = (location.hash.match(/^#aba-([\w-]+)/) || [])[1];
+    if (!pedida || !abrir(pedida, false)) abrir(caixa.dataset.abaInicial || botoes[0].dataset.aba, false);
+  }
 })();

@@ -59,7 +59,11 @@ class OrdemProducaoController extends Controller
         abort_if($ordem->d_e_l_e_t_ === '*', 404);
 
         // Kardex e custo; depois empenhos (SD4), estrutura (SG1), roteiro (SG2) e ferramentas/moldes (SH4) da OP.
-        return view('ordens-producao.show', ['op' => $ordem, 'tipos' => $tipos, 'apontamentos' => $ordem->apontamentos()->count()]
+        // Apontamentos reais (Timeline) com esta OP, do mais recente para o mais antigo.
+        $apontamentosReais = $ordem->apontamentos()->with(['maquina', 'legenda'])->orderByDesc('inicio')->orderByDesc('id')->get();
+
+        return view('ordens-producao.show', ['op' => $ordem, 'tipos' => $tipos, 'apontamentos' => $apontamentosReais->count(),
+            'apontamentosReais' => $apontamentosReais]
             + $custo->kardex($ordem) + $engenharia->daOp($ordem));
     }
 

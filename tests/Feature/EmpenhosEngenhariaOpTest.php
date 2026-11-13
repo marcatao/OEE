@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApontamentoEstado;
 use App\Models\EmpenhoOp;
+use App\Models\Ferramenta;
+use App\Models\Legenda;
+use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\Usuario;
 use App\Services\EngenhariaOrdemProducao;
@@ -125,9 +129,27 @@ class EmpenhosEngenhariaOpTest extends TestCase
         $this->actingAs($this->admin());
         $op = OrdemProducao::sole();
         $this->get("/producao/ordens-de-producao/{$op->id}")->assertOk()
-            ->assertSeeInOrder(['Kardex da OP', 'Empenhos da OP', 'Estrutura atual do produto', 'Roteiro de operações', 'Ferramenta / molde da OP'])
+            ->assertSeeInOrder(['data-aba="op"', 'data-aba="apontamentos"', 'data-aba="kardex"', 'data-aba="empenhos"', 'data-aba="estrutura"',
+                'data-aba="roteiro"', 'data-aba="ferramenta"'], false)
+            ->assertSeeInOrder(['Resumo de custo', 'Apontamentos reais', 'Kardex da OP', 'Empenhos da OP', 'Estrutura atual do produto', 'Roteiro de operações', 'Ferramenta / molde da OP'])
+            ->assertSee('name="h4_qtdcavativas"', false)
             ->assertSee('MOLDE TAMPA 8 CAV')->assertSee('INJETAR NA 02')->assertDontSee('MOLDE TAMPA 4 CAV')
             ->assertSee('RESINA PP')->assertSee('tem estrutura própria')->assertDontSee('ANTIGO');
+
+        // Cavidades ativas editadas na aba Ferramenta: volta para a OP; acima das do Protheus, erro.
+        $molde = Ferramenta::where('h4_codigo', 'MOLD02')->sole();
+        $this->from("/producao/ordens-de-producao/{$op->id}")->put("/producao/ferramentas/{$molde->id}", ['h4_qtdcavativas' => 9, 'op' => $op->id])
+            ->assertRedirect("/producao/ordens-de-producao/{$op->id}")->assertSessionHasErrors('h4_qtdcavativas');
+        $this->put("/producao/ferramentas/{$molde->id}", ['h4_qtdcavativas' => 6, 'op' => $op->id])
+            ->assertRedirect(route('ordens-producao.show', $op).'#aba-ferramenta');
+        $this->assertSame(6, $molde->fresh()->h4_qtdcavativas);
+
+        // Apontamento real com a OP aparece na aba.
+        $maquina = Maquina::create(['codigo' => 'INJ02', 'nome' => 'Injetora 02', 'ativo' => false]);
+        $legenda = Legenda::create(['codigo' => '1', 'descricao' => 'Produzindo', 'tipo' => 'produzindo', 'cor' => '#2e7d32']);
+        ApontamentoEstado::create(['maquina_id' => $maquina->id, 'legenda_id' => $legenda->id, 'ordem_producao_id' => $op->id,
+            'inicio' => now()->subHours(2), 'fim' => now()->subHour()]);
+        $this->get("/producao/ordens-de-producao/{$op->id}")->assertSee('Injetora 02')->assertSee('1 h 00 min')->assertSee('6/8 cav.');
 
         $this->get('/')->assertSee('Empenhos OP');
         $this->get('/producao/empenhos-op')->assertOk()->assertSee('50985901001')->assertSee('RESINA PP')

@@ -34,7 +34,7 @@
         <td>{{ OrdemProducao::data($e->d4_data) }}</td>
         <td class="quebra">
           @if ($op && auth()->user()->pode('ordens_producao'))
-            <a href="{{ route('ordens-producao.show', $op) }}#empenhos"><code>{{ $e->op_numero }}</code></a>
+            <a href="{{ route('ordens-producao.show', $op) }}#aba-empenhos"><code>{{ $e->op_numero }}</code></a>
           @else
             <code>{{ $e->op_numero }}</code>
           @endif

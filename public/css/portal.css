@@ -891,5 +891,41 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .dialogo .acoes { margin-top:1rem; }
 
 /* OP: ferramenta/molde em destaque no cabeçalho */
-.op-molde { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; padding:.55rem .75rem; border-radius:.6rem; background:var(--primaria-suave); }
-.op-molde svg { width:1.1rem; height:1.1rem; }
+.op-cabecalho { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:.75rem 1.5rem; margin-bottom:1rem; }
+.op-cabecalho h1 { margin-bottom:.25rem; }
+.op-produto { margin:0; font-size:1.02rem; }
+.op-molde { display:flex; flex-wrap:wrap; align-items:center; gap:.35rem .6rem; margin:0; padding:.55rem .85rem; border-radius:.7rem;
+  background:var(--primaria-suave); color:var(--texto); max-width:100%; }
+.op-molde svg { width:1.1rem; height:1.1rem; color:var(--primaria); }
+
+/* Abas (componente [data-abas], public/js/componentes.js) */
+.abas-lista { display:flex; gap:.25rem; overflow-x:auto; border-bottom:2px solid var(--borda); margin-bottom:1.1rem; scrollbar-width:thin; }
+.abas-lista button { flex:0 0 auto; display:inline-flex; align-items:center; gap:.4rem; padding:.65rem 1rem; border:0; border-bottom:3px solid transparent;
+  margin-bottom:-2px; background:none; color:var(--suave); font:inherit; font-weight:600; cursor:pointer; border-radius:.5rem .5rem 0 0; white-space:nowrap; }
+.abas-lista button:hover { color:var(--texto); background:var(--primaria-suave); }
+.abas-lista button.ativa { color:var(--primaria); border-bottom-color:var(--primaria); }
+.abas-lista button:focus-visible { outline:2px solid var(--primaria); outline-offset:-2px; }
+.abas-contador { min-width:1.5rem; padding:.05rem .45rem; border-radius:999px; background:var(--borda); color:var(--texto); font-size:.75rem; text-align:center; }
+.abas-lista button.ativa .abas-contador { background:var(--primaria); color:var(--primaria-texto); }
+.abas-painel > h3:first-child { margin-top:0; }
+.abas-painel h3 { margin-top:1.5rem; }
+
+/* Ficha de dados (rótulo em cima, valor embaixo) */
+.op-ficha { display:grid; grid-template-columns:repeat(auto-fill, minmax(11rem, 1fr)); gap:.6rem; margin:0 0 1.25rem; }
+.op-ficha > div { padding:.6rem .8rem; border:1px solid var(--borda); border-radius:.6rem; background:var(--cartao); }
+.op-ficha > div.largo { grid-column:1 / -1; }
+.op-ficha dt { font-size:.74rem; text-transform:uppercase; letter-spacing:.04em; color:var(--suave); margin-bottom:.2rem; }
+.op-ficha dd { margin:0; font-weight:600; }
+.op-ficha dd small { display:block; font-weight:400; color:var(--suave); }
+.op-ficha.compacta { grid-template-columns:repeat(auto-fill, minmax(9rem, 1fr)); margin-bottom:.9rem; }
+
+/* Ferramenta da OP: cartão com cavidades ativas editáveis */
+.ferr-cartoes { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 30rem), 1fr)); gap:1rem; }
+.ferr-cartao { border:1px solid var(--borda); border-radius:.8rem; padding:1rem; background:var(--cartao); box-shadow:var(--sombra); }
+.ferr-cartao header { display:flex; flex-wrap:wrap; gap:.5rem; align-items:baseline; margin-bottom:.8rem; font-size:1.02rem; }
+.ferr-cavidades { display:flex; flex-wrap:wrap; align-items:flex-end; gap:.75rem; padding:.8rem; border-radius:.6rem; background:var(--primaria-suave); }
+.ferr-cavidades label { display:flex; flex-direction:column; gap:.3rem; font-weight:600; }
+.ferr-campo { display:inline-flex; align-items:center; gap:.5rem; }
+.ferr-campo input { width:6.5rem; font-size:1.15rem; font-weight:700; text-align:center; }
+.ferr-campo small { color:var(--suave); font-weight:400; }
+.ferr-cavidades-leitura { margin:0; padding:.7rem .8rem; border-radius:.6rem; background:var(--primaria-suave); }
