@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\LegendaController;
 use App\Http\Controllers\Admin\MaquinaController;
 use App\Http\Controllers\ApontamentoEstadoController;
 use App\Http\Controllers\ApontamentoProducaoController;
+use App\Http\Controllers\AssistenteController;
 use App\Http\Controllers\AutenticacaoController;
 use App\Http\Controllers\Cadastros\AcessoController;
 use App\Http\Controllers\Cadastros\GrupoController;
@@ -94,6 +95,12 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permissao:ordens_producao')->prefix('producao/ordens-de-producao')->name('ordens-producao.')->group(function () {
         Route::get('/', [OrdemProducaoController::class, 'index'])->name('index');
         Route::get('{ordem}', [OrdemProducaoController::class, 'show'])->whereNumber('ordem')->name('show'); // kardex da OP
+    });
+    // Pergunte para Alumbra (assistente de IA da página inicial; JSON, em etapas curtas)
+    Route::middleware('permissao:assistente')->prefix('assistente')->name('assistente.')->controller(AssistenteController::class)->group(function () {
+        Route::get('conversa', 'conversa')->name('conversa');
+        Route::post('perguntas', 'perguntar')->name('perguntar');
+        Route::post('perguntas/{pergunta}/etapa', 'etapa')->name('etapa');
     });
     Route::match(['get', 'post'], 'calculadora', [PortalController::class, 'calculadora'])
         ->middleware('permissao:calculadora')->name('calculadora');

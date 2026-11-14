@@ -28,6 +28,7 @@ return [
         'roteiros' => 'Roteiros de operação (SG2, consulta)',
         'ferramentas' => 'Ferramentas (SH4: consulta; administradores editam as cavidades ativas)',
         'calculadora' => 'Calculadora de OEE',
+        'assistente' => 'Pergunte para Alumbra (assistente de IA na página inicial; responde só com os dados que o usuário pode ver)',
         // Ordens de serviço (manutenção de produção e de tecnologia; cada um vê a fila da sua unidade)
         'os_material' => 'Ordens de serviço: solicitação de material (mantenedores pedem; o administrador da área aprova item a item)',
         'os_painel' => 'Ordens de serviço: painel da área (chamados, OS por mantenedor, mensagens sem resposta)',

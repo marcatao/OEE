@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Assistente\ClienteClaude;
+use App\Services\Assistente\ClienteClaudeAnthropic;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
@@ -14,7 +16,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // "Pergunte para Alumbra": cliente da API da Claude (os testes trocam por um falso).
+        $this->app->singleton(ClienteClaude::class, ClienteClaudeAnthropic::class);
     }
 
     public function boot(): void

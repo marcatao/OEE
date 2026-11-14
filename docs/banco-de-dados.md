@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **49** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **51** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -43,6 +43,32 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
         bigint ordem_producao_id FK
+    }
+    assistente_conversas {
+        bigint id PK
+        bigint usuario_id FK
+        nvarchar(120) titulo
+        nvarchar(max) mensagens
+        datetime criado_em
+        datetime atualizado_em
+    }
+    assistente_perguntas {
+        bigint id PK
+        bigint conversa_id FK
+        bigint usuario_id FK
+        nvarchar(2000) pergunta
+        int posicao
+        nvarchar(12) situacao
+        smallint etapas
+        nvarchar(1000) ferramentas
+        nvarchar(60) modelo
+        int tokens_entrada
+        int tokens_saida
+        int tokens_cache_leitura
+        int tokens_cache_escrita
+        nvarchar(1000) erro
+        datetime criado_em
+        datetime concluida_em
     }
     calendario_dias {
         bigint id PK
@@ -755,6 +781,9 @@ erDiagram
     maquinas ||--o{ apontamentos_estado : "maquina_id"
     legendas ||--o{ apontamentos_estado : "legenda_id"
     ordens_producao |o--o{ apontamentos_estado : "ordem_producao_id"
+    usuarios ||--o{ assistente_conversas : "usuario_id"
+    assistente_conversas ||--o{ assistente_perguntas : "conversa_id"
+    usuarios ||--o{ assistente_perguntas : "usuario_id"
     calendarios ||--o{ calendario_dias : "calendario_id"
     maquinas |o--o{ dispositivos_iot : "maquina_id"
     usuarios ||--o{ filtros_usuarios : "usuario_id"
@@ -876,6 +905,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 |---|---|---|---|---|
 | [`apontamentos`](#apontamentos) | Sistema | `id` | 13 | 5 |
 | [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 12 | 5 |
+| [`assistente_conversas`](#assistente_conversas) | Sistema | `id` | 6 | 1 |
+| [`assistente_perguntas`](#assistente_perguntas) | Sistema | `id` | 16 | 2 |
 | [`cache`](#cache) | Infra | `key` | 3 | 0 |
 | [`cache_locks`](#cache_locks) | Infra | `key` | 3 | 0 |
 | [`calendario_dias`](#calendario_dias) | Sistema | `id` | 9 | 3 |
@@ -976,6 +1007,46 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `apontamentos_estado_maquina_id_inicio_index` (maquina_id, inicio) · `apontamentos_estado_ordem_producao_id_index` (ordem_producao_id)
 
 **Regras (CHECK, só no SQL Server):** `ck_apontamentos_estado_periodo`: `fim IS NULL OR fim > inicio`
+
+### assistente_conversas
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `usuario_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `titulo` | `nvarchar(120)` | sim |  |  |
+| `mensagens` | `nvarchar(max)` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `atualizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `assistente_conversas_usuario_id_atualizado_em_index` (usuario_id, atualizado_em)
+
+### assistente_perguntas
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `conversa_id` | `bigint` | não |  | FK → `assistente_conversas.id` |
+| `usuario_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `pergunta` | `nvarchar(2000)` | não |  |  |
+| `posicao` | `int` | não | `'0'` |  |
+| `situacao` | `nvarchar(12)` | não | `'pendente'` |  |
+| `etapas` | `smallint` | não | `'0'` |  |
+| `ferramentas` | `nvarchar(1000)` | sim |  |  |
+| `modelo` | `nvarchar(60)` | sim |  |  |
+| `tokens_entrada` | `int` | não | `'0'` |  |
+| `tokens_saida` | `int` | não | `'0'` |  |
+| `tokens_cache_leitura` | `int` | não | `'0'` |  |
+| `tokens_cache_escrita` | `int` | não | `'0'` |  |
+| `erro` | `nvarchar(1000)` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `concluida_em` | `datetime` | sim |  |  |
+
+**Índices:** `assistente_perguntas_usuario_id_criado_em_index` (usuario_id, criado_em)
 
 ### cache
 

@@ -68,6 +68,10 @@
       </div>
     </section>
 
+    @if ($u->pode('assistente'))
+      @include('partials.assistente')
+    @endif
+
     <div class="kpis">
       @if ($hoje !== null)
         <a class="kpi {{ Formato::nivel($hoje->oee()) }}" href="{{ route('dashboard.maquinas') }}">

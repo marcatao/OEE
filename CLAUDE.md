@@ -118,6 +118,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (`App\Support\JornadaSemanal` + partial `partials.jornada-semanal`; coluna `horarios_semana` JSON; `dias_semana` e
   `jornada_inicio|fim` = dias marcados e horário do 1º dia, lidos quando não há `horarios_semana`). As horas normais ×
   extras do mantenedor (`HorasManutencao`) usam o horário de cada dia. Para saber se trabalha num dia: `DiasUteis::trabalha($maquinaOuMantenedor, $data)`.
+- **Pergunte para Alumbra** (box da página inicial, `partials.assistente` + `public/js/assistente.js`, permissão
+  `assistente`): IA com a Claude (SDK `anthropic-ai/sdk`, `config/assistente.php`, chave `ANTHROPIC_API_KEY` só no
+  `.env`). Só responde sobre o portal e só com os dados do usuário logado: as consultas ficam em
+  `App\Services\Assistente\FerramentasAssistente` (SÓ LEITURA; cada uma exige a permissão da tela e passa pelos mesmos
+  filtros das telas: escopo de unidade, `AcessoOs::filtrar`). Roda em ETAPAS curtas (uma chamada à Claude por
+  requisição, rota `assistente.etapa`), como a sincronização. Histórico e tokens em `assistente_conversas` e
+  `assistente_perguntas`. Tela nova com dados? Avalie criar a consulta correspondente no assistente.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
 
 ## Git
