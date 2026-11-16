@@ -236,11 +236,11 @@
             <td class="quebra"><code>{{ $g->g1_comp }}</code> <small>{{ $pg?->descricao() ?? 'produto não sincronizado' }}</small>
               @if ($g->tem_estrutura)<br><small class="suave">tem estrutura própria (intermediário)
                 @if (auth()->user()->pode('estruturas')) · <a href="{{ route('estruturas.index', ['produto' => rtrim($g->g1_comp)]) }}">ver</a>@endif</small>@endif</td>
-            <td class="num">{{ Formato::quantidadeFina($g->g1_quant) }} <small class="suave">{{ $pg?->b1_um }}</small>@if (strtoupper(trim($g->g1_fixvar)) === 'F')<br><small class="suave">fixa</small>@endif</td>
-            <td class="num">{{ $g->g1_perda > 0 ? Formato::quantidadeFina($g->g1_perda) : '-' }}</td>
-            <td class="num">{{ Formato::quantidadeFina($g->necessidade) }}</td>
-            <td class="num">{{ $g->empenhado === null ? '—' : Formato::quantidadeFina($g->empenhado) }}</td>
-            <td class="num">@if ($dif === null)<small class="texto-alerta">sem empenho</small>@elseif (abs($dif) < 0.0000005)<small class="suave">igual</small>@else<span class="{{ $dif > 0 ? 'texto-alerta' : '' }}">{{ $dif > 0 ? '+' : '' }}{{ Formato::quantidadeFina($dif) }}</span>@endif</td>
+            <td class="num">{{ Formato::quantidade($g->g1_quant) }} <small class="suave">{{ $pg?->b1_um }}</small>@if (strtoupper(trim($g->g1_fixvar)) === 'F')<br><small class="suave">fixa</small>@endif</td>
+            <td class="num">{{ $g->g1_perda > 0 ? Formato::quantidade($g->g1_perda) : '-' }}</td>
+            <td class="num">{{ Formato::quantidade($g->necessidade) }}</td>
+            <td class="num">{{ $g->empenhado === null ? '—' : Formato::quantidade($g->empenhado) }}</td>
+            <td class="num">@if ($dif === null)<small class="texto-alerta">sem empenho</small>@elseif (abs($dif) < 0.0000005)<small class="suave">igual</small>@else<span class="{{ $dif > 0 ? 'texto-alerta' : '' }}">{{ $dif > 0 ? '+' : '' }}{{ Formato::quantidade($dif) }}</span>@endif</td>
             <td><small>{{ trim($g->g1_ini) === '' && trim($g->g1_fim) === '' ? 'sem limite' : (OrdemProducao::data($g->g1_ini) ?: 'início').' a '.(OrdemProducao::data($g->g1_fim) ?: 'sem fim') }}</small></td>
           </tr>
         @empty

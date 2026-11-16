@@ -128,8 +128,8 @@
                 <td><code>{{ $op->numero }}</code></td>
                 <td><span class="etiqueta op-{{ $op->status }}">{{ $op->rotuloStatus() }}</span></td>
                 <td class="quebra"><code>{{ $op->c2_produto }}</code> <small>{{ ($produtosOps[$op->c2_produto] ?? null)?->descricao() }}</small></td>
-                <td class="num">{{ number_format($op->c2_quant, 0, ',', '.') }} <small class="suave">{{ $op->c2_um ?: ($produtosOps[$op->c2_produto] ?? null)?->b1_um }}</small></td>
-                <td class="num">{{ number_format($op->c2_quje, 0, ',', '.') }}
+                <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_quant) }} <small class="suave">{{ $op->c2_um ?: ($produtosOps[$op->c2_produto] ?? null)?->b1_um }}</small></td>
+                <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_quje) }}
                   @if ($op->c2_quant > 0)<small class="suave">({{ number_format(min($op->c2_quje / $op->c2_quant, 9.99) * 100, 0, ',', '.') }}%)</small>@endif</td>
                 <td>{{ \App\Models\OrdemProducao::data($op->c2_datpri) }} a {{ \App\Models\OrdemProducao::data($op->c2_datprf) }}</td>
               </tr>

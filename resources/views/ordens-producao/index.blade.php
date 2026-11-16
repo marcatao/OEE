@@ -50,10 +50,10 @@
         <td><a href="{{ route('ordens-producao.show', $op) }}" title="Detalhes e kardex da OP"><code>{{ $op->numero }}</code></a>@if (trim($op->c2_filial) !== '')<br><small class="suave">filial {{ $op->c2_filial }}</small>@endif</td>
         <td><span class="etiqueta op-{{ $op->status }}">{{ $op->rotuloStatus() }}</span>@if ($op->c2_tpop === 'P')<br><small class="suave">prevista</small>@endif</td>
         <td class="quebra"><code>{{ $op->c2_produto }}</code><br><small>{{ $produto?->descricao() ?? 'produto não sincronizado' }}</small></td>
-        <td class="num">{{ number_format($op->c2_quant, 0, ',', '.') }} <small class="suave">{{ $op->c2_um ?: $produto?->b1_um }}</small></td>
-        <td class="num">{{ number_format($op->c2_quje, 0, ',', '.') }}
+        <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_quant) }} <small class="suave">{{ $op->c2_um ?: $produto?->b1_um }}</small></td>
+        <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_quje) }}
           @if ($op->c2_quant > 0)<br><small class="suave">{{ number_format(min($op->c2_quje / $op->c2_quant, 9.99) * 100, 0, ',', '.') }}%</small>@endif</td>
-        <td class="num">{{ number_format($op->c2_perda, 0, ',', '.') }}</td>
+        <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_perda) }}</td>
         <td class="num">{{ Formato::moeda($custos[$op->id]->custoUnitario(), 4) }} <small class="suave">/{{ $op->c2_um ?: 'un' }}</small>
           @if ($custos[$op->id]->pelaMedia > 0)<br><small class="suave" title="Consumos que o Protheus ainda não valorizou: usado o custo médio de estoque (SB2)">{{ $custos[$op->id]->pelaMedia }} pelo custo médio</small>@endif
           @if ($custos[$op->id]->semCusto > 0)<br><small class="texto-alerta">{{ $custos[$op->id]->semCusto }} sem custo</small>@endif</td>

@@ -40,18 +40,11 @@ final class Formato
         return $valor === null ? '—' : 'R$ '.number_format($valor, $casas, ',', '.');
     }
 
-    /** Quantidade com casas só quando tem fração: 1500 → "1.500"; 12.5 → "12,50". */
+    /**
+     * Quantidade com as casas decimais do Protheus (os campos de quantidade dele têm até 6): até 6 casas, sem zeros
+     * sobrando. 0.000604 → "0,000604"; 1234.5 → "1.234,5"; 2 → "2".
+     */
     public static function quantidade(?float $valor): string
-    {
-        if ($valor === null) {
-            return '—';
-        }
-
-        return number_format($valor, abs($valor - round($valor)) < 0.00001 ? 0 : 2, ',', '.');
-    }
-
-    /** Quantidade pequena (ex.: por peça na estrutura): até 6 casas, sem zeros sobrando: 0.0025 → "0,0025"; 2 → "2". */
-    public static function quantidadeFina(?float $valor): string
     {
         if ($valor === null) {
             return '—';
