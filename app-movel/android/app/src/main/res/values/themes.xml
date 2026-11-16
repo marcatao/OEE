@@ -1,0 +1,6 @@
+<resources>
+    <style name="Tema.OEE" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#00663D</item>
+        <item name="android:windowBackground">@color/fundo</item>
+    </style>
+</resources>

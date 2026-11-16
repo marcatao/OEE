@@ -131,6 +131,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `assistente_perguntas`. Tela nova com dados? Avalie criar a consulta correspondente no assistente.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
 
+- **Aplicativo Android** (`app-movel/`, Kotlin + Compose, pacote `br.com.alumbra.oee`): nativo, offline com banco
+  local, sincroniza só na Wi-Fi `wlan_alumbra`, distribuído só por APK. Usa uma API do portal (`/api/app/...`) com os
+  MESMOS serviços, permissões e escopo de unidade das telas; conflito = vale a alteração mais recente pelo horário.
+  A cada mudança no app: suba `codigo` (e ajuste `nome`) em `app-movel/android/versao.properties`, registre em
+  `app-movel/VERSOES.md` e gere o APK. A chave em `app-movel/android/keystore/` fica no repositório com autorização do
+  usuário (só assina o APK) e nunca deve ser trocada. Plano e regras em `app-movel/README.md`.
+
 ## Git
 
 - Trabalhe **sempre direto na branch `main`**: não crie outras branches nem pull requests. Faça commit e push em

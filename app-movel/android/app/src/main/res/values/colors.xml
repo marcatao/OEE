@@ -1,0 +1,5 @@
+<resources>
+    <!-- Mesmas cores de public/css/portal.css (tema claro). -->
+    <color name="fundo">#F2F5F3</color>
+    <color name="icone_fundo">#008650</color>
+</resources>
