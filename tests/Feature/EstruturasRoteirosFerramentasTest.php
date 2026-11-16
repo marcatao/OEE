@@ -116,6 +116,10 @@ class EstruturasRoteirosFerramentasTest extends TestCase
             ->assertDontSee('20/12/2020'); // vencida fica fora das vigentes
         $this->get('/producao/estruturas?validade=todas')->assertSee('31/12/2020');
         $this->get('/producao/estruturas?produto=PI001')->assertSee('RESINA PP')->assertDontSee('TAMPA 28MM'); // só o nível do PI001
+        // Quantidade com as casas decimais do Protheus (G1_QUANT 0.0025 não vira "0,00").
+        $this->get('/producao/estruturas?produto=PI001')->assertSee('0,0025')->assertDontSee('>0,00 <', false);
+        EstruturaProduto::where('g1_cod', 'PI001')->update(['g1_quant' => 0.000604]);
+        $this->get('/producao/estruturas?produto=PI001')->assertSee('0,000604');
         $this->get('/producao/roteiros')->assertOk()->assertSee('INJECAO')->assertSee('MOLD01')->assertSee('8/8 cavidades');
         $this->get('/producao/ferramentas')->assertOk()->assertSee('MOLDE TAMPA 28MM 8 CAV')->assertSee('Editar');
 

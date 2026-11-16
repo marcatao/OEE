@@ -43,8 +43,8 @@
         <td class="quebra"><code>{{ $l->g1_comp }}</code>
           @if (isset($comEstrutura[rtrim($l->g1_comp)]))<a class="etiqueta op-andamento" href="{{ route('estruturas.index', ['produto' => rtrim($l->g1_comp), 'validade' => $validade]) }}">estrutura</a>@endif
           <br><small>{{ ($produtos[rtrim($l->g1_comp)] ?? null)?->descricao() ?? 'produto não sincronizado' }}</small></td>
-        <td class="num">{{ Formato::quantidade($l->g1_quant) }} <small class="suave">{{ ($produtos[rtrim($l->g1_comp)] ?? null)?->b1_um }}</small></td>
-        <td class="num">{{ $l->g1_perda > 0 ? number_format($l->g1_perda, 2, ',', '.').'%' : '-' }}</td>
+        <td class="num">{{ Formato::quantidadeFina($l->g1_quant) }} <small class="suave">{{ ($produtos[rtrim($l->g1_comp)] ?? null)?->b1_um }}</small></td>
+        <td class="num">{{ $l->g1_perda > 0 ? Formato::quantidadeFina($l->g1_perda).'%' : '-' }}</td>
         <td>{{ ['F' => 'Fixa', 'V' => 'Variável'][trim($l->g1_fixvar)] ?? '-' }}</td>
         <td>{{ OrdemProducao::data($l->g1_ini) }} a {{ OrdemProducao::data($l->g1_fim) }}</td>
         <td>{{ trim($l->g1_revini.' – '.$l->g1_revfim, ' –') ?: '-' }}</td>
