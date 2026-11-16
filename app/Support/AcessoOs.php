@@ -266,6 +266,23 @@ final class AcessoOs
         return Maquina::withoutGlobalScope('unidade')->where('ativo', true)->orderBy('codigo')->get(['id', 'codigo', 'nome', 'centro_custo', 'unidade']);
     }
 
+    /** A máquina é da área executante? Mesma unidade, ou uma das duas cadastrada para "Todas" (ambos). */
+    public static function maquinaDaArea(Maquina $maquina, ?AreaExecutante $area): bool
+    {
+        return $area === null || in_array('ambos', [$area->unidade, $maquina->unidade], true) || $area->unidade === $maquina->unidade;
+    }
+
+    /** Máquinas ativas das unidades destas áreas executantes (e as de "Todas"). */
+    public static function maquinasDasAreas(Collection $areas): Collection
+    {
+        $unidades = $areas->pluck('unidade')->unique()->values()->all();
+        if (in_array('ambos', $unidades, true)) {
+            return self::maquinas();
+        }
+
+        return self::maquinas()->filter(fn ($m) => in_array($m->unidade, [...$unidades, 'ambos'], true))->values();
+    }
+
     public static function areas(): Collection
     {
         return AreaExecutante::withoutGlobalScope('unidade')->where('ativo', true)->orderBy('nome')->get();

@@ -213,7 +213,8 @@ class SolicitacaoController extends Controller
 
         return [
             'ss' => $ss,
-            'maquinas' => AcessoOs::maquinas(),
+            // Só as máquinas das áreas que a pessoa pode escolher (a tela ainda filtra pela área escolhida).
+            'maquinas' => AcessoOs::maquinasDasAreas($areas),
             'areas' => $areas,
             'centros' => AcessoOs::centrosCusto(),
             'ccUsuario' => AcessoOs::centroCustoDo($autor),
@@ -247,6 +248,9 @@ class SolicitacaoController extends Controller
 
         $area = AreaExecutante::withoutGlobalScopes()->find($dados['area_executante_id']);
         $maquina = isset($dados['maquina_id']) ? Maquina::withoutGlobalScopes()->find($dados['maquina_id']) : null;
+        if ($maquina && ! AcessoOs::maquinaDaArea($maquina, $area)) {
+            throw ValidationException::withMessages(['maquina_id' => 'Esta máquina não é da área executante escolhida.']);
+        }
 
         // Centro de custo: o da máquina (travado); sem máquina ou máquina sem CC, o informado ou o do autor; senão é obrigatório.
         $ccMaquina = trim((string) $maquina?->centro_custo);

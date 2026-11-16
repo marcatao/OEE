@@ -406,7 +406,7 @@ class OrdensServicoTest extends TestCase
 
         // Solicitante de Ferramentaria só abre para as áreas da Ferramentaria.
         $this->actingAs($solicitante)->get('/ordens-de-servico/solicitacoes/nova')->assertOk()->assertSee('Moldes')->assertDontSee('Mecânica');
-        $ss = $this->abrirSs($solicitante, ['area_executante_id' => $ferr->id, 'titulo' => 'Molde 12 com rebarba']);
+        $ss = $this->abrirSs($solicitante, ['area_executante_id' => $ferr->id, 'titulo' => 'Molde 12 com rebarba', 'maquina_id' => '', 'centro_custo' => '1001']);
         $this->assertSame('ferramentaria', $ss->unidade);
         // Mantenedor de Ferramentaria vê; o de Produção não; o admin de Ferramentaria aprova.
         $this->actingAs($mantenedor)->get("/ordens-de-servico/solicitacoes/{$ss->id}")->assertOk();
@@ -417,6 +417,26 @@ class OrdensServicoTest extends TestCase
         $this->assertSame(['ferramentaria'], $admF->unidadesParaCadastro());
         $this->get('/ordens-de-servico/painel')->assertOk()->assertSee('Painel — Ferramentaria');
         $this->get('/admin/maquinas')->assertOk();
+    }
+
+    public function test_na_abertura_so_as_maquinas_da_area_executante(): void
+    {
+        $servidor = Maquina::create(['linha_id' => $this->injetora->linha_id, 'codigo' => 'SRV-01', 'nome' => 'Servidor ERP', 'ativo' => true,
+            'centro_custo' => '1001', 'unidade' => 'tecnologia']);
+        $ambos = Maquina::create(['linha_id' => $this->injetora->linha_id, 'codigo' => 'NOB-01', 'nome' => 'Nobreak geral', 'ativo' => true,
+            'centro_custo' => '1001', 'unidade' => 'ambos']);
+        $ambos2 = $this->usuario(['solicitante_manutencao', 'solicitante_tecnologia'], 'duas@empresa.com');
+        $soManutencao = $this->usuario(['solicitante_manutencao'], 'uma@empresa.com');
+
+        // A tela leva a unidade de cada máquina e de cada área (o filtro é feito ao escolher a área).
+        $this->actingAs($ambos2)->get('/ordens-de-servico/solicitacoes/nova')->assertOk()
+            ->assertSee('data-unidade="tecnologia"', false)->assertSee('SRV-01')->assertSee('Escolha primeiro a área executante');
+        // Máquina de outra área é recusada; a de "Todas" vale para qualquer área.
+        $this->post('/ordens-de-servico/solicitacoes', ['titulo' => 'x', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'maquina_id' => $servidor->id, 'prioridade' => 'media', 'descricao' => 'x'])->assertSessionHasErrors('maquina_id');
+        $this->abrirSs($ambos2, ['area_executante_id' => $this->ti->id, 'maquina_id' => $ambos->id]);
+        // Quem só solicita para a Manutenção nem recebe as máquinas da Tecnologia.
+        $this->actingAs($soManutencao)->get('/ordens-de-servico/solicitacoes/nova')->assertOk()->assertSee('INJ-01')->assertDontSee('SRV-01');
     }
 
     public function test_rejeicao_volta_ao_solicitante_com_motivo(): void

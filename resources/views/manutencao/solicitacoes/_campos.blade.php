@@ -21,10 +21,10 @@
           </select>
         </label>
         <label>Área executante
-          <select name="area_executante_id" required>
+          <select name="area_executante_id" id="ss-area" required>
             <option value="">Escolha…</option>
             @foreach ($areas as $a)
-              <option value="{{ $a->id }}" @selected((int) old('area_executante_id', $ss->area_executante_id) === $a->id)>{{ $a->nome }} — {{ config('oee.unidades')[$a->unidade] ?? $a->unidade }}</option>
+              <option value="{{ $a->id }}" data-unidade="{{ $a->unidade }}" @selected((int) old('area_executante_id', $ss->area_executante_id) === $a->id)>{{ $a->nome }} — {{ config('oee.unidades')[$a->unidade] ?? $a->unidade }}</option>
             @endforeach
           </select>
         </label>
@@ -40,9 +40,10 @@
           <select name="maquina_id" id="ss-maquina" data-busca="Buscar máquina por código ou nome…">
             <option value="" data-cc="">Sem máquina (serviço geral)</option>
             @foreach ($maquinas as $m)
-              <option value="{{ $m->id }}" data-cc="{{ trim((string) $m->centro_custo) }}" @selected((int) old('maquina_id', $ss->maquina_id) === $m->id)>{{ $m->codigo }} — {{ $m->nome }}</option>
+              <option value="{{ $m->id }}" data-cc="{{ trim((string) $m->centro_custo) }}" data-unidade="{{ $m->unidade }}" @selected((int) old('maquina_id', $ss->maquina_id) === $m->id)>{{ $m->codigo }} — {{ $m->nome }}</option>
             @endforeach
           </select>
+          <small id="ss-maquina-info" class="suave"></small>
         </label>
         <label class="largo-2">Centro de custo
           @php($ccAtual = old('centro_custo', trim((string) $ss->centro_custo) ?: (string) $ccUsuario))
@@ -85,6 +86,24 @@
       cc.dispatchEvent(new Event('change'));
     }
     maquina.addEventListener('change', function () { aplicarMaquina(false); });
+
+    // Máquinas só da área executante escolhida (as da mesma unidade e as cadastradas para "Todas"); sem área, nenhuma.
+    var area = document.getElementById('ss-area'), maquinaInfo = document.getElementById('ss-maquina-info');
+    var todasMaquinas = Array.prototype.slice.call(maquina.options).filter(function (o) { return o.value !== ''; });
+    var semMaquina = maquina.options[0];
+    function filtrarMaquinas(inicio) {
+      var op = area.selectedOptions[0], unidade = op && op.value ? op.dataset.unidade : null, atual = maquina.value;
+      todasMaquinas.forEach(function (o) { if (o.parentNode) o.remove(); });
+      var cabem = unidade ? todasMaquinas.filter(function (o) { return unidade === 'ambos' || o.dataset.unidade === unidade || o.dataset.unidade === 'ambos'; }) : [];
+      cabem.forEach(function (o) { maquina.add(o); });
+      semMaquina.textContent = unidade ? 'Sem máquina (serviço geral)' : 'Escolha primeiro a área executante';
+      maquinaInfo.textContent = unidade ? (cabem.length ? cabem.length + ' máquina(s) da área.' : 'Nenhuma máquina cadastrada nesta área.') : '';
+      var continua = cabem.some(function (o) { return o.value === atual; });
+      maquina.value = continua ? atual : '';
+      if (!continua && atual && !inicio) maquina.dispatchEvent(new Event('change'));
+    }
+    area.addEventListener('change', function () { filtrarMaquinas(false); });
+    filtrarMaquinas(true);
     cc.addEventListener('change', function () { if (!cc.disabled && cc.value) info.textContent = cc.value === ccUsuario ? 'Centro de custo do seu cadastro.' : ''; });
     aplicarMaquina(true);
 

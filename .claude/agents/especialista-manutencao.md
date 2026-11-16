@@ -118,6 +118,9 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   apontamentos de horas, mantenedores e interações.
 - **Encerrar apontamento** tem a opção "Concluir a OS também" (conclui com a descrição do apontamento como serviço
   realizado); desmarcada, encerra só o apontamento e a OS continua aberta.
+- **Máquina da SS = da área executante**: na abertura/revisão, a lista de máquinas só mostra as da unidade da área
+  escolhida e as de "Todas" (ambos); sem área, nenhuma. O servidor recusa máquina de outra área
+  (`AcessoOs::maquinaDaArea`); a página só recebe máquinas das áreas que a pessoa pode escolher (`maquinasDasAreas`).
 - **Vários mantenedores por OS** (`os_ordem_mantenedores`; `responsavel_id` = o principal, o primeiro). Na aprovação da
   SS escolhe-se um ou mais (nenhum = definir depois). Os **próprios mantenedores abrem e aprovam SS**; se quem aprova é
   mantenedor, ele já vem marcado e fica sempre atribuído à OS. Quem inicia apontamento numa OS também passa a estar

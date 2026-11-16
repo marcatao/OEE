@@ -28,6 +28,14 @@
 
   <form method="get" class="filtros">
     <label>Buscar <input name="busca" value="{{ $busca }}" placeholder="Nome ou código"></label>
+    @if (count($unidadesFiltro) > 1)
+      <label>Unidade
+        <select name="unidade">
+          <option value="">Todas as minhas áreas</option>
+          @foreach ($unidadesFiltro as $un)<option value="{{ $un }}" @selected($unidade === $un)>{{ config('oee.unidades')[$un] ?? $un }}</option>@endforeach
+        </select>
+      </label>
+    @endif
     <label>Situação
       <select name="situacao">
         <option value="">Todas</option>

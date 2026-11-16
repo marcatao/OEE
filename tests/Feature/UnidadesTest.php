@@ -59,6 +59,21 @@ class UnidadesTest extends TestCase
         $this->get('/admin/maquinas')->assertOk()->assertSee('INJ-01')->assertSee('SRV-01')->assertSee('NOB-01');
     }
 
+    public function test_filtro_de_unidade_no_cadastro_de_maquinas(): void
+    {
+        // Quem enxerga as três áreas filtra por qualquer uma; "Todas" (ambos) aparece junto da área filtrada.
+        $this->actingAs($this->usuario(['admin_tecnologia'], 'adm-ti@empresa.com'));
+        $this->get('/admin/maquinas')->assertOk()->assertSee('<select name="unidade">', false)
+            ->assertSee('<option value="ferramentaria"', false);
+        $this->get('/admin/maquinas?unidade=tecnologia')->assertOk()->assertSee('SRV-01')->assertSee('NOB-01')->assertDontSee('INJ-01');
+        $this->get('/admin/maquinas?unidade=manutencao')->assertOk()->assertSee('INJ-01')->assertDontSee('SRV-01');
+
+        // Quem só tem uma área não vê o filtro, e um valor de outra área na URL é ignorado.
+        $this->actingAs($this->usuario(['admin_producao'], 'prod@empresa.com'));
+        $this->get('/admin/maquinas')->assertOk()->assertDontSee('<select name="unidade">', false);
+        $this->get('/admin/maquinas?unidade=tecnologia')->assertOk()->assertSee('INJ-01')->assertDontSee('SRV-01');
+    }
+
     public function test_opcoes_de_unidade_no_cadastro(): void
     {
         $dados = fn (string $codigo, string $unidade) => ['codigo' => $codigo, 'nome' => $codigo, 'linha_id' => $this->linha->id,

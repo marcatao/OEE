@@ -28,14 +28,22 @@ class MaquinaController extends Controller
     {
         $busca = trim((string) $request->query('busca'));
         $situacao = (string) $request->query('situacao');
+        // Filtro por área: só as áreas que o usuário enxerga (o escopo global já esconde as outras).
+        $visiveis = $request->user()->unidadesVisiveis();
+        $unidadesFiltro = $visiveis === null ? Unidades::areas() : array_values(array_intersect(Unidades::areas(), $visiveis));
+        $unidade = in_array($request->query('unidade'), $unidadesFiltro, true) ? (string) $request->query('unidade') : '';
         $aguardando = fn ($q) => $q->whereNotNull('r_e_c_n_o_')->where('ativo', false)->where('d_e_l_e_t_', '<>', '*');
 
         return view('admin.maquinas.index', [
             'busca' => $busca,
             'situacao' => $situacao,
+            'unidade' => $unidade,
+            'unidadesFiltro' => $unidadesFiltro,
             'maquinas' => Maquina::with(['linha.planta', 'centroCusto', 'iot1Dispositivo', 'iot2Dispositivo', 'iot3Dispositivo', 'ordemProducao'])
                 ->when($busca !== '', fn ($q) => $q->where(fn ($w) => $w
                     ->where('nome', 'like', "%{$busca}%")->orWhere('codigo', 'like', "%{$busca}%")))
+                // A área escolhida e as máquinas de "Todas" (ambos), que também são dela.
+                ->when($unidade !== '', fn ($q) => $q->whereIn('unidade', [$unidade, 'ambos']))
                 ->when($situacao === 'aguardando', $aguardando)
                 ->when($situacao === 'ativas', fn ($q) => $q->where('ativo', true))
                 ->when($situacao === 'excluidas', fn ($q) => $q->where('d_e_l_e_t_', '*'))
