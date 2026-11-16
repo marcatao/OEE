@@ -147,7 +147,7 @@ class SincronizadorProtheus
             $item = $this->item($registro->chave);
             $tabela = $this->tabelaOrigem($item);
             if ($this->via($registro->chave) === 'procedure') {
-                return $this->continuarPorProcedure($registro, $item, $tabela, $segundos);
+                return $this->continuarPorProcedure($registro, $item);
             }
 
             /** @var ImportadorProtheus $importador */
@@ -227,53 +227,28 @@ class SincronizadorProtheus
     }
 
     /**
-     * Sincronização pela procedure do banco (ex.: dbo.sp_sincronizar_ordens_producao): o PHP só a chama, um lote de
-     * protheus.lote_procedure linhas por vez, a partir do último R_E_C_N_O_, até o fim da tabela ou até o tempo da
-     * etapa acabar. A procedure lê o Protheus no mesmo servidor (banco.tabela) e grava com MERGE.
+     * Sincronização pela procedure do banco (ex.: dbo.sp_sincronizar_ordens_producao): o PHP só a chama, sem
+     * parâmetros. A procedure faz o MERGE da tabela inteira (Compras.dbo.SC2 → ordens_producao) e devolve o resumo.
+     * A mesma procedure pode ser rodada direto no banco (SSMS ou job do SQL Server Agent).
      */
-    private function continuarPorProcedure(Sincronizacao $registro, array $item, string $tabela, ?float $segundos): Sincronizacao
+    private function continuarPorProcedure(Sincronizacao $registro, array $item): Sincronizacao
     {
         $procedure = (string) $item['procedure'];
-        $sb9 = (string) config('protheus.tabela_sb9', 'SB9');
-        foreach ([$procedure, $sb9] as $nome) {
-            if (! preg_match('/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?$/', $nome)) {
-                throw new InvalidArgumentException("Nome inválido: {$nome}");
-            }
+        if (! preg_match('/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?$/', $procedure)) {
+            throw new InvalidArgumentException("Nome de procedure inválido: {$procedure}");
         }
-        $banco = (string) config('database.connections.protheus.database');
-        $desde = preg_replace('/\D/', '', (string) config('protheus.sc2_desde'));
-        $lote = max(50, (int) config('protheus.lote_procedure', 10000));
-        $limite = $segundos !== null ? microtime(true) + $segundos : null;
-
-        $totais = ['lidos' => (int) $registro->lidos];
-        foreach (['novos', 'atualizados', 'ignorados', 'excluidos'] as $campo) {
-            $totais[$campo] = (int) $registro->{$campo};
+        $registro->update(['sinal_em' => now()]);
+        $linha = Cronometro::medir('procedure', fn () => DB::select("EXEC {$procedure}")[0] ?? null);
+        if ($linha === null) {
+            throw new \RuntimeException("A procedure {$procedure} não devolveu o resumo.");
         }
-        $ultimo = (int) ($registro->ultimo_recno ?? 0);
-        do {
-            $linha = Cronometro::medir('procedure', fn () => DB::select("EXEC {$procedure} @banco = ?, @tabela = ?, @tabela_sb9 = ?, @desde = ?, @ultimo_recno = ?, @lote = ?",
-                [$banco, $tabela, $sb9, strlen($desde) === 8 ? $desde : '', $ultimo, $lote])[0] ?? null);
-            if ($linha === null) {
-                throw new \RuntimeException("A procedure {$procedure} não devolveu o resumo do lote.");
-            }
-            $r = array_change_key_case((array) $linha, CASE_LOWER);
-            foreach (['lidos', 'novos', 'atualizados', 'ignorados', 'excluidos'] as $campo) {
-                $totais[$campo] += (int) ($r[$campo] ?? 0);
-            }
-            $ultimo = (int) $r['ultimo_recno'];
-            $terminou = (bool) (int) $r['terminou'];
-            $ausentes = trim((string) ($r['campos_ausentes'] ?? ''));
-            // Sinal de vida e ponto de parada a cada lote (o lote já foi gravado pela procedure).
-            $registro->update($totais + ['ultimo_recno' => $ultimo, 'sinal_em' => now()]);
-        } while (! $terminou && ($limite === null || microtime(true) < $limite));
-
-        if (! $terminou) {
-            return $registro; // tempo desta etapa acabou: a próxima continua do último R_E_C_N_O_
+        $r = array_change_key_case((array) $linha, CASE_LOWER);
+        $totais = [];
+        foreach (['lidos', 'novos', 'atualizados', 'ignorados', 'excluidos'] as $campo) {
+            $totais[$campo] = (int) ($r[$campo] ?? 0);
         }
-        $aviso = $ausentes !== ''
-            ? "Campos que não existem em {$banco}.{$tabela} e ficaram em branco: {$ausentes}." : null;
 
-        return $this->terminar($registro, 'sucesso', $totais + ['ultimo_recno' => $ultimo], $aviso);
+        return $this->terminar($registro, 'sucesso', $totais + ['ultimo_recno' => isset($r['ultimo_recno']) ? (int) $r['ultimo_recno'] : null]);
     }
 
     /**

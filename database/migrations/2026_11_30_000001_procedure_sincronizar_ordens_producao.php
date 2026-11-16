@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\ProceduresBanco;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -20,13 +21,8 @@ return new class extends Migration
             $table->index('r_e_c_n_o_');
         });
 
-        if (DB::getDriverName() !== 'sqlsrv') {
-            return; // SQLite (testes): a sincronização das OPs segue pelo PHP
-        }
-        // Cria vazia (se não existe) e depois ALTER com o texto do arquivo: funciona em qualquer versão do SQL Server.
-        DB::unprepared("IF OBJECT_ID('dbo.sp_sincronizar_ordens_producao', 'P') IS NULL
-            EXEC('CREATE PROCEDURE dbo.sp_sincronizar_ordens_producao AS RETURN 0')");
-        DB::unprepared(file_get_contents(database_path('procedures/sp_sincronizar_ordens_producao.sql')));
+        // Só no SQL Server (no SQLite dos testes a sincronização das OPs segue pelo PHP).
+        ProceduresBanco::instalar('sp_sincronizar_ordens_producao');
     }
 
     public function down(): void

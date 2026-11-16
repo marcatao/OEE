@@ -93,11 +93,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   correlacionada, e com cache por produto durante a etapa). Meça partes lentas com `App\Support\Cronometro`: a
   etapa devolve os tempos e a tela mostra.
   Cada tabela de `config/protheus.php` tem `via` = `php` (importador) ou `procedure` (o PHP só chama a procedure do
-  banco do portal, em lotes de `protheus.lote_procedure` a partir de `ultimo_recno`; coluna "Sincronização" na tela).
-  `ordens_producao` usa `dbo.sp_sincronizar_ordens_producao` (texto em `database/procedures/*.sql`, começa com
-  `ALTER PROCEDURE`; MERGE pelo R_E_C_N_O_, com a mesma lógica do `ImportadorOrdensProducao`: status, custo meta e
-  OPs fechadas fora das máquinas). Mudou a lógica das OPs? Mude nos DOIS (o SQLite dos testes usa o PHP). Mudou um
-  `.sql`? Rode `php artisan banco:procedures` no servidor.
+  banco do portal; coluna "Sincronização" na tela). `ordens_producao` usa `dbo.sp_sincronizar_ordens_producao`, SEM
+  parâmetros: MERGE da tabela inteira `Compras.dbo.SC2` (pelo R_E_C_N_O_; sem ele, pela chave da OP) com a mesma
+  lógica do `ImportadorOrdensProducao` (status, custo meta da `Compras.dbo.SB9`, OPs fechadas fora das máquinas); pode
+  rodar direto no banco. Texto em `database/procedures/*.sql` (começa com `ALTER PROCEDURE`; instalação por
+  `App\Support\ProceduresBanco`). Mudou a lógica das OPs? Mude nos DOIS (o SQLite dos testes usa o PHP). Mudou um
+  `.sql`? Crie uma migração que chame `ProceduresBanco::instalar()` (ou rode `php artisan banco:procedures`).
   SD3/SD2 são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na

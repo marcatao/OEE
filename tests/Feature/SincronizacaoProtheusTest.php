@@ -198,6 +198,9 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertStringContainsString('ALTER PROCEDURE '.config('protheus.sincronizacoes.ordens_producao.procedure'), $sql);
         $this->assertStringContainsString('MERGE dbo.ordens_producao', $sql);
         $this->assertStringContainsString('t.r_e_c_n_o_ = s.r_e_c_n_o_', $sql);
+        // Sem parâmetros: a tabela inteira, direto de Compras.dbo.SC2.
+        $this->assertMatchesRegularExpression('/ALTER PROCEDURE dbo\.sp_sincronizar_ordens_producao\s+AS\s+BEGIN/', $sql);
+        $this->assertStringContainsString('FROM Compras.dbo.SC2', $sql);
     }
 
     public function test_sincroniza_so_a_tabela_escolhida_e_rejeita_tabela_desconhecida(): void

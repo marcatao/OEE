@@ -79,8 +79,10 @@ return [
             'tabela_destino' => 'ordens_producao',
             'importador' => ImportadorOrdensProducao::class,
             'modo' => 'espelho', // cópia da SC2 + "status" e "custo_meta" (SB9) calculados pelo portal
-            // Sincronização pela procedure do banco (MERGE pelo R_E_C_N_O_), chamada pelo PHP em etapas. "php" = pelo
-            // importador (ImportadorOrdensProducao). Sem SQL Server (ex.: testes em SQLite), sempre pelo PHP.
+            // Sincronização pela procedure do banco (MERGE da tabela inteira Compras.dbo.SC2, pelo R_E_C_N_O_), que o PHP
+            // só chama, sem parâmetros. "php" = pelo importador (ImportadorOrdensProducao). Sem SQL Server (ex.: testes
+            // em SQLite), sempre pelo PHP. A procedure lê SEMPRE Compras.dbo.SC2 e Compras.dbo.SB9 e a tabela inteira
+            // (PROTHEUS_TABELA_SC2, PROTHEUS_TABELA_SB9 e PROTHEUS_SC2_DESDE valem só para o PHP).
             'via' => env('PROTHEUS_VIA_SC2') ?: 'procedure',
             'procedure' => 'dbo.sp_sincronizar_ordens_producao',
         ],
@@ -182,10 +184,6 @@ return [
 
     // Ordens de produção, movimentos (SD3) e notas (SD2): só os emitidos a partir desta data (AAAAMMDD). Vazio = todos.
     'sc2_desde' => env('PROTHEUS_SC2_DESDE', ''),
-
-    // Linhas da origem por chamada da procedure (tabelas com 'via' => 'procedure'). Cada etapa do botão chama a
-    // procedure quantas vezes couber em segundos_por_etapa.
-    'lote_procedure' => (int) env('PROTHEUS_LOTE_PROCEDURE', 10000),
 
     // Linhas por lote: o Protheus é lido e gravado de tantas em tantas linhas, para a memória não crescer com o
     // tamanho da tabela (ex.: SC2 com anos de OPs).

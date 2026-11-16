@@ -7,6 +7,7 @@ use App\Services\Manutencao\GeradorPreventivas;
 use App\Services\MaquinasSemIot;
 use App\Services\Protheus\SincronizadorProtheus;
 use App\Services\SituacaoMaquina;
+use App\Support\ProceduresBanco;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
@@ -29,11 +30,9 @@ Artisan::command('banco:procedures', function () {
 
         return 0;
     }
-    foreach (glob(database_path('procedures/*.sql')) as $arquivo) {
-        $nome = 'dbo.'.basename($arquivo, '.sql');
-        DB::unprepared("IF OBJECT_ID('{$nome}', 'P') IS NULL EXEC('CREATE PROCEDURE {$nome} AS RETURN 0')");
-        DB::unprepared(file_get_contents($arquivo));
-        $this->info("{$nome}: atualizada.");
+    foreach (ProceduresBanco::todas() as $nome) {
+        ProceduresBanco::instalar($nome);
+        $this->info("dbo.{$nome}: atualizada.");
     }
 
     return 0;
