@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Painel das Ordens de serviço de UMA área (unidade: manutencao ou tecnologia), só com o que o usuário pode ver
+ * Painel das Ordens de serviço de UMA área (unidade: manutencao, tecnologia ou ferramentaria), só com o que o usuário pode ver
  * (AcessoOs::filtrar): chamados aguardando aprovação, OS abertas e por mantenedor, máquinas paradas, mensagens sem
  * resposta, aguardando avaliação, preventivas atrasadas e os números dos últimos 30 dias.
  */

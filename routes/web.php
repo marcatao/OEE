@@ -105,7 +105,7 @@ Route::middleware('auth')->group(function () {
     Route::match(['get', 'post'], 'calculadora', [PortalController::class, 'calculadora'])
         ->middleware('permissao:calculadora')->name('calculadora');
 
-    // Ordens de serviço (manutenção de produção e de tecnologia). SS → aprovação → OS → horas, materiais → conclusão →
+    // Ordens de serviço (Manutenção, Tecnologia e Ferramentaria). SS → aprovação → OS → horas, materiais → conclusão →
     // aceite; preventivas (PAMP) e relatórios de horas. Cada um vê a fila da sua unidade; o solicitante vê as suas.
     Route::prefix('ordens-de-servico')->name('os.')->group(function () {
         $todos = 'permissao:os_solicitar,os_aprovar,solicitacoes_manutencao,os_almoxarifado';

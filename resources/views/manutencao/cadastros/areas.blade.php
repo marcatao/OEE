@@ -7,7 +7,7 @@
   <p class="trilha">Ordens de serviço › Cadastros</p>
   <h1>Áreas executantes</h1>
   <p class="suave">Quem executa o serviço (ex.: Elétrica, Mecânica, Ferramentaria, TI). A unidade da área decide se a SS vai para a
-    Manutenção de Produção ou de Tecnologia.</p>
+    Manutenção, a Tecnologia ou a Ferramentaria.</p>
   @include('manutencao._erros')
   <div class="rolagem">
   <table class="tabela tabela-form">

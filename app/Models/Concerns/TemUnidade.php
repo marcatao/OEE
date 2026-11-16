@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Cadastro com "unidade" (ambiente): manutencao | tecnologia | ambos (config oee.unidades).
+ * Cadastro com "unidade" (ambiente): manutencao | tecnologia | ferramentaria | ambos (config oee.unidades).
  * Filtro automático: o usuário logado só enxerga os registros das unidades dele e os de "ambos"; o Administrador de
  * Tecnologia (ou quem tem os dois ambientes) vê tudo. Sem usuário logado (comandos, sincronização agendada), sem filtro.
  */

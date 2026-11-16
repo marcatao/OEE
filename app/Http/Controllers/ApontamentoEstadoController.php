@@ -36,7 +36,7 @@ class ApontamentoEstadoController extends Controller
             'filtroMaquina' => $request->integer('maquina_id') ?: null,
             'filtroData' => $data,
             'apontamentos' => ApontamentoEstado::with(['maquina', 'legenda', 'criadoPor', 'ordemProducao'])
-                ->whereHas('maquina') // só das máquinas que o usuário enxerga (unidade: manutenção / tecnologia)
+                ->whereHas('maquina') // só das máquinas que o usuário enxerga (unidades dos perfis dele)
                 ->when($request->integer('maquina_id'), fn ($q, $id) => $q->where('maquina_id', $id))
                 ->when($data, function ($q, $d) use ($fuso) {
                     $ini = CarbonImmutable::parse($d, $fuso)->startOfDay();

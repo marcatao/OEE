@@ -25,9 +25,10 @@
     <fieldset>
       <legend>Perfis</legend>
       <p class="suave">Marque um ou mais. Sem nenhum perfil, o usuário entra no portal mas não vê nenhuma página.
-        Perfis de <strong>Manutenção</strong> enxergam os cadastros de manutenção; de <strong>Tecnologia</strong>, os de tecnologia;
-        cadastros marcados como <strong>Ambos</strong> aparecem para os dois. Só quem é <strong>Solicitante</strong> de uma área abre
-        solicitações de serviço (SS) para ela.</p>
+        Cada perfil dá acesso a uma unidade (<strong>Manutenção</strong>, <strong>Tecnologia</strong> ou <strong>Ferramentaria</strong>):
+        o usuário enxerga as máquinas, plantas, mantenedores e solicitações das unidades dos perfis dele, e os cadastros marcados como
+        <strong>Todas</strong>. Para dar acesso a mais de uma unidade, marque perfis em cada uma. Só quem é <strong>Solicitante</strong>
+        (ou administrador) de uma área abre solicitações de serviço (SS) para ela.</p>
       @php($perfisMarcados = old('perfis', $usuario->perfisAcesso()))
       <div class="perfis-areas">
       @foreach (['manutencao' => 'Manutenção (produção)', 'tecnologia' => 'Tecnologia', 'ferramentaria' => 'Ferramentaria'] as $area => $tituloArea)

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 /**
  * Usuário do portal. Cadastrado no primeiro login pelo Entra ID (nome e e-mail vêm do login) e nasce SEM ACESSO.
  * O Administrador de Tecnologia define os PERFIS (vários por usuário, tabela usuario_perfis; config oee.perfis_acesso)
- * e os grupos. O perfil dá as telas e o ambiente (unidade: manutenção e/ou tecnologia); os grupos somam telas.
+ * e os grupos. O perfil dá as telas e o ambiente (unidades: manutenção, tecnologia, ferramentaria); os grupos somam telas.
  * Usuário ainda sem perfis gravados segue a coluna antiga "perfil": admin = todos os perfis, operador = operador.
  */
 class Usuario extends Authenticatable

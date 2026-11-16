@@ -116,4 +116,26 @@ class UnidadesTest extends TestCase
         $this->assertNull($marcato->unidadesVisiveis()); // vê as duas unidades
         $this->assertSame(['manutencao', 'tecnologia', 'ferramentaria', 'ambos'], $marcato->unidadesParaCadastro());
     }
+
+    public function test_ferramentaria_aparece_em_todos_os_cadastros_e_no_painel(): void
+    {
+        $telas = ['/admin/maquinas/nova', '/admin/plantas-e-linhas', '/ordens-de-servico/cadastros/mantenedores/novo',
+            '/ordens-de-servico/cadastros/areas'];
+
+        // Quem administra as três áreas escolhe qualquer uma (e "Todas") em cada cadastro e tem o painel das três.
+        $this->actingAs($this->usuario(['admin_producao', 'admin_tecnologia', 'admin_ferramentaria'], 'tres@empresa.com'));
+        foreach ($telas as $tela) {
+            foreach (['manutencao', 'tecnologia', 'ferramentaria', 'ambos'] as $valor) {
+                $this->get($tela)->assertOk()->assertSee('<option value="'.$valor.'"', false);
+            }
+        }
+        $this->get('/ordens-de-servico/painel?unidade=ferramentaria')->assertOk()->assertSee('Ferramentaria');
+
+        // Só Ferramentaria: só ela nos cadastros.
+        $this->actingAs($this->usuario(['admin_ferramentaria'], 'ferr@empresa.com'));
+        foreach ($telas as $tela) {
+            $this->get($tela)->assertOk()->assertSee('<option value="ferramentaria"', false)
+                ->assertDontSee('<option value="tecnologia"', false)->assertDontSee('<option value="ambos"', false);
+        }
+    }
 }
