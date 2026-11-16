@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AutenticaAplicativo;
 use App\Http\Middleware\ExigePerfil;
 use App\Http\Middleware\ExigePermissao;
 use App\Http\Middleware\RaizDaSubpasta;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -19,7 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Antes do roteamento: ".../oee" (sem barra) vira ".../oee/" quando o portal está numa subpasta.
         $middleware->prepend(RaizDaSubpasta::class);
         $middleware->web(append: [UsuarioAtivo::class]);
-        $middleware->alias(['perfil' => ExigePerfil::class, 'permissao' => ExigePermissao::class]);
+        $middleware->alias([
+            'perfil' => ExigePerfil::class,
+            'permissao' => ExigePermissao::class,
+            'aplicativo' => AutenticaAplicativo::class,
+        ]);
         $middleware->redirectGuestsTo(fn () => route('login'));
         // Proxies confiáveis (TRUSTED_PROXIES no .env) ficam em config/trustedproxy.php: aqui o .env ainda não foi lido.
     })

@@ -36,6 +36,9 @@ import br.com.alumbra.oee.rede.EstadoRede
 @Composable
 fun TelaInicial(
     rede: EstadoRede?,
+    mensagem: String?,
+    entrando: Boolean,
+    aoEntrar: () -> Unit,
     aoVerificarRede: () -> Unit,
     aoPedirPermissao: () -> Unit,
 ) {
@@ -73,12 +76,24 @@ fun TelaInicial(
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Entrar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "O login pelo portal chega na próxima versão. Esta versão serve para testar a instalação " +
-                            "e a rede Wi-Fi da fábrica.",
+                        "Você entra pelo portal OEE com a sua conta Microsoft da Alumbra. O primeiro acesso de cada " +
+                            "pessoa deve ser feito antes no portal, pelo computador.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                        Text("Entrar com a conta Alumbra")
+                    if (mensagem != null) Text(mensagem, color = MaterialTheme.colorScheme.error)
+                    Button(
+                        onClick = aoEntrar,
+                        enabled = rede?.naRedeDaFabrica == true && !entrando,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                    ) {
+                        Text(if (entrando) "Entrando…" else "Entrar pelo portal")
+                    }
+                    if (rede != null && !rede.naRedeDaFabrica) {
+                        Text(
+                            "Para entrar, conecte à rede ${BuildConfig.REDE_WIFI}.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp,
+                        )
                     }
                 }
             }
@@ -87,7 +102,7 @@ fun TelaInicial(
 }
 
 @Composable
-private fun CartaoRede(rede: EstadoRede?, aoVerificarRede: () -> Unit, aoPedirPermissao: () -> Unit) {
+fun CartaoRede(rede: EstadoRede?, aoVerificarRede: () -> Unit, aoPedirPermissao: () -> Unit) {
     val (cor, titulo, detalhe) = when {
         rede == null -> Triple(MaterialTheme.colorScheme.outline, "Verificando a rede…", "")
         !rede.noWifi -> Triple(MaterialTheme.colorScheme.error, "Sem Wi-Fi", "Conecte à rede ${BuildConfig.REDE_WIFI}.")

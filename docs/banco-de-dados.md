@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **51** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **52** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -733,6 +733,16 @@ erDiagram
         bigint atualizado_por_id FK
         nvarchar(120) titulo
     }
+    tokens_aplicativo {
+        bigint id PK
+        bigint usuario_id FK
+        nchar(64) token_hash UK
+        nvarchar(120) dispositivo
+        nvarchar(20) versao_app
+        datetime criado_em
+        datetime ultimo_uso_em
+        datetime revogado_em
+    }
     turnos {
         bigint id PK
         nvarchar(60) nome UK
@@ -845,6 +855,7 @@ erDiagram
     usuarios |o--o{ solicitacoes_servico : "analisado_por_id"
     apontamentos_estado |o--o{ solicitacoes_servico : "apontamento_estado_id"
     ordens_producao |o--o{ solicitacoes_servico : "ordem_producao_id"
+    usuarios ||--o{ tokens_aplicativo : "usuario_id"
     usuarios ||--o{ usuario_perfis : "usuario_id"
     centros_custo |o..o{ maquinas : "centro_custo (código)"
     produtos_protheus |o..o{ ordens_producao : "c2_produto (código)"
@@ -957,6 +968,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`solicitacoes_material`](#solicitacoes_material) | Sistema | `id` | 9 | 3 |
 | [`solicitacoes_material_itens`](#solicitacoes_material_itens) | Sistema | `id` | 18 | 4 |
 | [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 22 | 8 |
+| [`tokens_aplicativo`](#tokens_aplicativo) | Sistema | `id` | 8 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
 | [`usuarios`](#usuarios) | Sistema | `id` | 22 | 0 |
@@ -2156,6 +2168,23 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `solicitacoes_servico_unidade_status_id_index` (unidade, status, id) · `solicitacoes_servico_solicitante_id_id_index` (solicitante_id, id) · `solicitacoes_servico_maquina_id_index` (maquina_id)
 
 **Regras (CHECK, só no SQL Server):** `ck_solicitacoes_servico_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_solicitacoes_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_solicitacoes_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_solicitacoes_servico_status`: `status IN ('pendente', 'aprovada', 'rejeitada', 'cancelada')`
+
+### tokens_aplicativo
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `usuario_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `token_hash` | `nchar(64)` | não |  |  |
+| `dispositivo` | `nvarchar(120)` | sim |  |  |
+| `versao_app` | `nvarchar(20)` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `ultimo_uso_em` | `datetime` | sim |  |  |
+| `revogado_em` | `datetime` | sim |  |  |
+
+**Índices:** `tokens_aplicativo_token_hash_unique` único (token_hash) · `tokens_aplicativo_usuario_id_revogado_em_index` (usuario_id, revogado_em)
 
 ### turnos
 

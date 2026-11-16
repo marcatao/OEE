@@ -25,13 +25,20 @@ cd app-movel/android
 ## Plano
 
 0. Estrutura, tema verde do portal, verificação da rede Wi-Fi e do portal. ✔ (0.1.0)
-1. API no portal e login (o app entra pelo portal; o portal fala com o Entra ID).
+1. API no portal e login. ✔ (0.2.0) O app abre `/app/entrar` no navegador; o portal faz o login pelo Entra ID
+   (`prompt=login`), recusa quem nunca entrou no portal ou não tem acesso, e devolve um código de uso único
+   (`br.com.alumbra.oee://login?codigo=`) que o app troca por um token em `POST /api/app/token` (segredo tipo PKCE).
+   Token: só o hash em `tokens_aplicativo`; cai no "Sair", sem uso por `oee.app.dias_sem_uso` dias ou sem acesso.
+   API: `routes/api.php` (`/api/app/...`, middleware `aplicativo`, token em `Authorization: Bearer` ou `X-Token-App`).
 2. Banco local e sincronização (fila offline; vale a alteração mais recente pelo horário; o servidor confere as
    regras e devolve "pendente de correção" quando não passar). Bloqueio após 48 h sem sincronizar.
 3. Operador: máquinas ativas → timeline da máquina; troca de OP (com leitura do código de barras); cavidades ativas;
    parada 98 (IoT, sem motivo) apita e obriga escolher o motivo (só legendas de parada), trocando a legenda daquele
    apontamento.
-4. Mantenedor: SS/OS (abrir, aprovar, concluir); apontamento com relógio (tela travada, botão deslizante "Encerrar
-   apontamento", pergunta se fecha a OS e se a máquina estava/está parada); avaliação da OS concluída com assinatura.
+4. Mantenedor: SS/OS (abrir, aprovar, concluir); apontamento com cronômetro: o app TRAVA na tela (sem voltar nem
+   sair; o cronômetro segue com o celular bloqueado) mostrando a OS atendida, o setor, o centro de custo e o
+   solicitante que vai avaliar; só o botão deslizante "Encerrar apontamento" libera, gravando início e fim e
+   perguntando se fecha a OS e se a máquina estava/está parada. Avaliação da OS concluída no celular do mantenedor,
+   com o resumo da SS e do que foi feito, nota do solicitante e assinatura com o dedo.
 5. Alertas: parada 98 da máquina aberta; SS nova toca em todos os mantenedores (vermelho se máquina parada) até o
    primeiro assumir — a SS é aprovada e a OS atribuída a ele.

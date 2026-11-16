@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DispositivoIotController;
 use App\Http\Controllers\Admin\EstruturaController;
 use App\Http\Controllers\Admin\LegendaController;
 use App\Http\Controllers\Admin\MaquinaController;
+use App\Http\Controllers\Aplicativo\LoginAplicativoController;
 use App\Http\Controllers\ApontamentoEstadoController;
 use App\Http\Controllers\ApontamentoProducaoController;
 use App\Http\Controllers\AssistenteController;
@@ -42,6 +43,10 @@ Route::controller(AutenticacaoController::class)->prefix('auth')->group(function
     Route::get('callback', 'callback')->name('auth.callback');
     Route::post('logout', 'logout')->name('logout')->middleware('auth');
 });
+
+// Login do aplicativo Android pelo portal (o celular abre no navegador; ver LoginAplicativoController).
+Route::get('app/entrar', [LoginAplicativoController::class, 'entrar'])->name('app.entrar');
+Route::get('app/entrar/concluir', [LoginAplicativoController::class, 'concluir'])->middleware('auth')->name('app.entrar.concluir');
 
 Route::middleware('auth')->group(function () {
     Route::get('aguardando-liberacao', [PortalController::class, 'aguardando'])->name('aguardando');

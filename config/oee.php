@@ -10,6 +10,13 @@ return [
 
     // E-mails que NASCEM administradores no primeiro login. Todos os outros nascem "sem acesso" e um
     // administrador libera pelo menu Administração > Logins > Usuários.
+    // Aplicativo Android (app-movel/): login pelo portal e API /api/app.
+    'app' => [
+        'minutos_codigo' => 3,  // validade do código de uso único que o portal devolve ao app no login
+        'dias_sem_uso' => 7,    // token sem uso por mais dias que isso deixa de valer (o app bloqueia antes: 48 h)
+        'horas_offline' => 48,  // o app bloqueia se ficar mais que isso sem sincronizar com o portal
+    ],
+
     'admins' => array_values(array_filter(array_map(
         fn ($e) => strtolower(trim($e)),
         explode(',', (string) env('PORTAL_ADMINS', 'marcato@alumbra.com.br'))

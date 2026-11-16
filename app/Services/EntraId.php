@@ -12,9 +12,18 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 class EntraId
 {
-    public function redirecionarParaLogin(): RedirectResponse
+    /**
+     * @param  bool  $pedirSenha  true = a Microsoft pede a conta e a senha mesmo com uma sessão aberta no navegador
+     *                            (login do aplicativo: o mesmo celular é usado por várias pessoas).
+     */
+    public function redirecionarParaLogin(bool $pedirSenha = false): RedirectResponse
     {
-        return $this->driver()->redirect();
+        $driver = $this->driver();
+        if ($pedirSenha) {
+            $driver->with(['prompt' => 'login']);
+        }
+
+        return $driver->redirect();
     }
 
     /**
