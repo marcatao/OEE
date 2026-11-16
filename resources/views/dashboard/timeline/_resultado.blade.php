@@ -41,14 +41,19 @@
           <div class="tl-linha">
             <div class="tl-maquina-info" title="{{ $maquina->nome }} · {{ $maquina->localizacao() }}">
               @if ($u->pode('dashboard_maquina'))
-                <a class="tl-maquina" href="{{ route('dashboard.maquina', $maquina) }}">{{ $maquina->nome }}<small>{{ $maquina->codigo }}</small></a>
+                <a class="tl-maquina" href="{{ route('dashboard.maquina', $maquina) }}">{{ $maquina->nome }}</a>
               @else
-                <span class="tl-maquina">{{ $maquina->nome }}<small>{{ $maquina->codigo }}</small></span>
+                <span class="tl-maquina">{{ $maquina->nome }}</span>
               @endif
               @if ($sit && $sit['op'])
                 <span class="tl-op" title="OP {{ $sit['op']->numero }}{{ $sit['produto'] ? ' · '.$sit['produto']->codigo().' '.$sit['produto']->descricao() : '' }}">
                   <strong>OP {{ $sit['op']->numero }}</strong>
                   <small>{{ $sit['produto'] ? $sit['produto']->codigo().' · '.$sit['produto']->descricao() : rtrim($sit['op']->c2_produto) }}</small>
+                  @foreach ($sit['moldes'] as $molde)
+                    <small class="tl-molde" title="Molde {{ $molde['codigo'] }}{{ $molde['ferramenta'] ? ' · '.$molde['ferramenta']->h4_descri.' · '.$molde['ferramenta']->h4_qtdcavativas.' cavidades ativas de '.$molde['ferramenta']->h4_qtdcav : '' }}">
+                      Molde <b>{{ $molde['codigo'] }}</b>@if ($molde['ferramenta']) · <b>{{ $molde['ferramenta']->h4_qtdcavativas }}</b>/{{ $molde['ferramenta']->h4_qtdcav }} cav.@endif
+                    </small>
+                  @endforeach
                 </span>
               @endif
             </div>
@@ -86,6 +91,11 @@
             @else
               <div class="tl-estado estado-sem"><span class="tl-estado-titulo"><i class="tl-pulso" aria-hidden="true"></i>Sem informação</span></div>
             @endif
+            {{-- Meta de produção da máquina: em breve --}}
+            <div class="tl-meta" title="Meta de produção: em breve">
+              <span class="tl-meta-titulo">Meta</span>
+              <small>em breve</small>
+            </div>
           </div>
         @endforeach
         <div class="tl-linha tl-linha-eixo">
@@ -95,6 +105,7 @@
               <span @class(['tl-marca', 'virada' => $marca['virada']]) style="left: {{ $marca['esquerda'] }}%">{{ $marca['rotulo'] }}</span>
             @endforeach
           </div>
+          <span></span>
           <span></span>
         </div>
       </div>

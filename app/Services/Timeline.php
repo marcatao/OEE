@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ApontamentoEstado;
+use App\Models\Ferramenta;
 use App\Models\Legenda;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
@@ -26,7 +27,7 @@ class Timeline
      *
      * @param  Collection<int, Maquina>  $maquinas
      * @return array<int, array{estado: string, rotulo: string, legenda: ?Legenda, desde: ?CarbonInterface,
-     *     op: ?OrdemProducao, produto: ?ProdutoProtheus}>
+     *     op: ?OrdemProducao, produto: ?ProdutoProtheus, moldes: list<array>}>
      */
     public function situacoes(Collection $maquinas): array
     {
@@ -34,6 +35,8 @@ class Timeline
         $produtos = app(CustoOrdemProducao::class)
             ->produtos($maquinas->pluck('ordemProducao')->filter()->map(fn ($op) => $op->c2_produto));
 
+        $engenharia = app(EngenhariaOrdemProducao::class);
+        $roteiros = [];
         $situacoes = [];
         foreach ($maquinas as $m) {
             $legenda = $m->situacaoLegenda;
@@ -45,6 +48,9 @@ class Timeline
                 default => ['sem', 'Sem informação'],
             };
             $op = $m->ordemProducao;
+            if ($op) {
+                $roteiros[$op->id] ??= $engenharia->roteiro($op);
+            }
             $situacoes[$m->id] = [
                 'estado' => $estado,
                 'rotulo' => $rotulo,
@@ -52,10 +58,26 @@ class Timeline
                 'desde' => $m->situacao_desde,
                 'op' => $op,
                 'produto' => $op ? ($produtos[rtrim($op->c2_produto)] ?? null) : null,
+                'moldes' => $op ? self::moldesDaMaquina($roteiros[$op->id], (string) $m->codigo) : [],
             ];
         }
 
         return $situacoes;
+    }
+
+    /**
+     * Moldes (SH4) da OP para a máquina: os das operações do roteiro cujo centro de trabalho é a máquina; se nenhuma
+     * operação for dela, os de todo o roteiro da OP.
+     *
+     * @return list<array{codigo: string, ferramenta: ?Ferramenta}>
+     */
+    private static function moldesDaMaquina(array $roteiro, string $codigoMaquina): array
+    {
+        $daMaquina = $roteiro['operacoes']->filter(fn ($o) => rtrim($o->g2_ctrab) === rtrim($codigoMaquina));
+        $codigos = ($daMaquina->isNotEmpty() ? $daMaquina : $roteiro['operacoes'])
+            ->pluck('g2_ferram')->map(fn ($c) => rtrim($c))->filter()->unique()->values();
+
+        return $codigos->map(fn ($c) => ['codigo' => $c, 'ferramenta' => $roteiro['ferramentas'][$c] ?? null])->all();
     }
 
     /**
