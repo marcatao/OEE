@@ -54,19 +54,45 @@ class MaquinaIotObrigatorioTest extends TestCase
     public function test_iot_e_calendario_so_sao_exigidos_das_maquinas_da_manutencao(): void
     {
         // Tecnologia e Ferramentaria: ativa sem canal IoT, sem calendário e sem dias de trabalho.
-        $sem = ['codigo' => 'SRV1', 'nome' => 'Servidor ERP', 'linha_id' => $this->linha->id, 'ativo' => '1', 'unidade' => 'tecnologia'];
+        $sem = ['codigo' => 'SRV1', 'nome' => 'Servidor ERP', 'linha_id' => $this->linhaDa('tecnologia')->id, 'ativo' => '1', 'unidade' => 'tecnologia'];
         $this->post('/admin/maquinas', $sem)->assertSessionHasNoErrors();
-        $this->post('/admin/maquinas', ['codigo' => 'RET1', 'unidade' => 'ferramentaria'] + $sem)->assertSessionHasNoErrors();
+        $this->post('/admin/maquinas', ['codigo' => 'RET1', 'unidade' => 'ferramentaria', 'linha_id' => $this->linhaDa('ferramentaria')->id] + $sem)->assertSessionHasNoErrors();
         $this->assertTrue(Maquina::withoutGlobalScopes()->where('codigo', 'SRV1')->sole()->ativo);
         $this->assertTrue(Maquina::withoutGlobalScopes()->where('codigo', 'RET1')->sole()->ativo);
 
         // Manutenção continua exigindo os três.
-        $this->post('/admin/maquinas', ['codigo' => 'INJ1', 'unidade' => 'manutencao'] + $sem)->assertSessionHasErrors(['calendario_id', 'dias']);
+        $this->post('/admin/maquinas', ['codigo' => 'INJ1', 'unidade' => 'manutencao', 'linha_id' => $this->linha->id] + $sem)->assertSessionHasErrors(['calendario_id', 'dias']);
         $this->post('/admin/maquinas', $this->dados('INJ1', ['unidade' => 'manutencao']))->assertSessionHasErrors('ativo');
 
         // O comando de inativação em massa só olha as máquinas da Manutenção.
         $this->artisan('maquinas:desativar-sem-iot', ['--confirmar' => true])->assertSuccessful();
         $this->assertTrue(Maquina::withoutGlobalScopes()->where('codigo', 'SRV1')->sole()->ativo);
+    }
+
+    private function linhaDa(string $unidade): Linha
+    {
+        $planta = Planta::create(['unidade' => $unidade, 'codigo' => 'P-'.$unidade, 'nome' => 'Planta '.$unidade]);
+
+        return Linha::create(['unidade' => $unidade, 'planta_id' => $planta->id, 'codigo' => 'L-'.$unidade, 'nome' => 'Linha '.$unidade]);
+    }
+
+    public function test_maquina_so_aceita_linha_de_planta_da_mesma_unidade(): void
+    {
+        $tec = $this->linhaDa('tecnologia');
+        $plantaTodas = Planta::create(['unidade' => 'ambos', 'codigo' => 'PT', 'nome' => 'Planta comum']);
+        $comum = Linha::create(['unidade' => 'ambos', 'planta_id' => $plantaTodas->id, 'codigo' => 'LT', 'nome' => 'Linha comum']);
+        $base = ['nome' => 'Servidor', 'ativo' => '1', 'unidade' => 'tecnologia'];
+
+        // Máquina da Tecnologia em planta da Manutenção: recusada.
+        $this->post('/admin/maquinas', ['codigo' => 'T1', 'linha_id' => $this->linha->id] + $base)->assertSessionHasErrors('linha_id');
+        // Planta da Tecnologia ou planta "Todas": aceita.
+        $this->post('/admin/maquinas', ['codigo' => 'T1', 'linha_id' => $tec->id] + $base)->assertSessionHasNoErrors();
+        $this->post('/admin/maquinas', ['codigo' => 'T2', 'linha_id' => $comum->id] + $base)->assertSessionHasNoErrors();
+        // Máquina da Manutenção em planta da Tecnologia: recusada.
+        $this->post('/admin/maquinas', $this->dados('M9', ['unidade' => 'manutencao', 'linha_id' => $tec->id, 'ativo' => '0']))->assertSessionHasErrors('linha_id');
+
+        // A tela marca a unidade de cada planta para o filtro.
+        $this->get('/admin/maquinas/nova')->assertOk()->assertSee('data-unidade="tecnologia"', false);
     }
 
     public function test_dispositivo_e_canal_nao_se_repetem_em_outra_maquina(): void

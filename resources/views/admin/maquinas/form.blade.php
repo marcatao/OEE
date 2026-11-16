@@ -36,13 +36,14 @@
         <label>Nome
           <input name="nome" required maxlength="120" value="{{ old('nome', $maquina->nome) }}" placeholder="Ex.: Injetora 01" @disabled($maquina->doProtheus())>
         </label>
-        <label><span>Linha <small>(obrigatória para ativar)</small></span>
-          <select name="linha_id">
+        <label><span>Planta / linha <small>(obrigatória para ativar; só as plantas da unidade escolhida)</small></span>
+          <select name="linha_id" id="maquina-linha">
             <option value="">Escolha…</option>
             @foreach ($linhas as $planta => $doGrupo)
-              <optgroup label="{{ $planta }}">
+              @php($unidadePlanta = \App\Http\Controllers\Admin\MaquinaController::unidadeDaLinha($doGrupo->first()))
+              <optgroup label="{{ $planta }} ({{ config('oee.unidades')[$unidadePlanta] ?? $unidadePlanta }})" data-unidade="{{ $unidadePlanta }}">
                 @foreach ($doGrupo as $linha)
-                  <option value="{{ $linha->id }}" @selected((int) old('linha_id', $maquina->linha_id) === $linha->id)>{{ $linha->nome }}</option>
+                  <option value="{{ $linha->id }}" data-unidade="{{ \App\Http\Controllers\Admin\MaquinaController::unidadeDaLinha($linha) }}" @selected((int) old('linha_id', $maquina->linha_id) === $linha->id)>{{ $linha->nome }}</option>
                 @endforeach
               </optgroup>
             @endforeach
@@ -179,4 +180,25 @@
     </div>
   </form>
 </section>
+<script>
+  // Planta / linha: só as plantas da unidade escolhida (e as de "Todas"); máquina "Todas" vê todas.
+  (() => {
+    const unidade = document.querySelector('select[name="unidade"]');
+    const linha = document.getElementById('maquina-linha');
+    if (!unidade || !linha) return;
+    const filtrar = () => {
+      const u = unidade.value;
+      const serve = (el) => u === 'ambos' || el.dataset.unidade === u || el.dataset.unidade === 'ambos';
+      linha.querySelectorAll('optgroup').forEach((g) => {
+        let alguma = false;
+        g.querySelectorAll('option').forEach((o) => { const ok = serve(o); o.hidden = !ok; o.disabled = !ok; alguma = alguma || ok; });
+        g.hidden = !alguma;
+      });
+      const atual = linha.selectedOptions[0];
+      if (atual && atual.value && !serve(atual)) linha.value = '';
+    };
+    unidade.addEventListener('change', filtrar);
+    filtrar();
+  })();
+</script>
 @endsection

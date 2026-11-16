@@ -112,6 +112,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Máquina da MANUTENÇÃO só fica ATIVA com pelo menos um canal com dispositivo ativo (`Maquina::exigeIotECalendario`;
   Tecnologia e Ferramentaria não exigem); sem canal ela é inativada (ao apagar os canais
   ou desativar o dispositivo: `App\Services\MaquinasSemIot`; em massa: `maquinas:desativar-sem-iot --confirmar`).
+  A linha da máquina tem de ser de planta da MESMA unidade da máquina (ou planta "Todas"; máquina "Todas" aceita
+  qualquer uma): a tela só lista essas e o servidor confere (`MaquinaController::conferirLinhaDaUnidade`).
 - **Calendários** (Administração › Calendários, `calendarios` + `calendario_dias`, `App\Services\Calendario\DiasUteis` e
   `Feriados`): anuais, por unidade (TemUnidade), vários por unidade. Nascem com os feriados nacionais, de SP e de São
   Bernardo do Campo (Carnaval como ponto facultativo); só as EXCEÇÕES são gravadas (feriado, ponte, folga = não útil;

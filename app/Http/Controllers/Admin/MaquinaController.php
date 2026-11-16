@@ -82,7 +82,7 @@ class MaquinaController extends Controller
     {
         return view('admin.maquinas.form', [
             'maquina' => $maquina,
-            'linhas' => Linha::with('planta')
+            'linhas' => Linha::with(['planta' => fn ($q) => $q->withoutGlobalScopes()])
                 ->where(fn ($q) => $q->where('ativo', true)->orWhere('id', $maquina->linha_id))
                 ->get()->sortBy(fn ($l) => $l->planta?->nome.' '.$l->nome)->groupBy(fn ($l) => $l->planta?->nome ?? 'Sem planta'),
             // Mesmo código pode existir em mais de uma filial: a lista mostra um por código.
@@ -96,6 +96,33 @@ class MaquinaController extends Controller
                 ->orWhereIn('id', array_filter(array_map(fn ($n) => $maquina->{"iot{$n}_dispositivo_id"}, Maquina::CANAIS_IOT))))
                 ->orderBy('nome')->get(),
         ]);
+    }
+
+    /**
+     * A linha (pela unidade da planta dela) tem de ser da mesma unidade da máquina: máquina da Tecnologia só em planta
+     * da Tecnologia. Planta "Todas" serve a qualquer unidade, e máquina "Todas" aceita qualquer planta.
+     */
+    private function conferirLinhaDaUnidade(array $dados, Maquina $maquina): void
+    {
+        $linhaId = $dados['linha_id'] ?? null;
+        $unidade = $dados['unidade'] ?? $maquina->unidade ?? 'manutencao';
+        if (! $linhaId || $unidade === 'ambos') {
+            return;
+        }
+        $linha = Linha::withoutGlobalScopes()->with(['planta' => fn ($q) => $q->withoutGlobalScopes()])->find($linhaId);
+        $daLinha = self::unidadeDaLinha($linha);
+        if (! in_array($daLinha, [$unidade, 'ambos'], true)) {
+            $rotulos = config('oee.unidades');
+            throw ValidationException::withMessages(['linha_id' => 'A linha escolhida é de uma planta da unidade '
+                .($rotulos[$daLinha] ?? $daLinha).'. Para uma máquina da unidade '.($rotulos[$unidade] ?? $unidade)
+                .', escolha uma linha de planta dessa unidade.']);
+        }
+    }
+
+    /** Unidade que vale para a linha: a da planta dela (ou a da própria linha, se não tiver planta). */
+    public static function unidadeDaLinha(?Linha $linha): string
+    {
+        return (string) ($linha?->planta?->unidade ?? $linha?->unidade ?? 'manutencao');
     }
 
     /** @return string|null aviso (ex.: máquina inativada por ficar sem canal IoT) */
@@ -174,6 +201,7 @@ class MaquinaController extends Controller
             }
         }
         $this->conferirCanaisRepetidos($dados, $maquina);
+        $this->conferirLinhaDaUnidade($dados, $maquina);
 
         // Calendário (dos que o usuário enxerga e ativos, ou o que a máquina já usa), dias da semana e horário.
         $calendarioId = $dados['calendario_id'] ?? null;

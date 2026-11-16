@@ -76,7 +76,10 @@ class UnidadesTest extends TestCase
 
     public function test_opcoes_de_unidade_no_cadastro(): void
     {
-        $dados = fn (string $codigo, string $unidade) => ['codigo' => $codigo, 'nome' => $codigo, 'linha_id' => $this->linha->id,
+        // Linha de planta "Todas": serve às máquinas de qualquer unidade.
+        $comum = Linha::create(['unidade' => 'ambos', 'codigo' => 'LC', 'nome' => 'Linha comum',
+            'planta_id' => Planta::create(['unidade' => 'ambos', 'codigo' => 'PC', 'nome' => 'Planta comum'])->id]);
+        $dados = fn (string $codigo, string $unidade) => ['codigo' => $codigo, 'nome' => $codigo, 'linha_id' => $comum->id,
             'unidade' => $unidade, 'ativo' => '0'];
 
         // Só produção: Manutenção.
