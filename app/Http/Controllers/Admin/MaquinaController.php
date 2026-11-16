@@ -185,7 +185,9 @@ class MaquinaController extends Controller
             $dados = array_merge($dados, JornadaSemanal::colunas(JornadaSemanal::doFormulario($dados)));
         }
         unset($dados['dias'], $dados['horario']);
-        if ($dados['ativo']) {
+        // Calendário, jornada e canal IoT só são exigidos das máquinas da Manutenção (Maquina::exigeIotECalendario).
+        $exige = $maquina->exigeIotECalendario($dados['unidade'] ?? null);
+        if ($dados['ativo'] && $exige) {
             $faltam = array_filter([
                 'calendario_id' => ($calendarioId ?? $maquina->calendario_id) ? null : 'Para ativar a máquina, escolha o calendário.',
                 'dias' => (array_key_exists('dias_semana', $dados) ? $dados['dias_semana'] : $maquina->dias_semana)
@@ -199,7 +201,7 @@ class MaquinaController extends Controller
         // Ativa só com pelo menos um canal IoT (dispositivo ATIVO + canal). Se a máquina estava ativa e ficou sem
         // canal (o canal foi apagado), ela passa a INATIVA.
         $aviso = null;
-        if ($dados['ativo'] && ! $maquina->temCanalIotAtivo($dados)) {
+        if ($dados['ativo'] && $exige && ! $maquina->temCanalIotAtivo($dados)) {
             if (! $maquina->exists || ! $maquina->ativo) {
                 throw ValidationException::withMessages(['ativo' => 'Para ativar a máquina, informe pelo menos um canal IoT (dispositivo IoT ativo + canal).']);
             }

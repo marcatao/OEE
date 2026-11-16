@@ -51,6 +51,24 @@ class MaquinaIotObrigatorioTest extends TestCase
         $this->assertTrue($m->fresh()->ativo);
     }
 
+    public function test_iot_e_calendario_so_sao_exigidos_das_maquinas_da_manutencao(): void
+    {
+        // Tecnologia e Ferramentaria: ativa sem canal IoT, sem calendário e sem dias de trabalho.
+        $sem = ['codigo' => 'SRV1', 'nome' => 'Servidor ERP', 'linha_id' => $this->linha->id, 'ativo' => '1', 'unidade' => 'tecnologia'];
+        $this->post('/admin/maquinas', $sem)->assertSessionHasNoErrors();
+        $this->post('/admin/maquinas', ['codigo' => 'RET1', 'unidade' => 'ferramentaria'] + $sem)->assertSessionHasNoErrors();
+        $this->assertTrue(Maquina::withoutGlobalScopes()->where('codigo', 'SRV1')->sole()->ativo);
+        $this->assertTrue(Maquina::withoutGlobalScopes()->where('codigo', 'RET1')->sole()->ativo);
+
+        // Manutenção continua exigindo os três.
+        $this->post('/admin/maquinas', ['codigo' => 'INJ1', 'unidade' => 'manutencao'] + $sem)->assertSessionHasErrors(['calendario_id', 'dias']);
+        $this->post('/admin/maquinas', $this->dados('INJ1', ['unidade' => 'manutencao']))->assertSessionHasErrors('ativo');
+
+        // O comando de inativação em massa só olha as máquinas da Manutenção.
+        $this->artisan('maquinas:desativar-sem-iot', ['--confirmar' => true])->assertSuccessful();
+        $this->assertTrue(Maquina::withoutGlobalScopes()->where('codigo', 'SRV1')->sole()->ativo);
+    }
+
     public function test_dispositivo_e_canal_nao_se_repetem_em_outra_maquina(): void
     {
         $this->post('/admin/maquinas', $this->dados('M1', $this->canal(1, 'chd1_value')))->assertSessionHasNoErrors();

@@ -109,13 +109,14 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Canais IoT da máquina usam `iotN_dispositivo_id` (FK para `dispositivos_iot`). As colunas antigas `iotN_id`
   (texto) só são lidas, para mostrar o valor antigo; não grave nelas. O canal é um dos 6 de `config('oee.iot_canais')`
   (chd1_value…chd6_value; dados virão de MQTT.dbo.IOT001). Dispositivo + canal só em UMA máquina (todas as unidades).
-  Máquina só fica ATIVA com pelo menos um canal com dispositivo ativo; sem canal ela é inativada (ao apagar os canais
+  Máquina da MANUTENÇÃO só fica ATIVA com pelo menos um canal com dispositivo ativo (`Maquina::exigeIotECalendario`;
+  Tecnologia e Ferramentaria não exigem); sem canal ela é inativada (ao apagar os canais
   ou desativar o dispositivo: `App\Services\MaquinasSemIot`; em massa: `maquinas:desativar-sem-iot --confirmar`).
 - **Calendários** (Administração › Calendários, `calendarios` + `calendario_dias`, `App\Services\Calendario\DiasUteis` e
   `Feriados`): anuais, por unidade (TemUnidade), vários por unidade. Nascem com os feriados nacionais, de SP e de São
   Bernardo do Campo (Carnaval como ponto facultativo); só as EXCEÇÕES são gravadas (feriado, ponte, folga = não útil;
-  compensação, útil = útil); o resto segue os dias da semana de quem usa. Máquina e mantenedor (`calendario_id`) só
-  ficam ATIVOS com calendário e dias de trabalho, CADA DIA com o horário em que começa e termina
+  compensação, útil = útil); o resto segue os dias da semana de quem usa. Máquina da Manutenção e mantenedor
+  (`calendario_id`) só ficam ATIVOS com calendário e dias de trabalho, CADA DIA com o horário em que começa e termina
   (`App\Support\JornadaSemanal` + partial `partials.jornada-semanal`; coluna `horarios_semana` JSON; `dias_semana` e
   `jornada_inicio|fim` = dias marcados e horário do 1º dia, lidos quando não há `horarios_semana`). As horas normais ×
   extras do mantenedor (`HorasManutencao`) usam o horário de cada dia. Para saber se trabalha num dia: `DiasUteis::trabalha($maquinaOuMantenedor, $data)`.

@@ -43,6 +43,15 @@ class Maquina extends Model
             'situacao_desde' => 'datetime'];
     }
 
+    /** Unidades em que a máquina só fica ATIVA com calendário, dias de trabalho e canal IoT. */
+    public const UNIDADES_COM_IOT_E_CALENDARIO = ['manutencao'];
+
+    /** Esta máquina (ou a unidade informada) exige calendário, jornada e canal IoT para ficar ativa? */
+    public function exigeIotECalendario(?string $unidade = null): bool
+    {
+        return in_array($unidade ?? $this->unidade ?? 'manutencao', self::UNIDADES_COM_IOT_E_CALENDARIO, true);
+    }
+
     /**
      * Veio do Protheus (tabela SHB)? Então código, nome e centro de custo são do Protheus e não se editam no portal.
      */

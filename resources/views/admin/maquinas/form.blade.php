@@ -13,7 +13,7 @@
       e foi desativada. Ela não pode ser ativada de novo; o histórico continua.</p>
   @elseif ($maquina->aguardandoCadastro())
     <p class="aviso alerta">Máquina vinda do Protheus. Escolha a <strong>linha</strong>, preencha o ciclo ideal, as paradas
-      e os canais IoT e marque <strong>Ativa</strong> para ela entrar nos painéis.</p>
+      e (nas máquinas da Manutenção) os canais IoT e o calendário, e marque <strong>Ativa</strong> para ela entrar nos painéis.</p>
   @endif
 
   <form method="post" class="formulario-vertical" style="max-width:none"
@@ -92,7 +92,8 @@
       <legend>Canais IoT</legend>
       <p class="suave" style="margin-top:0">De onde vêm os dados da máquina: o dispositivo (cadastro em
         <a href="{{ route('admin.iot.index') }}">Dispositivos IoT</a>, só os ativos), o canal (<code>chd1_value</code> a <code>chd6_value</code>) e o tipo.
-        Para <strong>ativar</strong> a máquina, informe pelo menos um canal com dispositivo ativo; sem canal, ela fica inativa.
+        Nas máquinas da <strong>Manutenção</strong>, para <strong>ativar</strong> é preciso pelo menos um canal com dispositivo ativo (sem canal, ela
+        fica inativa), além do calendário e dos dias de trabalho; nas de Tecnologia e Ferramentaria esses campos são opcionais.
         Um dispositivo + canal só pode estar em uma máquina.</p>
       @if ($dispositivos->isEmpty())
         <p class="aviso alerta">Nenhum dispositivo IoT ativo. Cadastre em <a href="{{ route('admin.iot.index') }}">Dispositivos IoT</a>.</p>
