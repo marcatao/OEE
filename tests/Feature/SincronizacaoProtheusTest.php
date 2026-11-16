@@ -186,6 +186,55 @@ class SincronizacaoProtheusTest extends TestCase
             ->assertSee('procedure só no SQL Server');
     }
 
+    public function test_botao_sincroniza_ordens_de_producao_chamando_a_procedure(): void
+    {
+        // Simula o SQL Server: a procedure "roda" e devolve o resumo, como dbo.sp_sincronizar_ordens_producao.
+        $falso = new class extends SincronizadorProtheus
+        {
+            public array $chamadas = [];
+
+            public ?\Throwable $erro = null;
+
+            protected function bancoTemProcedures(): bool
+            {
+                return true;
+            }
+
+            protected function executarProcedure(string $procedure): ?object
+            {
+                $this->chamadas[] = $procedure;
+                if ($this->erro) {
+                    throw $this->erro;
+                }
+
+                return (object) ['lidos' => 1500, 'novos' => 10, 'atualizados' => 25, 'excluidos' => 2, 'ignorados' => 3, 'ultimo_recno' => 98765];
+            }
+        };
+        $this->app->instance(SincronizadorProtheus::class, $falso);
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->get('/admin/banco')->assertOk()->assertSee('dbo.sp_sincronizar_ordens_producao');
+
+        // 1ª etapa só abre a execução; a 2ª chama a procedure (uma vez, sem parâmetros) e termina.
+        $r = $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'ordens_producao'])->assertOk()->assertJson(['terminou' => false]);
+        $this->assertSame([], $falso->chamadas);
+        $this->postJson('/admin/banco/sincronizar/etapa', ['tabela' => 'ordens_producao', 'id' => $r->json('id')])->assertOk()
+            ->assertJson(['terminou' => true, 'situacao' => 'sucesso', 'lidos' => 1500, 'novos' => 10, 'atualizados' => 25, 'excluidos' => 2]);
+        $this->assertSame(['dbo.sp_sincronizar_ordens_producao'], $falso->chamadas);
+        $registro = Sincronizacao::find($r->json('id'));
+        $this->assertSame(3, (int) $registro->ignorados);
+        $this->assertSame(98765, (int) $registro->ultimo_recno);
+
+        // Procedure que não existe no banco: erro explicado no histórico.
+        $falso->erro = new \RuntimeException("SQLSTATE[42000]: Could not find stored procedure 'dbo.sp_sincronizar_ordens_producao'.");
+        $erro = $falso->sincronizar('ordens_producao', 'comando');
+        $this->assertSame('erro', $erro->situacao);
+        $this->assertStringContainsString('php artisan migrate', $erro->mensagem);
+
+        // As outras tabelas continuam pelo PHP.
+        $this->assertSame('php', $falso->via('produtos'));
+    }
+
     public function test_ordens_de_producao_vao_pela_procedure_so_no_sql_server(): void
     {
         $sincronizador = app(SincronizadorProtheus::class);

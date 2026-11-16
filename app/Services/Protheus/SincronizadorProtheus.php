@@ -33,8 +33,23 @@ class SincronizadorProtheus
     {
         $item = $this->item($chave);
 
-        return ($item['via'] ?? 'php') === 'procedure' && ! empty($item['procedure']) && DB::getDriverName() === 'sqlsrv'
+        return ($item['via'] ?? 'php') === 'procedure' && ! empty($item['procedure']) && $this->bancoTemProcedures()
             ? 'procedure' : 'php';
+    }
+
+    /** As procedures só existem no SQL Server (no SQLite dos testes, tudo vai pelo PHP). */
+    protected function bancoTemProcedures(): bool
+    {
+        return DB::getDriverName() === 'sqlsrv';
+    }
+
+    /** Roda a procedure (sem parâmetros) e devolve a linha de resumo dela (lidos, novos, atualizados...). */
+    protected function executarProcedure(string $procedure): ?object
+    {
+        // A tabela inteira vai numa chamada só: pede ao PHP mais tempo que o de uma etapa (se o servidor deixar).
+        @set_time_limit(300);
+
+        return DB::select("EXEC {$procedure}")[0] ?? null;
     }
 
     /** "Compras.CTT": banco e tabela de origem no Protheus. */
@@ -238,7 +253,7 @@ class SincronizadorProtheus
             throw new InvalidArgumentException("Nome de procedure inválido: {$procedure}");
         }
         $registro->update(['sinal_em' => now()]);
-        $linha = Cronometro::medir('procedure', fn () => DB::select("EXEC {$procedure}")[0] ?? null);
+        $linha = Cronometro::medir('procedure', fn () => $this->executarProcedure($procedure));
         if ($linha === null) {
             throw new \RuntimeException("A procedure {$procedure} não devolveu o resumo.");
         }
