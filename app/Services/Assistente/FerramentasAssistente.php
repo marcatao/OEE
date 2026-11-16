@@ -279,10 +279,10 @@ class FerramentasAssistente
             ->orderBy('inicio')
             ->get();
 
-        $minutos = function (ApontamentoEstado $a) use ($inicio, $fimEfetivo): float {
+        // Cortado no período; só o em aberto conta até agora (o encerrado vale até o fim dele).
+        $minutos = function (ApontamentoEstado $a) use ($inicio, $fim, $fimEfetivo): float {
             $ini = $a->inicio->greaterThan($inicio) ? $a->inicio : $inicio;
-            $fimA = $a->fim ?? $fimEfetivo;
-            $fimA = $fimA->lessThan($fimEfetivo) ? $fimA : $fimEfetivo;
+            $fimA = $a->fim === null ? $fimEfetivo : ($a->fim->lessThan($fim) ? $a->fim : $fim);
 
             return max(0, ($fimA->getTimestamp() - $ini->getTimestamp()) / 60);
         };

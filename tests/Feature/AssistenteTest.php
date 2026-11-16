@@ -218,6 +218,8 @@ class AssistenteTest extends TestCase
         $ferramentas = app(FerramentasAssistente::class);
         $inj = Maquina::where('codigo', 'INJ-01')->sole();
         $srv = Maquina::withoutGlobalScopes()->where('codigo', 'SRV-01')->sole();
+        // Relógio fixo no fim da tarde: o resultado não depende da hora em que o teste roda.
+        $this->travelTo(now(config('oee.fuso_exibicao'))->setTime(18, 0));
         $hoje = now(config('oee.fuso_exibicao'))->startOfDay();
 
         // OEE: só as máquinas que ele vê.
@@ -238,6 +240,15 @@ class AssistenteTest extends TestCase
             'inicio' => $hoje->copy()->addHours(10)->utc(), 'fim' => $hoje->copy()->addHours(12)->utc()]);
         $ap = $ferramentas->executar($adm, 'apontamentos_reais', ['de' => $hoje->format('Y-m-d'), 'agrupar' => 'legenda']);
         $this->assertSame([['legenda' => 'Manutenção', 'tipo' => 'Parada não planejada', 'minutos' => 90.0, 'apontamentos' => 1, 'horas' => 1.5]], $ap['grupos']);
+
+        // Encerrado conta inteiro, mesmo que termine depois de agora; em aberto conta só até agora.
+        $this->travelTo(now(config('oee.fuso_exibicao'))->setTime(11, 0));
+        $ap = $ferramentas->executar($adm, 'apontamentos_reais', ['de' => $hoje->format('Y-m-d'), 'agrupar' => 'legenda']);
+        $this->assertSame(90.0, $ap['grupos'][0]['minutos']);
+        ApontamentoEstado::where('maquina_id', $inj->id)->update(['fim' => null]);
+        $ap = $ferramentas->executar($adm, 'apontamentos_reais', ['de' => $hoje->format('Y-m-d'), 'agrupar' => 'legenda']);
+        $this->assertSame(60.0, $ap['grupos'][0]['minutos']);
+        $this->travelBack();
 
         // OPs: filtro por descrição do produto e total por status.
         ProdutoProtheus::create(['b1_cod' => 'PA001', 'b1_desc' => 'INTERRUPTOR PARALELO', 'b1_um' => 'PC']);
