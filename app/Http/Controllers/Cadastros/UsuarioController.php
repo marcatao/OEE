@@ -27,7 +27,9 @@ class UsuarioController extends Controller
                 ->where('nome', 'like', "%{$busca}%")
                 ->orWhere('email', 'like', "%{$busca}%")
                 ->orWhere('local_escritorio', 'like', "%{$busca}%")
-                ->orWhere('departamento', 'like', "%{$busca}%")))
+                ->orWhere('departamento', 'like', "%{$busca}%")
+                ->orWhere('usuario_protheus', 'like', "%{$busca}%")
+                ->orWhere('id_protheus', 'like', "%{$busca}%")))
             ->when($perfil === 'sem_acesso', fn ($q) => $q->where('perfil', 'sem_acesso'))
             ->when(array_key_exists((string) $perfil, Usuario::perfisDisponiveis()), fn ($q) => $q->where(fn ($w) => $w
                 ->whereExists(fn ($e) => $e->from('usuario_perfis')->whereColumn('usuario_perfis.usuario_id', 'usuarios.id')->where('perfil', $perfil))
@@ -64,9 +66,17 @@ class UsuarioController extends Controller
             'ativo' => ['required', 'boolean'],
             'grupos' => ['array'],
             'grupos.*' => ['integer', Rule::exists('grupos', 'id')],
+            // Opcionais: ligação com o usuário do Protheus (cada um em um só usuário do portal).
+            'usuario_protheus' => ['nullable', 'string', 'max:25', Rule::unique('usuarios', 'usuario_protheus')->ignore($usuario->id)],
+            'id_protheus' => ['nullable', 'string', 'max:20', Rule::unique('usuarios', 'id_protheus')->ignore($usuario->id)],
         ], [
             'perfis.*' => 'Escolha perfis válidos.',
             'grupos.*.*' => 'Escolha grupos válidos.',
+            'usuario_protheus.unique' => 'Este usuário do Protheus já está ligado a outro usuário do portal.',
+            'id_protheus.unique' => 'Este ID do Protheus já está ligado a outro usuário do portal.',
+        ], [
+            'usuario_protheus' => 'usuário Protheus',
+            'id_protheus' => 'ID Protheus',
         ]);
         $perfis = array_values(array_unique($dados['perfis'] ?? []));
 
@@ -76,7 +86,12 @@ class UsuarioController extends Controller
         }
 
         DB::transaction(function () use ($usuario, $dados, $perfis, $request) {
-            $usuario->update(['ativo' => $dados['ativo']]);
+            $usuario->update([
+                'ativo' => $dados['ativo'],
+                // Login do Protheus em maiúsculas, como ele grava; vazio = sem ligação.
+                'usuario_protheus' => ($v = strtoupper(trim((string) ($dados['usuario_protheus'] ?? '')))) !== '' ? $v : null,
+                'id_protheus' => ($v = trim((string) ($dados['id_protheus'] ?? ''))) !== '' ? $v : null,
+            ]);
             $usuario->definirPerfis($perfis, $request->user());
             $usuario->grupos()->sync($dados['grupos'] ?? []);
         });

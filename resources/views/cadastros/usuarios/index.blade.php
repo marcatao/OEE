@@ -33,7 +33,7 @@
     @forelse ($usuarios as $usuario)
       <tr>
         <td><span style="display:inline-flex;align-items:center;gap:.6rem">@include('partials.avatar', ['usuario' => $usuario]) <span>{{ $usuario->nome }}@if ($usuario->cargo)<br><small class="suave">{{ $usuario->cargo }}</small>@endif</span></span></td>
-        <td>{{ $usuario->email }}</td>
+        <td>{{ $usuario->email }}@if ($usuario->usuario_protheus || $usuario->id_protheus)<br><small class="suave">Protheus: {{ $usuario->usuario_protheus ?? '-' }}@if ($usuario->id_protheus) (ID {{ $usuario->id_protheus }})@endif</small>@endif</td>
         <td class="quebra">{{ $usuario->local_escritorio ?? '-' }}</td>
         <td class="quebra">{{ $usuario->departamento ?? '-' }}</td>
         <td>{{ $usuario->ativo ? 'Ativo' : 'Inativo' }}</td>

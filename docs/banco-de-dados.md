@@ -827,6 +827,8 @@ erDiagram
         nvarchar(120) local_escritorio
         nvarchar(200) gerente_nome
         nvarchar(320) gerente_email
+        nvarchar(25) usuario_protheus
+        nvarchar(20) id_protheus
     }
     maquinas ||--o{ apontamentos : "maquina_id"
     turnos |o--o{ apontamentos : "turno_id"
@@ -1020,7 +1022,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`tokens_aplicativo`](#tokens_aplicativo) | Sistema | `id` | 8 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
-| [`usuarios`](#usuarios) | Sistema | `id` | 22 | 0 |
+| [`usuarios`](#usuarios) | Sistema | `id` | 24 | 0 |
 
 ### apontamentos
 
@@ -2358,7 +2360,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `local_escritorio` | `nvarchar(120)` | sim |  |  |
 | `gerente_nome` | `nvarchar(200)` | sim |  |  |
 | `gerente_email` | `nvarchar(320)` | sim |  |  |
+| `usuario_protheus` | `nvarchar(25)` | sim |  |  |
+| `id_protheus` | `nvarchar(20)` | sim |  |  |
 
-**Índices:** `usuarios_entra_oid_unique` único (entra_oid) · `usuarios_email_index` (email)
+**Índices:** `usuarios_entra_oid_unique` único (entra_oid) · `usuarios_email_index` (email) · `usuarios_usuario_protheus_index` (usuario_protheus) · `usuarios_id_protheus_index` (id_protheus)
 
 **Regras (CHECK, só no SQL Server):** `ck_usuarios_perfil`: `perfil IN ('sem_acesso', 'operador', 'admin')`

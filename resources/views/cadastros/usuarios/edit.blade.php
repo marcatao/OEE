@@ -68,6 +68,19 @@
       </div>
     </fieldset>
 
+    <fieldset>
+      <legend>Protheus <small class="suave">(opcional)</small></legend>
+      <p class="suave">Liga este usuário do portal ao usuário dele no Protheus.</p>
+      <div class="campos">
+        <label>Usuário Protheus
+          <input name="usuario_protheus" maxlength="25" value="{{ old('usuario_protheus', $usuario->usuario_protheus) }}" placeholder="ex.: JSILVA" autocomplete="off">
+          <small class="suave">Nome de login no Protheus.</small></label>
+        <label>ID Protheus
+          <input name="id_protheus" maxlength="20" value="{{ old('id_protheus', $usuario->id_protheus) }}" placeholder="ex.: 000123" autocomplete="off">
+          <small class="suave">Código do usuário no Protheus.</small></label>
+      </div>
+    </fieldset>
+
     <div class="acoes">
       <button class="botao" type="submit">Salvar</button>
       <a class="botao secundario" href="{{ route('cadastros.usuarios.index') }}">Cancelar</a>

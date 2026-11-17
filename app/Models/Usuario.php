@@ -33,6 +33,7 @@ class Usuario extends Authenticatable
         'entra_oid', 'entra_tenant_id', 'nome', 'email', 'perfil', 'ativo', 'ultimo_login_em',
         'setor', 'cargo', 'email_contato', 'celular', 'matricula',
         'departamento', 'local_escritorio', 'gerente_nome', 'gerente_email',
+        'usuario_protheus', 'id_protheus',
     ];
 
     // Sem senha nem "lembrar de mim": a autenticação é sempre pelo Entra ID.

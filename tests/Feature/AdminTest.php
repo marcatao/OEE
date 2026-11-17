@@ -40,6 +40,37 @@ class AdminTest extends TestCase
         }
     }
 
+    public function test_usuario_e_id_protheus_opcionais(): void
+    {
+        $admin = $this->usuario('admin', 'admin@empresa.com');
+        $maria = $this->usuario('operador', 'maria@empresa.com');
+        $joao = $this->usuario('operador', 'joao@empresa.com');
+
+        $this->actingAs($admin)->get("/cadastros/logins/usuarios/{$maria->id}/editar")->assertOk()
+            ->assertSee('Usuário Protheus')->assertSee('ID Protheus');
+
+        // Opcionais: sem eles, salva normalmente.
+        $this->put("/cadastros/logins/usuarios/{$maria->id}", ['perfis' => ['operador'], 'ativo' => '1'])->assertSessionHas('ok');
+        $this->assertNull($maria->fresh()->usuario_protheus);
+
+        // Login do Protheus vai em maiúsculas; aparece na lista e entra na busca.
+        $this->put("/cadastros/logins/usuarios/{$maria->id}", ['perfis' => ['operador'], 'ativo' => '1',
+            'usuario_protheus' => ' msilva ', 'id_protheus' => '000123'])->assertSessionHas('ok');
+        $this->assertSame(['MSILVA', '000123'], [$maria->fresh()->usuario_protheus, $maria->fresh()->id_protheus]);
+        $this->get('/cadastros/logins/usuarios?busca=000123')->assertSee('maria@empresa.com')->assertSee('Protheus: MSILVA')
+            ->assertDontSee('joao@empresa.com');
+
+        // Cada usuário/ID do Protheus em um só usuário do portal.
+        $this->put("/cadastros/logins/usuarios/{$joao->id}", ['perfis' => ['operador'], 'ativo' => '1', 'id_protheus' => '000123'])
+            ->assertSessionHasErrors('id_protheus');
+        $this->put("/cadastros/logins/usuarios/{$joao->id}", ['perfis' => ['operador'], 'ativo' => '1', 'usuario_protheus' => 'MSILVA'])
+            ->assertSessionHasErrors('usuario_protheus');
+
+        // Apagar os campos desfaz a ligação.
+        $this->put("/cadastros/logins/usuarios/{$maria->id}", ['perfis' => ['operador'], 'ativo' => '1', 'usuario_protheus' => '', 'id_protheus' => '']);
+        $this->assertSame([null, null], [$maria->fresh()->usuario_protheus, $maria->fresh()->id_protheus]);
+    }
+
     public function test_usuario_sem_acesso_so_ve_aguardando_liberacao(): void
     {
         $this->actingAs($this->usuario('sem_acesso', 'novo@empresa.com'));
