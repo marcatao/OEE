@@ -121,7 +121,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   relatórios seguem o mesmo padrão.
 - **Dashboard por máquina** (`DashboardController`): só máquinas ativas com IoT ATIVO (`Maquina::comIotAtivo()`).
   Panorama pelos APONTAMENTOS REAIS (`App\Services\PanoramaMaquinas`, sobre a `Timeline`): situação agora, OP,
-  produto, molde e cavidades, tempos por tipo e disponibilidade (partial `dashboard._cartao-maquina`). O OEE completo
+  produto, molde e cavidades, tempos por tipo e disponibilidade (partial `dashboard._cartao-maquina`). Legenda do tipo
+  `desligada` = "Fora de turno": nunca conta como parada (nem na disponibilidade). O OEE completo
   (performance e qualidade) ainda vem das tabelas antigas de peças (`apontamentos`, `paradas`) e só aparece com dados.
 - Canais IoT da máquina usam `iotN_dispositivo_id` (FK para `dispositivos_iot`). As colunas antigas `iotN_id`
   (texto) só são lidas, para mostrar o valor antigo; não grave nelas. O canal é um dos 6 de `config('oee.iot_canais')`

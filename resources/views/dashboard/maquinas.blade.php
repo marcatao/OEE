@@ -25,11 +25,12 @@
     <div><span>Máquinas</span><strong>{{ $maquinas->count() }}</strong></div>
     <div class="estado-produzindo"><span>Produzindo agora</span><strong>{{ $c['produzindo'] }}</strong></div>
     <div class="estado-parada"><span>Paradas agora</span><strong>{{ $c['parada'] }}</strong></div>
-    <div class="estado-planejada"><span>Parada planejada / desligada</span><strong>{{ $c['planejada'] + $c['desligada'] }}</strong></div>
+    <div class="estado-planejada"><span>Parada planejada</span><strong>{{ $c['planejada'] }}</strong></div>
+    <div class="estado-desligada"><span>Fora de turno</span><strong>{{ $c['desligada'] }}</strong></div>
     <div><span>Sem informação</span><strong>{{ $c['sem'] }}</strong></div>
     <div class="{{ Formato::nivel($g['disponibilidade']) }}"><span>Disponibilidade</span><strong class="texto-nivel">{{ Formato::pct($g['disponibilidade']) }}</strong></div>
     <div><span>Tempo produzindo</span><strong>{{ Formato::minutos(($g['segundos']['produzindo'] ?? 0) / 60) }}</strong></div>
-    <div><span>Tempo parado</span><strong>{{ Formato::minutos(($g['segundos']['parada'] ?? 0) / 60) }}</strong></div>
+    <div title="Só paradas não planejadas: parada planejada e fora de turno não contam"><span>Tempo parado</span><strong>{{ Formato::minutos(($g['segundos']['parada'] ?? 0) / 60) }}</strong></div>
   </div>
 
   @if ($g['totais'])

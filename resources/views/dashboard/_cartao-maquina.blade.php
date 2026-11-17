@@ -39,7 +39,7 @@
   <div class="pm-resumo">
     <div class="{{ \App\Support\Formato::nivel($dados['disponibilidade']) }}"><span>Disponib.</span><strong class="texto-nivel">{{ \App\Support\Formato::pct($dados['disponibilidade'], 0) }}</strong></div>
     <div><span>Produzindo</span><strong>{{ \App\Support\Formato::minutos($seg['produzindo'] / 60) }}</strong></div>
-    <div><span>Parada</span><strong>{{ \App\Support\Formato::minutos(($seg['parada'] ?? 0) / 60) }}</strong></div>
+    <div title="Só paradas não planejadas: parada planejada e fora de turno não contam"><span>Parada</span><strong>{{ \App\Support\Formato::minutos(($seg['parada'] ?? 0) / 60) }}</strong></div>
   </div>
   @if ($dados['apontado'] > 0)
     <div class="pm-barra" title="Tempo apontado no período por tipo">

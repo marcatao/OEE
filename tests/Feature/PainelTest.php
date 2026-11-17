@@ -11,6 +11,7 @@ use App\Models\Linha;
 use App\Models\Maquina;
 use App\Models\Planta;
 use App\Models\Usuario;
+use App\Services\PanoramaMaquinas;
 use App\Services\SituacaoMaquina;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -151,6 +152,18 @@ class PainelTest extends TestCase
             ->assertSee('Produzindo agora')->assertSee('83,3%')->assertSee('2 h 30 min')->assertSee('Maior parada: 31');
         $this->get("/producao/dashboard/{$maquina->id}")->assertOk()
             ->assertSee('Apontamentos reais')->assertSee('Manutenção corretiva')->assertSee('em aberto');
+
+        // Fora de turno (tipo "desligada") não conta como parada: a máquina fica "Fora de turno" e a parada não muda.
+        $foraTurno = Legenda::create(['codigo' => '96', 'descricao' => 'Fora de Turno', 'tipo' => 'desligada', 'cor' => '#eadfc4']);
+        ApontamentoEstado::whereNull('fim')->update(['fim' => Carbon::parse('2026-11-05 14:30', 'UTC')]);
+        $a = ApontamentoEstado::create(['maquina_id' => $maquina->id, 'legenda_id' => $foraTurno->id, 'inicio' => Carbon::parse('2026-11-05 14:30:01', 'UTC')]);
+        app(SituacaoMaquina::class)->aplicar($a);
+        $dados = app(PanoramaMaquinas::class)->montar(Maquina::whereKey($maquina->id)->get(),
+            Carbon::parse('2026-11-05 03:00', 'UTC'), Carbon::parse('2026-11-06 03:00', 'UTC'));
+        $this->assertSame(1800, $dados['maquinas'][$maquina->id]['segundos']['parada']);   // só os 30 min de manutenção
+        $this->assertSame(['estado' => 'desligada', 'rotulo' => 'Fora de turno'], array_intersect_key($dados['situacoes'][$maquina->id], ['estado' => 1, 'rotulo' => 1]));
+        $this->assertSame(['produzindo' => 0, 'parada' => 0, 'planejada' => 0, 'desligada' => 1, 'sem' => 0], $dados['contagem']);
+        $this->get('/producao/dashboard')->assertSee('Fora de turno');
 
         Carbon::setTestNow();
     }

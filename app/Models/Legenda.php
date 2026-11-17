@@ -20,7 +20,7 @@ class Legenda extends Model
         'produzindo' => 'Produzindo',
         'parada' => 'Parada não planejada',
         'planejada' => 'Parada planejada',
-        'desligada' => 'Desligada / sem programação',
+        'desligada' => 'Fora de turno / desligada (sem programação)',
     ];
 
     protected $table = 'legendas';

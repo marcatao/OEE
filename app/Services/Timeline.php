@@ -43,7 +43,7 @@ class Timeline
             [$estado, $rotulo] = match (true) {
                 $m->situacao === 'produzindo' => ['produzindo', 'Produzindo'],
                 $m->situacao === 'parada' && $legenda?->tipo === 'planejada' => ['planejada', 'Parada planejada'],
-                $m->situacao === 'parada' && $legenda?->tipo === 'desligada' => ['desligada', 'Desligada'],
+                $m->situacao === 'parada' && $legenda?->tipo === 'desligada' => ['desligada', 'Fora de turno'],
                 $m->situacao === 'parada' => ['parada', 'Parada'],
                 default => ['sem', 'Sem informação'],
             };
