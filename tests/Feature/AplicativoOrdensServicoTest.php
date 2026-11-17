@@ -186,6 +186,21 @@ class AplicativoOrdensServicoTest extends TestCase
             ->assertOk()->assertJsonPath('status', 'concluida');
     }
 
+    public function test_mantenedor_nao_ve_nem_e_alertado_por_ss_de_outra_unidade(): void
+    {
+        // Área de Tecnologia no cadastro do João e SS do centro de custo dele, mas ele só tem perfil da Manutenção.
+        $ti = AreaExecutante::create(['codigo' => 'TI', 'nome' => 'Suporte de TI', 'unidade' => 'tecnologia']);
+        $this->mJoao->definirAreas([$this->mecanica->id, $ti->id]);
+        $this->joao->forceFill(['local_escritorio' => '1001'])->save();
+        $ss = SolicitacaoServico::create(['titulo' => 'Notebook', 'unidade' => 'tecnologia', 'solicitante_id' => $this->solicitante->id,
+            'tipo' => 'corretiva', 'area_executante_id' => $ti->id, 'centro_custo' => '1001', 'prioridade' => 'alta',
+            'maquina_parada' => true, 'descricao' => 'Não liga', 'status' => 'pendente']);
+
+        $this->assertSame([], $this->api($this->joao, 'GET', 'resumo')->json('pendentes'));
+        $this->api($this->joao, 'POST', "solicitacoes/{$ss->id}/assumir")->assertNotFound();
+        $this->assertSame([], $this->api($this->joao, 'GET', 'solicitacoes')->json('pendentes'));
+    }
+
     public function test_quem_nao_e_mantenedor_nao_inicia(): void
     {
         $ss = $this->abrirSs();

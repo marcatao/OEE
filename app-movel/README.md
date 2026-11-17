@@ -60,6 +60,8 @@ cd app-movel/android
    informado pelo celular, entre o início e agora; grava "máquina parada" na OS; conclui se pedido), `acao`
    (aguardar material, retomar, concluir), `avaliacoes`, `avaliar` (avaliação do SOLICITANTE no celular do mantenedor:
    `FluxoOrdemServico::avaliar` com o solicitante + assinatura PNG em `os_assinaturas`).
+   Unidades: o app vê e é alertado só pelas SS/OS das unidades habilitadas nos perfis do login (o próprio
+   `AcessoOs::filtrar` do portal; teste `test_mantenedor_nao_ve_nem_e_alertado_por_ss_de_outra_unidade`).
    Alertas com o app fechado: ✔ (0.6.0) `alertas/ServicoAlertas` (serviço em primeiro plano `specialUse`, consulta a
    cada 20 s, wake lock + Wi-Fi lock, notificação em tela cheia, reinício no boot por `IniciarNoBoot`).
    Regras pedidas: SS/OS (abrir, aprovar, concluir); apontamento com cronômetro: o app TRAVA na tela (sem voltar nem

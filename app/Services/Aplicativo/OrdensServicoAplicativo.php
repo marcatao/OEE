@@ -58,7 +58,7 @@ class OrdensServicoAplicativo
             return collect();
         }
 
-        return AcessoOs::filtrar(SolicitacaoServico::query(), $u)->where('status', 'pendente')
+        return $this->visiveis(SolicitacaoServico::query(), $u)->where('status', 'pendente')
             ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante'])
             ->orderByDesc('maquina_parada')->orderBy('id')->limit(50)->get()
             ->filter(fn ($ss) => AcessoOs::podeAprovar($u, $ss))->values();
@@ -81,7 +81,7 @@ class OrdensServicoAplicativo
         $m = $this->exigirMantenedor($u);
 
         return DB::transaction(function () use ($u, $ssId, $m) {
-            $ss = AcessoOs::filtrar(SolicitacaoServico::query(), $u)->lockForUpdate()->findOrFail($ssId);
+            $ss = $this->visiveis(SolicitacaoServico::query(), $u)->lockForUpdate()->findOrFail($ssId);
             if ($ss->status !== 'pendente') {
                 $quem = $ss->ordemServico?->responsavel?->nomeExibicao() ?? $ss->analisadoPor?->nome;
                 throw ValidationException::withMessages(['ss' => 'Esta solicitação já foi '.($ss->status === 'aprovada' ? 'assumida' : 'analisada')
@@ -95,7 +95,7 @@ class OrdensServicoAplicativo
 
     public function rejeitar(Usuario $u, int $ssId, string $motivo): void
     {
-        $ss = AcessoOs::filtrar(SolicitacaoServico::query(), $u)->findOrFail($ssId);
+        $ss = $this->visiveis(SolicitacaoServico::query(), $u)->findOrFail($ssId);
         abort_unless(AcessoOs::podeAprovar($u, $ss), 403, 'Esta SS é de uma área executante que você não atende.');
         $this->fluxo->rejeitar($ss, $u, $motivo);
     }
@@ -122,7 +122,7 @@ class OrdensServicoAplicativo
     /** OS em aberto do mantenedor (as dele e as ainda sem ninguém), como "Minhas OS" do portal. */
     public function minhasOrdens(Usuario $u, ?Mantenedor $m): Builder
     {
-        return AcessoOs::filtrar(OrdemServico::query(), $u)
+        return $this->visiveis(OrdemServico::query(), $u)
             ->whereIn('status', OrdemServico::STATUS_ABERTOS)
             ->when($m, fn ($q) => $q->where(fn ($q) => $q->where('responsavel_id', $m->id)
                 ->orWhereHas('mantenedores', fn ($w) => $w->where('os_mantenedores.id', $m->id))
@@ -143,7 +143,7 @@ class OrdensServicoAplicativo
     /** OS concluídas (dele) esperando a avaliação do solicitante. */
     public function paraAvaliar(Usuario $u, Mantenedor $m): Builder
     {
-        return AcessoOs::filtrar(OrdemServico::query(), $u)->where('status', 'concluida')
+        return $this->visiveis(OrdemServico::query(), $u)->where('status', 'concluida')
             ->where(fn ($q) => $q->where('responsavel_id', $m->id)->orWhereHas('mantenedores', fn ($w) => $w->where('os_mantenedores.id', $m->id)));
     }
 
@@ -160,7 +160,8 @@ class OrdensServicoAplicativo
 
     public function buscarOs(Usuario $u, int $id): OrdemServico
     {
-        return AcessoOs::filtrar(OrdemServico::query(), $u)->with([...$this->relacoes(), 'apontamentos.mantenedor', 'solicitacao'])->findOrFail($id);
+        return $this->visiveis(OrdemServico::query(), $u)
+            ->with([...$this->relacoes(), 'apontamentos.mantenedor', 'solicitacao'])->findOrFail($id);
     }
 
     /** Tudo da OS para a tela do app (e para a tela travada do apontamento e a avaliação). */
@@ -281,6 +282,15 @@ class OrdensServicoAplicativo
     {
         return $m ? ApontamentoHoras::where('mantenedor_id', $m->id)->whereNull('fim')
             ->with(['ordemServico' => fn ($q) => $q->with($this->relacoes())])->first() : null;
+    }
+
+    /**
+     * SS/OS que o usuário vê no aplicativo: exatamente as regras do portal (AcessoOs::filtrar), que já restringem às
+     * unidades habilitadas nos perfis do login — o mantenedor não vê nem é alertado por SS/OS de outra unidade.
+     */
+    public function visiveis(Builder $consulta, Usuario $u): Builder
+    {
+        return AcessoOs::filtrar($consulta, $u);
     }
 
     public function exigirMantenedor(Usuario $u): Mantenedor
