@@ -6,16 +6,20 @@ use App\Models\Compras\PedidoCompra;
 use App\Models\Usuario;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Integração dos pedidos de compra com o Protheus pela TABELA MURO (config/compras.php):
- * - gerar(): grava o pedido no portal e na muro (STATUS = AGUARDANDO_PROTHEUS);
+ * Integração dos pedidos de compra com o Protheus pelas TABELAS MURO NATIVAS (ZP1 cabeçalho, ZP2 itens; criadas no
+ * dicionário pelo compatibilizador U_OEEUPDPC, config/compras.php):
+ * - gerar(): grava o pedido no portal e na muro (ZP1_STATUS = AGUARDANDO_PROTHEUS);
  * - atualizar(): lê na muro o que o Protheus devolveu (número, aprovação, conclusão, valores, erro);
  * - cancelar() / reenviar(): só enquanto o Protheus não pegou o pedido (ou deu erro), com UPDATE condicionado ao status.
- * Na muro o portal só grava estas duas tabelas; as datas de lá ficam no horário local (compras.fuso_muro).
+ * A ligação é pelo nº do pedido do portal (ZP1_IDPORT / ZP2_IDPORT, 10 dígitos). Como em toda tabela do Protheus, o
+ * portal grava R_E_C_N_O_ (próximo número) e D_E_L_E_T_ = ' ', e só lê os não excluídos; datas = AAAAMMDD + HH:MM:SS no
+ * horário local (compras.fuso_muro). Na muro o portal só grava estas duas tabelas.
  */
 final class PedidoCompraMuro
 {
@@ -36,14 +40,32 @@ final class PedidoCompraMuro
         return DB::connection(config('compras.conexao'));
     }
 
-    private static function pedidos(): string
+    /** Nome do campo do cabeçalho (ZP1_xxx). */
+    public static function cab(string $campo): string
     {
-        return (string) config('compras.tabela_pedidos');
+        return config('compras.alias_pedidos').'_'.$campo;
     }
 
-    private static function itens(): string
+    /** Nome do campo do item (ZP2_xxx). */
+    public static function ite(string $campo): string
     {
-        return (string) config('compras.tabela_itens');
+        return config('compras.alias_itens').'_'.$campo;
+    }
+
+    /** Chave de ligação: nº do portal com 10 dígitos (ZP1_IDPORT, ZP2_IDPORT, ZP2_IDITEM). */
+    public static function chave(int $id): string
+    {
+        return str_pad((string) $id, 10, '0', STR_PAD_LEFT);
+    }
+
+    private static function pedidos(): Builder
+    {
+        return self::conexao()->table(config('compras.tabela_pedidos'))->where('D_E_L_E_T_', '<>', '*');
+    }
+
+    private static function itens(): Builder
+    {
+        return self::conexao()->table(config('compras.tabela_itens'))->where('D_E_L_E_T_', '<>', '*');
     }
 
     /**
@@ -63,7 +85,7 @@ final class PedidoCompraMuro
                 'filial' => (string) config('compras.filial', ''),
                 'centro_custo_origem' => trim($cabecalho['centro_custo_origem']),
                 'centro_custo_destino' => trim($cabecalho['centro_custo_destino']),
-                'observacao' => $cabecalho['observacao'] ?? null,
+                'observacao' => isset($cabecalho['observacao']) ? mb_substr(trim((string) $cabecalho['observacao']), 0, 250) : null,
                 'status' => 'aguardando_protheus',
             ]);
             foreach (array_values($itens) as $n => $item) {
@@ -74,7 +96,7 @@ final class PedidoCompraMuro
                     'produto_descricao' => mb_substr((string) $item['produto_descricao'], 0, 120),
                     'um' => mb_substr(trim((string) $item['um']), 0, 4),
                     'quantidade' => $item['quantidade'],
-                    'observacao' => isset($item['observacao']) ? mb_substr(trim((string) $item['observacao']), 0, 250) : null,
+                    'observacao' => isset($item['observacao']) ? mb_substr(trim((string) $item['observacao']), 0, 100) : null,
                 ]);
             }
             $this->enviar($pedido->load('itens'), $cabecalho['origem'], $u);
@@ -83,38 +105,59 @@ final class PedidoCompraMuro
         });
     }
 
-    /** INSERT do cabeçalho e dos itens na muro (transação da conexão da muro). */
+    /** INSERT do cabeçalho e dos itens na muro (transação da conexão da muro), com o próximo R_E_C_N_O_ de cada tabela. */
     private function enviar(PedidoCompra $pedido, string $origem, Usuario $u): void
     {
-        $agora = $this->agoraLocal();
-        self::conexao()->transaction(function ($muro) use ($pedido, $origem, $u, $agora) {
-            $id = $muro->table(self::pedidos())->insertGetId([
-                'ID_PORTAL' => $pedido->id,
-                'ORIGEM' => mb_substr($origem, 0, 30),
-                'FILIAL' => $pedido->filial,
-                'CC_ORIGEM' => $pedido->centro_custo_origem,
-                'CC_DESTINO' => $pedido->centro_custo_destino,
-                'FORNECEDOR' => '', 'LOJA' => '', 'COND_PAGTO' => '',
-                'SOLICITANTE' => mb_substr((string) $u->nome, 0, 120),
-                'OBSERVACAO' => mb_substr((string) $pedido->observacao, 0, 500),
-                'STATUS' => 'AGUARDANDO_PROTHEUS',
-                'NUM_PEDIDO' => '',
-                'TENTATIVAS' => 0,
-                'CRIADO_EM' => $agora,
-            ], 'ID');
-            $muro->table(self::itens())->insert($pedido->itens->map(fn ($i) => [
-                'ID_PEDIDO' => $id,
-                'ITEM' => $i->item,
-                'ID_ITEM_PORTAL' => $i->id,
-                'PRODUTO' => $i->produto_codigo,
-                'DESCRICAO' => (string) $i->produto_descricao,
-                'UM' => mb_substr((string) $i->um, 0, 2),
-                'QUANTIDADE' => $i->quantidade,
-                'PRECO' => 0,
-                'OBSERVACAO' => (string) $i->observacao,
-                'C7_ITEM' => '',
+        [$data, $hora] = $this->agoraLocal();
+        self::conexao()->transaction(function ($muro) use ($pedido, $origem, $u, $data, $hora) {
+            $c = fn (string $campo) => self::cab($campo);
+            $i = fn (string $campo) => self::ite($campo);
+            $muro->table(config('compras.tabela_pedidos'))->insert([
+                $c('FILIAL') => ' ',
+                $c('IDPORT') => self::chave($pedido->id),
+                $c('ORIGEM') => mb_substr($origem, 0, 30),
+                $c('FILPED') => $pedido->filial !== '' ? $pedido->filial : ' ',
+                $c('CCORIG') => $pedido->centro_custo_origem,
+                $c('CCDEST') => $pedido->centro_custo_destino,
+                $c('FORNEC') => ' ', $c('LOJA') => ' ', $c('COND') => ' ',
+                $c('SOLIC') => mb_substr((string) $u->nome, 0, 60),
+                $c('OBS') => (string) $pedido->observacao !== '' ? mb_substr((string) $pedido->observacao, 0, 250) : ' ',
+                $c('STATUS') => 'AGUARDANDO_PROTHEUS',
+                $c('MSG') => ' ',
+                $c('NUMPED') => ' ',
+                $c('TENTAT') => 0,
+                $c('DTINT') => ' ', $c('HRINT') => ' ', $c('APROV') => ' ', $c('DTAPRO') => ' ', $c('HRAPRO') => ' ',
+                $c('DTCONC') => ' ', $c('HRCONC') => ' ', $c('VALOR') => 0,
+                $c('DTCRIA') => $data, $c('HRCRIA') => $hora,
+                $c('DTATU') => $data, $c('HRATU') => $hora,
+                'D_E_L_E_T_' => ' ',
+                'R_E_C_N_O_' => $this->proximoRecno($muro, config('compras.tabela_pedidos')),
+            ]);
+            $recno = $this->proximoRecno($muro, config('compras.tabela_itens'));
+            $muro->table(config('compras.tabela_itens'))->insert($pedido->itens->values()->map(fn ($item, $n) => [
+                $i('FILIAL') => ' ',
+                $i('IDPORT') => self::chave($pedido->id),
+                $i('ITEM') => $item->item,
+                $i('IDITEM') => self::chave($item->id),
+                $i('PROD') => $item->produto_codigo,
+                $i('DESC') => (string) $item->produto_descricao !== '' ? mb_substr((string) $item->produto_descricao, 0, 60) : ' ',
+                $i('UM') => (string) $item->um !== '' ? mb_substr((string) $item->um, 0, 2) : ' ',
+                $i('QUANT') => $item->quantidade,
+                $i('PRECO') => 0,
+                $i('OBS') => (string) $item->observacao !== '' ? mb_substr((string) $item->observacao, 0, 100) : ' ',
+                $i('C7ITEM') => ' ', $i('VUNIT') => 0, $i('VTOTAL') => 0, $i('QTDENT') => 0,
+                'D_E_L_E_T_' => ' ',
+                'R_E_C_N_O_' => $recno + $n,
             ])->all());
         });
+    }
+
+    /** Próximo R_E_C_N_O_ da tabela do Protheus (no SQL Server, travando a leitura até o fim da transação). */
+    private function proximoRecno(ConnectionInterface $muro, string $tabela): int
+    {
+        $trava = $muro->getDriverName() === 'sqlsrv' ? ' WITH (UPDLOCK, HOLDLOCK)' : '';
+
+        return (int) $muro->selectOne("SELECT COALESCE(MAX(R_E_C_N_O_), 0) + 1 AS proximo FROM {$tabela}{$trava}")->proximo;
     }
 
     /**
@@ -130,9 +173,10 @@ final class PedidoCompraMuro
         }
         $mudaram = 0;
         foreach ($abertos->chunk(500) as $lote) {
-            $cabecalhos = self::conexao()->table(self::pedidos())->whereIn('ID_PORTAL', $lote->keys()->all())->get()->keyBy('ID_PORTAL');
-            $linhas = $cabecalhos->isEmpty() ? collect() : self::conexao()->table(self::itens())
-                ->whereIn('ID_PEDIDO', $cabecalhos->pluck('ID')->all())->get()->keyBy('ID_ITEM_PORTAL');
+            $chaves = $lote->keys()->map(fn ($id) => self::chave((int) $id))->all();
+            $cabecalhos = self::pedidos()->whereIn(self::cab('IDPORT'), $chaves)->get()->keyBy(fn ($r) => (int) $r->{self::cab('IDPORT')});
+            $linhas = $cabecalhos->isEmpty() ? collect() : self::itens()->whereIn(self::ite('IDPORT'), $chaves)->get()
+                ->keyBy(fn ($r) => (int) $r->{self::ite('IDITEM')});
             foreach ($lote as $pedido) {
                 $muro = $cabecalhos[$pedido->id] ?? null;
                 if ($muro !== null && $this->copiar($pedido, $muro, $linhas)) {
@@ -173,8 +217,9 @@ final class PedidoCompraMuro
 
     private function trocarStatus(PedidoCompra $pedido, array $de, string $para, ?string $mensagem, string $recusa): void
     {
-        $alterados = self::conexao()->table(self::pedidos())->where('ID_PORTAL', $pedido->id)->whereIn('STATUS', $de)
-            ->update(['STATUS' => $para, 'MENSAGEM' => $mensagem, 'ATUALIZADO_EM' => $this->agoraLocal()]);
+        [$data, $hora] = $this->agoraLocal();
+        $alterados = self::pedidos()->where(self::cab('IDPORT'), self::chave($pedido->id))->whereIn(self::cab('STATUS'), $de)
+            ->update([self::cab('STATUS') => $para, self::cab('MSG') => $mensagem ?? ' ', self::cab('DTATU') => $data, self::cab('HRATU') => $hora]);
         if ($alterados === 0) {
             $this->atualizar(collect([$pedido]));
             throw ValidationException::withMessages(['pedido' => $recusa]);
@@ -185,31 +230,34 @@ final class PedidoCompraMuro
     /** Copia o que veio da muro para o pedido e os itens. Devolve true se algo mudou. */
     private function copiar(PedidoCompra $pedido, object $muro, Collection $linhas): bool
     {
-        $status = self::STATUS_MURO[strtoupper(trim((string) $muro->STATUS))] ?? $pedido->status;
-        $numero = trim((string) ($muro->NUM_PEDIDO ?? ''));
+        $v = fn (object $r, string $campo) => $r->{$campo} ?? null;
+        $texto = fn ($valor, int $max) => ($t = trim((string) $valor)) !== '' ? mb_substr($t, 0, $max) : null;
+        $status = self::STATUS_MURO[strtoupper(trim((string) $v($muro, self::cab('STATUS'))))] ?? $pedido->status;
         $pedido->forceFill([
             'status' => $status,
-            'numero_pedido' => $numero !== '' ? $numero : null,
-            'mensagem' => ($m = trim((string) ($muro->MENSAGEM ?? ''))) !== '' ? mb_substr($m, 0, 1000) : null,
-            'integrado_em' => $this->utc($muro->INTEGRADO_EM ?? null),
-            'aprovador' => ($a = trim((string) ($muro->APROVADOR ?? ''))) !== '' ? mb_substr($a, 0, 120) : null,
-            'aprovado_em' => $this->utc($muro->APROVADO_EM ?? null),
-            'concluido_em' => $this->utc($muro->CONCLUIDO_EM ?? null),
-            'valor_total' => $muro->VALOR_TOTAL ?? null,
+            'numero_pedido' => $texto($v($muro, self::cab('NUMPED')), 10),
+            'mensagem' => $texto($v($muro, self::cab('MSG')), 1000),
+            'integrado_em' => $this->utc($v($muro, self::cab('DTINT')), $v($muro, self::cab('HRINT'))),
+            'aprovador' => $texto($v($muro, self::cab('APROV')), 120),
+            'aprovado_em' => $this->utc($v($muro, self::cab('DTAPRO')), $v($muro, self::cab('HRAPRO'))),
+            'concluido_em' => $this->utc($v($muro, self::cab('DTCONC')), $v($muro, self::cab('HRCONC'))),
+            // Valor 0 = ainda sem valor do Protheus.
+            'valor_total' => (float) $v($muro, self::cab('VALOR')) > 0 ? $v($muro, self::cab('VALOR')) : null,
         ]);
         $mudou = $pedido->isDirty();
         $pedido->consultado_em = now();
         $pedido->saveQuietly();
 
+        $integrado = $texto($v($muro, self::cab('NUMPED')), 10) !== null;
         foreach ($pedido->itens as $item) {
             $linha = $linhas[$item->id] ?? null;
-            if ($linha === null) {
+            if ($linha === null || ! $integrado) {
                 continue;
             }
             $item->forceFill([
-                'valor_unitario' => $linha->VALOR_UNITARIO ?? null,
-                'valor_total' => $linha->VALOR_TOTAL ?? null,
-                'quantidade_entregue' => $linha->QTD_ENTREGUE ?? null,
+                'valor_unitario' => $v($linha, self::ite('VUNIT')),
+                'valor_total' => $v($linha, self::ite('VTOTAL')),
+                'quantidade_entregue' => $v($linha, self::ite('QTDENT')),
             ]);
             if ($item->isDirty()) {
                 $item->saveQuietly();
@@ -220,17 +268,24 @@ final class PedidoCompraMuro
         return $mudou;
     }
 
-    private function agoraLocal(): string
+    /** @return array{0: string, 1: string} data AAAAMMDD e hora HH:MM:SS locais */
+    private function agoraLocal(): array
     {
-        return CarbonImmutable::now(config('compras.fuso_muro'))->format('Y-m-d H:i:s');
+        $agora = CarbonImmutable::now(config('compras.fuso_muro'));
+
+        return [$agora->format('Ymd'), $agora->format('H:i:s')];
     }
 
-    private function utc(mixed $valor): ?CarbonImmutable
+    /** Data (AAAAMMDD) + hora (HH:MM ou HH:MM:SS) local do Protheus => UTC. Data em branco = sem data. */
+    private function utc(mixed $data, mixed $hora): ?CarbonImmutable
     {
-        if ($valor === null || trim((string) $valor) === '') {
+        $data = trim((string) $data);
+        if (! preg_match('/^\d{8}$/', $data)) {
             return null;
         }
+        $hora = trim((string) $hora);
+        $hora = preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $hora) ? (strlen($hora) === 5 ? $hora.':00' : $hora) : '00:00:00';
 
-        return CarbonImmutable::parse((string) $valor, config('compras.fuso_muro'))->utc();
+        return CarbonImmutable::createFromFormat('Ymd H:i:s', $data.' '.$hora, config('compras.fuso_muro'))->utc();
     }
 }

@@ -67,7 +67,7 @@ class PedidoCompraController extends Controller
             'itens' => ['required', 'array', 'min:1', 'max:'.self::MAX_ITENS],
             'itens.*.produto_codigo' => ['required', 'string', 'max:30'],
             'itens.*.quantidade' => ['required', 'numeric', 'gt:0', 'max:9999999'],
-            'itens.*.observacao' => ['nullable', 'string', 'max:250'],
+            'itens.*.observacao' => ['nullable', 'string', 'max:100'],
         ], $this->mensagens() + [
             'itens.required' => 'Inclua pelo menos um produto no pedido.',
             'itens.*.quantidade.required' => 'Informe a quantidade de cada produto.',
@@ -146,7 +146,7 @@ class PedidoCompraController extends Controller
         return [
             'centro_custo_origem' => ['required', 'string', 'max:20'],
             'centro_custo_destino' => ['required', 'string', 'max:20'],
-            'observacao_pedido' => ['nullable', 'string', 'max:500'],
+            'observacao_pedido' => ['nullable', 'string', 'max:250'],
         ];
     }
 

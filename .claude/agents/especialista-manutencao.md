@@ -113,8 +113,8 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
 - **Pedido de compra pelo Protheus (tabela muro)**: o ADMINISTRADOR DA UNIDADE marca itens APROVADOS da solicitação de
   material (quantidade = aprovada; um item só fica em um pedido ativo) ou escolhe produtos direto na OS ABERTA, com CC
   de ORIGEM e de DESTINO (`PedidoCompraController`). Portal: `pedidos_compra` + `pedidos_compra_itens`; Protheus:
-  `OEE_PEDIDO_COMPRA` + `_ITEM` (conexão `muro`, `config/compras.php`; SQL e fonte `OEEPCJOB.tlpp` em
-  `integracao-protheus/pedido-compra/`). Status: AGUARDANDO_PROTHEUS → (PROCESSANDO) → AGUARDANDO_APROVACAO (número)
+  tabelas NATIVAS `ZP1` + `ZP2` (dicionário pelo compatibilizador `OEEUPDPC.tlpp`; conexão `muro`,
+  `config/compras.php`; job `OEEPCJOB.tlpp`; tudo em `integracao-protheus/pedido-compra/`). Status: AGUARDANDO_PROTHEUS → (PROCESSANDO) → AGUARDANDO_APROVACAO (número)
   → APROVADO (aprovador, data) → CONCLUIDO (data, valores); REPROVADO, ERRO (mensagem; reenviar ou cancelar),
   CANCELADO. `PedidoCompraMuro::atualizar` lê a muro (comando agendado `compras:atualizar-pedidos` e ao abrir a SM/OS,
   sem derrubar a tela). Card "Quanto esta OS está custando" (`CustoOrdemServico`): pedidos (valor do Protheus; sem

@@ -16,6 +16,6 @@
     </select>
   </label>
   <label class="pc-obs">Observação do pedido
-    <input name="observacao_pedido" maxlength="500" value="{{ old('observacao_pedido') }}" placeholder="Opcional (vai para o Protheus)" @if (! empty($form)) form="{{ $form }}" @endif>
+    <input name="observacao_pedido" maxlength="250" value="{{ old('observacao_pedido') }}" placeholder="Opcional (vai para o Protheus)" @if (! empty($form)) form="{{ $form }}" @endif>
   </label>
 </div>

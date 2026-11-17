@@ -12,7 +12,7 @@
     <input type="number" name="itens[{{ $i }}][quantidade]" min="0" step="any" value="{{ $linha['quantidade'] ?? '' }}" placeholder="0">
   </label>
   <label>Observação
-    <input name="itens[{{ $i }}][observacao]" maxlength="250" value="{{ $linha['observacao'] ?? '' }}" placeholder="Opcional">
+    <input name="itens[{{ $i }}][observacao]" maxlength="100" value="{{ $linha['observacao'] ?? '' }}" placeholder="Opcional">
   </label>
   <button type="button" class="botao pequeno secundario" data-pc-remover title="Remover este produto" aria-label="Remover este produto">@include('layouts.partials.icone', ['nome' => 'lixeira'])</button>
 </div>
