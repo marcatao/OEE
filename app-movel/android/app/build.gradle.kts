@@ -23,7 +23,7 @@ android {
         versionName = versao.getProperty("nome")
         // Endereço do portal e rede Wi-Fi da fábrica.
         buildConfigField("String", "PORTAL_URL", "\"https://www.alumbra.com.br/oee\"")
-        buildConfigField("String", "REDE_WIFI", "\"wlan_alumbra\"")
+        buildConfigField("String", "REDE_WIFI", "\"Wlan_alumbra\"")
     }
 
     signingConfigs {

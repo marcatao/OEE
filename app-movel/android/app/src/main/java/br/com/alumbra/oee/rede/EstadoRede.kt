@@ -19,7 +19,9 @@ data class EstadoRede(
     val semPermissaoLocalizacao: Boolean,
     val portalAcessivel: Boolean?,
 ) {
-    val naRedeDaFabrica: Boolean get() = noWifi && nomeRede == BuildConfig.REDE_WIFI
+    /** Compara sem diferenciar maiúsculas e minúsculas (o nome da rede é "Wlan_alumbra"). */
+    val naRedeDaFabrica: Boolean
+        get() = noWifi && nomeRede?.trim().equals(BuildConfig.REDE_WIFI, ignoreCase = true)
 }
 
 object VerificadorRede {

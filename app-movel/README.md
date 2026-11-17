@@ -1,7 +1,7 @@
 # Aplicativo OEE Alumbra (Android)
 
 Aplicativo nativo (Kotlin + Jetpack Compose) do portal OEE Alumbra. Funciona offline com banco local e sincroniza
-com o portal só na rede Wi-Fi da fábrica (`wlan_alumbra`). Todas as tabelas e regras de negócio são as do portal:
+com o portal só na rede Wi-Fi da fábrica (`Wlan_alumbra`). Todas as tabelas e regras de negócio são as do portal:
 o app conversa com uma API do próprio portal (rotas `/api/app/...`, neste repositório), que usa os mesmos serviços
 e permissões das telas.
 

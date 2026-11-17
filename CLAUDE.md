@@ -145,7 +145,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
 
 - **Aplicativo Android** (`app-movel/`, Kotlin + Compose, pacote `br.com.alumbra.oee`): nativo, offline com banco
-  local, sincroniza só na Wi-Fi `wlan_alumbra`, distribuído só por APK. Usa uma API do portal (`/api/app/...`) com os
+  local, sincroniza só na Wi-Fi `Wlan_alumbra`, distribuído só por APK. Usa uma API do portal (`/api/app/...`) com os
   MESMOS serviços, permissões e escopo de unidade das telas; conflito = vale a alteração mais recente pelo horário.
   A cada mudança no app: suba `codigo` (e ajuste `nome`) em `app-movel/android/versao.properties`, registre em
   `app-movel/VERSOES.md` e gere o APK. A chave em `app-movel/android/keystore/` fica no repositório com autorização do

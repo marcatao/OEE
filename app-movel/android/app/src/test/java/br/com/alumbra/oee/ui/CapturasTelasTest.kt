@@ -23,7 +23,7 @@ class CapturasTelasTest {
     @Test
     fun entrada_na_rede_da_fabrica() = paparazzi.snapshot {
         TemaOee(escuro = false) {
-            TelaInicial(EstadoRede(true, "wlan_alumbra", false, true), null, false, {}, {}, {})
+            TelaInicial(EstadoRede(true, "Wlan_alumbra", false, true), null, false, {}, {}, {})
         }
     }
 
