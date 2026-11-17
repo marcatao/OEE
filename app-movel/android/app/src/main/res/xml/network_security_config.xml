@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  O certificado do portal (*.alumbra.com.br) é da Sectigo e termina na raiz "Sectigo Public Server Authentication
+  Root R46" (2021), que só vem de fábrica nos Androids mais novos. O Chrome tem a lista própria e funciona; o app usa a
+  do Android e, sem esta raiz, falha nos aparelhos mais antigos ("portal sem acesso").
+  Aqui o app confia, só para alumbra.com.br, nas raízes do Android + esta raiz da Sectigo (res/raw/sectigo_root_r46.pem,
+  SHA-256 7B:B6:47:A6:2A:EE:AC:88:BF:25:7A:A5:22:D0:1F:FE:A3:95:E0:AB:45:C7:3F:93:F6:56:54:EC:38:F2:5A:06).
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">alumbra.com.br</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/sectigo_root_r46" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

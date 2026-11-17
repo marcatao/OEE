@@ -18,6 +18,8 @@ data class EstadoRede(
     val nomeRede: String?,
     val semPermissaoLocalizacao: Boolean,
     val portalAcessivel: Boolean?,
+    /** Motivo da falha ao falar com o portal (certificado, tempo esgotado, endereço...), para diagnóstico. */
+    val motivoPortal: String? = null,
 ) {
     /** Compara sem diferenciar maiúsculas e minúsculas (o nome da rede é "Wlan_alumbra"). */
     val naRedeDaFabrica: Boolean
@@ -42,19 +44,32 @@ object VerificadorRede {
         return EstadoRede(noWifi, nome, !temPermissao, portalAcessivel = null)
     }
 
-    /** Confere se o portal responde (qualquer resposta HTTP conta como acessível). */
-    suspend fun portalResponde(): Boolean = withContext(Dispatchers.IO) {
+    /** Confere se o portal responde (qualquer resposta HTTP conta como acessível). Devolve o motivo da falha. */
+    suspend fun portalResponde(): Pair<Boolean, String?> = withContext(Dispatchers.IO) {
         try {
             val conexao = URL(BuildConfig.PORTAL_URL).openConnection() as HttpURLConnection
-            conexao.connectTimeout = 5000
-            conexao.readTimeout = 5000
+            conexao.connectTimeout = 10_000
+            conexao.readTimeout = 10_000
             conexao.instanceFollowRedirects = false
             conexao.requestMethod = "GET"
             val codigo = conexao.responseCode
             conexao.disconnect()
-            codigo in 100..599
+            (codigo in 100..599) to null
         } catch (e: Exception) {
-            false
+            false to motivoDa(e)
+        }
+    }
+
+    /** Explica a falha de rede em português (aparece no app para facilitar o suporte). */
+    fun motivoDa(e: Throwable): String {
+        val causas = generateSequence(e) { it.cause }.toList()
+        return when {
+            causas.any { it is javax.net.ssl.SSLHandshakeException || it is java.security.cert.CertificateException } ->
+                "Certificado do portal não reconhecido por este aparelho (${causas.last().javaClass.simpleName})."
+            causas.any { it is java.net.UnknownHostException } -> "Endereço do portal não encontrado (DNS)."
+            causas.any { it is java.net.SocketTimeoutException } -> "O portal demorou demais para responder."
+            causas.any { it is java.net.ConnectException } -> "Conexão recusada pelo portal ou pelo firewall."
+            else -> "${e.javaClass.simpleName}: ${e.message ?: "sem detalhe"}"
         }
     }
 }

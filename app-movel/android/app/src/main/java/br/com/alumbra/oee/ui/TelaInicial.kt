@@ -162,6 +162,6 @@ private fun LinhaPortal(rede: EstadoRede?) {
     when (rede?.portalAcessivel) {
         null -> LinhaEstado(R.drawable.ic_portal, "Portal OEE", "Verificando…", Situacao.NEUTRA, "", carregando = true)
         true -> LinhaEstado(R.drawable.ic_portal, "Portal OEE", "Respondendo normalmente.", Situacao.OK, "Online")
-        false -> LinhaEstado(R.drawable.ic_portal, "Portal OEE", "Não respondeu. Confira a rede.", Situacao.ERRO, "Sem resposta")
+        false -> LinhaEstado(R.drawable.ic_portal, "Portal OEE", rede.motivoPortal ?: "Não respondeu. Confira a rede.", Situacao.ERRO, "Sem resposta")
     }
 }

@@ -110,7 +110,8 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(tentativaRede) {
                     val estado = VerificadorRede.estadoAtual(this@MainActivity)
                     rede = estado
-                    rede = estado.copy(portalAcessivel = VerificadorRede.portalResponde())
+                    val (responde, motivo) = VerificadorRede.portalResponde()
+                    rede = estado.copy(portalAcessivel = responde, motivoPortal = motivo)
                 }
                 Box(Modifier.fillMaxSize()) {
                     val u = usuario

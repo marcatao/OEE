@@ -1,5 +1,12 @@
 # Versões do aplicativo
 
+## 0.5.1 (build 8)
+- Correção: em aparelhos com Android mais antigo o app dizia "Portal sem resposta" mesmo com o portal abrindo no
+  Chrome. O certificado do portal (Sectigo) termina na raiz "Sectigo Public Server Authentication Root R46", que esses
+  Androids não têm de fábrica (o Chrome tem a lista própria). O app agora confia nessa raiz só para alumbra.com.br
+  (`res/raw/sectigo_root_r46.pem` + `res/xml/network_security_config.xml`).
+- Quando o portal não responde, o app mostra o motivo (certificado, DNS, tempo esgotado, conexão recusada).
+
 ## 0.5.0 (build 7)
 - Função **Ordens de serviço** (mantenedor):
   - **Solicitações**: SS aguardando um mantenedor; **Assumir** = aprovar a SS e ficar como mantenedor principal da OS

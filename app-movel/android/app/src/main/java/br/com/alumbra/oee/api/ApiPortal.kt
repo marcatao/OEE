@@ -51,7 +51,7 @@ object ApiPortal {
             } catch (e: ErroApi) {
                 throw e
             } catch (e: Exception) {
-                throw ErroApi("Sem comunicação com o portal. Confira a rede Wi-Fi.")
+                throw ErroApi("Sem comunicação com o portal: " + br.com.alumbra.oee.rede.VerificadorRede.motivoDa(e))
             } finally {
                 conexao.disconnect()
             }
