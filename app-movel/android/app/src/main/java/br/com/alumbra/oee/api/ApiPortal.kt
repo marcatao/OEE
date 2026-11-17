@@ -45,7 +45,10 @@ object ApiPortal {
                 val json = runCatching { JSONObject(texto) }.getOrElse { JSONObject() }
                 if (codigo == 401) throw ErroApi(json.optString("mensagem", "Entre de novo no aplicativo."), semAcesso = true)
                 if (codigo !in 200..299) {
-                    throw ErroApi(json.optString("mensagem").ifEmpty { "O portal respondeu com erro ($codigo)." })
+                    // Laravel: "mensagem" (nossa), "message" (abort/validação) e "errors" (campos).
+                    val campos = json.optJSONObject("errors")?.let { e -> e.keys().asSequence().mapNotNull { e.optJSONArray(it)?.optString(0) }.firstOrNull() }
+                    val texto = json.optString("mensagem").ifEmpty { campos ?: json.optString("message") }
+                    throw ErroApi(texto.ifEmpty { "O portal respondeu com erro ($codigo)." } + if (codigo == 403) " (403)" else "")
                 }
                 json
             } catch (e: ErroApi) {

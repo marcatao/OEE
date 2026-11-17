@@ -156,6 +156,12 @@ class MainActivity : ComponentActivity() {
                                     rodando?.let { encerrar(EncerramentoPendente(it.id, it.osId, desc, concluir, parada, fim)) }
                                 },
                                 aoReenviar = { pend?.let(::encerrar) },
+                                aoDesfazer = {
+                                    sessao.encerramentoPendente = null
+                                    encerramento = null
+                                    erroEncerramento = null
+                                    atualizarResumo++
+                                },
                             )
                         } else {
                             val atual = if (bloqueada) Tela.Principal else tela

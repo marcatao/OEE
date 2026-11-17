@@ -171,7 +171,7 @@ class OrdensServicoAplicativo
         $podeExecutar = AcessoOs::podeExecutar($u, $os);
         $acoes = $os->estaAberta() && $podeExecutar ? FluxoOrdemServico::acoesPossiveis($os) : [];
         unset($acoes['cancelar'], $acoes['reabrir'], $acoes['iniciar']); // cancelar/reabrir: só no portal; iniciar = apontamento
-        $meu = $m ? $os->apontamentos->first(fn ($a) => $a->mantenedor_id === $m->id && $a->fim === null) : null;
+        $meu = $m ? $os->apontamentos->first(fn ($a) => (int) $a->mantenedor_id === (int) $m->id && $a->fim === null) : null;
 
         return $this->osResumo($os) + [
             'servidor_agora' => now()->toIso8601String(),
@@ -206,7 +206,8 @@ class OrdensServicoAplicativo
     {
         $m = $this->exigirMantenedor($u);
         $ap = ApontamentoHoras::findOrFail($apId);
-        abort_unless($ap->mantenedor_id === $m->id, 403, 'Você só pode encerrar os seus apontamentos.');
+        // (int): no SQL Server os ids chegam como texto.
+        abort_unless((int) $ap->mantenedor_id === (int) $m->id, 403, 'Você só pode encerrar os seus apontamentos.');
         $os = $this->buscarOs($u, $ap->ordem_servico_id);
         if ($ap->fim !== null) {
             return $os; // já encerrado (ex.: o celular reenviou): nada a fazer

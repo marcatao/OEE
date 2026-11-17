@@ -60,6 +60,7 @@ fun TelaApontamentoTravado(
     erro: String?,
     aoEncerrar: (descricao: String, concluir: Boolean, maquinaParada: Boolean?, fimUtc: String) -> Unit,
     aoReenviar: () -> Unit,
+    aoDesfazer: () -> Unit = {},
     agoraFixo: Long? = null,
 ) {
     BackHandler(enabled = true) {} // travada: o voltar não sai
@@ -121,6 +122,12 @@ fun TelaApontamentoTravado(
                 Aviso(erro ?: "Enviando o encerramento ao portal…", if (erro != null) Situacao.ALERTA else Situacao.NEUTRA,
                     titulo = "Fim registrado às ${Instant.parse(pendente.fimUtc).let { java.text.SimpleDateFormat("HH:mm", java.util.Locale("pt", "BR")).format(java.util.Date(it.toEpochMilli())) }}")
                 BotaoPrincipal("Enviar de novo", aoReenviar, carregando = enviando)
+                if (erro != null && !enviando) {
+                    // O portal recusou: volta ao cronômetro (o apontamento continua aberto no portal) para tentar de novo.
+                    TextButton(onClick = aoDesfazer, modifier = Modifier.fillMaxWidth()) {
+                        Text("Desfazer o encerramento e voltar ao cronômetro", color = c.heroiTexto)
+                    }
+                }
             }
             !encerrando -> {
                 Spacer(Modifier.height(12.dp))

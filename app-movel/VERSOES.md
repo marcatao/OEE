@@ -1,5 +1,12 @@
 # Versões do aplicativo
 
+## 0.6.1 (build 10)
+- Correção (portal): encerrar o apontamento de horas respondia **403** no servidor. No SQL Server os ids chegam como
+  texto e a conferência "o apontamento é deste mantenedor?" comparava texto com número. O mesmo cuidado foi aplicado
+  ao "meu apontamento" da OS e à troca de OP da máquina. Teste novo simula os ids em texto.
+- App: mostra a mensagem que o portal devolve (antes só "erro 403") e, se o portal recusar o encerramento, oferece
+  "Desfazer o encerramento e voltar ao cronômetro" para não ficar preso na tela travada.
+
 ## 0.6.0 (build 9)
 - **Alertas com o app fechado e a tela desligada**: serviço em primeiro plano (notificação fixa "OEE Alumbra")
   que consulta o portal a cada 20 s, mantendo CPU e Wi-Fi ligados:

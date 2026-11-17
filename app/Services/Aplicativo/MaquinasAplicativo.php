@@ -164,12 +164,13 @@ class MaquinasAplicativo
         DB::transaction(function () use ($maquina, $op, &$afetadas) {
             $aberto = ApontamentoEstado::where('maquina_id', $maquina->id)->whereNull('fim')
                 ->orderByDesc('inicio')->orderByDesc('id')->first();
-            $maisRecente = ApontamentoEstado::where('maquina_id', $maquina->id)->orderByDesc('inicio')->orderByDesc('id')->value('id');
+            // (int): no SQL Server os ids chegam como texto.
+            $maisRecente = (int) ApontamentoEstado::where('maquina_id', $maquina->id)->orderByDesc('inicio')->orderByDesc('id')->value('id');
 
-            if ($aberto && $aberto->id === $maisRecente && $aberto->ordem_producao_id === null) {
+            if ($aberto && (int) $aberto->id === $maisRecente && $aberto->ordem_producao_id === null) {
                 $aberto->update(['ordem_producao_id' => $op->id]);
                 $this->situacao->aplicar($aberto);
-            } elseif ($aberto && $aberto->id === $maisRecente && $aberto->ordem_producao_id !== $op->id) {
+            } elseif ($aberto && (int) $aberto->id === $maisRecente && (int) $aberto->ordem_producao_id !== (int) $op->id) {
                 $agora = CarbonImmutable::now()->startOfSecond();
                 if ($agora->subSecond()->lessThanOrEqualTo($aberto->inicio)) {
                     $aberto->update(['ordem_producao_id' => $op->id]); // começou agora: só troca a OP

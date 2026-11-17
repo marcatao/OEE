@@ -166,6 +166,20 @@ class AplicativoOrdensServicoTest extends TestCase
         $this->assertSame('Ana', $assinatura->nome_assinante);
     }
 
+    /** No SQL Server os ids chegam como texto: o dono do apontamento tem de continuar sendo reconhecido. */
+    public function test_encerrar_com_ids_em_texto_como_no_sql_server(): void
+    {
+        $ss = $this->abrirSs();
+        $osId = $this->api($this->joao, 'POST', "solicitacoes/{$ss->id}/assumir")->json('ordem.id');
+        $apId = $this->api($this->joao, 'POST', "ordens/{$osId}/iniciar")->json('meu_apontamento.id');
+        ApontamentoHoras::retrieved(fn ($ap) => $ap->setRawAttributes(array_map(
+            fn ($v) => is_int($v) ? (string) $v : $v, $ap->getAttributes()), true));
+
+        $this->api($this->joao, 'GET', "ordens/{$osId}")->assertOk()->assertJsonPath('meu_apontamento.id', $apId);
+        $this->api($this->joao, 'POST', "apontamentos/{$apId}/encerrar", ['descricao' => 'Feito', 'concluir_os' => true])
+            ->assertOk()->assertJsonPath('status', 'concluida');
+    }
+
     public function test_quem_nao_e_mantenedor_nao_inicia(): void
     {
         $ss = $this->abrirSs();
