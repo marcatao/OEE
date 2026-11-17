@@ -43,6 +43,7 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
         bigint ordem_producao_id FK
+        smallint ciclo_medio
     }
     assistente_conversas {
         bigint id PK
@@ -977,7 +978,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | Tabela | Origem | Chave primária | Colunas | Ligações (FK) |
 |---|---|---|---|---|
 | [`apontamentos`](#apontamentos) | Sistema | `id` | 13 | 5 |
-| [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 12 | 5 |
+| [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 13 | 5 |
 | [`assistente_conversas`](#assistente_conversas) | Sistema | `id` | 6 | 1 |
 | [`assistente_perguntas`](#assistente_perguntas) | Sistema | `id` | 16 | 2 |
 | [`cache`](#cache) | Infra | `key` | 3 | 0 |
@@ -1080,10 +1081,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `ordem_producao_id` | `bigint` | sim |  | FK → `ordens_producao.id` |
+| `ciclo_medio` | `smallint` | sim |  |  |
 
 **Índices:** `apontamentos_estado_maquina_id_inicio_index` (maquina_id, inicio) · `apontamentos_estado_ordem_producao_id_index` (ordem_producao_id)
 
-**Regras (CHECK, só no SQL Server):** `ck_apontamentos_estado_periodo`: `fim IS NULL OR fim > inicio`
+**Regras (CHECK, só no SQL Server):** `ck_apontamentos_estado_periodo`: `fim IS NULL OR fim > inicio` · `ck_apontamentos_estado_ciclo_medio`: `ciclo_medio IS NULL OR (ciclo_medio >= 0 AND ciclo_medio <= 999)`
 
 ### assistente_conversas
 
