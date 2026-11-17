@@ -5,14 +5,15 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,7 +49,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Topo verde em todas as telas: ícones da barra de status sempre claros.
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         sessao = Sessao(this)
         usuario = if (sessao.token != null) sessao.usuario else null
         tratarRetornoDoLogin(intent)
@@ -60,7 +62,7 @@ class MainActivity : ComponentActivity() {
                     rede = estado
                     rede = estado.copy(portalAcessivel = VerificadorRede.portalResponde())
                 }
-                Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                Box(Modifier.fillMaxSize()) {
                     val u = usuario
                     if (u == null) {
                         TelaInicial(
@@ -87,6 +89,9 @@ class MainActivity : ComponentActivity() {
                             naRedeDaFabrica = rede?.naRedeDaFabrica == true,
                             aoSincronizar = ::sincronizar,
                             aoSair = ::sair,
+                            aoAbrirFuncao = {
+                                Toast.makeText(this@MainActivity, "Esta função chega nas próximas versões.", Toast.LENGTH_SHORT).show()
+                            },
                         )
                     }
                 }

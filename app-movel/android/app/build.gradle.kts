@@ -4,6 +4,8 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    // Capturas das telas sem celular (./gradlew recordPaparazziDebug → app/src/test/snapshots).
+    id("app.cash.paparazzi")
 }
 
 val versao = Properties().apply { rootProject.file("versao.properties").inputStream().use { load(it) } }
@@ -74,4 +76,5 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
 }

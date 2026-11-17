@@ -22,6 +22,13 @@ cd app-movel/android
 # APK: app/build/outputs/apk/release/oee-alumbra-<versão>-<build>.apk
 ```
 
+## Visual
+
+- Cores só em `ui/Tema.kt` (as mesmas variáveis de `public/css/portal.css`, claro e escuro); componentes comuns
+  (cartão, selo, linha de estado, aviso, botão principal, atalho) em `ui/Componentes.kt`.
+- Capturas das telas sem celular: `./gradlew recordPaparazziDebug` grava os PNG em
+  `app/src/test/snapshots/images/` (testes em `app/src/test/.../CapturasTelasTest.kt`). Tela nova: inclua uma captura.
+
 ## Plano
 
 0. Estrutura, tema verde do portal, verificação da rede Wi-Fi e do portal. ✔ (0.1.0)

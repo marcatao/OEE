@@ -1,22 +1,35 @@
 package br.com.alumbra.oee.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -28,18 +41,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import br.com.alumbra.oee.BuildConfig
+import br.com.alumbra.oee.R
 import br.com.alumbra.oee.sessao.UsuarioApp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Tela do usuário logado: menus conforme as permissões do portal e a situação da sincronização. */
+/** Tela do usuário logado: quem é, situação da sincronização e as funções que as permissões do portal liberam. */
 @Composable
 fun TelaPrincipal(
     usuario: UsuarioApp,
@@ -51,57 +65,141 @@ fun TelaPrincipal(
     naRedeDaFabrica: Boolean,
     aoSincronizar: () -> Unit,
     aoSair: () -> Unit,
+    aoAbrirFuncao: (String) -> Unit = {},
+    agora: Long = System.currentTimeMillis(),
 ) {
     var confirmarSaida by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .background(Brush.linearGradient(listOf(Cores.heroiInicio, Cores.heroiFim)))
-                .padding(horizontal = 20.dp, vertical = 24.dp),
-        ) {
-            Column {
-                Text("Olá, ${usuario.primeiroNome}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text(usuario.perfis.joinToString(" · ").ifEmpty { "Sem perfil" }, color = Color.White.copy(alpha = .85f), fontSize = 14.sp)
-                Text("OEE Alumbra ${BuildConfig.VERSION_NAME}", color = Color.White.copy(alpha = .7f), fontSize = 12.sp)
-            }
-        }
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState()),
+    ) {
+        Cabecalho(usuario, aoSair = { confirmarSaida = true })
 
         Column(
-            Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
+            Modifier
+                .offset(y = (-36).dp)
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            CartaoSincronizacao(ultimaSincronizacao, horasOffline, bloqueada, sincronizando, mensagem, naRedeDaFabrica, aoSincronizar)
+            CartaoSincronizacao(ultimaSincronizacao, horasOffline, bloqueada, sincronizando, mensagem, naRedeDaFabrica, aoSincronizar, agora)
 
+            TituloSecao("Funções")
+            val temFuncao = usuario.operador || usuario.timeline || usuario.mantenedor || usuario.aprovarOs || usuario.solicitarOs
             if (usuario.operador || usuario.timeline) {
-                CartaoMenu("Máquinas", "Timeline da máquina, ordem de produção, cavidades e motivo das paradas.", bloqueada)
+                AtalhoFuncao(
+                    icone = R.drawable.ic_maquina,
+                    titulo = "Máquinas",
+                    descricao = "Timeline da máquina, ordem de produção, cavidades e motivo das paradas.",
+                    selo = if (bloqueada) "Bloqueado" else "Em breve",
+                    habilitado = !bloqueada,
+                    aoTocar = { aoAbrirFuncao("maquinas") },
+                )
             }
             if (usuario.mantenedor || usuario.aprovarOs || usuario.solicitarOs) {
-                CartaoMenu("Ordens de serviço", "Abrir, aprovar e concluir SS/OS, apontamento com cronômetro e avaliação.", bloqueada)
+                AtalhoFuncao(
+                    vetor = Icons.Filled.Build,
+                    titulo = "Ordens de serviço",
+                    descricao = "Abrir, aprovar e concluir SS/OS, apontamento com cronômetro e avaliação.",
+                    selo = if (bloqueada) "Bloqueado" else "Em breve",
+                    habilitado = !bloqueada,
+                    aoTocar = { aoAbrirFuncao("ordens_servico") },
+                )
             }
-            if (!usuario.operador && !usuario.timeline && !usuario.mantenedor && !usuario.aprovarOs && !usuario.solicitarOs) {
-                Text(
-                    "Seu acesso não tem funções do aplicativo. Peça a um administrador do portal.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            if (!temFuncao) {
+                Aviso(
+                    titulo = "Nenhuma função liberada",
+                    texto = "Seu acesso não inclui funções do aplicativo. Peça a um administrador do portal.",
+                    situacao = Situacao.NEUTRA,
                 )
             }
 
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = { confirmarSaida = true }, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                Text("Sair (trocar de usuário)")
+            OutlinedButton(
+                onClick = { confirmarSaida = true },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, null, Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Sair e trocar de usuário")
             }
+            Text(
+                "OEE Alumbra ${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+                textAlign = TextAlign.Center,
+            )
         }
     }
 
     if (confirmarSaida) {
         AlertDialog(
             onDismissRequest = { confirmarSaida = false },
+            icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, null) },
             title = { Text("Sair do aplicativo?") },
             text = { Text("Para entrar de novo será preciso estar na rede ${BuildConfig.REDE_WIFI}.") },
             confirmButton = { TextButton(onClick = { confirmarSaida = false; aoSair() }) { Text("Sair") } },
             dismissButton = { TextButton(onClick = { confirmarSaida = false }) { Text("Cancelar") } },
         )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Cabecalho(usuario: UsuarioApp, aoSair: () -> Unit) {
+    val c = CoresOee.atual
+    FundoHeroi {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(start = 20.dp, end = 8.dp, top = 20.dp, bottom = 60.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = .18f))
+                        .border(2.dp, Color.White.copy(alpha = .35f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(iniciais(usuario.nome), style = MaterialTheme.typography.titleLarge, color = c.heroiTexto)
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Olá, ${usuario.primeiroNome}", style = MaterialTheme.typography.headlineMedium, color = c.heroiTexto,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (usuario.email.isNotBlank()) {
+                        Text(usuario.email, style = MaterialTheme.typography.bodyMedium, color = c.heroiSuave,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                IconButton(onClick = aoSair) {
+                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Sair", tint = c.heroiTexto)
+                }
+            }
+            if (usuario.perfis.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    usuario.perfis.forEach { perfil ->
+                        Text(
+                            perfil,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = c.heroiTexto,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = .16f))
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -114,62 +212,85 @@ private fun CartaoSincronizacao(
     mensagem: String?,
     naRedeDaFabrica: Boolean,
     aoSincronizar: () -> Unit,
+    agora: Long,
 ) {
-    val cores = if (bloqueada) {
-        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-    } else {
-        CardDefaults.cardColors()
-    }
-    Card(Modifier.fillMaxWidth(), colors = cores) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+    Cartao {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconeRedondo(
+                vetor = if (bloqueada) Icons.Filled.Lock else Icons.Filled.Refresh,
+                situacao = if (bloqueada) Situacao.ERRO else Situacao.OK,
+                tamanho = 48.dp,
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(if (bloqueada) "Sincronização necessária" else "Dados sincronizados", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    if (bloqueada) "Sincronização necessária" else "Sincronizado",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (bloqueada) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    if (ultima > 0) "Última: ${tempoDesde(ultima, agora)}" else "Ainda não sincronizado",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            val formato = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("pt", "BR"))
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Rede", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.weight(1f))
+            if (naRedeDaFabrica) {
+                Selo(BuildConfig.REDE_WIFI, Situacao.OK)
+            } else {
+                Selo("Fora da rede da fábrica", Situacao.ALERTA)
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        FilledTonalButton(
+            onClick = aoSincronizar,
+            enabled = naRedeDaFabrica && !sincronizando,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+        ) {
+            Icon(Icons.Filled.Refresh, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(if (sincronizando) "Sincronizando…" else "Sincronizar agora")
+        }
+        if (bloqueada) {
+            Spacer(Modifier.height(14.dp))
+            Aviso(
+                titulo = "Aplicativo bloqueado",
+                texto = "Passaram mais de $horasOffline h sem sincronizar. Conecte à rede ${BuildConfig.REDE_WIFI} e toque em Sincronizar.",
+                situacao = Situacao.ERRO,
+            )
+        } else if (!naRedeDaFabrica) {
+            Spacer(Modifier.height(10.dp))
             Text(
-                if (ultima > 0) "Última sincronização: ${formato.format(Date(ultima))}" else "Ainda não sincronizado.",
+                "Sem a rede da fábrica o app trabalha com os dados guardados no celular.",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (bloqueada) {
-                Text(
-                    "O aplicativo fica bloqueado depois de $horasOffline h sem sincronizar. Conecte à rede " +
-                        "${BuildConfig.REDE_WIFI} e toque em Sincronizar.",
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            if (mensagem != null) Text(mensagem, color = MaterialTheme.colorScheme.error)
-            Button(onClick = aoSincronizar, enabled = naRedeDaFabrica && !sincronizando, modifier = Modifier.fillMaxWidth()) {
-                Text(if (sincronizando) "Sincronizando…" else "Sincronizar agora")
-            }
-            if (!naRedeDaFabrica) {
-                Text("Fora da rede ${BuildConfig.REDE_WIFI}: o app trabalha com os dados do celular.", fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        }
+        if (mensagem != null) {
+            Spacer(Modifier.height(12.dp))
+            Aviso(texto = mensagem, situacao = Situacao.ERRO)
         }
     }
 }
 
-@Composable
-private fun CartaoMenu(titulo: String, descricao: String, bloqueada: Boolean) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.size(8.dp))
-                Text(
-                    if (bloqueada) "bloqueado" else "em breve",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.small)
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                )
-            }
-            Text(descricao, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun iniciais(nome: String): String =
+    nome.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.let { partes ->
+        when {
+            partes.isEmpty() -> "?"
+            partes.size == 1 -> partes[0].take(2)
+            else -> "${partes.first().first()}${partes.last().first()}"
         }
+    }.uppercase()
+
+/** "agora", "há 5 min", "há 3 h" ou a data, com a hora. */
+private fun tempoDesde(momento: Long, agora: Long): String {
+    val minutos = (agora - momento) / 60_000
+    val hora = SimpleDateFormat("dd/MM HH:mm", Locale("pt", "BR")).format(Date(momento))
+    return when {
+        minutos < 1 -> "agora há pouco"
+        minutos < 60 -> "há $minutos min ($hora)"
+        minutos < 48 * 60 -> "há ${minutos / 60} h ($hora)"
+        else -> hora
     }
 }
