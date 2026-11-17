@@ -59,6 +59,8 @@ class Timeline
                 'op' => $op,
                 'produto' => $op ? ($produtos[rtrim($op->c2_produto)] ?? null) : null,
                 'moldes' => $op ? self::moldesDaMaquina($roteiros[$op->id], (string) $m->codigo) : [],
+                // Ciclo médio (segundos por peça) do apontamento real mais recente da máquina; null = não informado.
+                'cicloMedio' => ($c = ApontamentoEstado::where('maquina_id', $m->id)->orderByDesc('inicio')->orderByDesc('id')->value('ciclo_medio')) === null ? null : (int) $c,
             ];
         }
 
