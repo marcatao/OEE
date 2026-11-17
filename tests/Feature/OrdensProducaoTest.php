@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
 
 /**
@@ -34,6 +35,7 @@ use Tests\TestCase;
  */
 class OrdensProducaoTest extends TestCase
 {
+    use IotDeTeste;
     use RefreshDatabase;
 
     private Maquina $maquina;
@@ -66,7 +68,7 @@ class OrdensProducaoTest extends TestCase
 
         $planta = Planta::create(['codigo' => 'P', 'nome' => 'Planta']);
         $linha = Linha::create(['planta_id' => $planta->id, 'codigo' => 'L', 'nome' => 'Linha']);
-        $this->maquina = Maquina::create(['linha_id' => $linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ativo' => true]);
+        $this->maquina = Maquina::create(['linha_id' => $linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ativo' => true] + $this->iotGravado());
     }
 
     protected function tearDown(): void

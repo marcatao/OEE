@@ -149,20 +149,21 @@ final class FiltroTimeline
     /** Máquinas ativas que passam no filtro (plantas, linhas e máquinas se somam: precisa passar em todos). */
     public function maquinas(): Builder
     {
-        return Maquina::with('linha.planta')->where('ativo', true)
+        // Só máquinas ativas e com IoT cadastrado (dispositivo + canal).
+        return Maquina::with('linha.planta')->where('ativo', true)->comIot()
             ->when($this->maquinas, fn ($q) => $q->whereIn('id', $this->maquinas))
             ->when($this->linhas, fn ($q) => $q->whereIn('linha_id', $this->linhas))
             ->when($this->plantas, fn ($q) => $q->whereIn('linha_id', Linha::whereIn('planta_id', $this->plantas)->select('id')))
             ->orderBy('nome');
     }
 
-    /** Opções dos filtros (só cadastros ativos). */
+    /** Opções dos filtros (só cadastros ativos; máquinas só com IoT cadastrado). */
     public static function opcoes(): array
     {
         return [
             'plantas' => Planta::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'linhas' => Linha::with('planta:id,nome')->where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'planta_id']),
-            'maquinas' => Maquina::with('linha:id,planta_id')->where('ativo', true)->orderBy('nome')->get(['id', 'nome', 'codigo', 'linha_id']),
+            'maquinas' => Maquina::with('linha:id,planta_id')->where('ativo', true)->comIot()->orderBy('nome')->get(['id', 'nome', 'codigo', 'linha_id']),
         ];
     }
 

@@ -31,7 +31,7 @@
   @if ($maquinas->isEmpty())
     <div class="vazio">
       @include('layouts.partials.icone', ['nome' => 'maquina'])
-      <p>Nenhuma máquina ativa com estes filtros.</p>
+      <p>Nenhuma máquina ativa e com IoT cadastrado com estes filtros.</p>
     </div>
   @else
     <div class="tl-grade">

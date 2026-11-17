@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\Auditavel;
 use App\Models\Concerns\TemUnidade;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -122,6 +123,17 @@ class Maquina extends Model
         }
 
         return $canais;
+    }
+
+    /** Com IoT cadastrado: pelo menos um canal com dispositivo e canal preenchidos (ex.: Timeline). */
+    public function scopeComIot(Builder $q): Builder
+    {
+        return $q->where(function ($w) {
+            foreach (self::CANAIS_IOT as $n) {
+                $w->orWhere(fn ($c) => $c->whereNotNull("iot{$n}_dispositivo_id")
+                    ->whereNotNull("iot{$n}_canal")->where("iot{$n}_canal", '<>', ''));
+            }
+        });
     }
 
     /** Tem pelo menos um canal IoT com dispositivo ATIVO? (condição para a máquina ficar ativa) */

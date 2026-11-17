@@ -92,27 +92,64 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Consultas ao Protheus devem usar os índices dele (ex.: SB9 sempre com `B9_FILIAL` na condição, sem subconsulta
   correlacionada, e com cache por produto durante a etapa). Meça partes lentas com `App\Support\Cronometro`: a
   etapa devolve os tempos e a tela mostra.
+  Cada tabela de `config/protheus.php` tem `via` = `php` (importador) ou `procedure` (o PHP só chama a procedure do
+  banco do portal; coluna "Sincronização" na tela). `ordens_producao` usa `dbo.sp_sincronizar_ordens_producao`, SEM
+  parâmetros: MERGE da tabela inteira `Compras.dbo.SC2` (pelo R_E_C_N_O_; sem ele, pela chave da OP) com a mesma
+  lógica do `ImportadorOrdensProducao` (status, custo meta da `Compras.dbo.SB9`, OPs fechadas fora das máquinas); pode
+  rodar direto no banco. Texto em `database/procedures/*.sql` (começa com `ALTER PROCEDURE`; instalação por
+  `App\Support\ProceduresBanco`). Mudou a lógica das OPs? Mude nos DOIS (o SQLite dos testes usa o PHP). Mudou um
+  `.sql`? Crie uma migração que chame `ProceduresBanco::instalar()` (ou rode `php artisan banco:procedures`).
   SD3/SD2 são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
+- **Pedidos e solicitações de compra** (Ordens de serviço): o administrador da unidade gera um pedido de compra (SC7,
+  MATA120) ou uma solicitação de compra (SC1, MATA110) — `pedidos_compra.tipo` = pedido | solicitacao, `ZP1_TIPO` = PC |
+  SC — dos itens APROVADOS de uma solicitação de material ou direto numa OS aberta (CC de origem e de destino). Vai para o Protheus por TABELAS MURO
+  NATIVAS **ZP1** (cabeçalho) + **ZP2** (itens), criadas no dicionário pelo compatibilizador `U_OEEUPDPC` (conexão
+  `muro` / `config/compras.php`): ÚNICA exceção ao "Protheus só leitura" — o portal grava SÓ nelas, como o Protheus
+  (campos com prefixo do alias, `D_E_L_E_T_`, próximo `R_E_C_N_O_`, datas AAAAMMDD + hora). Fontes TLPP
+  (`OEEUPDPC` dicionário; `OEEPCJOB` schedule, MATA120 por ExecAuto) em `integracao-protheus/pedido-compra/`.
+  `App\Services\Compras\PedidoCompraMuro` grava e lê de volta (status, número, aprovador, conclusão, valores; horário
+  local `compras.fuso_muro`); cópia no portal em `pedidos_compra` + `pedidos_compra_itens`. Mudou a muro? Mude os dois
+  `.tlpp`, o LEIAME e `Tests\Concerns\TabelaMuroDeCompras`.
+  Custo da OS (card na tela da OS): `App\Services\Manutencao\CustoOrdemServico`.
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
   Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
   área de resultado é trocada sem recarregar a página (`?parcial=1`). Os filtros podem ser escondidos (botão +
-  linha de resumo; escolha lembrada no navegador) e se recolhem sozinhos após 3 minutos sem mexer na tela. Novos
+  linha de resumo; escolha lembrada no navegador) e se recolhem sozinhos após 3 minutos sem mexer na tela. A Timeline
+  só mostra máquinas ATIVAS e com IoT cadastrado (dispositivo + canal, `Maquina::comIot()`; nos testes,
+  `Tests\Concerns\IotDeTeste`). Novos
   relatórios seguem o mesmo padrão.
 - Canais IoT da máquina usam `iotN_dispositivo_id` (FK para `dispositivos_iot`). As colunas antigas `iotN_id`
   (texto) só são lidas, para mostrar o valor antigo; não grave nelas. O canal é um dos 6 de `config('oee.iot_canais')`
   (chd1_value…chd6_value; dados virão de MQTT.dbo.IOT001). Dispositivo + canal só em UMA máquina (todas as unidades).
-  Máquina só fica ATIVA com pelo menos um canal com dispositivo ativo; sem canal ela é inativada (ao apagar os canais
+  Máquina da MANUTENÇÃO só fica ATIVA com pelo menos um canal com dispositivo ativo (`Maquina::exigeIotECalendario`;
+  Tecnologia e Ferramentaria não exigem); sem canal ela é inativada (ao apagar os canais
   ou desativar o dispositivo: `App\Services\MaquinasSemIot`; em massa: `maquinas:desativar-sem-iot --confirmar`).
+  A linha da máquina tem de ser de planta da MESMA unidade da máquina (ou planta "Todas"; máquina "Todas" aceita
+  qualquer uma): a tela só lista essas e o servidor confere (`MaquinaController::conferirLinhaDaUnidade`).
 - **Calendários** (Administração › Calendários, `calendarios` + `calendario_dias`, `App\Services\Calendario\DiasUteis` e
   `Feriados`): anuais, por unidade (TemUnidade), vários por unidade. Nascem com os feriados nacionais, de SP e de São
   Bernardo do Campo (Carnaval como ponto facultativo); só as EXCEÇÕES são gravadas (feriado, ponte, folga = não útil;
-  compensação, útil = útil); o resto segue os dias da semana de quem usa. Máquina e mantenedor (`calendario_id`) só
-  ficam ATIVOS com calendário e dias de trabalho, CADA DIA com o horário em que começa e termina
+  compensação, útil = útil); o resto segue os dias da semana de quem usa. Máquina da Manutenção e mantenedor
+  (`calendario_id`) só ficam ATIVOS com calendário e dias de trabalho, CADA DIA com o horário em que começa e termina
   (`App\Support\JornadaSemanal` + partial `partials.jornada-semanal`; coluna `horarios_semana` JSON; `dias_semana` e
   `jornada_inicio|fim` = dias marcados e horário do 1º dia, lidos quando não há `horarios_semana`). As horas normais ×
   extras do mantenedor (`HorasManutencao`) usam o horário de cada dia. Para saber se trabalha num dia: `DiasUteis::trabalha($maquinaOuMantenedor, $data)`.
+- **Pergunte para Alumbra** (box da página inicial, `partials.assistente` + `public/js/assistente.js`, permissão
+  `assistente`): IA com a Claude (SDK `anthropic-ai/sdk`, `config/assistente.php`, chave `ANTHROPIC_API_KEY` só no
+  `.env`). Só responde sobre o portal e só com os dados do usuário logado: as consultas ficam em
+  `App\Services\Assistente\FerramentasAssistente` (SÓ LEITURA; cada uma exige a permissão da tela e passa pelos mesmos
+  filtros das telas: escopo de unidade, `AcessoOs::filtrar`). Roda em ETAPAS curtas (uma chamada à Claude por
+  requisição, rota `assistente.etapa`), como a sincronização. Histórico e tokens em `assistente_conversas` e
+  `assistente_perguntas`. Tela nova com dados? Avalie criar a consulta correspondente no assistente.
 - Fórmulas de OEE só em `app/Services/CalculadoraOee.php` (ou serviços irmãos), com testes.
+
+- **Aplicativo Android** (`app-movel/`, Kotlin + Compose, pacote `br.com.alumbra.oee`): nativo, offline com banco
+  local, sincroniza só na Wi-Fi `wlan_alumbra`, distribuído só por APK. Usa uma API do portal (`/api/app/...`) com os
+  MESMOS serviços, permissões e escopo de unidade das telas; conflito = vale a alteração mais recente pelo horário.
+  A cada mudança no app: suba `codigo` (e ajuste `nome`) em `app-movel/android/versao.properties`, registre em
+  `app-movel/VERSOES.md` e gere o APK. A chave em `app-movel/android/keystore/` fica no repositório com autorização do
+  usuário (só assina o APK) e nunca deve ser trocada. Plano e regras em `app-movel/README.md`.
 
 ## Git
 

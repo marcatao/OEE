@@ -13,10 +13,12 @@ use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
 
 class TimelineTest extends TestCase
 {
+    use IotDeTeste;
     use RefreshDatabase;
 
     private Maquina $maquina;
@@ -28,7 +30,7 @@ class TimelineTest extends TestCase
         config(['oee.fuso_exibicao' => 'America/Sao_Paulo', 'oee.timeline_inicio_dia' => '06:00']);
         $planta = Planta::create(['codigo' => 'MATRIZ', 'nome' => 'Planta Matriz']);
         $linha = Linha::create(['planta_id' => $planta->id, 'codigo' => 'L1', 'nome' => 'Linha 1']);
-        $this->maquina = Maquina::create(['linha_id' => $linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01']);
+        $this->maquina = Maquina::create(['linha_id' => $linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01'] + $this->iotGravado());
     }
 
     protected function tearDown(): void

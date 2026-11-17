@@ -13,6 +13,7 @@ use App\Models\Usuario;
 use App\Services\Timeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
 
 /**
@@ -20,6 +21,7 @@ use Tests\TestCase;
  */
 class TimelineFiltrosTest extends TestCase
 {
+    use IotDeTeste;
     use RefreshDatabase;
 
     private Maquina $m1;
@@ -42,8 +44,8 @@ class TimelineFiltrosTest extends TestCase
         $plantaB = Planta::create(['codigo' => 'B', 'nome' => 'Planta B']);
         $this->linhaA = Linha::create(['planta_id' => $this->plantaA->id, 'codigo' => 'LA', 'nome' => 'Linha A']);
         $this->linhaB = Linha::create(['planta_id' => $plantaB->id, 'codigo' => 'LB', 'nome' => 'Linha B']);
-        $this->m1 = Maquina::create(['linha_id' => $this->linhaA->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ativo' => true]);
-        $this->m2 = Maquina::create(['linha_id' => $this->linhaB->id, 'codigo' => 'PRE-01', 'nome' => 'Prensa 01', 'ativo' => true]);
+        $this->m1 = Maquina::create(['linha_id' => $this->linhaA->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ativo' => true] + $this->iotGravado());
+        $this->m2 = Maquina::create(['linha_id' => $this->linhaB->id, 'codigo' => 'PRE-01', 'nome' => 'Prensa 01', 'ativo' => true] + $this->iotGravado());
     }
 
     protected function tearDown(): void
@@ -80,7 +82,7 @@ class TimelineFiltrosTest extends TestCase
         $this->get('/dashboards/timeline?maquinas[]='.$this->m1->id.'&maquinas[]='.$this->m2->id)->assertSee('2 máquinas');
         // Os filtros se somam: planta A + máquina da planta B não dá nada.
         $this->get('/dashboards/timeline?plantas[]='.$this->plantaA->id.'&maquinas[]='.$this->m2->id)
-            ->assertSee('Nenhuma máquina ativa com estes filtros');
+            ->assertSee('Nenhuma máquina ativa e com IoT cadastrado com estes filtros');
     }
 
     public function test_atualizacao_parcial_devolve_so_a_area_de_resultado(): void
@@ -193,5 +195,17 @@ class TimelineFiltrosTest extends TestCase
         $semana = $t->marcas(Carbon::parse('2026-11-01 03:00', 'UTC'), Carbon::parse('2026-11-08 03:00', 'UTC'));
         $this->assertLessThanOrEqual(30, count($semana));
         $this->assertContains('02/11', array_column($semana, 'rotulo'));
+    }
+
+    public function test_so_mostra_maquinas_com_iot_cadastrado(): void
+    {
+        $this->actingAs($this->usuario());
+        Maquina::create(['linha_id' => $this->linhaA->id, 'codigo' => 'SEM-IOT', 'nome' => 'Torno sem IoT', 'ativo' => true]);
+
+        $this->get('/dashboards/timeline')->assertOk()->assertSee('Injetora 01')->assertSee('Prensa 01')
+            ->assertDontSee('Torno sem IoT')->assertSee('2 máquinas');
+        // Canal apagado (sem canal): sai da Timeline e da lista do filtro.
+        $this->m2->update(['iot1_canal' => null]);
+        $this->get('/dashboards/timeline')->assertDontSee('Prensa 01')->assertSee('1 máquina');
     }
 }

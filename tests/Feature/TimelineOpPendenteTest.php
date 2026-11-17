@@ -12,12 +12,14 @@ use App\Models\Usuario;
 use App\Services\SituacaoMaquina;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CalendarioDeTeste;
+use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
 
 /** Timeline: OP fechada sai da máquina; apontamento sem OP numa legenda que exige OP pisca e recebe a OP. */
 class TimelineOpPendenteTest extends TestCase
 {
     use CalendarioDeTeste;
+    use IotDeTeste;
     use RefreshDatabase;
 
     private function cenario(): array
@@ -26,7 +28,7 @@ class TimelineOpPendenteTest extends TestCase
         $this->actingAs($admin);
         $planta = Planta::create(['codigo' => 'P', 'nome' => 'Planta']);
         $linha = Linha::create(['planta_id' => $planta->id, 'codigo' => 'L', 'nome' => 'Linha']);
-        $maquina = Maquina::create(['codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'linha_id' => $linha->id, 'ativo' => true] + $this->jornadaGravada());
+        $maquina = Maquina::create(['codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'linha_id' => $linha->id, 'ativo' => true] + $this->jornadaGravada() + $this->iotGravado());
         $produz = Legenda::create(['codigo' => '1', 'descricao' => 'Produzindo', 'tipo' => 'produzindo', 'cor' => '#2e7d32', 'exige_op' => true]);
         $aberta = OrdemProducao::create(['numero' => '00010001001', 'c2_num' => '000100', 'c2_item' => '01', 'c2_sequen' => '001',
             'c2_produto' => 'PA1', 'c2_datrf' => '', 'status' => 'aberta', 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 1]);
