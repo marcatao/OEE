@@ -238,6 +238,21 @@ class OrdemServico extends Model
     /** Avaliação do solicitante ao receber o serviço. */
     public const AVALIACOES = ['excelente' => 'Excelente', 'boa' => 'Boa', 'ruim' => 'Ruim'];
 
+    /**
+     * Assinatura do solicitante feita no aplicativo para a avaliação ATUAL (gravada junto com ela; uma assinatura de
+     * uma avaliação anterior, que reabriu a OS, não conta). Null se a avaliação foi pela web ou não houve.
+     */
+    public function assinaturaDaAvaliacao(): ?AssinaturaOs
+    {
+        if ($this->avaliacao === null || $this->aceite_em === null) {
+            return null;
+        }
+
+        return AssinaturaOs::where('ordem_servico_id', $this->id)->where('avaliacao', $this->avaliacao)
+            ->where('criado_em', '>=', $this->aceite_em->copy()->subMinutes(2))
+            ->orderByDesc('id')->first();
+    }
+
     public function interacoes(): HasMany
     {
         return $this->hasMany(InteracaoOs::class, 'ordem_servico_id');

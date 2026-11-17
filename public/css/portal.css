@@ -1071,3 +1071,17 @@ a.pm-cartao:hover { border-color:var(--primaria); border-top-color:var(--estado)
 .tl-pendentes li { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem; padding:.35rem .5rem;
   border-radius:8px; background:var(--cartao); font-size:.85rem; }
 .tl-bloco.tl-pendente-op { min-width:.9rem; }
+/* ---------- Avaliação feita da OS (nota, comentário e assinatura do aplicativo) ---------- */
+.os-avaliacao-feita { border:1px solid var(--borda); border-radius:10px; padding:.75rem 1rem; margin-top:.75rem; }
+.os-avaliacao-feita h2 { margin:0 0 .5rem; }
+.os-avaliacao-feita h3 { margin:.6rem 0 .2rem; font-size:.85rem; color:var(--suave); }
+.os-avaliacao-dados { display:flex; flex-wrap:wrap; gap:1rem 2rem; align-items:flex-start; justify-content:space-between; }
+.os-avaliacao-dados > div { flex:1 1 16rem; min-width:0; }
+.os-avaliacao-dados p { margin:.15rem 0; }
+.os-avaliacao-nota { font-size:1.3rem; font-weight:700; }
+.os-assinatura { margin:0; display:flex; flex-direction:column; align-items:center; gap:.3rem; flex:0 1 18rem; }
+/* A assinatura é traço escuro em fundo transparente: fundo branco também no tema escuro. */
+.os-assinatura img { width:100%; max-width:18rem; height:auto; background:var(--branco); border:1px solid var(--borda); border-radius:8px; padding:.25rem; }
+.os-assinatura figcaption { text-align:center; font-size:.85rem; }
+.os-assinatura figcaption small { display:block; }
+.assinatura-img { max-height:4.5rem; max-width:100%; }

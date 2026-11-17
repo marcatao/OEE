@@ -164,6 +164,12 @@ class AplicativoOrdensServicoTest extends TestCase
         $assinatura = AssinaturaOs::firstOrFail();
         $this->assertSame($this->joao->id, $assinatura->registrado_por_id);
         $this->assertSame('Ana', $assinatura->nome_assinante);
+
+        // A tela da OS (web) mostra a avaliação, o comentário e a assinatura feita no app; a impressão também.
+        $this->actingAs($this->solicitante)->get("/ordens-de-servico/ordens/{$osId}")->assertOk()
+            ->assertSee('Avaliação do solicitante')->assertSee('Excelente')->assertSee('Sem comentário.')
+            ->assertSee('data:image/png;base64,'.$assinatura->imagem_png, false)->assertSee('assinado no aplicativo');
+        $this->get("/ordens-de-servico/ordens/{$osId}/imprimir")->assertOk()->assertSee('data:image/png;base64,', false);
     }
 
     /** No SQL Server os ids chegam como texto: o dono do apontamento tem de continuar sendo reconhecido. */

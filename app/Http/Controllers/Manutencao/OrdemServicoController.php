@@ -108,6 +108,10 @@ class OrdemServicoController extends Controller
             'podeExecutar' => AcessoOs::podeExecutar($u, $os),
             'podeCancelar' => AcessoOs::podeCancelar($u, $os),
             'podeAvaliar' => AcessoOs::podeAvaliar($u, $os),
+            // Avaliada (encerrada): nota, comentário e a assinatura feita no aplicativo (se houver). Concluída de novo depois
+            // de uma avaliação Ruim ainda espera a nova avaliação.
+            'avaliada' => $os->status === 'encerrada' && $os->avaliacao !== null,
+            'assinatura' => $os->status === 'encerrada' ? $os->assinaturaDaAvaliacao() : null,
             'editavel' => $os->estaAberta(),
             'interacoes' => $os->interacoes()->with(['usuario', 'anexos'])->orderBy('id')->get(),
             'limiteAnexoKb' => InteracaoController::limiteKb(),
@@ -123,6 +127,7 @@ class OrdemServicoController extends Controller
             'apontamentos' => $os->apontamentos()->with(['mantenedor' => fn ($q) => $q->withoutGlobalScopes()])->orderBy('inicio')->get(),
             'materiais' => $os->materiais()->where('status', '<>', 'cancelado')->orderBy('id')->get(),
             'checklist' => $os->checklist()->orderBy('ordem')->orderBy('id')->get(),
+            'assinatura' => $os->status === 'encerrada' ? $os->assinaturaDaAvaliacao() : null,
         ]);
     }
 

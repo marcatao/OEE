@@ -85,8 +85,31 @@
         <h2>Problema / serviço solicitado</h2>
         <p class="os-texto">{{ $os->descricao }}</p>
         @if ($os->solucao)<h2>Serviço realizado</h2><p class="os-texto">{{ $os->solucao }}</p>@endif
-        @if ($os->status === 'encerrada' && $os->aceite_observacao)<h2>Comentário da avaliação</h2><p class="os-texto">{{ $os->aceite_observacao }}</p>@endif
       </div>
+
+      @if ($avaliada)
+        <div class="os-avaliacao-feita" id="avaliacao">
+          <h2>Avaliação do solicitante</h2>
+          <div class="os-avaliacao-dados">
+            <div>
+              <p class="os-avaliacao-nota avaliacao-{{ $os->avaliacao }}">{{ \App\Models\Manutencao\OrdemServico::AVALIACOES[$os->avaliacao] ?? $os->avaliacao }}</p>
+              <p class="suave">{{ $os->aceitePor?->nome ?? $assinatura?->nome_assinante ?? '—' }} · @dataHora($os->aceite_em)@if ($assinatura) · pelo aplicativo @endif</p>
+              @if ($os->aceite_observacao)
+                <h3>Comentário</h3>
+                <p class="os-texto">{{ $os->aceite_observacao }}</p>
+              @else
+                <p class="suave">Sem comentário.</p>
+              @endif
+            </div>
+            @if ($assinatura)
+              <figure class="os-assinatura">
+                <img src="data:image/png;base64,{{ $assinatura->imagem_png }}" alt="Assinatura de {{ $assinatura->nome_assinante }}">
+                <figcaption>{{ $assinatura->nome_assinante }}<small class="suave">assinado no aplicativo · @dataHora($assinatura->criado_em)</small></figcaption>
+              </figure>
+            @endif
+          </div>
+        </div>
+      @endif
 
     {{-- 5. Linha do tempo --}}
     <ol class="os-linha-tempo">

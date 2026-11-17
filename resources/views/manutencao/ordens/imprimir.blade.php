@@ -62,7 +62,8 @@
   <div class="assinaturas">
     <div>Mantenedor</div>
     <div>Responsável da manutenção</div>
-    <div>Solicitante{{ $os->aceite_em ? ' — aceite eletrônico: '.$os->aceitePor?->nome.' em '.\App\Providers\AppServiceProvider::dataHora($os->aceite_em) : '' }}</div>
+    <div>@if ($assinatura)<img class="assinatura-img" src="data:image/png;base64,{{ $assinatura->imagem_png }}" alt="Assinatura"><br>@endif
+      Solicitante{{ $os->aceite_em ? ' — aceite eletrônico: '.$os->aceitePor?->nome.' em '.\App\Providers\AppServiceProvider::dataHora($os->aceite_em) : '' }}@if ($os->avaliacao && $os->aceite_em) · avaliação: {{ \App\Models\Manutencao\OrdemServico::AVALIACOES[$os->avaliacao] ?? $os->avaliacao }}@endif</div>
   </div>
 </section>
 @endsection
