@@ -1,5 +1,12 @@
 package br.com.alumbra.oee.maquinas
 
+import android.app.Activity
+import android.view.WindowManager
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -149,6 +156,33 @@ fun TelaMaquina(
         if (semOp) repeat(3) { alarme.aviso(); delay(700) }
     }
 
+    // Economia de bateria: sem toque por 1 min, a tela escurece; toque ou alerta volta ao brilho total.
+    val janela = (contexto as? Activity)?.window
+    var ultimoToque by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var esmaecida by remember { mutableStateOf(false) }
+    val alerta = pendente != null || semOp
+    LaunchedEffect(ultimoToque, alerta) {
+        esmaecida = false
+        if (!alerta) {
+            delay(SEGUNDOS_PARA_ESMAECER * 1000L)
+            esmaecida = true
+        }
+    }
+    DisposableEffect(esmaecida, alerta) {
+        janela?.let { w ->
+            w.attributes = w.attributes.apply {
+                screenBrightness = when {
+                    alerta -> WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
+                    esmaecida -> 0.02f
+                    else -> WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                }
+            }
+        }
+        onDispose {
+            janela?.let { w -> w.attributes = w.attributes.apply { screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE } }
+        }
+    }
+
     fun executar(acao: suspend () -> DetalheMaquina, aoTerminar: () -> Unit = {}) {
         escopo.launch {
             ocupado = true
@@ -165,6 +199,16 @@ fun TelaMaquina(
         }
     }
 
+    Box(
+        Modifier.fillMaxSize().pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    awaitPointerEvent(PointerEventPass.Initial)
+                    ultimoToque = System.currentTimeMillis()
+                }
+            }
+        },
+    ) {
     ConteudoMaquina(
         nomeInicial = nomeInicial,
         detalhe = d,
@@ -176,6 +220,17 @@ fun TelaMaquina(
         aoTrocarOp = { erroAcao = null; trocarOp = true },
         aoAlterarCavidades = { erroAcao = null; molde = it },
     )
+    if (esmaecida && !alerta) {
+        // Tela escura: o primeiro toque só acende.
+        Box(
+            Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { ultimoToque = System.currentTimeMillis() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Toque para acender", color = Color.White.copy(alpha = .7f), style = MaterialTheme.typography.titleMedium)
+        }
+    }
+    }
 
     if (d != null && podeAlterar) {
         when {
@@ -197,6 +252,9 @@ fun TelaMaquina(
         }
     }
 }
+
+/** Segundos sem toque até a tela da máquina escurecer. */
+private const val SEGUNDOS_PARA_ESMAECER = 60
 
 @Composable
 fun ConteudoMaquina(

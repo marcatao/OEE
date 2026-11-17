@@ -52,7 +52,16 @@ cd app-movel/android
      antes de agora e um novo (mesma legenda, OP nova) começa agora.
    - Cavidades ativas: o operador também altera (pedido do usuário), de 0 até H4_QTDCAV.
    - Esta tela precisa da rede da fábrica (mostra os últimos dados recebidos se a rede cair).
-4. Mantenedor: SS/OS (abrir, aprovar, concluir); apontamento com cronômetro: o app TRAVA na tela (sem voltar nem
+4. Mantenedor — Ordens de serviço. ✔ (0.5.0) API `/api/app/os/...` (`routes/api.php`), regras em
+   `App\Services\Aplicativo\OrdensServicoAplicativo` sobre `AcessoOs` e `FluxoOrdemServico` (as mesmas do portal):
+   `resumo` (pendentes para assumir, minhas OS, para avaliar, apontamento rodando — consultado a cada 15 s), `assumir`
+   (aprova a SS com o mantenedor como principal; trava a SS na transação: só o primeiro leva), `rejeitar`, abrir SS
+   (chama `SolicitacaoController::store`, mesmas validações), `ordens`, `ordens/{id}`, `iniciar`, `encerrar` (fim
+   informado pelo celular, entre o início e agora; grava "máquina parada" na OS; conclui se pedido), `acao`
+   (aguardar material, retomar, concluir), `avaliacoes`, `avaliar` (avaliação do SOLICITANTE no celular do mantenedor:
+   `FluxoOrdemServico::avaliar` com o solicitante + assinatura PNG em `os_assinaturas`).
+   Pendências: alerta de SS com o app fechado (Etapa 5, serviço em segundo plano).
+   Texto original do pedido: SS/OS (abrir, aprovar, concluir); apontamento com cronômetro: o app TRAVA na tela (sem voltar nem
    sair; o cronômetro segue com o celular bloqueado) mostrando a OS atendida, o setor, o centro de custo e o
    solicitante que vai avaliar; só o botão deslizante "Encerrar apontamento" libera, gravando início e fim e
    perguntando se fecha a OS e se a máquina estava/está parada. Avaliação da OS concluída no celular do mantenedor,

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Aplicativo\ApiAplicativoController;
 use App\Http\Controllers\Aplicativo\MaquinasAplicativoController;
+use App\Http\Controllers\Aplicativo\OrdensServicoAplicativoController as OsApp;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,6 +27,29 @@ Route::prefix('app')->name('api.app.')->group(function () {
             Route::post('maquinas/{maquina}/op', [MaquinasAplicativoController::class, 'op'])->whereNumber('maquina')->name('maquinas.op');
             Route::post('apontamentos/{apontamento}/motivo', [MaquinasAplicativoController::class, 'motivo'])->whereNumber('apontamento')->name('apontamentos.motivo');
             Route::post('ferramentas/{ferramenta}/cavidades', [MaquinasAplicativoController::class, 'cavidades'])->whereNumber('ferramenta')->name('ferramentas.cavidades');
+        });
+
+        // Ordens de serviço (mantenedor): mesmas permissões das telas de OS do portal.
+        Route::prefix('os')->name('os.')->group(function () {
+            Route::middleware('permissao:os_solicitar,os_aprovar,solicitacoes_manutencao,os_almoxarifado')->group(function () {
+                Route::get('resumo', [OsApp::class, 'resumo'])->name('resumo');
+                Route::get('solicitacoes', [OsApp::class, 'solicitacoes'])->name('solicitacoes');
+                Route::get('formulario', [OsApp::class, 'formulario'])->name('formulario');
+                Route::post('solicitacoes', [OsApp::class, 'abrir'])->name('abrir');
+                Route::get('ordens/{ordem}', [OsApp::class, 'show'])->whereNumber('ordem')->name('show');
+            });
+            Route::middleware('permissao:os_aprovar')->group(function () {
+                Route::post('solicitacoes/{solicitacao}/assumir', [OsApp::class, 'assumir'])->whereNumber('solicitacao')->name('assumir');
+                Route::post('solicitacoes/{solicitacao}/rejeitar', [OsApp::class, 'rejeitar'])->whereNumber('solicitacao')->name('rejeitar');
+            });
+            Route::middleware('permissao:solicitacoes_manutencao,os_aprovar')->group(function () {
+                Route::get('ordens', [OsApp::class, 'ordens'])->name('ordens');
+                Route::get('avaliacoes', [OsApp::class, 'avaliacoes'])->name('avaliacoes');
+                Route::post('ordens/{ordem}/iniciar', [OsApp::class, 'iniciar'])->whereNumber('ordem')->name('iniciar');
+                Route::post('ordens/{ordem}/acao', [OsApp::class, 'acao'])->whereNumber('ordem')->name('acao');
+                Route::post('ordens/{ordem}/avaliar', [OsApp::class, 'avaliar'])->whereNumber('ordem')->name('avaliar');
+                Route::post('apontamentos/{apontamento}/encerrar', [OsApp::class, 'encerrar'])->whereNumber('apontamento')->name('encerrar');
+            });
         });
     });
 });

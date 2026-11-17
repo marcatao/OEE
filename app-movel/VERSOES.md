@@ -1,5 +1,22 @@
 # Versões do aplicativo
 
+## 0.5.0 (build 7)
+- Função **Ordens de serviço** (mantenedor):
+  - **Solicitações**: SS aguardando um mantenedor; **Assumir** = aprovar a SS e ficar como mantenedor principal da OS
+    (o primeiro que assume leva; os outros veem "já assumida por …"). Também mostra as SS que o usuário abriu.
+  - **Alerta de SS nova**: aviso no topo e toque em todos os mantenedores da área até alguém assumir; **vermelho e
+    mais insistente** quando a máquina está parada; "Silenciar 3 min". (Por enquanto com o app aberto.)
+  - **Abrir SS** (quem tem o perfil Solicitante): área executante, máquina da área, tipo, prioridade, máquina parada.
+  - **Minhas OS** → detalhe com setor, centro de custo, solicitante, apontamentos; aguardando material / retomar /
+    concluir.
+  - **Apontamento com cronômetro**: ao iniciar, o app TRAVA na tela do cronômetro (voltar não sai) mostrando a OS, o
+    setor, o centro de custo e o solicitante; só o botão deslizante **Encerrar apontamento** libera, pedindo o que foi
+    feito, se conclui a OS e se a máquina estava/está parada. Sem rede, o fim fica guardado e é reenviado.
+  - **Avaliar**: OS concluídas pelo mantenedor; o solicitante vê o resumo (pedido e o que foi feito), dá a nota
+    (Excelente / Boa / Ruim — Ruim devolve a OS) e **assina com o dedo**.
+- Tela da máquina: depois de 1 min sem toque a tela **escurece** (economia de bateria e menos calor); toque acende,
+  e qualquer alerta (parada sem motivo, máquina sem OP) volta ao brilho total.
+
 ## 0.4.1 (build 6)
 - Tela da máquina mostra só **HOJE** e só **dentro do turno da máquina** (horário de início e fim do dia de hoje na
   jornada do cadastro da máquina): a barra vai do início ao fim do turno, com a marca de "agora", e a lista traz só

@@ -66,6 +66,7 @@ fun TelaPrincipal(
     aoSincronizar: () -> Unit,
     aoSair: () -> Unit,
     aoAbrirFuncao: (String) -> Unit = {},
+    pendenciasOs: Int = 0,
     agora: Long = System.currentTimeMillis(),
 ) {
     var confirmarSaida by remember { mutableStateOf(false) }
@@ -102,8 +103,8 @@ fun TelaPrincipal(
                 AtalhoFuncao(
                     vetor = Icons.Filled.Build,
                     titulo = "Ordens de serviço",
-                    descricao = "Abrir, aprovar e concluir SS/OS, apontamento com cronômetro e avaliação.",
-                    selo = if (bloqueada) "Bloqueado" else "Em breve",
+                    descricao = "Assumir e abrir SS, minhas OS, apontamento com cronômetro e avaliação com assinatura.",
+                    selo = if (bloqueada) "Bloqueado" else if (pendenciasOs > 0) "$pendenciasOs pendente(s)" else null,
                     habilitado = !bloqueada,
                     aoTocar = { aoAbrirFuncao("ordens_servico") },
                 )

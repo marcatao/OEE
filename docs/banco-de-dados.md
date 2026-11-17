@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **54** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **55** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -427,6 +427,16 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+    }
+    os_assinaturas {
+        bigint id PK
+        bigint ordem_servico_id FK
+        bigint assinado_por_id FK
+        bigint registrado_por_id FK
+        nvarchar(120) nome_assinante
+        nvarchar(10) avaliacao
+        nvarchar(max) imagem_png
+        datetime criado_em
     }
     os_checklist {
         bigint id PK
@@ -865,6 +875,9 @@ erDiagram
     apontamentos_estado |o--o{ ordens_servico : "apontamento_estado_id"
     ordens_servico ||--o{ os_apontamentos_horas : "ordem_servico_id"
     os_mantenedores ||--o{ os_apontamentos_horas : "mantenedor_id"
+    ordens_servico ||--o{ os_assinaturas : "ordem_servico_id"
+    usuarios |o--o{ os_assinaturas : "assinado_por_id"
+    usuarios |o--o{ os_assinaturas : "registrado_por_id"
     ordens_servico ||--o{ os_checklist : "ordem_servico_id"
     os_planos_itens |o--o{ os_checklist : "plano_item_id"
     usuarios |o--o{ os_checklist : "respondido_por_id"
@@ -993,6 +1006,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`ordens_servico`](#ordens_servico) | Sistema | `id` | 33 | 12 |
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
 | [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 9 | 2 |
+| [`os_assinaturas`](#os_assinaturas) | Sistema | `id` | 8 | 3 |
 | [`os_checklist`](#os_checklist) | Sistema | `id` | 9 | 3 |
 | [`os_ferramentas`](#os_ferramentas) | Sistema | `id` | 14 | 3 |
 | [`os_historico`](#os_historico) | Sistema | `id` | 9 | 3 |
@@ -1708,6 +1722,23 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `os_areas_executantes_codigo_unique` único (codigo) · `os_areas_executantes_unidade_index` (unidade)
 
 **Regras (CHECK, só no SQL Server):** `ck_os_areas_executantes_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
+
+### os_assinaturas
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `ordem_servico_id` | `bigint` | não |  | FK → `ordens_servico.id` |
+| `assinado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `registrado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `nome_assinante` | `nvarchar(120)` | sim |  |  |
+| `avaliacao` | `nvarchar(10)` | não |  |  |
+| `imagem_png` | `nvarchar(max)` | não |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+
+**Índices:** `os_assinaturas_ordem_servico_id_index` (ordem_servico_id)
 
 ### os_checklist
 

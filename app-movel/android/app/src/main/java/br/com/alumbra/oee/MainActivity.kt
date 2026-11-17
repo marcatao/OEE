@@ -16,17 +16,30 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import br.com.alumbra.oee.api.ApiPortal
 import br.com.alumbra.oee.api.ErroApi
+import br.com.alumbra.oee.maquinas.Alarme
 import br.com.alumbra.oee.maquinas.RepositorioMaquinas
 import br.com.alumbra.oee.maquinas.TelaMaquina
 import br.com.alumbra.oee.maquinas.TelaMaquinas
+import br.com.alumbra.oee.os.AlertaNovaSs
+import br.com.alumbra.oee.os.EncerramentoPendente
+import br.com.alumbra.oee.os.RepositorioOs
+import br.com.alumbra.oee.os.ResumoOs
+import br.com.alumbra.oee.os.TelaAbrirSs
+import br.com.alumbra.oee.os.TelaApontamentoTravado
+import br.com.alumbra.oee.os.TelaAvaliacao
+import br.com.alumbra.oee.os.TelaDetalheOs
+import br.com.alumbra.oee.os.TelaOrdensServico
 import br.com.alumbra.oee.rede.EstadoRede
 import br.com.alumbra.oee.rede.VerificadorRede
 import br.com.alumbra.oee.sessao.Sessao
@@ -34,6 +47,7 @@ import br.com.alumbra.oee.sessao.UsuarioApp
 import br.com.alumbra.oee.ui.TelaInicial
 import br.com.alumbra.oee.ui.TelaPrincipal
 import br.com.alumbra.oee.ui.TemaOee
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -49,12 +63,34 @@ class MainActivity : ComponentActivity() {
     private var relogio by mutableIntStateOf(0) // muda para reavaliar o bloqueio de 48 h
     private var tela by mutableStateOf<Tela>(Tela.Principal)
     private val repositorioMaquinas by lazy { RepositorioMaquinas { sessao.token } }
+    private val repositorioOs by lazy { RepositorioOs { sessao.token } }
+    private val alarme by lazy { Alarme(this) }
+
+    // Ordens de serviço: resumo consultado de tempos em tempos (SS nova, apontamento rodando).
+    private var resumoOs by mutableStateOf<ResumoOs?>(null)
+    private var diferencaServidor by mutableLongStateOf(0L)
+    private var silenciadoAte by mutableLongStateOf(0L)
+    private var assumindo by mutableStateOf<Int?>(null)
+    private var atualizarResumo by mutableIntStateOf(0)
+    private var encerramento by mutableStateOf<EncerramentoPendente?>(null)
+    private var enviandoEncerramento by mutableStateOf(false)
+    private var erroEncerramento by mutableStateOf<String?>(null)
 
     /** Telas internas (o usuário logado navega entre elas; "voltar" sobe um nível). */
     private sealed interface Tela {
         data object Principal : Tela
         data object Maquinas : Tela
         data class Maquina(val id: Int, val nome: String) : Tela
+        data object Os : Tela
+        data class OsDetalhe(val id: Int) : Tela
+        data object AbrirSs : Tela
+        data class Avaliacao(val id: Int) : Tela
+    }
+
+    private fun Tela.acima(): Tela = when (this) {
+        is Tela.Maquina -> Tela.Maquinas
+        is Tela.OsDetalhe, Tela.AbrirSs, is Tela.Avaliacao -> Tela.Os
+        else -> Tela.Principal
     }
 
     private val pedirLocalizacao =
@@ -66,6 +102,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         sessao = Sessao(this)
         usuario = if (sessao.token != null) sessao.usuario else null
+        encerramento = EncerramentoPendente.de(sessao.encerramentoPendente)
         tratarRetornoDoLogin(intent)
 
         setContent {
@@ -93,48 +130,187 @@ class MainActivity : ComponentActivity() {
                     } else {
                         relogio // lido aqui para recompor quando o app volta
                         val bloqueada = sessao.bloqueadaPorTempo()
-                        val atual = if (bloqueada) Tela.Principal else tela
-                        BackHandler(enabled = atual != Tela.Principal) {
-                            tela = if (atual is Tela.Maquina) Tela.Maquinas else Tela.Principal
-                        }
-                        when (atual) {
-                            Tela.Principal -> TelaPrincipal(
-                                usuario = u,
-                                ultimaSincronizacao = sessao.ultimaSincronizacao,
-                                horasOffline = sessao.horasOffline,
-                                bloqueada = bloqueada,
-                                sincronizando = ocupado,
-                                mensagem = mensagem,
-                                naRedeDaFabrica = rede?.naRedeDaFabrica == true,
-                                aoSincronizar = ::sincronizar,
-                                aoSair = ::sair,
-                                aoAbrirFuncao = { funcao ->
-                                    if (funcao == "maquinas") {
-                                        tela = Tela.Maquinas
-                                    } else {
-                                        Toast.makeText(this@MainActivity, "Esta função chega nas próximas versões.", Toast.LENGTH_SHORT).show()
-                                    }
+                        val usaOs = u.mantenedor || u.aprovarOs || u.solicitarOs
+                        LaunchedEffect(u, bloqueada, atualizarResumo) { if (usaOs && !bloqueada) acompanharOs() }
+                        val resumo = resumoOs
+                        val pendentes = resumo?.pendentes.orEmpty()
+                        LaunchedEffect(pendentes.map { it.id }, silenciadoAte) { tocarSsNova(pendentes.isNotEmpty(), pendentes.any { it.maquinaParada }) }
+
+                        val rodando = resumo?.rodando
+                        val pend = encerramento
+                        if (rodando != null || pend != null) {
+                            // Apontamento de horas rodando: o app fica travado no cronômetro.
+                            TelaApontamentoTravado(
+                                os = resumo?.rodandoOs,
+                                apontamento = rodando ?: br.com.alumbra.oee.os.ApontamentoOs(pend!!.apontamentoId, pend.osId, null, null, null, null, 0, null),
+                                diferencaServidorMs = diferencaServidor,
+                                pendente = pend,
+                                enviando = enviandoEncerramento,
+                                erro = erroEncerramento,
+                                aoEncerrar = { desc, concluir, parada, fim ->
+                                    rodando?.let { encerrar(EncerramentoPendente(it.id, it.osId, desc, concluir, parada, fim)) }
                                 },
+                                aoReenviar = { pend?.let(::encerrar) },
                             )
-                            Tela.Maquinas -> TelaMaquinas(
-                                repositorio = repositorioMaquinas,
-                                aoVoltar = { tela = Tela.Principal },
-                                aoAbrir = { tela = Tela.Maquina(it.id, it.nome) },
-                                aoPerderAcesso = ::perderAcesso,
-                            )
-                            is Tela.Maquina -> TelaMaquina(
-                                repositorio = repositorioMaquinas,
-                                maquinaId = atual.id,
-                                nomeInicial = atual.nome,
-                                podeAlterar = u.operador,
-                                aoVoltar = { tela = Tela.Maquinas },
-                                aoPerderAcesso = ::perderAcesso,
-                            )
+                        } else {
+                            val atual = if (bloqueada) Tela.Principal else tela
+                            BackHandler(enabled = atual != Tela.Principal) { tela = atual.acima() }
+                            TelaLogado(u, atual, bloqueada, resumo)
+                        }
+                        if (pendentes.isNotEmpty() && System.currentTimeMillis() >= silenciadoAte && !bloqueada) {
+                            AlertaNovaSs(pendentes, assumindo, aoAssumir = ::assumir, aoVerDepois = { silenciadoAte = System.currentTimeMillis() + 180_000 })
                         }
                     }
                 }
             }
         }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun TelaLogado(u: UsuarioApp, atual: Tela, bloqueada: Boolean, resumo: ResumoOs?) {
+        when (atual) {
+            Tela.Principal -> TelaPrincipal(
+                usuario = u,
+                ultimaSincronizacao = sessao.ultimaSincronizacao,
+                horasOffline = sessao.horasOffline,
+                bloqueada = bloqueada,
+                sincronizando = ocupado,
+                mensagem = mensagem,
+                naRedeDaFabrica = rede?.naRedeDaFabrica == true,
+                aoSincronizar = ::sincronizar,
+                aoSair = ::sair,
+                aoAbrirFuncao = { funcao -> tela = if (funcao == "maquinas") Tela.Maquinas else Tela.Os },
+                pendenciasOs = (resumo?.pendentes?.size ?: 0) + (resumo?.avaliacoes ?: 0),
+            )
+            Tela.Maquinas -> TelaMaquinas(
+                repositorio = repositorioMaquinas,
+                aoVoltar = { tela = Tela.Principal },
+                aoAbrir = { tela = Tela.Maquina(it.id, it.nome) },
+                aoPerderAcesso = ::perderAcesso,
+            )
+            is Tela.Maquina -> TelaMaquina(
+                repositorio = repositorioMaquinas,
+                maquinaId = atual.id,
+                nomeInicial = atual.nome,
+                podeAlterar = u.operador,
+                aoVoltar = { tela = Tela.Maquinas },
+                aoPerderAcesso = ::perderAcesso,
+            )
+            Tela.Os -> TelaOrdensServico(
+                repositorio = repositorioOs,
+                resumo = resumo,
+                aoVoltar = { tela = Tela.Principal },
+                aoAbrirOs = { tela = Tela.OsDetalhe(it) },
+                aoAbrirSs = { tela = Tela.AbrirSs },
+                aoAvaliar = { tela = Tela.Avaliacao(it) },
+                aoAtualizarResumo = { atualizarResumo++ },
+                aoPerderAcesso = ::perderAcesso,
+            )
+            is Tela.OsDetalhe -> TelaDetalheOs(
+                repositorio = repositorioOs,
+                osId = atual.id,
+                temApontamentoRodando = resumo?.rodando != null,
+                aoVoltar = { tela = Tela.Os },
+                aoIniciou = { atualizarResumo++ },
+                aoAvaliar = { tela = Tela.Avaliacao(it) },
+                aoPerderAcesso = ::perderAcesso,
+            )
+            Tela.AbrirSs -> TelaAbrirSs(
+                repositorio = repositorioOs,
+                aoVoltar = { tela = Tela.Os },
+                aoEnviada = { msg ->
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                    tela = Tela.Os
+                    atualizarResumo++
+                },
+                aoPerderAcesso = ::perderAcesso,
+            )
+            is Tela.Avaliacao -> TelaAvaliacao(
+                repositorio = repositorioOs,
+                osId = atual.id,
+                aoVoltar = { tela = Tela.Os },
+                aoConcluir = { msg ->
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                    tela = Tela.Os
+                    atualizarResumo++
+                },
+                aoPerderAcesso = ::perderAcesso,
+            )
+        }
+    }
+
+    /** Consulta o resumo das OS a cada 15 s (com o app na frente). */
+    private suspend fun acompanharOs() {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                try {
+                    val antes = System.currentTimeMillis()
+                    val r = repositorioOs.resumo()
+                    r.servidorAgoraMs?.let { diferencaServidor = it - (antes + System.currentTimeMillis()) / 2 }
+                    resumoOs = r
+                    // O portal já encerrou (ex.: pelo computador): descarta o encerramento guardado.
+                    if (r.rodando == null && encerramento != null) reenviarOuDescartar()
+                } catch (e: ErroApi) {
+                    if (e.semAcesso) perderAcesso(e.message ?: "")
+                }
+                delay(15_000)
+            }
+        }
+    }
+
+    /** SS esperando alguém assumir: toca até o primeiro mantenedor assumir (mais forte se a máquina está parada). */
+    private suspend fun tocarSsNova(tem: Boolean, maquinaParada: Boolean) {
+        if (!tem) return
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                if (System.currentTimeMillis() >= silenciadoAte) {
+                    if (maquinaParada) alarme.urgente() else alarme.aviso()
+                }
+                delay(if (maquinaParada) 3_000 else 6_000)
+            }
+        }
+    }
+
+    private fun assumir(ss: br.com.alumbra.oee.os.SsApp) {
+        assumindo = ss.id
+        lifecycleScope.launch {
+            try {
+                val os = repositorioOs.assumir(ss.id)
+                tela = Tela.OsDetalhe(os.id)
+            } catch (e: ErroApi) {
+                if (e.semAcesso) perderAcesso(e.message ?: "") else Toast.makeText(this@MainActivity, e.message, Toast.LENGTH_LONG).show()
+            } finally {
+                assumindo = null
+                atualizarResumo++
+            }
+        }
+    }
+
+    /** Guarda o encerramento no celular e envia; sem rede, fica guardado até conseguir. */
+    private fun encerrar(p: EncerramentoPendente) {
+        encerramento = p
+        sessao.encerramentoPendente = p.json()
+        enviandoEncerramento = true
+        erroEncerramento = null
+        lifecycleScope.launch {
+            try {
+                val os = repositorioOs.encerrar(p)
+                sessao.encerramentoPendente = null
+                encerramento = null
+                resumoOs = resumoOs?.copy(rodando = null, rodandoOs = null)
+                tela = Tela.OsDetalhe(os.id)
+                Toast.makeText(this@MainActivity, if (p.concluir) "OS concluída: o solicitante vai avaliar." else "Apontamento encerrado.", Toast.LENGTH_LONG).show()
+            } catch (e: ErroApi) {
+                if (e.semAcesso) perderAcesso(e.message ?: "") else erroEncerramento = e.message
+            } finally {
+                enviandoEncerramento = false
+                atualizarResumo++
+            }
+        }
+    }
+
+    private fun reenviarOuDescartar() {
+        if (!enviandoEncerramento) encerramento?.let(::encerrar)
     }
 
     /** O portal recusou o token (saiu, expirou ou perdeu o acesso): volta para a entrada. */

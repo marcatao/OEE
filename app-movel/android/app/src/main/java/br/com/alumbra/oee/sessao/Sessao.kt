@@ -88,6 +88,13 @@ class Sessao(contexto: Context) {
             .apply()
     }
 
+    /** Encerramento de apontamento de OS ainda não confirmado pelo portal (JSON de EncerramentoPendente). */
+    var encerramentoPendente: String?
+        get() = prefs.getString("encerramento_pendente", null)
+        set(valor) {
+            prefs.edit().apply { if (valor == null) remove("encerramento_pendente") else putString("encerramento_pendente", valor) }.apply()
+        }
+
     fun sair() {
         prefs.edit().clear().apply()
     }
