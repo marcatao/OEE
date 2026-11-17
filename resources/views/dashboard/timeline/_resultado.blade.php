@@ -12,8 +12,26 @@
   </p>
   @if ($filtro->aviso)<p class="aviso alerta">{{ $filtro->aviso }}</p>@endif
   @if ($pendentesOp > 0)
-    <p class="aviso alerta tl-aviso-op">{{ $pendentesOp }} {{ $pendentesOp === 1 ? 'apontamento exige' : 'apontamentos exigem' }} ordem de produção e
-      {{ $pendentesOp === 1 ? 'está' : 'estão' }} sem. @if ($podeApontar) Clique no bloco piscando (<strong>INFORMAR OP</strong>) para escolher a OP. @endif</p>
+    <div class="aviso alerta tl-aviso-op">
+      <p>{{ $pendentesOp }} {{ $pendentesOp === 1 ? 'apontamento exige' : 'apontamentos exigem' }} ordem de produção e
+        {{ $pendentesOp === 1 ? 'está' : 'estão' }} sem. @if ($podeApontar) Clique em <strong>Informar OP</strong> abaixo (ou no bloco piscando na
+        linha da máquina) para escolher a OP. @endif</p>
+      <ul class="tl-pendentes">
+        @foreach ($pendentes as $p)
+          @php($pDica = $p['maquina']->nome.' · '.$p['legenda']->codigo.' · '.$p['legenda']->descricao.' · '
+              .\Carbon\Carbon::createFromTimestamp($p['inicio'], $fuso)->format('d/m H:i:s').'–'
+              .($p['aberto'] ? 'agora' : \Carbon\Carbon::createFromTimestamp($p['fim'], $fuso)->format('H:i:s'))
+              .' ('.Formato::minutos(($p['fim'] - $p['inicio']) / 60).')')
+          <li>
+            <span>{{ $pDica }}</span>
+            @if ($podeApontar)
+              <button type="button" class="botao pequeno" data-informar-op="{{ route('apontamentos.informar-op', $p['apontamento']) }}"
+                      data-maquina="{{ $p['maquina']->nome }}" data-descricao="{{ \Illuminate\Support\Str::after($pDica, $p['maquina']->nome.' · ') }}">Informar OP</button>
+            @endif
+          </li>
+        @endforeach
+      </ul>
+    </div>
   @endif
 
   <div class="tl-resumo">

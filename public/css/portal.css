@@ -1064,3 +1064,10 @@ a.pm-cartao:hover { border-color:var(--primaria); border-top-color:var(--estado)
 .pm-rodape { display:block; font-size:.74rem; color:var(--suave); }
 .pm-detalhe { display:grid; grid-template-columns:minmax(min(100%, 21rem), 1fr) 2fr; gap:1.25rem; margin-top:1.25rem; align-items:start; }
 @media (max-width: 53.75em) { .pm-detalhe { grid-template-columns:1fr; } }
+
+/* Timeline: lista dos apontamentos sem OP no aviso; o bloco piscando nunca fica fino demais para clicar */
+.tl-aviso-op p { margin:0 0 .5rem; }
+.tl-pendentes { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem; }
+.tl-pendentes li { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem; padding:.35rem .5rem;
+  border-radius:8px; background:var(--cartao); font-size:.85rem; }
+.tl-bloco.tl-pendente-op { min-width:.9rem; }

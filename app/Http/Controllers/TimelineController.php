@@ -110,6 +110,7 @@ class TimelineController extends Controller
             'totais' => $dados['totais'],
             'disponibilidade' => $dados['disponibilidade'],
             'pendentesOp' => $dados['pendentesOp'],
+            'pendentes' => $dados['pendentes'],
             'situacoes' => $timeline->situacoes($maquinas),
             'marcas' => $timeline->marcas($inicio->utc(), $fim->utc()),
             'agora' => $agora > $inicio->getTimestamp() && $agora < $fim->getTimestamp()

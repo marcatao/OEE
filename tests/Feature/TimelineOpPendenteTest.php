@@ -57,7 +57,7 @@ class TimelineOpPendenteTest extends TestCase
         $ap = ApontamentoEstado::create(['maquina_id' => $maquina->id, 'legenda_id' => $produz->id, 'inicio' => now()->subHour()]);
 
         $this->get('/dashboards/timeline')->assertOk()->assertSee('INFORMAR OP')->assertSee('tl-pendente-op', false)
-            ->assertSee('1 apontamento exige ordem de produção', false)->assertSee('tl-dialogo-op', false);
+            ->assertSee('1 apontamento exige ordem de produção', false)->assertSee('Informar OP</button>', false)->assertSee('Injetora 01 · 1 · Produzindo')->assertSee('tl-dialogo-op', false);
 
         $url = "/producao/apontamentos/{$ap->id}/informar-op";
         $this->postJson($url, ['ordem_producao' => $fechada->numero])->assertUnprocessable()->assertJsonValidationErrors('ordem_producao');
