@@ -15,6 +15,13 @@ return [
         'minutos_codigo' => 3,  // validade do código de uso único que o portal devolve ao app no login
         'dias_sem_uso' => 7,    // token sem uso por mais dias que isso deixa de valer (o app bloqueia antes: 48 h)
         'horas_offline' => 48,  // o app bloqueia se ficar mais que isso sem sincronizar com o portal
+        // Tela da máquina (operador): legenda do apontamento "sem motivo" que o IoT grava e que o operador tem de
+        // trocar por um motivo; tipos de legenda oferecidos como motivo; até quantos dias para trás a pendência vale.
+        'legenda_sem_motivo' => env('APP_LEGENDA_SEM_MOTIVO', '98'),
+        'tipos_legenda_motivo' => ['parada'],
+        'dias_pendencia_sem_motivo' => 7,
+        'horas_apontamentos' => 24,  // apontamentos mostrados na tela da máquina (últimas N horas)
+        'segundos_atualizacao' => 10, // de quanto em quanto tempo a tela da máquina se atualiza
     ],
 
     'admins' => array_values(array_filter(array_map(

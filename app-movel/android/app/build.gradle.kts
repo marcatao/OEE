@@ -71,6 +71,9 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.browser:browser:1.8.0")
+    // Leitor de código de barras da OP (Google Play services: não precisa de permissão de câmera no app).
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.5") // o leitor traz um Fragment antigo; o registerForActivityResult exige 1.3+
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")

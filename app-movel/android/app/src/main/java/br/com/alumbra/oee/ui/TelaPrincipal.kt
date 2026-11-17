@@ -92,8 +92,8 @@ fun TelaPrincipal(
                 AtalhoFuncao(
                     icone = R.drawable.ic_maquina,
                     titulo = "Máquinas",
-                    descricao = "Timeline da máquina, ordem de produção, cavidades e motivo das paradas.",
-                    selo = if (bloqueada) "Bloqueado" else "Em breve",
+                    descricao = "Apontamentos da máquina, motivo das paradas, OP, roteiro e cavidades do molde.",
+                    selo = if (bloqueada) "Bloqueado" else null,
                     habilitado = !bloqueada,
                     aoTocar = { aoAbrirFuncao("maquinas") },
                 )

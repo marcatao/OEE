@@ -1,5 +1,18 @@
 # Versões do aplicativo
 
+## 0.4.0 (build 5)
+- Função **Máquinas** (operador):
+  - lista das máquinas ATIVAS com IoT ATIVO (as que pedem ação primeiro), com busca, situação, legenda atual e OP;
+    atualiza a cada 30 s;
+  - tela da máquina sempre acesa, atualizada a cada 10 s: situação, barra das últimas 24 h com as cores das
+    legendas, OP (produto e quantidade produzida), molde com cavidades ativas, roteiro (operação desta máquina em
+    destaque) e os apontamentos reais das últimas 24 h;
+  - apontamento com legenda **98 (sem motivo)**: faixa piscando, apito + vibração a cada 3 s e janela obrigatória
+    para escolher o motivo (só legendas do tipo parada); troca a legenda só daquele apontamento;
+  - máquina **sem OP**: faixa piscando, aviso sonoro e janela obrigatória para escolher a OP (só OPs abertas), por
+    busca ou **leitura do código de barras**;
+  - botão **Trocar OP** (produção mudou) e **Alterar cavidades ativas** do molde (0 até as cavidades do Protheus).
+
 ## 0.3.1 (build 4)
 - Correção: o nome da rede da fábrica é `Wlan_alumbra` (com W maiúsculo). A comparação agora ignora maiúsculas e
   minúsculas, então o app reconhece a rede.

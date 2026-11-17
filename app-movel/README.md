@@ -39,9 +39,18 @@ cd app-movel/android
    API: `routes/api.php` (`/api/app/...`, middleware `aplicativo`, token em `Authorization: Bearer` ou `X-Token-App`).
 2. Banco local e sincronização (fila offline; vale a alteração mais recente pelo horário; o servidor confere as
    regras e devolve "pendente de correção" quando não passar). Bloqueio após 48 h sem sincronizar.
-3. Operador: máquinas ativas → timeline da máquina; troca de OP (com leitura do código de barras); cavidades ativas;
-   parada 98 (IoT, sem motivo) apita e obriga escolher o motivo (só legendas de parada), trocando a legenda daquele
-   apontamento.
+3. Operador — Máquinas. ✔ (0.4.0) API `GET /api/app/maquinas` (ativas + `Maquina::comIotAtivo()`), `GET
+   /api/app/maquinas/{id}` (apontamentos das últimas `oee.app.horas_apontamentos` h, pendências "sem motivo" dos
+   últimos `oee.app.dias_pendencia_sem_motivo` dias, OP com roteiro e molde, legendas de motivo), `POST
+   /api/app/apontamentos/{id}/motivo`, `POST /api/app/maquinas/{id}/op`, `GET /api/app/ops`, `POST
+   /api/app/ferramentas/{id}/cavidades` — regras em `App\Services\Aplicativo\MaquinasAplicativo`. Consultar:
+   permissão `apontamentos` ou `timeline`; alterar: `apontamentos`.
+   - Legenda "sem motivo" = `oee.app.legenda_sem_motivo` (98, gravada pelo IoT); motivos = legendas ativas dos tipos
+     `oee.app.tipos_legenda_motivo` (parada). O motivo troca a legenda SÓ daquele apontamento.
+   - Trocar OP: a máquina fica com a OP; o apontamento em aberto sem OP recebe a OP; com OUTRA OP, é encerrado 1 s
+     antes de agora e um novo (mesma legenda, OP nova) começa agora.
+   - Cavidades ativas: o operador também altera (pedido do usuário), de 0 até H4_QTDCAV.
+   - Esta tela precisa da rede da fábrica (mostra os últimos dados recebidos se a rede cair).
 4. Mantenedor: SS/OS (abrir, aprovar, concluir); apontamento com cronômetro: o app TRAVA na tela (sem voltar nem
    sair; o cronômetro segue com o celular bloqueado) mostrando a OS atendida, o setor, o centro de custo e o
    solicitante que vai avaliar; só o botão deslizante "Encerrar apontamento" libera, gravando início e fim e

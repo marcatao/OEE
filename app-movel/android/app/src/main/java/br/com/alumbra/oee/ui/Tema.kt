@@ -36,6 +36,7 @@ data class CoresExtras(
     val erro: Color,
     val erroSuave: Color,
     val borda: Color,
+    val fundoEscurecido: Color,
 )
 
 private val ExtrasClaro = CoresExtras(
@@ -45,6 +46,7 @@ private val ExtrasClaro = CoresExtras(
     alerta = Color(0xFFB54708), alertaSuave = Color(0xFFFEF3E2),
     erro = Color(0xFFB42318), erroSuave = Color(0xFFFDECEA),
     borda = Color(0xFFDDE6E0),
+    fundoEscurecido = Color(0x73000000), // --fundo-escurecido do portal
 )
 
 private val ExtrasEscuro = CoresExtras(
@@ -54,6 +56,7 @@ private val ExtrasEscuro = CoresExtras(
     alerta = Color(0xFFFDB022), alertaSuave = Color(0xFF33240B),
     erro = Color(0xFFF97066), erroSuave = Color(0xFF3A1714),
     borda = Color(0xFF243229),
+    fundoEscurecido = Color(0x99000000),
 )
 
 private val LocalCoresExtras = staticCompositionLocalOf { ExtrasClaro }

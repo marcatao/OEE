@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import br.com.alumbra.oee.api.ApiPortal
 import br.com.alumbra.oee.api.ErroApi
+import br.com.alumbra.oee.maquinas.RepositorioMaquinas
+import br.com.alumbra.oee.maquinas.TelaMaquina
+import br.com.alumbra.oee.maquinas.TelaMaquinas
 import br.com.alumbra.oee.rede.EstadoRede
 import br.com.alumbra.oee.rede.VerificadorRede
 import br.com.alumbra.oee.sessao.Sessao
@@ -43,6 +47,15 @@ class MainActivity : ComponentActivity() {
     private var mensagem by mutableStateOf<String?>(null)
     private var ocupado by mutableStateOf(false)
     private var relogio by mutableIntStateOf(0) // muda para reavaliar o bloqueio de 48 h
+    private var tela by mutableStateOf<Tela>(Tela.Principal)
+    private val repositorioMaquinas by lazy { RepositorioMaquinas { sessao.token } }
+
+    /** Telas internas (o usuário logado navega entre elas; "voltar" sobe um nível). */
+    private sealed interface Tela {
+        data object Principal : Tela
+        data object Maquinas : Tela
+        data class Maquina(val id: Int, val nome: String) : Tela
+    }
 
     private val pedirLocalizacao =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { tentativaRede++ }
@@ -79,24 +92,57 @@ class MainActivity : ComponentActivity() {
                         )
                     } else {
                         relogio // lido aqui para recompor quando o app volta
-                        TelaPrincipal(
-                            usuario = u,
-                            ultimaSincronizacao = sessao.ultimaSincronizacao,
-                            horasOffline = sessao.horasOffline,
-                            bloqueada = sessao.bloqueadaPorTempo(),
-                            sincronizando = ocupado,
-                            mensagem = mensagem,
-                            naRedeDaFabrica = rede?.naRedeDaFabrica == true,
-                            aoSincronizar = ::sincronizar,
-                            aoSair = ::sair,
-                            aoAbrirFuncao = {
-                                Toast.makeText(this@MainActivity, "Esta função chega nas próximas versões.", Toast.LENGTH_SHORT).show()
-                            },
-                        )
+                        val bloqueada = sessao.bloqueadaPorTempo()
+                        val atual = if (bloqueada) Tela.Principal else tela
+                        BackHandler(enabled = atual != Tela.Principal) {
+                            tela = if (atual is Tela.Maquina) Tela.Maquinas else Tela.Principal
+                        }
+                        when (atual) {
+                            Tela.Principal -> TelaPrincipal(
+                                usuario = u,
+                                ultimaSincronizacao = sessao.ultimaSincronizacao,
+                                horasOffline = sessao.horasOffline,
+                                bloqueada = bloqueada,
+                                sincronizando = ocupado,
+                                mensagem = mensagem,
+                                naRedeDaFabrica = rede?.naRedeDaFabrica == true,
+                                aoSincronizar = ::sincronizar,
+                                aoSair = ::sair,
+                                aoAbrirFuncao = { funcao ->
+                                    if (funcao == "maquinas") {
+                                        tela = Tela.Maquinas
+                                    } else {
+                                        Toast.makeText(this@MainActivity, "Esta função chega nas próximas versões.", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                            )
+                            Tela.Maquinas -> TelaMaquinas(
+                                repositorio = repositorioMaquinas,
+                                aoVoltar = { tela = Tela.Principal },
+                                aoAbrir = { tela = Tela.Maquina(it.id, it.nome) },
+                                aoPerderAcesso = ::perderAcesso,
+                            )
+                            is Tela.Maquina -> TelaMaquina(
+                                repositorio = repositorioMaquinas,
+                                maquinaId = atual.id,
+                                nomeInicial = atual.nome,
+                                podeAlterar = u.operador,
+                                aoVoltar = { tela = Tela.Maquinas },
+                                aoPerderAcesso = ::perderAcesso,
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+
+    /** O portal recusou o token (saiu, expirou ou perdeu o acesso): volta para a entrada. */
+    private fun perderAcesso(motivo: String) {
+        sessao.sair()
+        usuario = null
+        tela = Tela.Principal
+        mensagem = motivo.ifBlank { "Entre de novo no aplicativo." }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -176,6 +222,7 @@ class MainActivity : ComponentActivity() {
         val token = sessao.token
         sessao.sair()
         usuario = null
+        tela = Tela.Principal
         mensagem = null
         // Avisa o portal se der; se estiver fora da rede, o token cai sozinho por falta de uso.
         if (token != null && rede?.naRedeDaFabrica == true) {

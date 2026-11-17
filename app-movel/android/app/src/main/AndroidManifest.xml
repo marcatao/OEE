@@ -7,6 +7,8 @@
     <!-- O Android só informa o nome da rede Wi-Fi (wlan_alumbra) com a permissão de localização. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Alarme da parada sem motivo. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="false"

@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -261,3 +263,41 @@ fun TituloSecao(texto: String, modifier: Modifier = Modifier) {
         modifier = modifier.padding(start = 4.dp, top = 8.dp, bottom = 2.dp),
     )
 }
+
+/** Barra do topo das telas internas: voltar, título, subtítulo e ações, no verde do portal. */
+@Composable
+fun BarraTopo(
+    titulo: String,
+    subtitulo: String? = null,
+    aoVoltar: (() -> Unit)? = null,
+    acoes: @Composable () -> Unit = {},
+) {
+    val c = CoresOee.atual
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(Brush.linearGradient(listOf(c.heroiInicio, c.heroiFim)))
+            .statusBarsPadding()
+            .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (aoVoltar != null) {
+            androidx.compose.material3.IconButton(onClick = aoVoltar) {
+                Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, "Voltar", tint = c.heroiTexto)
+            }
+        } else {
+            Spacer(Modifier.width(16.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(titulo, style = MaterialTheme.typography.titleLarge, color = c.heroiTexto, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitulo != null) {
+                Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = c.heroiSuave, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        acoes()
+    }
+}
+
+/** Cor da legenda (dado do cadastro, escolhida pelo administrador, como no portal). */
+fun corDaLegenda(hex: String?, padrao: Color): Color =
+    runCatching { Color(android.graphics.Color.parseColor(hex!!.trim())) }.getOrDefault(padrao)

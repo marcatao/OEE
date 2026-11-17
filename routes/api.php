@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Aplicativo\ApiAplicativoController;
+use App\Http\Controllers\Aplicativo\MaquinasAplicativoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,5 +15,17 @@ Route::prefix('app')->name('api.app.')->group(function () {
     Route::middleware('aplicativo')->group(function () {
         Route::get('eu', [ApiAplicativoController::class, 'eu'])->name('eu');
         Route::post('sair', [ApiAplicativoController::class, 'sair'])->name('sair');
+
+        // Função "Máquinas" (operador): consultar com apontamentos ou timeline; alterar só com apontamentos.
+        Route::middleware('permissao:apontamentos,timeline')->group(function () {
+            Route::get('maquinas', [MaquinasAplicativoController::class, 'index'])->name('maquinas');
+            Route::get('maquinas/{maquina}', [MaquinasAplicativoController::class, 'show'])->whereNumber('maquina')->name('maquinas.show');
+        });
+        Route::middleware('permissao:apontamentos')->group(function () {
+            Route::get('ops', [MaquinasAplicativoController::class, 'ops'])->name('ops');
+            Route::post('maquinas/{maquina}/op', [MaquinasAplicativoController::class, 'op'])->whereNumber('maquina')->name('maquinas.op');
+            Route::post('apontamentos/{apontamento}/motivo', [MaquinasAplicativoController::class, 'motivo'])->whereNumber('apontamento')->name('apontamentos.motivo');
+            Route::post('ferramentas/{ferramenta}/cavidades', [MaquinasAplicativoController::class, 'cavidades'])->whereNumber('ferramenta')->name('ferramentas.cavidades');
+        });
     });
 });
