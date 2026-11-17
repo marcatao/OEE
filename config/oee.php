@@ -134,9 +134,9 @@ return [
         'admin_tecnologia' => [
             'rotulo' => 'Administrador de Tecnologia',
             'area' => 'tecnologia',
-            'descricao' => 'Vê tudo de tudo, inclusive a Segurança (usuários, grupos, acessos e banco de dados).',
-            'unidades' => ['manutencao', 'tecnologia', 'ferramentaria'],
-            'solicita' => ['manutencao', 'tecnologia', 'ferramentaria'],
+            'descricao' => 'Vê e cadastra tudo da tecnologia (abre e vê todas as SS/OS da Tecnologia) e cuida da Segurança (usuários, grupos, acessos e banco de dados). Outras unidades só com os perfis delas.',
+            'unidades' => ['tecnologia'],
+            'solicita' => ['tecnologia'],
             'permissoes' => ['*'],
         ],
         // ----- Área Ferramentaria -----

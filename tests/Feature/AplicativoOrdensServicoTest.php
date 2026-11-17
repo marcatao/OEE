@@ -193,6 +193,19 @@ class AplicativoOrdensServicoTest extends TestCase
         $this->api($this->solicitante, 'POST', "ordens/{$osId}/iniciar")->assertForbidden();
     }
 
+    public function test_app_nao_mostra_nem_alerta_ss_de_unidade_fora_do_login(): void
+    {
+        // Login só com Tecnologia (até administrador), mesmo com o cadastro de mantenedor ligado a uma área da Manutenção.
+        $rafa = $this->usuario(['solicitante_tecnologia', 'mantenedor_tecnologia', 'admin_tecnologia'], 'rafaela@alumbra.com.br', '1001');
+        Mantenedor::create(['nome' => 'Rafaela', 'usuario_id' => $rafa->id] + $this->jornadaGravada())->definirAreas([$this->mecanica->id]);
+        $ss = $this->abrirSs();
+
+        $this->api($rafa, 'GET', 'resumo')->assertOk()->assertJsonCount(0, 'pendentes');
+        $this->api($rafa, 'GET', 'solicitacoes')->assertOk()->assertJsonCount(0, 'pendentes');
+        $this->api($rafa, 'POST', "solicitacoes/{$ss->id}/assumir")->assertNotFound();
+        $this->api($this->joao, 'GET', 'resumo')->assertOk()->assertJsonCount(1, 'pendentes'); // o da Manutenção é alertado
+    }
+
     /** PNG válido com mais de 100 bytes (uma imagem 20x20). */
     private function pngGrande(): string
     {

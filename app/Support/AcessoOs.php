@@ -10,15 +10,18 @@ use App\Models\Maquina;
 use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Quem vê, abre e cancela nas Ordens de serviço:
- * - ABRIR SS: quem tem o perfil Solicitante de Manutenção e/ou de Tecnologia e os administradores da área, só para as
- *   áreas executantes dessa unidade (Adm. Produção = Manutenção; Adm. Tecnologia = as duas);
- * - VER: o solicitante vê as SS/OS dele e as do seu centro de custo; o mantenedor vê as das áreas executantes que ele
- *   atende (sem áreas cadastradas: as da unidade do perfil) e as OS em que está atribuído; o administrador da área vê
- *   todas da unidade dele (Administrador de Produção = Manutenção; Administrador de Tecnologia = tudo);
+ * - UNIDADES: cada um só enxerga as unidades HABILITADAS nos perfis dele (Usuario::unidades()), em tudo — listas,
+ *   filtros, cadastros e telas. O Administrador de Tecnologia também (só a Tecnologia, se não tiver outros perfis);
+ * - ABRIR SS: quem tem o perfil Solicitante da unidade e os administradores dela, só para as áreas executantes dessa
+ *   unidade;
+ * - VER (dentro das unidades habilitadas): o solicitante vê as SS/OS dele e as do seu centro de custo; o mantenedor vê
+ *   as das áreas executantes que ele atende (sem áreas cadastradas: as da unidade do perfil) e as OS em que está
+ *   atribuído; o administrador da área vê todas da unidade dele;
  * - CANCELAR/REABRIR: só o administrador da área ou o próprio autor da solicitação (mesmo sendo mantenedor).
  */
 final class AcessoOs
@@ -48,11 +51,31 @@ final class AcessoOs
     /** Unidades em que o usuário é administrador da área. @return list<string> */
     public static function unidadesAdmin(Usuario $u): array
     {
-        if ($u->ehAdminTecnologia()) {
-            return Unidades::areas();
+        return $u->areasAdministradas();
+    }
+
+    /**
+     * Unidades HABILITADAS para o usuário nas Ordens de serviço: as dos perfis dele (operador, mantenedor,
+     * administrador) e as em que é Solicitante. Sem nenhum perfil de unidade (acesso só por grupos): todas.
+     *
+     * @return list<string>
+     */
+    public static function unidadesHabilitadas(Usuario $u): array
+    {
+        $dele = array_values(array_intersect(Unidades::areas(), [...$u->unidades(), ...self::unidadesSolicitante($u)]));
+
+        return $dele !== [] ? $dele : Unidades::areas();
+    }
+
+    /** Restringe um cadastro com "unidade" às unidades habilitadas do usuário logado (e às de "Todas"). */
+    private static function daUnidadeDoUsuario(Builder $consulta): Builder
+    {
+        $u = Auth::user();
+        if (! $u instanceof Usuario) {
+            return $consulta;
         }
 
-        return $u->areasAdministradas();
+        return $consulta->whereIn($consulta->getModel()->qualifyColumn('unidade'), [...self::unidadesHabilitadas($u), 'ambos']);
     }
 
     public static function ehAdminDa(Usuario $u, ?string $unidade): bool
@@ -135,10 +158,12 @@ final class AcessoOs
     /** Filtra uma consulta de SS ou OS pelo que o usuário pode ver. */
     public static function filtrar(Builder $consulta, Usuario $u): Builder
     {
-        if ($u->ehAdminTecnologia()) {
-            return $consulta;
-        }
         $modelo = $consulta->getModel();
+        // Nunca fora das unidades habilitadas nos perfis (nem pelo centro de custo, nem como solicitante).
+        $habilitadas = self::unidadesHabilitadas($u);
+        if (array_diff(Unidades::areas(), $habilitadas) !== []) {
+            $consulta->whereIn($modelo->qualifyColumn('unidade'), $habilitadas);
+        }
         $col = fn (string $c) => $modelo->qualifyColumn($c);
         $cc = self::centroCustoDo($u);
         $admin = self::unidadesAdmin($u);
@@ -171,7 +196,7 @@ final class AcessoOs
     }
 
     /**
-     * Áreas (unidades) do painel: as em que é administrador ou mantenedor (Adm. Tecnologia: as duas); sem nenhuma, as dos
+     * Áreas (unidades) do painel: as em que é administrador ou mantenedor; sem nenhuma, as dos
      * perfis do usuário. @return list<string>
      */
     public static function unidadesPainel(Usuario $u): array
@@ -185,8 +210,7 @@ final class AcessoOs
     }
 
     /**
-     * Áreas para as quais o usuário pede material: as dos perfis de mantenedor e de administrador (Adm. Tecnologia: as
-     * duas). @return list<string>
+     * Áreas para as quais o usuário pede material: as dos perfis de mantenedor e de administrador. @return list<string>
      */
     public static function unidadesMaterial(Usuario $u): array
     {
@@ -260,10 +284,10 @@ final class AcessoOs
         self::$codigosCc = null;
     }
 
-    /** Máquinas ativas de todas as unidades (quem solicita pode pedir serviço para qualquer área). */
+    /** Máquinas ativas das unidades do usuário logado (e as de "Todas"). */
     public static function maquinas(): Collection
     {
-        return Maquina::withoutGlobalScope('unidade')->where('ativo', true)->orderBy('codigo')->get(['id', 'codigo', 'nome', 'centro_custo', 'unidade']);
+        return self::daUnidadeDoUsuario(Maquina::withoutGlobalScope('unidade'))->where('ativo', true)->orderBy('codigo')->get(['id', 'codigo', 'nome', 'centro_custo', 'unidade']);
     }
 
     /** A máquina é da área executante? Mesma unidade, ou uma das duas cadastrada para "Todas" (ambos). */
@@ -283,9 +307,10 @@ final class AcessoOs
         return self::maquinas()->filter(fn ($m) => in_array($m->unidade, [...$unidades, 'ambos'], true))->values();
     }
 
+    /** Áreas executantes ativas das unidades do usuário logado (e as de "Todas"). */
     public static function areas(): Collection
     {
-        return AreaExecutante::withoutGlobalScope('unidade')->where('ativo', true)->orderBy('nome')->get();
+        return self::daUnidadeDoUsuario(AreaExecutante::withoutGlobalScope('unidade'))->where('ativo', true)->orderBy('nome')->get();
     }
 
     /** Áreas executantes para as quais o usuário pode abrir SS (da unidade dele como solicitante, ou "ambos"). */

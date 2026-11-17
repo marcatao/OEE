@@ -326,7 +326,7 @@ class OrdensServicoTest extends TestCase
         $mecanico = $this->usuario(['mantenedor_producao'], 'mecanico@empresa.com');
         $m = Mantenedor::create(['nome' => 'Mecânico', 'usuario_id' => $mecanico->id]);
         $m->definirAreas([$this->mecanica->id]);
-        $adm = $this->usuario(['admin_tecnologia'], 'adm-ti@empresa.com');
+        $adm = $this->usuario(['admin_producao', 'admin_tecnologia'], 'adm-ti@empresa.com');
 
         $pendente = $this->abrirSs($operador, ['titulo' => 'Pendente na fila']);
         $ss = $this->abrirSs($operador, ['titulo' => 'Atendida pelo mecânico']);
@@ -599,5 +599,29 @@ class OrdensServicoTest extends TestCase
         $this->get('/ordens-de-servico/solicitacoes/nova')->assertOk()->assertSee('Título resumido');
         $this->get('/ordens-de-servico/relatorios/horas')->assertForbidden();
         $this->get('/ordens-de-servico/cadastros/areas')->assertForbidden();
+    }
+
+    public function test_lista_de_os_so_das_unidades_do_login_com_filtro_de_unidade_e_data(): void
+    {
+        $base = ['tipo' => 'corretiva', 'prioridade' => 'media', 'status' => 'aberta'];
+        $manut = OrdemServico::create($base + ['unidade' => 'manutencao', 'area_executante_id' => $this->mecanica->id, 'descricao' => 'OS da manutencao', 'titulo' => 'Prensa travada']);
+        $ti = OrdemServico::create($base + ['unidade' => 'tecnologia', 'area_executante_id' => $this->ti->id, 'descricao' => 'OS de TI', 'titulo' => 'Servidor lento']);
+        $ti->forceFill(['criado_em' => now()->subDays(10)])->saveQuietly();
+
+        // Só Tecnologia (até administradora): não vê a OS da Manutenção, nem pela URL, e não tem o filtro de unidade.
+        $rafa = $this->usuario(['solicitante_tecnologia', 'mantenedor_tecnologia', 'admin_tecnologia'], 'rafaela@empresa.com');
+        $this->actingAs($rafa)->get('/ordens-de-servico/ordens')->assertOk()->assertSee('Servidor lento')->assertDontSee('Prensa travada')
+            ->assertDontSee('<select name="unidade">', false);
+        $this->get("/ordens-de-servico/ordens/{$manut->id}")->assertNotFound();
+        $this->get('/ordens-de-servico/solicitacoes/nova')->assertOk()->assertDontSee($this->mecanica->nome);
+
+        // Duas unidades: filtra por unidade e pela data de emissão.
+        $adm = $this->usuario(['admin_producao', 'admin_tecnologia'], 'adm@empresa.com');
+        $this->actingAs($adm)->get('/ordens-de-servico/ordens')->assertSee('Servidor lento')->assertSee('Prensa travada')->assertSee('<select name="unidade">', false);
+        $this->get('/ordens-de-servico/ordens?unidade=manutencao')->assertSee('Prensa travada')->assertDontSee('Servidor lento');
+        $this->get('/ordens-de-servico/ordens?unidade=ferramentaria')->assertSee('Prensa travada')->assertSee('Servidor lento'); // fora do login = ignorado
+        $hoje = now(config('oee.fuso_exibicao'))->format('Y-m-d');
+        $this->get('/ordens-de-servico/ordens?de='.$hoje)->assertSee('Prensa travada')->assertDontSee('Servidor lento');
+        $this->get('/ordens-de-servico/ordens?ate='.now(config('oee.fuso_exibicao'))->subDays(5)->format('Y-m-d'))->assertSee('Servidor lento')->assertDontSee('Prensa travada');
     }
 }

@@ -29,6 +29,14 @@
   <form method="get" class="filtros">
     <input type="hidden" name="status" value="{{ $f['status'] }}">
     <label>Buscar <input name="busca" value="{{ $f['busca'] }}" placeholder="Nº da OS/SS, título ou descrição"></label>
+    @if (count($unidades) > 1)
+      <label>Unidade
+        <select name="unidade"><option value="">Todas as minhas</option>
+          @foreach ($unidades as $un)<option value="{{ $un }}" @selected($f['unidade'] === $un)>{{ config('oee.unidades')[$un] ?? $un }}</option>@endforeach
+        </select></label>
+    @endif
+    <label>Emitida de <input type="date" name="de" value="{{ $f['de'] }}"></label>
+    <label>até <input type="date" name="ate" value="{{ $f['ate'] }}"></label>
     <label>Tipo
       <select name="tipo"><option value="">Todos</option>
         @foreach (SolicitacaoServico::TIPOS as $v => $r)<option value="{{ $v }}" @selected($f['tipo'] === $v)>{{ $r }}</option>@endforeach

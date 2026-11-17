@@ -104,13 +104,15 @@ class SolicitacaoMaterialTest extends TestCase
         $this->post('/ordens-de-servico/solicitacoes-de-material', ['itens' => []])->assertSessionHasErrors('itens');
 
         $sm = $this->pedir($mecanico);
-        // Outro mantenedor não vê; o admin de Produção vê (área dele); o admin de Tecnologia vê tudo; operador não entra.
+        // Outro mantenedor não vê; o admin de Produção vê (área dele); o admin de Tecnologia NÃO (só a Tecnologia); operador não entra.
         $this->actingAs($outro)->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertNotFound();
         $this->actingAs($operador)->get('/ordens-de-servico/solicitacoes-de-material')->assertForbidden();
         $this->actingAs($admProd)->get('/ordens-de-servico/solicitacoes-de-material')->assertOk()->assertSee($sm->numeroFormatado());
 
+        $this->actingAs($admTi)->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertNotFound();
+
         // Aprovar todos com as quantidades da tela.
-        $this->actingAs($admTi)->post("/ordens-de-servico/solicitacoes-de-material/{$sm->id}/analisar", ['acao' => 'aprovar_todos'])->assertRedirect();
+        $this->actingAs($admProd)->post("/ordens-de-servico/solicitacoes-de-material/{$sm->id}/analisar", ['acao' => 'aprovar_todos'])->assertRedirect();
         $this->assertSame(2, $sm->itens()->where('status', 'aprovado')->count());
         $this->assertSame('analisada', $sm->fresh()->status);
         // Já analisada: não cancela mais.

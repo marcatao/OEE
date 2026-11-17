@@ -12,6 +12,7 @@ use App\Services\Manutencao\CustoOrdemServico;
 use App\Services\Manutencao\FluxoOrdemServico;
 use App\Services\Manutencao\HorasManutencao;
 use App\Support\AcessoOs;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,8 +39,25 @@ class OrdemServicoController extends Controller
             'maquina' => $request->integer('maquina') ?: null,
             'responsavel' => $request->integer('responsavel') ?: null,
             'busca' => trim((string) $request->input('busca', '')),
+            'unidade' => (string) $request->input('unidade', ''),
+            'de' => (string) $request->input('de', ''),
+            'ate' => (string) $request->input('ate', ''),
         ];
-        $consulta = AcessoOs::filtrar(OrdemServico::query(), $u)
+        // Unidade: só as habilitadas nos perfis do usuário. Datas: emissão da OS, no fuso local.
+        $unidades = AcessoOs::unidadesHabilitadas($u);
+        if (! in_array($f['unidade'], $unidades, true)) {
+            $f['unidade'] = '';
+        }
+        $de = $this->data($f['de']);
+        $ate = $this->data($f['ate']);
+        $f['de'] = $de?->format('Y-m-d') ?? '';
+        $f['ate'] = $ate?->format('Y-m-d') ?? '';
+        // Unidade e período valem também para os totais das abas de situação.
+        $base = fn () => AcessoOs::filtrar(OrdemServico::query(), $u)
+            ->when($f['unidade'] !== '', fn ($q) => $q->where('ordens_servico.unidade', $f['unidade']))
+            ->when($de, fn ($q) => $q->where('ordens_servico.criado_em', '>=', $de->startOfDay()->utc()))
+            ->when($ate, fn ($q) => $q->where('ordens_servico.criado_em', '<', $ate->addDay()->startOfDay()->utc()));
+        $consulta = $base()
             ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
                 'responsavel' => fn ($q) => $q->withoutGlobalScopes(), 'mantenedores.usuario', 'solicitante']);
         if ($f['status'] === 'em_aberto') {
@@ -62,7 +80,7 @@ class OrdemServicoController extends Controller
             $consulta->where(fn ($q) => $q->where('descricao', 'like', '%'.$f['busca'].'%')->orWhere('titulo', 'like', '%'.$f['busca'].'%')
                 ->when($numero > 0, fn ($q) => $q->orWhere('id', $numero)->orWhere('solicitacao_id', $numero)));
         }
-        $totais = AcessoOs::filtrar(OrdemServico::query(), $u)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $totais = $base()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return view('manutencao.ordens.index', [
             'ordens' => $consulta->orderByRaw("CASE prioridade WHEN 'urgente' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END")->orderByDesc('id')
@@ -71,7 +89,19 @@ class OrdemServicoController extends Controller
             'totais' => $totais,
             'maquinas' => AcessoOs::maquinas(),
             'mantenedores' => AcessoOs::mantenedores(),
+            'unidades' => $unidades,
         ]);
+    }
+
+    /** "AAAA-MM-DD" do filtro => início do dia no fuso local (inválida = sem filtro). */
+    private function data(string $valor): ?CarbonImmutable
+    {
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor)) {
+            return null;
+        }
+        $data = CarbonImmutable::createFromFormat('Y-m-d', $valor, HorasManutencao::fuso());
+
+        return $data && $data->format('Y-m-d') === $valor ? $data->startOfDay() : null;
     }
 
     public function show(Request $request, int $ordem): View

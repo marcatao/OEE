@@ -14,13 +14,15 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   ferramentaria`, `admin_producao|tecnologia|ferramentaria`; mapas `oee.admins_area` e `oee.mantenedores_area`; cada
   perfil com unidades e permissões de página) + **grupos** (somam páginas, `grupo_permissoes`, catálogo em
   `config('oee.permissoes')`). Usuário sem linhas em `usuario_perfis` segue a coluna antiga `perfil` (admin = todos os
-  perfis, operador = operador). Administrador de Tecnologia pode tudo e é o único na aba **Segurança** (usuários,
-  grupos, acessos, banco: `perfil:admin_tecnologia`); cadastros = `perfil:admin_producao,admin_tecnologia,
+  perfis, operador = operador). Administrador de Tecnologia abre todas as PÁGINAS e é o único na aba **Segurança**
+  (usuários, grupos, acessos, banco: `perfil:admin_tecnologia`), mas DADOS só da Tecnologia: ninguém vê unidade que
+  não está habilitada nos perfis dele (cadastros, filtros, listas, SS/OS, app; `AcessoOs::unidadesHabilitadas` =
+  unidades dos perfis + as em que é Solicitante; `AcessoOs::filtrar` nunca passa delas); cadastros = `perfil:admin_producao,admin_tecnologia,
   admin_ferramentaria`. Use `Usuario::pode()`, `ehAdmin()`, `podeSeguranca()`, `temPerfil()`, `areasAdministradas()` e
   `App\Support\Unidades::areas()` (nunca escreva a lista de áreas fixa no código).
 - Todo cadastro tem **unidade** (`manutencao` | `tecnologia` | `ferramentaria` | `ambos` = "Todas", trait
-  `App\Models\Concerns\TemUnidade`): escopo global mostra ao usuário logado só as unidades dele + "ambos" (Admin de
-  Tecnologia vê tudo; sem usuário logado, sem filtro). No formulário use `@include('partials.campo-unidade')` e
+  `App\Models\Concerns\TemUnidade`): escopo global mostra ao usuário logado só as unidades dele + "ambos" (quem tem
+  perfis das três unidades vê tudo; sem usuário logado, sem filtro). No formulário use `@include('partials.campo-unidade')` e
   `App\Support\Unidades::regras()` (cada área só para o administrador dela; "Todas" para quem administra mais de uma).
   Cadastro novo de qualquer tipo deve ganhar a coluna `unidade` (padrão `manutencao`) e o trait.
 - Banco principal: **SQL Server** (`DB_CONNECTION=sqlsrv`, configurado no `.env`). Testes rodam em SQLite em memória:

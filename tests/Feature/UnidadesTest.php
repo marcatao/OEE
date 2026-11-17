@@ -56,15 +56,17 @@ class UnidadesTest extends TestCase
         $this->actingAs($this->usuario(['mantenedor_tecnologia'], 'ti@empresa.com'));
         $this->get('/producao/dashboard')->assertOk()->assertSee('Servidor 01')->assertSee('Nobreak 01')->assertDontSee('Injetora 01');
 
-        // Administrador de Tecnologia vê tudo de tudo.
+        // Administrador de Tecnologia só vê a Tecnologia (e "Todas"); com os três perfis de administrador, tudo.
         $this->actingAs($this->usuario(['admin_tecnologia'], 'adm-ti@empresa.com'));
+        $this->get('/admin/maquinas')->assertOk()->assertDontSee('INJ-01')->assertSee('SRV-01')->assertSee('NOB-01');
+        $this->actingAs($this->usuario(['admin_producao', 'admin_tecnologia', 'admin_ferramentaria'], 'tres@empresa.com'));
         $this->get('/admin/maquinas')->assertOk()->assertSee('INJ-01')->assertSee('SRV-01')->assertSee('NOB-01');
     }
 
     public function test_filtro_de_unidade_no_cadastro_de_maquinas(): void
     {
         // Quem enxerga as três áreas filtra por qualquer uma; "Todas" (ambos) aparece junto da área filtrada.
-        $this->actingAs($this->usuario(['admin_tecnologia'], 'adm-ti@empresa.com'));
+        $this->actingAs($this->usuario(['admin_producao', 'admin_tecnologia', 'admin_ferramentaria'], 'adm-ti@empresa.com'));
         $this->get('/admin/maquinas')->assertOk()->assertSee('<select name="unidade">', false)
             ->assertSee('<option value="ferramentaria"', false);
         $this->get('/admin/maquinas?unidade=tecnologia')->assertOk()->assertSee('SRV-01')->assertSee('NOB-01')->assertDontSee('INJ-01');

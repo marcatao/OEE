@@ -169,3 +169,7 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
 - Antes de mudar uma regra do fluxo acima, confirme com o usuário.
 - Ainda em aberto com o usuário: avisos por e-mail/Teams, ausências/feriados nas horas disponíveis, integração da
   requisição/compra com o Protheus (SCP/SC1) — hoje o almoxarifado e compras são acompanhados só no portal.
+- **Unidades habilitadas**: ninguém vê SS/OS, máquinas, áreas, mantenedores ou filtros de unidade que não estão nos
+  perfis do login (`AcessoOs::unidadesHabilitadas`: unidades dos perfis + as em que é Solicitante; `AcessoOs::filtrar`
+  restringe sempre a elas, inclusive no aplicativo e nos alertas). O Administrador de Tecnologia NÃO vê as outras
+  unidades: precisa do perfil de cada uma. Lista de OS: filtros de unidade (só se tiver mais de uma) e de data de emissão.
