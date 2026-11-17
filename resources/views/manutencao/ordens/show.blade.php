@@ -157,6 +157,19 @@
           <dt>Horas apontadas</dt><dd><strong>{{ \App\Services\Manutencao\HorasManutencao::hhmm($os->total_minutos) }}</strong></dd>
         </dl>
       </div>
+      <div class="os-ficha-bloco os-custo" id="custo-os">
+        <h3>Quanto esta OS está custando</h3>
+        <p class="os-custo-total">{{ \App\Services\Manutencao\CustoOrdemServico::reais($custo['total']) }}</p>
+        <dl>
+          <dt>Pedidos de compra</dt>
+          <dd>{{ \App\Services\Manutencao\CustoOrdemServico::reais($custo['pedidos']) }}
+            <small class="suave">{{ $custo['pedidos_qtd'] }} pedido(s)@if ($custo['pedidos_sem_valor']) · {{ $custo['pedidos_sem_valor'] }} aguardando valor do Protheus @endif</small></dd>
+          <dt>Materiais (almoxarifado)</dt>
+          <dd>{{ \App\Services\Manutencao\CustoOrdemServico::reais($custo['materiais']) }}
+            @if ($custo['materiais_sem_custo'])<small class="suave">{{ $custo['materiais_sem_custo'] }} sem custo informado</small>@endif</dd>
+          <dt>Mão de obra</dt><dd>{{ \App\Services\Manutencao\HorasManutencao::hhmm($custo['minutos']) }} <small class="suave">horas apontadas (sem custo/hora)</small></dd>
+        </dl>
+      </div>
     </div>
   </div>
 </section>
@@ -357,6 +370,47 @@
       <label>Observação <input name="observacao" maxlength="500"></label>
       <button class="botao" type="submit">Requisitar ao almoxarifado</button>
     </form>
+  @endif
+</section>
+
+<section class="cartao" id="pedidos-compra">
+  <h2>Pedidos de compra</h2>
+  <p class="suave">Gerados pelo administrador da unidade e enviados ao Protheus, que devolve o número, a aprovação, a conclusão e os valores
+    (somados no custo da OS).</p>
+  @include('manutencao.pedidos-compra._lista', ['pedidos' => $pedidos, 'podeAdministrar' => $podeAdministrarPedidos, 'muroOk' => $muroOk])
+  @if ($podeGerarPedido)
+    @php($itensPc = old('itens') ?: [['produto_codigo' => '', 'quantidade' => '', 'observacao' => '']])
+    <form method="post" action="{{ route('os.pedidos-compra.da-ordem', $os) }}" class="pc-novo" id="os-pedido">
+      @csrf
+      <h3>Gerar pedido de compra</h3>
+      @error('pedido')<p class="aviso erro" role="alert">{{ $message }}</p>@enderror
+      @include('manutencao.pedidos-compra._cabecalho', ['centros' => $centrosPedido, 'ccOrigem' => (string) $os->centro_custo, 'ccDestino' => (string) $os->centro_custo])
+      <div id="pc-linhas">
+        @foreach (array_values($itensPc) as $n => $linhaPc)
+          @include('manutencao.pedidos-compra._linha', ['i' => $n, 'linha' => $linhaPc])
+        @endforeach
+      </div>
+      <template id="pc-modelo">@include('manutencao.pedidos-compra._linha', ['i' => '__I__', 'linha' => []])</template>
+      <div class="acoes">
+        <button class="botao secundario" type="button" id="pc-adicionar">@include('layouts.partials.icone', ['nome' => 'mais']) Adicionar produto</button>
+        <button class="botao" type="submit">Gerar pedido de compra</button>
+      </div>
+    </form>
+    <script>
+      (function () {
+        var lista = document.getElementById('pc-linhas'), modelo = document.getElementById('pc-modelo'), proximo = {{ count($itensPc) }};
+        function renumerar() {
+          var linhas = lista.querySelectorAll('[data-pc-linha]');
+          linhas.forEach(function (l, n) { l.querySelector('[data-pc-numero]').textContent = n + 1; l.querySelector('[data-pc-remover]').hidden = linhas.length === 1; });
+        }
+        document.getElementById('pc-adicionar').addEventListener('click', function () {
+          var caixa = document.createElement('div'); caixa.innerHTML = modelo.innerHTML.replace(/__I__/g, String(proximo++)).trim();
+          var linha = caixa.firstElementChild; lista.appendChild(linha); window.OeeComponentes.iniciar(linha); renumerar();
+        });
+        lista.addEventListener('click', function (e) { var b = e.target.closest('[data-pc-remover]'); if (b) { b.closest('[data-pc-linha]').remove(); renumerar(); } });
+        renumerar();
+      })();
+    </script>
   @endif
 </section>
 

@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\ApontamentoEstado;
+use App\Models\Compras\PedidoCompra;
 use App\Models\Usuario;
+use App\Services\Compras\PedidoCompraMuro;
 use App\Services\InfoBanco;
 use App\Services\Manutencao\GeradorPreventivas;
 use App\Services\MaquinasSemIot;
@@ -167,3 +169,16 @@ Artisan::command('maquinas:desativar-sem-iot {--confirmar : Inativa de verdade}'
     $servico->inativar();
     $this->info("{$maquinas->count()} máquina(s) inativada(s).");
 })->purpose('Inativa as máquinas sem canal IoT (dispositivo ativo + canal)');
+
+// Pedidos de compra (tabela muro do Protheus): lê o número, a aprovação, a conclusão e os valores devolvidos pelo
+// Protheus para os pedidos ainda não finalizados. Também é lido ao abrir a solicitação de material e a OS.
+Artisan::command('compras:atualizar-pedidos', function (PedidoCompraMuro $muro) {
+    $total = 0;
+    PedidoCompra::query()->whereNotIn('status', PedidoCompra::FINAIS)->with('itens')->chunkById(500, function ($lote) use ($muro, &$total) {
+        $total += $muro->atualizar($lote);
+    });
+    $this->info("{$total} pedido(s) de compra com novidades do Protheus.");
+})->purpose('Lê na tabela muro a situação dos pedidos de compra gerados no Protheus');
+if ($agendaCompras = config('compras.agenda')) {
+    Schedule::command('compras:atualizar-pedidos')->cron($agendaCompras)->withoutOverlapping();
+}

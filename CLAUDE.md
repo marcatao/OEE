@@ -101,6 +101,14 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `.sql`? Crie uma migração que chame `ProceduresBanco::instalar()` (ou rode `php artisan banco:procedures`).
   SD3/SD2 são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
+- **Pedidos de compra** (Ordens de serviço): o administrador da unidade gera o pedido dos itens APROVADOS de uma
+  solicitação de material ou direto numa OS aberta (CC de origem e de destino). Vai para o Protheus por TABELA MURO
+  (`OEE_PEDIDO_COMPRA` + `_ITEM`, conexão `muro` / `config/compras.php`): ÚNICA exceção ao "Protheus só leitura" — o
+  portal grava SÓ nelas. SQL e fonte TLPP (`OEEPCJOB`, schedule, MATA120 por ExecAuto) em
+  `integracao-protheus/pedido-compra/`. `App\Services\Compras\PedidoCompraMuro` grava e lê de volta (status, número,
+  aprovador, conclusão, valores; datas da muro no horário local `compras.fuso_muro`); cópia no portal em
+  `pedidos_compra` + `pedidos_compra_itens`. Mudou a muro? Mude o `.sql`, o `.tlpp` e `Tests\Concerns\TabelaMuroDeCompras`.
+  Custo da OS (card na tela da OS): `App\Services\Manutencao\CustoOrdemServico`.
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
   Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
   área de resultado é trocada sem recarregar a página (`?parcial=1`). Os filtros podem ser escondidos (botão +

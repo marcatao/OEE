@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Manutencao;
 
 use App\Http\Controllers\Controller;
 use App\Models\CentroCusto;
+use App\Models\Compras\PedidoCompra;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
+use App\Services\Compras\PedidoCompraMuro;
+use App\Services\Manutencao\CustoOrdemServico;
 use App\Services\Manutencao\FluxoOrdemServico;
 use App\Services\Manutencao\HorasManutencao;
 use App\Support\AcessoOs;
@@ -77,6 +80,11 @@ class OrdemServicoController extends Controller
         $u = $request->user();
 
         $historico = $os->historicoCompleto()->with('usuario')->orderByDesc('criado_em')->orderByDesc('id')->get();
+        $materiais = $os->materiais()->with('criadoPor')->orderBy('id')->get();
+        // Pedidos de compra da OS, com a situação lida agora na tabela muro do Protheus.
+        $pedidos = PedidoCompra::with(['itens', 'criadoPor'])->where('ordem_servico_id', $os->id)->orderByDesc('id')->get();
+        $muroOk = app(PedidoCompraMuro::class)->atualizarSemFalhar($pedidos);
+        $adminDaUnidade = AcessoOs::ehAdminDa($u, $os->unidade);
 
         return view('manutencao.ordens.show', [
             'os' => $os,
@@ -84,7 +92,13 @@ class OrdemServicoController extends Controller
             // SQL Server ignora os espaços à direita do código do Protheus na comparação.
             'ccDescricao' => $os->centro_custo ? CentroCusto::withoutGlobalScope('unidade')->where('ctt_custo', trim((string) $os->centro_custo))->first()?->descricao() : null,
             'apontamentos' => $os->apontamentos()->with(['mantenedor' => fn ($q) => $q->withoutGlobalScopes(), 'criadoPor'])->orderBy('inicio')->get(),
-            'materiais' => $os->materiais()->with('criadoPor')->orderBy('id')->get(),
+            'materiais' => $materiais,
+            'pedidos' => $pedidos,
+            'muroOk' => $muroOk,
+            'custo' => CustoOrdemServico::resumo($os, $pedidos, $materiais),
+            'podeAdministrarPedidos' => $adminDaUnidade,
+            'podeGerarPedido' => $adminDaUnidade && $os->estaAberta(),
+            'centrosPedido' => $adminDaUnidade && $os->estaAberta() ? AcessoOs::centrosCusto() : collect(),
             'checklist' => $os->checklist()->with('respondidoPor')->orderBy('ordem')->orderBy('id')->get(),
             'historico' => $historico,
             'acoes' => FluxoOrdemServico::acoesPossiveis($os),

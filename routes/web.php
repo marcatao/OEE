@@ -25,6 +25,7 @@ use App\Http\Controllers\Manutencao\InteracaoController;
 use App\Http\Controllers\Manutencao\MaterialController;
 use App\Http\Controllers\Manutencao\OrdemServicoController;
 use App\Http\Controllers\Manutencao\PainelController;
+use App\Http\Controllers\Manutencao\PedidoCompraController;
 use App\Http\Controllers\Manutencao\PlanoPreventivaController;
 use App\Http\Controllers\Manutencao\RelatorioManutencaoController;
 use App\Http\Controllers\Manutencao\SolicitacaoController;
@@ -124,6 +125,14 @@ Route::middleware('auth')->group(function () {
             Route::get('{solicitacao}', [SolicitacaoMaterialController::class, 'show'])->whereNumber('solicitacao')->name('show');
             Route::post('{solicitacao}/analisar', [SolicitacaoMaterialController::class, 'analisar'])->whereNumber('solicitacao')->name('analisar');
             Route::post('{solicitacao}/cancelar', [SolicitacaoMaterialController::class, 'cancelar'])->whereNumber('solicitacao')->name('cancelar');
+        });
+        // Pedido de compra pelo Protheus (tabela muro): só o administrador da unidade (conferido no controlador).
+        Route::middleware('perfil:admin_producao,admin_tecnologia,admin_ferramentaria')->prefix('pedidos-de-compra')->name('pedidos-compra.')->group(function () {
+            Route::get('produtos', [SolicitacaoMaterialController::class, 'buscarProdutos'])->name('produtos'); // JSON da busca
+            Route::post('da-solicitacao/{solicitacao}', [PedidoCompraController::class, 'daSolicitacao'])->whereNumber('solicitacao')->name('da-solicitacao');
+            Route::post('da-ordem/{ordem}', [PedidoCompraController::class, 'daOrdem'])->whereNumber('ordem')->name('da-ordem');
+            Route::post('{pedido}/cancelar', [PedidoCompraController::class, 'cancelar'])->whereNumber('pedido')->name('cancelar');
+            Route::post('{pedido}/reenviar', [PedidoCompraController::class, 'reenviar'])->whereNumber('pedido')->name('reenviar');
         });
         Route::middleware('permissao:os_painel')->group(function () {
             Route::get('painel', [PainelController::class, 'index'])->name('painel');

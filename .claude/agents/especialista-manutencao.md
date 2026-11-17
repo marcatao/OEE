@@ -108,8 +108,17 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   com alta/média/baixa aparecem como "(antiga)"),
   observação/utilização). O **administrador da área** analisa **item a item**: aprova uma quantidade (vem a solicitada,
   pode mudar) ou reprova com motivo; grava quem e quando (`aprovado_por_id`, `aprovado_em`); solicitação = pendente →
-  em análise → analisada (ou cancelada enquanto nada foi analisado). Próxima etapa (pendente): gerar a requisição ao
-  almoxarifado ou a solicitação de compra a partir do item aprovado (botões "em breve").
+  em análise → analisada (ou cancelada enquanto nada foi analisado). Gerar a requisição ao almoxarifado ainda está
+  pendente ("em breve").
+- **Pedido de compra pelo Protheus (tabela muro)**: o ADMINISTRADOR DA UNIDADE marca itens APROVADOS da solicitação de
+  material (quantidade = aprovada; um item só fica em um pedido ativo) ou escolhe produtos direto na OS ABERTA, com CC
+  de ORIGEM e de DESTINO (`PedidoCompraController`). Portal: `pedidos_compra` + `pedidos_compra_itens`; Protheus:
+  `OEE_PEDIDO_COMPRA` + `_ITEM` (conexão `muro`, `config/compras.php`; SQL e fonte `OEEPCJOB.tlpp` em
+  `integracao-protheus/pedido-compra/`). Status: AGUARDANDO_PROTHEUS → (PROCESSANDO) → AGUARDANDO_APROVACAO (número)
+  → APROVADO (aprovador, data) → CONCLUIDO (data, valores); REPROVADO, ERRO (mensagem; reenviar ou cancelar),
+  CANCELADO. `PedidoCompraMuro::atualizar` lê a muro (comando agendado `compras:atualizar-pedidos` e ao abrir a SM/OS,
+  sem derrubar a tela). Card "Quanto esta OS está custando" (`CustoOrdemServico`): pedidos (valor do Protheus; sem
+  reprovados/cancelados/erro) + materiais do almoxarifado com custo; horas à parte (sem custo/hora).
 - **Três áreas**: Manutenção, Tecnologia e **Ferramentaria** (perfis solicitante/mantenedor/admin de cada uma). Nunca
   liste as áreas fixas no código: `Unidades::areas()`, `config('oee.admins_area')`, `config('oee.mantenedores_area')`.
 - **Aprovação = revisão**: o aprovador abre a SS e altera o que precisar no próprio detalhe (campos editáveis; "Só

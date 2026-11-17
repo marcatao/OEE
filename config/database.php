@@ -80,6 +80,23 @@ return [
             'encrypt' => $opcaoSqlServer(env('PROTHEUS_DB_ENCRYPT') ?? env('DB_ENCRYPT')),
             'trust_server_certificate' => $opcaoSqlServer(env('PROTHEUS_DB_TRUST_SERVER_CERTIFICATE') ?? env('DB_TRUST_SERVER_CERTIFICATE')),
         ],
+
+        // Tabelas MURO da integração de pedidos de compra (config/compras.php). Ficam no banco do Protheus e são as
+        // ÚNICAS em que o portal grava por lá (INSERT e UPDATE só nelas; o resto do Protheus continua só leitura).
+        // Por padrão usa o servidor, o banco e o usuário do Protheus; MURO_DB_* no .env só se for diferente.
+        'muro' => [
+            'driver' => 'sqlsrv',
+            'host' => env('MURO_DB_HOST') ?: (env('PROTHEUS_DB_HOST') ?: env('DB_HOST', 'localhost')),
+            'port' => env('MURO_DB_HOST') ? (env('MURO_DB_PORT') ?: null) : (env('PROTHEUS_DB_HOST') ? (env('PROTHEUS_DB_PORT') ?: null) : (env('DB_PORT') ?: null)),
+            'database' => env('MURO_DB_DATABASE') ?: (env('PROTHEUS_DB_DATABASE') ?: 'Compras'),
+            'username' => env('MURO_DB_USERNAME') ?: (env('PROTHEUS_DB_USERNAME') ?: env('DB_USERNAME', '')),
+            'password' => env('MURO_DB_USERNAME') ? env('MURO_DB_PASSWORD', '') : (env('PROTHEUS_DB_USERNAME') ? env('PROTHEUS_DB_PASSWORD', '') : env('DB_PASSWORD', '')),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'encrypt' => $opcaoSqlServer(env('MURO_DB_ENCRYPT') ?? env('PROTHEUS_DB_ENCRYPT') ?? env('DB_ENCRYPT')),
+            'trust_server_certificate' => $opcaoSqlServer(env('MURO_DB_TRUST_SERVER_CERTIFICATE') ?? env('PROTHEUS_DB_TRUST_SERVER_CERTIFICATE') ?? env('DB_TRUST_SERVER_CERTIFICATE')),
+        ],
     ],
 
     /*

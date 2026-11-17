@@ -1,0 +1,451 @@
+#include "totvs.ch"
+#include "topconn.ch"
+
+/*/{Protheus.doc} OEEPCJOB
+OEE Alumbra x Protheus: pedidos de compra pela TABELA MURO (OEE_PEDIDO_COMPRA + OEE_PEDIDO_COMPRA_ITEM).
+
+Roda no Schedule (ou à mão: U_OEEPCJOB({"01", "0101"})). Cada execução:
+  1. Destrava pedidos parados em PROCESSANDO há mais de 30 minutos (queda no meio da geração).
+  2. Gera os pedidos com STATUS = 'AGUARDANDO_PROTHEUS' (MATA120 por ExecAuto) e devolve o número:
+     STATUS = 'AGUARDANDO_APROVACAO' (ou 'APROVADO' se o pedido não cair em alçada) ou 'ERRO' com a mensagem.
+  3. Confere os pedidos integrados (AGUARDANDO_APROVACAO e APROVADO) na SC7/SCR/SD1: aprovação (quem e quando),
+     reprovação, conclusão (tudo entregue ou eliminado por resíduo) e os valores de cada item.
+
+Parâmetros (SX6, todos opcionais; crie no Configurador como caractere):
+  MV_XOEEFOR  fornecedor padrão (quando a muro não informa)       ex.: 000001
+  MV_XOEELOJ  loja padrão                                          ex.: 01
+  MV_XOEECND  condição de pagamento padrão                         ex.: 001
+  MV_XOEECCO  campo da SC7 para o centro de custo de ORIGEM        ex.: C7_XCCORI (vazio = não grava)
+  MV_XOEEPCC  nome da tabela muro do cabeçalho                     padrão: OEE_PEDIDO_COMPRA
+  MV_XOEEPCI  nome da tabela muro dos itens                        padrão: OEE_PEDIDO_COMPRA_ITEM
+
+O centro de custo de DESTINO vai no C7_CC. O C7_OBS começa com "OEE#<ID>" (ID da muro): é assim que o job reconhece
+um pedido já gerado se cair no meio da gravação.
+/*/
+User Function OEEPCJOB(aParam)
+    Local lPreparou := .F.
+    Local cEmp      := "01"
+    Local cFil      := "01"
+
+    If ValType(aParam) == "A" .And. Len(aParam) >= 2
+        cEmp := aParam[1]
+        cFil := aParam[2]
+    EndIf
+
+    If Select("SX2") == 0
+        RpcSetType(3)
+        RpcSetEnv(cEmp, cFil, , , "COM", "OEEPCJOB")
+        lPreparou := .T.
+    EndIf
+
+    If LockByName("OEEPCJOB", .T., .F.)
+        OeeLog("início")
+        RecuperaTravados()
+        GeraPendentes()
+        AtualizaStatus()
+        OeeLog("fim")
+        UnLockByName("OEEPCJOB", .T., .F.)
+    Else
+        OeeLog("já está rodando em outra thread; nada a fazer agora.")
+    EndIf
+
+    If lPreparou
+        RpcClearEnv()
+    EndIf
+Return
+
+/*/{Protheus.doc} SchedDef
+Definição para o Schedule novo (SIGACFG > Schedule): sem pergunta; empresa/filial vêm do agendamento.
+/*/
+Static Function SchedDef()
+Return {"P", "PARAMDEF", "", {}, ""}
+
+// ---------------------------------------------------------------------------------------------------------------
+// 1. Pedidos que ficaram em PROCESSANDO (o job caiu no meio): se o pedido existe na SC7, é dado como integrado;
+//    se não existe, volta para a fila.
+// ---------------------------------------------------------------------------------------------------------------
+Static Function RecuperaTravados()
+    Local cAlias := Consulta("SELECT ID FROM " + TabCab() + " WHERE STATUS = 'PROCESSANDO' AND ATUALIZADO_EM < DATEADD(MINUTE, -30, GETDATE())")
+    Local aIds   := {}
+    Local nI     := 0
+    Local cNum   := ""
+
+    While !(cAlias)->(Eof())
+        AAdd(aIds, (cAlias)->ID)
+        (cAlias)->(DbSkip())
+    EndDo
+    (cAlias)->(DbCloseArea())
+
+    For nI := 1 To Len(aIds)
+        cNum := PedidoDaMuro(aIds[nI])
+        If Empty(cNum)
+            Exec("UPDATE " + TabCab() + " SET STATUS = 'AGUARDANDO_PROTHEUS', ATUALIZADO_EM = GETDATE() WHERE ID = " + cValToChar(aIds[nI]) + " AND STATUS = 'PROCESSANDO'")
+        Else
+            Exec("UPDATE " + TabCab() + " SET STATUS = 'AGUARDANDO_APROVACAO', NUM_PEDIDO = " + Q(cNum) + ", INTEGRADO_EM = GETDATE(), ATUALIZADO_EM = GETDATE() WHERE ID = " + cValToChar(aIds[nI]))
+            Exec("UPDATE " + TabIte() + " SET C7_ITEM = ITEM WHERE ID_PEDIDO = " + cValToChar(aIds[nI]))
+        EndIf
+    Next
+Return
+
+/** Número do pedido gerado para o ID da muro (procura o "OEE#<ID> " no C7_OBS), ou "" se não existe. */
+Static Function PedidoDaMuro(nId)
+    Local cNum   := ""
+    Local cAlias := Consulta("SELECT TOP 1 C7_NUM FROM " + RetSqlName("SC7") + " WHERE C7_OBS LIKE " + Q(Marca(nId) + "%") + " AND D_E_L_E_T_ = ' '")
+
+    If !(cAlias)->(Eof())
+        cNum := AllTrim((cAlias)->C7_NUM)
+    EndIf
+    (cAlias)->(DbCloseArea())
+Return cNum
+
+// ---------------------------------------------------------------------------------------------------------------
+// 2. Geração dos pedidos que o portal mandou
+// ---------------------------------------------------------------------------------------------------------------
+Static Function GeraPendentes()
+    Local cAlias := Consulta("SELECT TOP 50 ID FROM " + TabCab() + " WHERE STATUS = 'AGUARDANDO_PROTHEUS' ORDER BY ID")
+    Local aIds   := {}
+    Local nI     := 0
+
+    While !(cAlias)->(Eof())
+        AAdd(aIds, (cAlias)->ID)
+        (cAlias)->(DbSkip())
+    EndDo
+    (cAlias)->(DbCloseArea())
+
+    For nI := 1 To Len(aIds)
+        // Reserva o pedido (só se ainda estiver na fila: o portal pode ter cancelado agora).
+        Exec("UPDATE " + TabCab() + " SET STATUS = 'PROCESSANDO', TENTATIVAS = TENTATIVAS + 1, ATUALIZADO_EM = GETDATE() WHERE ID = " + cValToChar(aIds[nI]) + " AND STATUS = 'AGUARDANDO_PROTHEUS'")
+        If StatusMuro(aIds[nI]) == "PROCESSANDO"
+            GeraPedido(aIds[nI])
+        EndIf
+    Next
+Return
+
+Static Function GeraPedido(nId)
+    Local cAlias    := ""
+    Local cFilBkp   := cFilAnt
+    Local cFilPed   := ""
+    Local cFor      := ""
+    Local cLoja     := ""
+    Local cCond     := ""
+    Local cCCOrig   := ""
+    Local cCCDest   := ""
+    Local cSolic    := ""
+    Local cObsCab   := ""
+    Local cCampoOri := AllTrim(SuperGetMV("MV_XOEECCO", .F., ""))
+    Local aCab      := {}
+    Local aItens    := {}
+    Local aLinha    := {}
+    Local aItMuro   := {}
+    Local cErro     := ""
+    Local cNum      := ""
+    Local cProd     := ""
+    Local nPreco    := 0
+    Local nI        := 0
+    Local bErroAnt  := Nil
+    Local oErro     := Nil
+
+    Private lMsErroAuto    := .F.
+    Private lMsHelpAuto    := .T.
+    Private lAutoErrNoFile := .T.
+
+    cAlias := Consulta("SELECT FILIAL, CC_ORIGEM, CC_DESTINO, FORNECEDOR, LOJA, COND_PAGTO, SOLICITANTE, OBSERVACAO FROM " + TabCab() + " WHERE ID = " + cValToChar(nId))
+    cFilPed := AllTrim((cAlias)->FILIAL)
+    cCCOrig := AllTrim((cAlias)->CC_ORIGEM)
+    cCCDest := AllTrim((cAlias)->CC_DESTINO)
+    cFor    := AllTrim((cAlias)->FORNECEDOR)
+    cLoja   := AllTrim((cAlias)->LOJA)
+    cCond   := AllTrim((cAlias)->COND_PAGTO)
+    cSolic  := AllTrim((cAlias)->SOLICITANTE)
+    cObsCab := AllTrim((cAlias)->OBSERVACAO)
+    (cAlias)->(DbCloseArea())
+
+    cAlias := Consulta("SELECT ITEM, PRODUTO, QUANTIDADE, PRECO, OBSERVACAO FROM " + TabIte() + " WHERE ID_PEDIDO = " + cValToChar(nId) + " ORDER BY ITEM")
+    While !(cAlias)->(Eof())
+        AAdd(aItMuro, {AllTrim((cAlias)->ITEM), AllTrim((cAlias)->PRODUTO), (cAlias)->QUANTIDADE, (cAlias)->PRECO, AllTrim((cAlias)->OBSERVACAO)})
+        (cAlias)->(DbSkip())
+    EndDo
+    (cAlias)->(DbCloseArea())
+
+    If Empty(cFor)
+        cFor := AllTrim(SuperGetMV("MV_XOEEFOR", .F., ""))
+    EndIf
+    If Empty(cLoja)
+        cLoja := AllTrim(SuperGetMV("MV_XOEELOJ", .F., "01"))
+    EndIf
+    If Empty(cCond)
+        cCond := AllTrim(SuperGetMV("MV_XOEECND", .F., ""))
+    EndIf
+
+    bErroAnt := ErrorBlock({|e| oErro := e, Break(e)})
+    Begin Sequence
+        // Filial do pedido (vazio = a do job).
+        If !Empty(cFilPed) .And. AllTrim(cFilAnt) <> cFilPed
+            cFilAnt := PadR(cFilPed, Len(cFilAnt))
+            SM0->(DbSeek(cEmpAnt + cFilAnt))
+        EndIf
+
+        If Len(aItMuro) == 0
+            cErro := "Pedido sem itens na tabela muro."
+            Break
+        EndIf
+        If Empty(cFor) .Or. Empty(cCond)
+            cErro := "Fornecedor ou condição de pagamento não informados (preencha os parâmetros MV_XOEEFOR, MV_XOEELOJ e MV_XOEECND)."
+            Break
+        EndIf
+
+        SB1->(DbSetOrder(1))
+        SB2->(DbSetOrder(1))
+        For nI := 1 To Len(aItMuro)
+            cProd := PadR(aItMuro[nI][2], TamSX3("B1_COD")[1])
+            If !SB1->(DbSeek(xFilial("SB1") + cProd))
+                cErro := "Item " + aItMuro[nI][1] + ": produto " + AllTrim(cProd) + " não encontrado na SB1."
+                Break
+            EndIf
+            // Preço: o da muro; senão o último preço de compra (B1_UPRC); senão o custo médio do armazém padrão (B2_CM1).
+            nPreco := aItMuro[nI][4]
+            If nPreco <= 0
+                nPreco := SB1->B1_UPRC
+            EndIf
+            If nPreco <= 0 .And. SB2->(DbSeek(xFilial("SB2") + SB1->B1_COD + SB1->B1_LOCPAD))
+                nPreco := SB2->B2_CM1
+            EndIf
+            If nPreco <= 0
+                cErro := "Item " + aItMuro[nI][1] + ": produto " + AllTrim(cProd) + " sem preço (sem B1_UPRC e sem custo médio)."
+                Break
+            EndIf
+            nPreco := Round(nPreco, TamSX3("C7_PRECO")[2])
+
+            aLinha := {}
+            AAdd(aLinha, {"C7_ITEM",    PadL(aItMuro[nI][1], TamSX3("C7_ITEM")[1], "0"), Nil})
+            AAdd(aLinha, {"C7_PRODUTO", SB1->B1_COD, Nil})
+            AAdd(aLinha, {"C7_QUANT",   aItMuro[nI][3], Nil})
+            AAdd(aLinha, {"C7_PRECO",   nPreco, Nil})
+            AAdd(aLinha, {"C7_TOTAL",   Round(aItMuro[nI][3] * nPreco, 2), Nil})
+            AAdd(aLinha, {"C7_CC",      PadR(cCCDest, TamSX3("C7_CC")[1]), Nil})
+            AAdd(aLinha, {"C7_OBS",     Left(Marca(nId) + AllTrim(aItMuro[nI][5] + " " + cObsCab), TamSX3("C7_OBS")[1]), Nil})
+            If !Empty(cCampoOri) .And. SC7->(FieldPos(cCampoOri)) > 0
+                AAdd(aLinha, {cCampoOri, PadR(cCCOrig, TamSX3(cCampoOri)[1]), Nil})
+            EndIf
+            AAdd(aItens, aLinha)
+        Next
+
+        // Número do pedido (pula os que já existirem).
+        SC7->(DbSetOrder(1))
+        cNum := GetSXENum("SC7", "C7_NUM")
+        While SC7->(DbSeek(xFilial("SC7") + cNum))
+            ConfirmSX8()
+            cNum := GetSXENum("SC7", "C7_NUM")
+        EndDo
+
+        AAdd(aCab, {"C7_NUM",     cNum, Nil})
+        AAdd(aCab, {"C7_EMISSAO", dDataBase, Nil})
+        AAdd(aCab, {"C7_FORNECE", PadR(cFor, TamSX3("C7_FORNECE")[1]), Nil})
+        AAdd(aCab, {"C7_LOJA",    PadR(cLoja, TamSX3("C7_LOJA")[1]), Nil})
+        AAdd(aCab, {"C7_COND",    PadR(cCond, TamSX3("C7_COND")[1]), Nil})
+        AAdd(aCab, {"C7_CONTATO", Left(cSolic, TamSX3("C7_CONTATO")[1]), Nil})
+        AAdd(aCab, {"C7_FILENT",  cFilAnt, Nil})
+
+        lMsErroAuto := .F.
+        MSExecAuto({|a, b, c, d, e| MATA120(a, b, c, d, e)}, 1, aCab, aItens, 3, .F.)
+
+        If lMsErroAuto
+            RollBackSX8()
+            cErro := TextoErroAuto()
+            Break
+        EndIf
+        ConfirmSX8()
+    End Sequence
+    ErrorBlock(bErroAnt)
+
+    If oErro <> Nil
+        cErro := "Erro no Protheus: " + oErro:Description
+    EndIf
+
+    cFilAnt := cFilBkp
+    SM0->(DbSeek(cEmpAnt + cFilAnt))
+
+    If !Empty(cErro)
+        OeeLog("pedido muro " + cValToChar(nId) + ": " + cErro)
+        Exec("UPDATE " + TabCab() + " SET STATUS = 'ERRO', MENSAGEM = " + Q(Left(cErro, 1000)) + ", ATUALIZADO_EM = GETDATE() WHERE ID = " + cValToChar(nId))
+        Return
+    EndIf
+
+    // Gerado: número, valores e a situação da alçada (C7_CONAPRO = 'B' bloqueado = aguardando aprovação).
+    OeeLog("pedido muro " + cValToChar(nId) + " gerado: " + cNum)
+    Exec("UPDATE " + TabCab() + " SET STATUS = 'AGUARDANDO_APROVACAO', NUM_PEDIDO = " + Q(cNum) + ", FILIAL = " + Q(AllTrim(IIf(Empty(cFilPed), cFilAnt, cFilPed))) + ;
+        ", MENSAGEM = NULL, INTEGRADO_EM = GETDATE(), ATUALIZADO_EM = GETDATE() WHERE ID = " + cValToChar(nId))
+    Exec("UPDATE " + TabIte() + " SET C7_ITEM = ITEM WHERE ID_PEDIDO = " + cValToChar(nId))
+    ConfereStatus(nId, IIf(Empty(cFilPed), cFilAnt, cFilPed), cNum)
+Return
+
+/** Texto do erro do ExecAuto (log de tela do MATA120). */
+Static Function TextoErroAuto()
+    Local aLog   := GetAutoGRLog()
+    Local cTexto := ""
+    Local nI     := 0
+
+    For nI := 1 To Len(aLog)
+        cTexto += AllTrim(aLog[nI]) + CRLF
+    Next
+    If Empty(cTexto)
+        cTexto := "O MATA120 recusou o pedido (sem mensagem)."
+    EndIf
+Return cTexto
+
+// ---------------------------------------------------------------------------------------------------------------
+// 3. Situação dos pedidos já integrados
+// ---------------------------------------------------------------------------------------------------------------
+Static Function AtualizaStatus()
+    Local cAlias := Consulta("SELECT ID, FILIAL, NUM_PEDIDO FROM " + TabCab() + " WHERE STATUS IN ('AGUARDANDO_APROVACAO', 'APROVADO') AND NUM_PEDIDO <> '' ORDER BY ID")
+    Local aPed   := {}
+    Local nI     := 0
+
+    While !(cAlias)->(Eof())
+        AAdd(aPed, {(cAlias)->ID, AllTrim((cAlias)->FILIAL), AllTrim((cAlias)->NUM_PEDIDO)})
+        (cAlias)->(DbSkip())
+    EndDo
+    (cAlias)->(DbCloseArea())
+
+    For nI := 1 To Len(aPed)
+        ConfereStatus(aPed[nI][1], IIf(Empty(aPed[nI][2]), cFilAnt, aPed[nI][2]), aPed[nI][3])
+    Next
+Return
+
+Static Function ConfereStatus(nId, cFilPed, cNum)
+    Local cFilSC7    := xFilial("SC7", PadR(cFilPed, Len(cFilAnt)))
+    Local cAlias     := ""
+    Local nLinhas    := 0
+    Local lReprovado := .F.
+    Local lBloqueado := .F.
+    Local lConcluido := .T.
+    Local nTotal     := 0
+    Local nEntregue  := 0
+    Local cStatus    := ""
+    Local cSet       := ""
+    Local aAprov     := {}
+
+    cAlias := Consulta("SELECT C7_ITEM, C7_QUANT, C7_QUJE, C7_PRECO, C7_TOTAL, C7_CONAPRO, C7_RESIDUO, C7_ENCER FROM " + RetSqlName("SC7") + ;
+        " WHERE C7_FILIAL = " + Q(cFilSC7) + " AND C7_NUM = " + Q(cNum) + " AND D_E_L_E_T_ = ' '")
+    While !(cAlias)->(Eof())
+        nLinhas++
+        lReprovado := lReprovado .Or. (cAlias)->C7_CONAPRO == "R"
+        lBloqueado := lBloqueado .Or. (cAlias)->C7_CONAPRO == "B"
+        lConcluido := lConcluido .And. ((cAlias)->C7_QUJE >= (cAlias)->C7_QUANT .Or. (cAlias)->C7_RESIDUO == "S" .Or. (cAlias)->C7_ENCER == "E")
+        nTotal     += (cAlias)->C7_TOTAL
+        nEntregue  += Round((cAlias)->C7_QUJE * (cAlias)->C7_PRECO, 2)
+        Exec("UPDATE " + TabIte() + " SET VALOR_UNITARIO = " + Num((cAlias)->C7_PRECO) + ", VALOR_TOTAL = " + Num((cAlias)->C7_TOTAL) + ;
+            ", QTD_ENTREGUE = " + Num((cAlias)->C7_QUJE) + " WHERE ID_PEDIDO = " + cValToChar(nId) + " AND C7_ITEM = " + Q(AllTrim((cAlias)->C7_ITEM)))
+        (cAlias)->(DbSkip())
+    EndDo
+    (cAlias)->(DbCloseArea())
+
+    If nLinhas == 0
+        Exec("UPDATE " + TabCab() + " SET STATUS = 'CANCELADO', MENSAGEM = 'Pedido " + cNum + " excluído no Protheus.', ATUALIZADO_EM = GETDATE() WHERE ID = " + cValToChar(nId))
+        Return
+    EndIf
+
+    Do Case
+    Case lReprovado
+        cStatus := "REPROVADO"
+    Case lBloqueado
+        cStatus := "AGUARDANDO_APROVACAO"
+    Case lConcluido
+        cStatus := "CONCLUIDO"
+    Otherwise
+        cStatus := "APROVADO"
+    EndCase
+
+    // Concluído: o valor passa a ser o entregue (quantidade recebida x preço); antes, o total do pedido.
+    cSet := "STATUS = " + Q(cStatus) + ", VALOR_TOTAL = " + Num(IIf(cStatus == "CONCLUIDO", nEntregue, nTotal)) + ", ATUALIZADO_EM = GETDATE()"
+    If cStatus $ "APROVADO|CONCLUIDO"
+        aAprov := Aprovacao(cFilPed, cNum)
+        cSet += ", APROVADOR = COALESCE(APROVADOR, " + Q(aAprov[1]) + "), APROVADO_EM = COALESCE(APROVADO_EM, " + aAprov[2] + ")"
+    EndIf
+    If cStatus == "CONCLUIDO"
+        cSet += ", CONCLUIDO_EM = COALESCE(CONCLUIDO_EM, " + Conclusao(cFilPed, cNum) + ")"
+    EndIf
+    Exec("UPDATE " + TabCab() + " SET " + cSet + " WHERE ID = " + cValToChar(nId))
+Return
+
+/** Quem aprovou e quando (SCR: último nível liberado do PC). Sem alçada: "Liberado sem alçada", agora. */
+Static Function Aprovacao(cFilPed, cNum)
+    Local cAlias := Consulta("SELECT TOP 1 CR_USERLIB, CR_DATALIB FROM " + RetSqlName("SCR") + ;
+        " WHERE CR_FILIAL = " + Q(xFilial("SCR", PadR(cFilPed, Len(cFilAnt)))) + " AND RTRIM(CR_NUM) = " + Q(cNum) + ;
+        " AND CR_TIPO IN ('PC', 'IP') AND CR_STATUS IN ('03', '05') AND D_E_L_E_T_ = ' ' ORDER BY CR_DATALIB DESC, R_E_C_N_O_ DESC")
+    Local cNome  := "Liberado sem alçada"
+    Local cData  := "GETDATE()"
+
+    If !(cAlias)->(Eof())
+        If !Empty((cAlias)->CR_USERLIB)
+            cNome := AllTrim(UsrFullName((cAlias)->CR_USERLIB))
+        EndIf
+        If !Empty((cAlias)->CR_DATALIB)
+            // Data da liberação (a SCR não guarda a hora): se foi hoje, usa a hora atual.
+            cData := IIf(AllTrim((cAlias)->CR_DATALIB) == DToS(Date()), "GETDATE()", Q(AllTrim((cAlias)->CR_DATALIB) + " 00:00:00"))
+        EndIf
+    EndIf
+    (cAlias)->(DbCloseArea())
+Return {Left(cNome, 120), cData}
+
+/** Quando concluiu: a última entrada (SD1) do pedido; sem entrada (resíduo), agora. */
+Static Function Conclusao(cFilPed, cNum)
+    Local cAlias := Consulta("SELECT MAX(D1_DTDIGIT) AS DATA FROM " + RetSqlName("SD1") + ;
+        " WHERE D1_FILIAL = " + Q(xFilial("SD1", PadR(cFilPed, Len(cFilAnt)))) + " AND D1_PEDIDO = " + Q(cNum) + " AND D_E_L_E_T_ = ' '")
+    Local cData  := "GETDATE()"
+
+    If !(cAlias)->(Eof()) .And. !Empty((cAlias)->DATA)
+        cData := IIf(AllTrim((cAlias)->DATA) == DToS(Date()), "GETDATE()", Q(AllTrim((cAlias)->DATA) + " 00:00:00"))
+    EndIf
+    (cAlias)->(DbCloseArea())
+Return cData
+
+// ---------------------------------------------------------------------------------------------------------------
+// Utilitários
+// ---------------------------------------------------------------------------------------------------------------
+Static Function TabCab()
+Return AllTrim(SuperGetMV("MV_XOEEPCC", .F., "OEE_PEDIDO_COMPRA"))
+
+Static Function TabIte()
+Return AllTrim(SuperGetMV("MV_XOEEPCI", .F., "OEE_PEDIDO_COMPRA_ITEM"))
+
+/** Marca do C7_OBS que liga o pedido do Protheus ao ID da muro. */
+Static Function Marca(nId)
+Return "OEE#" + cValToChar(nId) + " "
+
+Static Function StatusMuro(nId)
+    Local cAlias  := Consulta("SELECT STATUS FROM " + TabCab() + " WHERE ID = " + cValToChar(nId))
+    Local cStatus := ""
+
+    If !(cAlias)->(Eof())
+        cStatus := AllTrim((cAlias)->STATUS)
+    EndIf
+    (cAlias)->(DbCloseArea())
+Return cStatus
+
+/** Abre uma consulta e devolve o alias. */
+Static Function Consulta(cSql)
+    Local cAlias := GetNextAlias()
+
+    DbUseArea(.T., "TOPCONN", TcGenQry(, , cSql), cAlias, .F., .T.)
+Return cAlias
+
+/** UPDATE na muro, com o erro no console. */
+Static Function Exec(cSql)
+    If TcSqlExec(cSql) < 0
+        OeeLog("erro de SQL: " + TcSqlError() + " | " + cSql)
+        Return .F.
+    EndIf
+Return .T.
+
+/** Texto entre aspas para o SQL (aspas simples dobradas). */
+Static Function Q(cTexto)
+Return "'" + StrTran(AllTrim(cTexto), "'", "''") + "'"
+
+/** Número com ponto decimal para o SQL. */
+Static Function Num(nValor)
+Return AllTrim(Str(nValor, 18, 4))
+
+Static Function OeeLog(cTexto)
+    FWLogMsg("INFO", , "OEEPCJOB", "OEEPCJOB", , , "[OEEPCJOB] " + cTexto)
+Return

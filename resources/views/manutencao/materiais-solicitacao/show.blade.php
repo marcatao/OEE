@@ -68,10 +68,15 @@
               <small class="suave sm-quem">{{ $item->aprovadoPor?->nome }} · @dataHora($item->aprovado_em)</small>
             </td>
             <td class="sm-col-acoes">
-              @if ($item->status === 'aprovado' && $podeAnalisar)
+              @if ($item->status === 'aprovado')
                 <div class="sm-pilha">
-                  <button class="botao pequeno secundario" type="button" disabled title="Em breve">Gerar requisição</button>
-                  <button class="botao pequeno secundario" type="button" disabled title="Em breve">Pedido de compra</button>
+                  @if (isset($emPedido[$item->id]))
+                    <a class="etiqueta pc-num-protheus" href="#pedidos-compra">{{ $emPedido[$item->id] }}</a>
+                  @elseif ($podeGerarPedido)
+                    <label class="opcao"><input type="checkbox" class="pc-marcar" name="pedido_itens[]" value="{{ $item->id }}" form="sm-pedido"
+                      @checked(in_array($item->id, array_map('intval', (array) old('pedido_itens', [])), true))> <span>Pedido de compra</span></label>
+                  @endif
+                  @if ($podeAnalisar)<button class="botao pequeno secundario" type="button" disabled title="Em breve">Gerar requisição</button>@endif
                 </div>
               @endif
             </td>
@@ -86,8 +91,24 @@
       <div class="acoes"><button class="botao" type="submit" name="acao" value="aprovar_todos" onclick="this.form.item.value=''">@include('layouts.partials.icone', ['nome' => 'check']) Aprovar todos os pendentes com as quantidades acima</button></div>
     @endif
   </form>
-  @if ($podeAnalisar && $sm->itens->where('status', 'aprovado')->isNotEmpty())
-    <p class="suave sm-em-breve">Gerar a requisição ao almoxarifado ou o pedido de compra a partir dos itens aprovados chega na próxima etapa.</p>
-  @endif
 </section>
+
+@if ($pedidos->isNotEmpty() || $podeGerarPedido)
+<section class="cartao" id="pedidos-compra">
+  <h2>Pedidos de compra</h2>
+  <p class="suave">O pedido vai para o Protheus, que devolve o número, a aprovação, a conclusão e os valores.</p>
+  @if ($podeGerarPedido)
+    <form method="post" action="{{ route('os.pedidos-compra.da-solicitacao', $sm) }}" id="sm-pedido" class="pc-novo">
+      @csrf
+      <h3>Gerar pedido de compra</h3>
+      <p class="suave">Marque na tabela acima os itens aprovados (coluna da direita) e informe os centros de custo do pedido. A quantidade é a aprovada.</p>
+      @error('pedido_itens')<p class="aviso erro" role="alert">{{ $message }}</p>@enderror
+      @error('pedido')<p class="aviso erro" role="alert">{{ $message }}</p>@enderror
+      @include('manutencao.pedidos-compra._cabecalho', ['centros' => $centros, 'ccOrigem' => $ccPedido, 'ccDestino' => $ccPedido])
+      <div class="acoes"><button class="botao" type="submit">Gerar pedido de compra com os itens marcados</button></div>
+    </form>
+  @endif
+  @include('manutencao.pedidos-compra._lista', ['pedidos' => $pedidos, 'podeAdministrar' => $podeAnalisar, 'muroOk' => $muroOk])
+</section>
+@endif
 @endsection

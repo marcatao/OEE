@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Manutencao;
 
 use App\Http\Controllers\Controller;
+use App\Models\Compras\PedidoCompra;
 use App\Models\Manutencao\SolicitacaoMaterial;
 use App\Models\Manutencao\SolicitacaoMaterialItem;
 use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
+use App\Services\Compras\PedidoCompraMuro;
 use App\Support\AcessoOs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -21,7 +23,8 @@ use Illuminate\View\View;
  * Ordens de serviço › Solicitação de material: o mantenedor pede material (N itens) à administração da área; o
  * administrador da área (Manutenção ou Tecnologia) analisa ITEM a ITEM — aprova uma quantidade (já vem a solicitada,
  * pode mudar) ou reprova com motivo. Ficam gravados quem e quando pediu e quem e quando analisou. Gerar a requisição ao
- * almoxarifado ou a solicitação de compra a partir do item aprovado é a próxima etapa (botões "em breve").
+ * almoxarifado a partir do item aprovado é a próxima etapa ("em breve"); o PEDIDO DE COMPRA dos itens aprovados vai para
+ * o Protheus pela tabela muro (PedidoCompraController).
  */
 class SolicitacaoMaterialController extends Controller
 {
@@ -130,11 +133,22 @@ class SolicitacaoMaterialController extends Controller
     {
         $sm = $this->visiveis($request->user())->with(['solicitante', 'itens.aprovadoPor'])->findOrFail($solicitacao);
         $centros = AcessoOs::centrosCusto()->keyBy(fn ($c) => $c->codigo());
+        $admin = AcessoOs::ehAdminDa($request->user(), $sm->unidade);
+        // Pedidos de compra desta solicitação, com a situação lida agora na tabela muro do Protheus.
+        $pedidos = PedidoCompra::with(['itens', 'criadoPor'])->where('solicitacao_material_id', $sm->id)->orderByDesc('id')->get();
+        $muroOk = app(PedidoCompraMuro::class)->atualizarSemFalhar($pedidos);
+        $emPedido = PedidoCompraController::itensEmPedido($sm->itens->pluck('id')->all());
+        $paraPedido = $sm->itens->where('status', 'aprovado')->filter(fn ($i) => (float) $i->quantidade_aprovada > 0 && ! isset($emPedido[$i->id]));
 
         return view('manutencao.materiais-solicitacao.show', [
             'sm' => $sm,
             'centros' => $centros,
-            'podeAnalisar' => AcessoOs::ehAdminDa($request->user(), $sm->unidade) && $sm->status !== 'cancelada',
+            'pedidos' => $pedidos,
+            'muroOk' => $muroOk,
+            'emPedido' => $emPedido,
+            'podeGerarPedido' => $admin && $sm->status !== 'cancelada' && $paraPedido->isNotEmpty(),
+            'ccPedido' => (string) ($paraPedido->first()?->centro_custo ?? ''),
+            'podeAnalisar' => $admin && $sm->status !== 'cancelada',
             'podeCancelar' => $sm->status === 'pendente' && ((int) $sm->solicitante_id === (int) $request->user()->id || AcessoOs::ehAdminDa($request->user(), $sm->unidade)),
         ]);
     }

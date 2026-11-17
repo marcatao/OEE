@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **52** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **54** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -597,6 +597,47 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
     }
+    pedidos_compra {
+        bigint id PK
+        nvarchar(20) unidade
+        bigint solicitacao_material_id FK
+        bigint ordem_servico_id FK
+        nvarchar(8) filial
+        nvarchar(20) centro_custo_origem
+        nvarchar(20) centro_custo_destino
+        nvarchar(500) observacao
+        nvarchar(25) status
+        nvarchar(10) numero_pedido
+        nvarchar(1000) mensagem
+        datetime integrado_em
+        nvarchar(120) aprovador
+        datetime aprovado_em
+        datetime concluido_em
+        decimal(18, valor_total
+        datetime consultado_em
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    pedidos_compra_itens {
+        bigint id PK
+        bigint pedido_compra_id FK
+        bigint solicitacao_material_item_id FK
+        nvarchar(4) item
+        nvarchar(30) produto_codigo
+        nvarchar(120) produto_descricao
+        nvarchar(4) um
+        decimal(14, quantidade
+        nvarchar(250) observacao
+        decimal(18, valor_unitario
+        decimal(18, valor_total
+        decimal(14, quantidade_entregue
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     plantas {
         bigint id PK
         nvarchar(20) codigo UK
@@ -844,6 +885,10 @@ erDiagram
     os_mantenedores |o--o{ os_planos_preventiva : "responsavel_id"
     maquinas ||--o{ paradas : "maquina_id"
     motivos_parada |o--o{ paradas : "motivo_id"
+    solicitacoes_material |o--o{ pedidos_compra : "solicitacao_material_id"
+    ordens_servico |o--o{ pedidos_compra : "ordem_servico_id"
+    pedidos_compra ||--o{ pedidos_compra_itens : "pedido_compra_id"
+    solicitacoes_material_itens |o--o{ pedidos_compra_itens : "solicitacao_material_item_id"
     usuarios |o--o{ registros_login : "usuario_id"
     usuarios |o--o{ sincronizacoes : "usuario_id"
     usuarios ||--o{ solicitacoes_material : "solicitante_id"
@@ -958,6 +1003,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`os_planos_preventiva`](#os_planos_preventiva) | Sistema | `id` | 19 | 5 |
 | [`os_sugestoes_descricao`](#os_sugestoes_descricao) | Sistema | `id` | 8 | 2 |
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
+| [`pedidos_compra`](#pedidos_compra) | Sistema | `id` | 21 | 4 |
+| [`pedidos_compra_itens`](#pedidos_compra_itens) | Sistema | `id` | 16 | 4 |
 | [`plantas`](#plantas) | Sistema | `id` | 9 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
 | [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 11 | 0 |
@@ -1942,6 +1989,65 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `paradas_maquina_id_inicio_index` (maquina_id, inicio)
 
 **Regras (CHECK, só no SQL Server):** `ck_paradas_periodo`: `fim IS NULL OR fim > inicio`
+
+### pedidos_compra
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não |  |  |
+| `solicitacao_material_id` | `bigint` | sim |  | FK → `solicitacoes_material.id` |
+| `ordem_servico_id` | `bigint` | sim |  | FK → `ordens_servico.id` |
+| `filial` | `nvarchar(8)` | não | `''` |  |
+| `centro_custo_origem` | `nvarchar(20)` | não |  |  |
+| `centro_custo_destino` | `nvarchar(20)` | não |  |  |
+| `observacao` | `nvarchar(500)` | sim |  |  |
+| `status` | `nvarchar(25)` | não | `'aguardando_protheus'` |  |
+| `numero_pedido` | `nvarchar(10)` | sim |  |  |
+| `mensagem` | `nvarchar(1000)` | sim |  |  |
+| `integrado_em` | `datetime` | sim |  |  |
+| `aprovador` | `nvarchar(120)` | sim |  |  |
+| `aprovado_em` | `datetime` | sim |  |  |
+| `concluido_em` | `datetime` | sim |  |  |
+| `valor_total` | `decimal(18,` | sim |  |  |
+| `consultado_em` | `datetime` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `pedidos_compra_solicitacao_material_id_id_index` (solicitacao_material_id, id) · `pedidos_compra_ordem_servico_id_id_index` (ordem_servico_id, id) · `pedidos_compra_status_id_index` (status, id)
+
+**Regras (CHECK, só no SQL Server):** `ck_pedidos_compra_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_pedidos_compra_status`: `status IN ('aguardando_protheus', 'aguardando_aprovacao', 'aprovado', 'concluido', 'reprovado', 'erro', 'cancelado')` · `ck_pedidos_compra_origem`: `solicitacao_material_id IS NOT NULL OR ordem_servico_id IS NOT NULL`
+
+### pedidos_compra_itens
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `pedido_compra_id` | `bigint` | não |  | FK → `pedidos_compra.id` |
+| `solicitacao_material_item_id` | `bigint` | sim |  | FK → `solicitacoes_material_itens.id` |
+| `item` | `nvarchar(4)` | não |  |  |
+| `produto_codigo` | `nvarchar(30)` | não |  |  |
+| `produto_descricao` | `nvarchar(120)` | não | `''` |  |
+| `um` | `nvarchar(4)` | não | `''` |  |
+| `quantidade` | `decimal(14,` | sim |  |  |
+| `observacao` | `nvarchar(250)` | sim |  |  |
+| `valor_unitario` | `decimal(18,` | sim |  |  |
+| `valor_total` | `decimal(18,` | sim |  |  |
+| `quantidade_entregue` | `decimal(14,` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `pedidos_compra_itens_pedido_compra_id_id_index` (pedido_compra_id, id) · `pedidos_compra_itens_solicitacao_material_item_id_index` (solicitacao_material_item_id)
+
+**Regras (CHECK, só no SQL Server):** `ck_pedidos_compra_itens_quantidade`: `quantidade > 0`
 
 ### plantas
 
