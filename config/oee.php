@@ -20,7 +20,6 @@ return [
         'legenda_sem_motivo' => env('APP_LEGENDA_SEM_MOTIVO', '98'),
         'tipos_legenda_motivo' => ['parada'],
         'dias_pendencia_sem_motivo' => 7,
-        'horas_apontamentos' => 24,  // apontamentos mostrados na tela da máquina (últimas N horas)
         'segundos_atualizacao' => 10, // de quanto em quanto tempo a tela da máquina se atualiza
     ],
 

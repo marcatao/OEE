@@ -40,7 +40,8 @@ cd app-movel/android
 2. Banco local e sincronização (fila offline; vale a alteração mais recente pelo horário; o servidor confere as
    regras e devolve "pendente de correção" quando não passar). Bloqueio após 48 h sem sincronizar.
 3. Operador — Máquinas. ✔ (0.4.0) API `GET /api/app/maquinas` (ativas + `Maquina::comIotAtivo()`), `GET
-   /api/app/maquinas/{id}` (apontamentos das últimas `oee.app.horas_apontamentos` h, pendências "sem motivo" dos
+   /api/app/maquinas/{id}` (apontamentos de HOJE dentro do turno da máquina — `MaquinasAplicativo::periodoDeHoje`:
+   jornada do dia em `JornadaSemanal` + `DiasUteis::trabalha`; sem jornada, o padrão da Timeline 01:00–23:59 —, pendências "sem motivo" dos
    últimos `oee.app.dias_pendencia_sem_motivo` dias, OP com roteiro e molde, legendas de motivo), `POST
    /api/app/apontamentos/{id}/motivo`, `POST /api/app/maquinas/{id}/op`, `GET /api/app/ops`, `POST
    /api/app/ferramentas/{id}/cavidades` — regras em `App\Services\Aplicativo\MaquinasAplicativo`. Consultar:

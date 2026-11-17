@@ -7,11 +7,14 @@ use App\Models\Ferramenta;
 use App\Models\Legenda;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
+use App\Services\Calendario\DiasUteis;
 use App\Services\CustoOrdemProducao;
 use App\Services\EngenhariaOrdemProducao;
+use App\Services\Filtros\FiltroTimeline;
 use App\Services\HorarioApontamento;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
+use App\Support\JornadaSemanal;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,6 +34,7 @@ class MaquinasAplicativo
         private StatusOrdemProducao $status,
         private EngenhariaOrdemProducao $engenharia,
         private CustoOrdemProducao $custo,
+        private DiasUteis $diasUteis,
     ) {}
 
     /** Máquinas ativas com IoT ativo que o usuário enxerga. */
@@ -64,11 +68,16 @@ class MaquinasAplicativo
         $this->situacao->desvincularOpsFechadas(array_filter([$maquina->ordem_producao_id]));
         $maquina->refresh()->load(['ordemProducao', 'situacaoLegenda', 'linha.planta']);
         $fuso = HorarioApontamento::fuso();
-        $desde = now()->subHours((int) config('oee.app.horas_apontamentos', 24));
+        // Sempre só HOJE e só dentro do TURNO da máquina (jornada do dia no cadastro). Sem jornada para hoje: o
+        // período padrão da Timeline do portal (01:00 até 23:59).
+        [$deLocal, $ateLocal, $rotulo] = $this->periodoDeHoje($maquina);
+        $de = $deLocal->utc();
+        $ate = $ateLocal->utc();
 
         $apontamentos = ApontamentoEstado::with(['legenda', 'ordemProducao'])->where('maquina_id', $maquina->id)
-            ->where(fn ($q) => $q->where('inicio', '>=', $desde)->orWhereNull('fim')->orWhere('fim', '>=', $desde))
-            ->orderByDesc('inicio')->orderByDesc('id')->limit(200)->get();
+            ->where('inicio', '<', $ate)
+            ->where(fn ($q) => $q->whereNull('fim')->orWhere('fim', '>', $de))
+            ->orderByDesc('inicio')->orderByDesc('id')->limit(300)->get();
         $pendentes = $this->pendentesSemMotivo()->with(['legenda', 'ordemProducao'])->where('maquina_id', $maquina->id)
             ->orderBy('inicio')->get();
 
@@ -78,6 +87,11 @@ class MaquinasAplicativo
         return [
             'servidor_agora' => now()->toIso8601String(),
             'segundos_atualizacao' => (int) config('oee.app.segundos_atualizacao', 10),
+            'periodo' => [
+                'de_utc' => $de->toIso8601String(),
+                'ate_utc' => $ate->toIso8601String(),
+                'rotulo' => $rotulo,
+            ],
             'maquina' => [
                 'id' => $maquina->id,
                 'codigo' => rtrim((string) $maquina->codigo),
@@ -92,6 +106,28 @@ class MaquinasAplicativo
             'op' => $op ? $this->op($op, $maquina, $produtos) : null,
             'legendas_motivo' => $this->legendasMotivo()->map(fn ($l) => $this->legenda($l))->values()->all(),
         ];
+    }
+
+    /**
+     * Período de hoje mostrado na tela: o turno da máquina (horário de início e fim do dia da semana de hoje, em
+     * JornadaSemanal; fim antes do início = termina amanhã). Sem jornada hoje (ou fora do calendário), o padrão da
+     * Timeline.
+     *
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable, 2: string} início, fim (exclusivo) e rótulo
+     */
+    public function periodoDeHoje(Maquina $maquina): array
+    {
+        $hoje = CarbonImmutable::now(HorarioApontamento::fuso());
+        $jornada = JornadaSemanal::de($maquina)[$hoje->dayOfWeekIso] ?? null;
+        if ($jornada && $this->diasUteis->trabalha($maquina, $hoje->format('Y-m-d'))) {
+            [$de, $ate] = FiltroTimeline::periodoDoDia($hoje, $jornada[0], $jornada[1]);
+
+            return [$de, $ate->addMinute(), 'Turno de hoje, '.$hoje->format('d/m').' · '.$jornada[0].' às '.$jornada[1]];
+        }
+        $padrao = FiltroTimeline::padrao();
+
+        return [$padrao->de, $padrao->fimExclusivo(), 'Hoje, '.$hoje->format('d/m').' · '.$padrao->de->format('H:i')
+            .' às '.$padrao->ate->format('H:i').($jornada ? ' (fora do calendário de trabalho)' : '')];
     }
 
     /** Troca a legenda "sem motivo" de UM apontamento pela legenda de parada escolhida pelo operador. */

@@ -236,7 +236,7 @@ fun ConteudoMaquina(
             if (detalhe.op == null) FaixaPiscante("Máquina sem ordem de produção — informe a OP", Situacao.ALERTA)
 
             CartaoSituacao(detalhe, atualizadoEm, hora)
-            CartaoLinhaDoTempo(detalhe.apontamentos, agora)
+            CartaoLinhaDoTempo(detalhe, agora)
 
             TituloSecao("Ordem de produção")
             CartaoOp(detalhe.op, podeAlterar, aoTrocarOp)
@@ -245,9 +245,9 @@ fun ConteudoMaquina(
                 CartaoRoteiro(detalhe.op)
             }
 
-            TituloSecao("Apontamentos reais (últimas 24 h)")
+            TituloSecao("Apontamentos reais do turno de hoje")
             if (detalhe.apontamentos.isEmpty()) {
-                Text("Sem apontamentos nas últimas 24 h.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Sem apontamentos no turno de hoje.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             detalhe.apontamentos.forEach { LinhaApontamento(it) }
         }
@@ -303,22 +303,24 @@ private fun CartaoSituacao(d: DetalheMaquina, atualizadoEm: Long, hora: SimpleDa
     }
 }
 
-/** Barra das últimas 24 h com as cores das legendas (como a Timeline do portal). */
+/** Barra de HOJE, só dentro do turno da máquina (o portal manda o período), com as cores das legendas e a marca de "agora". */
 @Composable
-private fun CartaoLinhaDoTempo(apontamentos: List<ApontamentoApp>, agora: Long) {
-    val janela = 24 * 3_600_000L
-    val inicioJanela = agora - janela
+private fun CartaoLinhaDoTempo(d: DetalheMaquina, agora: Long) {
+    val inicioJanela = paraMs(d.periodoDe) ?: (agora - 12 * 3_600_000L)
+    val fimJanela = paraMs(d.periodoAte) ?: (agora + 12 * 3_600_000L)
+    val janela = (fimJanela - inicioJanela).coerceAtLeast(1L)
     val vazio = MaterialTheme.colorScheme.surfaceVariant
     val padrao = MaterialTheme.colorScheme.outline
-    val segmentos = apontamentos.mapNotNull { a ->
+    val corAgora = MaterialTheme.colorScheme.onSurface
+    val segmentos = d.apontamentos.mapNotNull { a ->
         val ini = paraMs(a.inicioUtc) ?: return@mapNotNull null
         val fim = paraMs(a.fimUtc) ?: agora
-        Triple(ini.coerceAtLeast(inicioJanela), fim.coerceAtMost(agora), corDaLegenda(a.legenda?.cor, padrao))
+        Triple(ini.coerceAtLeast(inicioJanela), fim.coerceAtMost(minOf(agora, fimJanela)), corDaLegenda(a.legenda?.cor, padrao))
     }.filter { it.second > it.first }
     val formato = SimpleDateFormat("HH:mm", Locale("pt", "BR"))
 
     Cartao(preenchimento = PaddingValues(16.dp)) {
-        Text("Últimas 24 horas", style = MaterialTheme.typography.titleMedium)
+        Text(d.periodoRotulo, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(10.dp))
         Canvas(Modifier.fillMaxWidth().height(34.dp).clip(MaterialTheme.shapes.small)) {
             drawRect(vazio)
@@ -327,12 +329,16 @@ private fun CartaoLinhaDoTempo(apontamentos: List<ApontamentoApp>, agora: Long) 
                 val w = ((fim - ini).toFloat() / janela * size.width).coerceAtLeast(1f)
                 drawRect(cor, topLeft = Offset(x, 0f), size = Size(w, size.height))
             }
+            if (agora in inicioJanela..fimJanela) {
+                val x = (agora - inicioJanela).toFloat() / janela * size.width
+                drawRect(corAgora, topLeft = Offset(x - 1.5f, 0f), size = Size(3f, size.height))
+            }
         }
         Spacer(Modifier.height(4.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             (0..4).forEach { i ->
                 Text(
-                    if (i == 4) "agora" else formato.format(Date(inicioJanela + i * janela / 4)),
+                    formato.format(Date(if (i == 4) fimJanela - 60_000 else inicioJanela + i * janela / 4)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

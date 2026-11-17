@@ -61,6 +61,10 @@ data class DetalheMaquina(
     val legendasMotivo: List<LegendaApp>,
     val servidorAgora: String,
     val segundosAtualizacao: Int,
+    /** Período mostrado: sempre só HOJE (01:00–23:59, como a Timeline do portal). */
+    val periodoDe: String? = null,
+    val periodoAte: String? = null,
+    val periodoRotulo: String = "Hoje",
 )
 
 private fun JSONObject.texto(nome: String): String? = if (isNull(nome)) null else optString(nome)
@@ -117,5 +121,8 @@ fun detalheDe(j: JSONObject): DetalheMaquina {
         legendasMotivo = j.optJSONArray("legendas_motivo").lista { legendaDe(it)!! },
         servidorAgora = j.optString("servidor_agora"),
         segundosAtualizacao = j.optInt("segundos_atualizacao", 10).coerceIn(5, 120),
+        periodoDe = j.optJSONObject("periodo")?.texto("de_utc"),
+        periodoAte = j.optJSONObject("periodo")?.texto("ate_utc"),
+        periodoRotulo = j.optJSONObject("periodo")?.optString("rotulo", "Hoje") ?: "Hoje",
     )
 }

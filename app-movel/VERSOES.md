@@ -1,5 +1,11 @@
 # Versões do aplicativo
 
+## 0.4.1 (build 6)
+- Tela da máquina mostra só **HOJE** e só **dentro do turno da máquina** (horário de início e fim do dia de hoje na
+  jornada do cadastro da máquina): a barra vai do início ao fim do turno, com a marca de "agora", e a lista traz só
+  os apontamentos do turno de hoje. Sem jornada para hoje (ou fora do calendário), usa o padrão da Timeline do
+  portal (01:00 às 23:59).
+
 ## 0.4.0 (build 5)
 - Função **Máquinas** (operador):
   - lista das máquinas ATIVAS com IoT ATIVO (as que pedem ação primeiro), com busca, situação, legenda atual e OP;

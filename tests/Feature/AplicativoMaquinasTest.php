@@ -13,6 +13,7 @@ use App\Models\RoteiroOperacao;
 use App\Models\Usuario;
 use App\Services\Aplicativo\LoginAplicativo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\Concerns\CalendarioDeTeste;
 use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
@@ -62,6 +63,12 @@ class AplicativoMaquinasTest extends TestCase
         $this->token = $login->trocarCodigo($login->criarCodigo($operador, LoginAplicativo::desafioDe(self::VERIFICADOR)), self::VERIFICADOR, null, null)['token'];
     }
 
+    /** Fixa o relógio em HOJE, no horário local informado (a tela da máquina mostra só o dia de hoje). */
+    private function travar(string $hora): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-17 '.$hora, config('oee.fuso_exibicao'))->utc());
+    }
+
     private function api(string $metodo, string $url, array $dados = [])
     {
         return $this->json($metodo, '/api/app/'.$url, $dados, ['Authorization' => 'Bearer '.$this->token]);
@@ -79,12 +86,18 @@ class AplicativoMaquinasTest extends TestCase
 
     public function test_detalhe_traz_apontamentos_pendencia_e_so_legendas_de_parada(): void
     {
+        $this->travar('15:00');
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id,
+            'inicio' => now()->subDay(), 'fim' => now()->subDay()->addHour()]); // ontem: fora da tela
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id,
+            'inicio' => now()->subHours(12), 'fim' => now()->subHours(11)]); // 03:00–04:00: antes do turno (06:00–22:00)
         ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id,
             'inicio' => now()->subHours(2), 'fim' => now()->subHour()]);
         $ap = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->semMotivo->id, 'inicio' => now()->subHour()->addSecond()]);
 
         $json = $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()->json();
-        $this->assertCount(2, $json['apontamentos']);
+        $this->assertCount(2, $json['apontamentos']); // só os de hoje, dentro do turno
+        $this->assertSame('Turno de hoje, 17/11 · 06:00 às 22:00', $json['periodo']['rotulo']);
         $this->assertSame($ap->id, $json['sem_motivo'][0]['id']);
         $codigos = array_column($json['legendas_motivo'], 'codigo');
         $this->assertContains('10', $codigos);

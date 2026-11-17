@@ -37,7 +37,7 @@ class CapturasMaquinasTest {
         ApontamentoApp(10, semMotivo, true, "17/11", "14:20:01", null, iso(25 * 60_000), null, 25.0, "06267801001"),
         ApontamentoApp(9, produzindo, false, "17/11", "08:00:00", "14:20:00", iso(6 * 3_600_000 + 45 * 60_000), iso(25 * 60_000 + 1000), 380.0, "06267801001"),
         ApontamentoApp(8, quebra, false, "17/11", "07:10:00", "07:59:59", iso(7 * 3_600_000 + 35 * 60_000), iso(6 * 3_600_000 + 45 * 60_000), 50.0, null),
-        ApontamentoApp(7, produzindo, false, "16/11", "22:00:00", "07:09:59", iso(16 * 3_600_000 + 45 * 60_000), iso(7 * 3_600_000 + 35 * 60_000), 550.0, null),
+        ApontamentoApp(7, produzindo, false, "17/11", "06:00:00", "07:09:59", iso(11 * 3_600_000 + 20 * 60_000), iso(7 * 3_600_000 + 35 * 60_000), 70.0, null),
     )
 
     private fun detalhe(comOp: Boolean, pendente: Boolean) = DetalheMaquina(
@@ -49,6 +49,7 @@ class CapturasMaquinasTest {
             OperacaoApp("20", "MONTAGEM", "MON-02", "", false),
         ), listOf(MoldeApp(1, "M001", "MOLDE TAMPA 8 CAV", 8, 6))) else null,
         legendasMotivo = motivos, servidorAgora = "", segundosAtualizacao = 10,
+        periodoDe = iso(11 * 3_600_000L + 20 * 60_000), periodoAte = iso(-(4 * 3_600_000L + 41 * 60_000)), periodoRotulo = "Turno de hoje, 17/11 · 06:00 às 22:00",
     )
 
     @Test
