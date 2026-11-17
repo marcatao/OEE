@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import br.com.alumbra.oee.alertas.ServicoAlertas
 import br.com.alumbra.oee.api.ApiPortal
 import br.com.alumbra.oee.api.ErroApi
 import br.com.alumbra.oee.maquinas.Alarme
@@ -93,6 +94,8 @@ class MainActivity : ComponentActivity() {
         else -> Tela.Principal
     }
 
+    private val pedirNotificacoes = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
     private val pedirLocalizacao =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { tentativaRede++ }
 
@@ -104,6 +107,7 @@ class MainActivity : ComponentActivity() {
         usuario = if (sessao.token != null) sessao.usuario else null
         encerramento = EncerramentoPendente.de(sessao.encerramentoPendente)
         tratarRetornoDoLogin(intent)
+        if (usuario != null) ligarAlertas()
 
         setContent {
             TemaOee {
@@ -189,14 +193,14 @@ class MainActivity : ComponentActivity() {
                 aoAbrir = { tela = Tela.Maquina(it.id, it.nome) },
                 aoPerderAcesso = ::perderAcesso,
             )
-            is Tela.Maquina -> TelaMaquina(
+            is Tela.Maquina -> TelaMaquinaVigiada(atual.id) { TelaMaquina(
                 repositorio = repositorioMaquinas,
                 maquinaId = atual.id,
                 nomeInicial = atual.nome,
                 podeAlterar = u.operador,
                 aoVoltar = { tela = Tela.Maquinas },
                 aoPerderAcesso = ::perderAcesso,
-            )
+            ) }
             Tela.Os -> TelaOrdensServico(
                 repositorio = repositorioOs,
                 resumo = resumo,
@@ -237,6 +241,44 @@ class MainActivity : ComponentActivity() {
                 },
                 aoPerderAcesso = ::perderAcesso,
             )
+        }
+    }
+
+    /** Enquanto a tela da máquina está aberta, o serviço de alertas vigia a parada sem motivo dela (mesmo com o app fechado). */
+    @androidx.compose.runtime.Composable
+    private fun TelaMaquinaVigiada(id: Int, conteudo: @androidx.compose.runtime.Composable () -> Unit) {
+        androidx.compose.runtime.DisposableEffect(id) {
+            sessao.maquinaVigiada = id
+            onDispose { if (!isFinishing && !isChangingConfigurations && tela !is Tela.Maquina) sessao.maquinaVigiada = 0 }
+        }
+        conteudo()
+    }
+
+    /**
+     * Liga o serviço de alertas (toca com o app fechado e a tela desligada) e pede, uma vez, o que ele precisa:
+     * notificações, ficar fora da economia de bateria e abrir em tela cheia sobre o bloqueio.
+     */
+    private fun ligarAlertas() {
+        val u = sessao.usuario ?: return
+        if (!(u.operador || u.mantenedor || u.aprovarOs)) return
+        val ajustes = getSharedPreferences("ajustes", MODE_PRIVATE)
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            pedirNotificacoes.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        runCatching { ServicoAlertas.iniciar(this) }
+        val energia = getSystemService(android.os.PowerManager::class.java)
+        if (!energia.isIgnoringBatteryOptimizations(packageName) && !ajustes.getBoolean("pediu_bateria", false)) {
+            ajustes.edit().putBoolean("pediu_bateria", true).apply()
+            runCatching {
+                startActivity(Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+            }
+        } else if (Build.VERSION.SDK_INT >= 34 && !getSystemService(android.app.NotificationManager::class.java).canUseFullScreenIntent() &&
+            !ajustes.getBoolean("pediu_tela_cheia", false)
+        ) {
+            ajustes.edit().putBoolean("pediu_tela_cheia", true).apply()
+            runCatching {
+                startActivity(Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName")))
+            }
         }
     }
 
@@ -316,6 +358,7 @@ class MainActivity : ComponentActivity() {
 
     /** O portal recusou o token (saiu, expirou ou perdeu o acesso): volta para a entrada. */
     private fun perderAcesso(motivo: String) {
+        ServicoAlertas.parar(this)
         sessao.sair()
         usuario = null
         tela = Tela.Principal
@@ -327,8 +370,14 @@ class MainActivity : ComponentActivity() {
         tratarRetornoDoLogin(intent)
     }
 
+    override fun onPause() {
+        super.onPause()
+        ServicoAlertas.appNaFrente = false
+    }
+
     override fun onResume() {
         super.onResume()
+        ServicoAlertas.appNaFrente = true
         tentativaRede++
         relogio++
     }
@@ -366,6 +415,7 @@ class MainActivity : ComponentActivity() {
                 sessao.gravarLogin(resposta.getString("token"), resposta)
                 usuario = sessao.usuario
                 mensagem = null
+                ligarAlertas()
             } catch (e: ErroApi) {
                 mensagem = e.message
             } finally {
@@ -397,6 +447,7 @@ class MainActivity : ComponentActivity() {
 
     private fun sair() {
         val token = sessao.token
+        ServicoAlertas.parar(this)
         sessao.sair()
         usuario = null
         tela = Tela.Principal

@@ -95,6 +95,13 @@ class Sessao(contexto: Context) {
             prefs.edit().apply { if (valor == null) remove("encerramento_pendente") else putString("encerramento_pendente", valor) }.apply()
         }
 
+    /** Máquina aberta na tela do operador (o serviço de alertas vigia a parada sem motivo dela). 0 = nenhuma. */
+    var maquinaVigiada: Int
+        get() = prefs.getInt("maquina_vigiada", 0)
+        set(valor) {
+            prefs.edit().putInt("maquina_vigiada", valor).apply()
+        }
+
     fun sair() {
         prefs.edit().clear().apply()
     }

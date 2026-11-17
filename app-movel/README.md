@@ -60,7 +60,8 @@ cd app-movel/android
    informado pelo celular, entre o início e agora; grava "máquina parada" na OS; conclui se pedido), `acao`
    (aguardar material, retomar, concluir), `avaliacoes`, `avaliar` (avaliação do SOLICITANTE no celular do mantenedor:
    `FluxoOrdemServico::avaliar` com o solicitante + assinatura PNG em `os_assinaturas`).
-   Pendências: alerta de SS com o app fechado (Etapa 5, serviço em segundo plano).
+   Alertas com o app fechado: ✔ (0.6.0) `alertas/ServicoAlertas` (serviço em primeiro plano `specialUse`, consulta a
+   cada 20 s, wake lock + Wi-Fi lock, notificação em tela cheia, reinício no boot por `IniciarNoBoot`).
    Regras pedidas: SS/OS (abrir, aprovar, concluir); apontamento com cronômetro: o app TRAVA na tela (sem voltar nem
    sair; o cronômetro segue com o celular bloqueado) mostrando a OS atendida, o setor, o centro de custo e o
    solicitante que vai avaliar; só o botão deslizante "Encerrar apontamento" libera, gravando início e fim e

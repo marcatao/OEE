@@ -1,5 +1,15 @@
 # Versões do aplicativo
 
+## 0.6.0 (build 9)
+- **Alertas com o app fechado e a tela desligada**: serviço em primeiro plano (notificação fixa "OEE Alumbra")
+  que consulta o portal a cada 20 s, mantendo CPU e Wi-Fi ligados:
+  - mantenedor/aprovador: SS esperando alguém assumir — toca até o primeiro assumir; **SS de máquina parada** toca
+    o alarme forte, acende a tela e abre o app por cima da tela de bloqueio;
+  - operador: **parada sem motivo (98)** da máquina que ficou aberta no app.
+  - Notificação com "Silenciar 3 min"; volta a vigiar sozinho quando o celular é religado.
+- Na primeira vez o app pede: permitir notificações, ficar fora da economia de bateria e (Android 14+) abrir em tela
+  cheia sobre o bloqueio.
+
 ## 0.5.1 (build 8)
 - Correção: em aparelhos com Android mais antigo o app dizia "Portal sem resposta" mesmo com o portal abrindo no
   Chrome. O certificado do portal (Sectigo) termina na raiz "Sectigo Public Server Authentication Root R46", que esses
