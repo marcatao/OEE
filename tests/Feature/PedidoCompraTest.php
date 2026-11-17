@@ -72,7 +72,7 @@ class PedidoCompraTest extends TestCase
         $url = "/ordens-de-servico/pedidos-de-compra/da-solicitacao/{$sm->id}";
 
         $this->actingAs($adm)->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk()
-            ->assertSee('Gerar pedido de compra')->assertSee('name="pedido_itens[]" value="'.$aprovado->id.'"', false);
+            ->assertSee('Gerar pedido ou solicitação de compra')->assertSee('name="pedido_itens[]" value="'.$aprovado->id.'"', false);
 
         // Item não aprovado não entra; centros de custo são obrigatórios.
         $this->post($url, ['pedido_itens' => [$pendente->id], 'centro_custo_origem' => '1001', 'centro_custo_destino' => '3003'])->assertSessionHasErrors('pedido_itens');
@@ -155,7 +155,7 @@ class PedidoCompraTest extends TestCase
         $url = "/ordens-de-servico/pedidos-de-compra/da-ordem/{$os->id}";
 
         $this->actingAs($adm)->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()
-            ->assertSee('Quanto esta OS está custando')->assertSee('R$ 20,00')->assertSee('Gerar pedido de compra');
+            ->assertSee('Quanto esta OS está custando')->assertSee('R$ 20,00')->assertSee('Gerar pedido ou solicitação de compra');
 
         $this->post($url, ['centro_custo_origem' => '1001', 'centro_custo_destino' => '3003', 'itens' => [['produto_codigo' => 'NAOEXISTE', 'quantidade' => 1]]])
             ->assertSessionHasErrors('itens.0.produto_codigo');
@@ -190,5 +190,33 @@ class PedidoCompraTest extends TestCase
             ['pedido_itens' => [$item->id], 'centro_custo_origem' => '1001', 'centro_custo_destino' => '3003'])->assertSessionHasErrors('pedido');
         $this->assertSame(0, PedidoCompra::count());
         $this->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk();
+    }
+
+    public function test_solicitacao_de_compra_pelo_mesmo_caminho(): void
+    {
+        $adm = $this->usuario(['admin_producao'], 'adm@empresa.com');
+        $sm = $this->solicitacaoAprovada($adm);
+        $item = $sm->itens()->where('status', 'aprovado')->first();
+
+        $this->actingAs($adm)->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertOk()->assertSee('Solicitação de compra');
+        $this->post("/ordens-de-servico/pedidos-de-compra/da-solicitacao/{$sm->id}", ['tipo' => 'outro', 'pedido_itens' => [$item->id],
+            'centro_custo_origem' => '1001', 'centro_custo_destino' => '3003'])->assertSessionHasErrors('tipo');
+        $this->post("/ordens-de-servico/pedidos-de-compra/da-solicitacao/{$sm->id}", ['tipo' => 'solicitacao', 'pedido_itens' => [$item->id],
+            'centro_custo_origem' => '1001', 'centro_custo_destino' => '3003'])->assertSessionHasNoErrors();
+        $sc = PedidoCompra::sole();
+        $this->assertSame(['solicitacao', 'SC-'], [$sc->tipo, substr($sc->numeroFormatado(), 0, 3)]);
+        $this->assertSame('SC', $this->muro()->value('ZP1_TIPO'));
+
+        // O item já está na SC: não vai para um pedido.
+        $this->post("/ordens-de-servico/pedidos-de-compra/da-solicitacao/{$sm->id}", ['pedido_itens' => [$item->id],
+            'centro_custo_origem' => '1001', 'centro_custo_destino' => '3003'])->assertSessionHasErrors('pedido_itens');
+
+        // O Protheus integra a SC e depois a atende com o pedido 000999.
+        $this->muro()->update(['ZP1_STATUS' => 'AGUARDANDO_APROVACAO', 'ZP1_NUMPED' => '000555']);
+        $this->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertSee('SC Protheus 000555')->assertSee('Integrada — aguardando aprovação');
+        $this->muro()->update(['ZP1_STATUS' => 'CONCLUIDO', 'ZP1_VALOR' => 42.9, 'ZP1_DTCONC' => '20261121']);
+        $this->muroItens()->update(['ZP2_NUMPC' => '000999', 'ZP2_QTDENT' => 3, 'ZP2_VTOTAL' => 42.9]);
+        $this->get("/ordens-de-servico/solicitacoes-de-material/{$sm->id}")->assertSee('Atendida (pedido gerado)')->assertSee('000999')->assertSee('R$ 42,90');
+        $this->assertSame('000999', $sc->itens()->value('pedido_gerado'));
     }
 }

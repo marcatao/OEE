@@ -101,8 +101,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `.sql`? Crie uma migração que chame `ProceduresBanco::instalar()` (ou rode `php artisan banco:procedures`).
   SD3/SD2 são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
-- **Pedidos de compra** (Ordens de serviço): o administrador da unidade gera o pedido dos itens APROVADOS de uma
-  solicitação de material ou direto numa OS aberta (CC de origem e de destino). Vai para o Protheus por TABELAS MURO
+- **Pedidos e solicitações de compra** (Ordens de serviço): o administrador da unidade gera um pedido de compra (SC7,
+  MATA120) ou uma solicitação de compra (SC1, MATA110) — `pedidos_compra.tipo` = pedido | solicitacao, `ZP1_TIPO` = PC |
+  SC — dos itens APROVADOS de uma solicitação de material ou direto numa OS aberta (CC de origem e de destino). Vai para o Protheus por TABELAS MURO
   NATIVAS **ZP1** (cabeçalho) + **ZP2** (itens), criadas no dicionário pelo compatibilizador `U_OEEUPDPC` (conexão
   `muro` / `config/compras.php`): ÚNICA exceção ao "Protheus só leitura" — o portal grava SÓ nelas, como o Protheus
   (campos com prefixo do alias, `D_E_L_E_T_`, próximo `R_E_C_N_O_`, datas AAAAMMDD + hora). Fontes TLPP

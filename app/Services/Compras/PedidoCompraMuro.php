@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Integração dos pedidos de compra com o Protheus pelas TABELAS MURO NATIVAS (ZP1 cabeçalho, ZP2 itens; criadas no
+ * Integração dos pedidos de compra (ZP1_TIPO = PC, MATA120) e das solicitações de compra (ZP1_TIPO = SC, MATA110)
+ * com o Protheus pelas TABELAS MURO NATIVAS (ZP1 cabeçalho, ZP2 itens; criadas no
  * dicionário pelo compatibilizador U_OEEUPDPC, config/compras.php):
  * - gerar(): grava o pedido no portal e na muro (ZP1_STATUS = AGUARDANDO_PROTHEUS);
  * - atualizar(): lê na muro o que o Protheus devolveu (número, aprovação, conclusão, valores, erro);
@@ -71,7 +72,7 @@ final class PedidoCompraMuro
     /**
      * Grava o pedido no portal e na muro, na mesma transação do portal (se a muro falhar, nada fica gravado).
      *
-     * @param  array{unidade: string, solicitacao_material_id?: int|null, ordem_servico_id?: int|null, centro_custo_origem: string,
+     * @param  array{unidade: string, tipo?: string, solicitacao_material_id?: int|null, ordem_servico_id?: int|null, centro_custo_origem: string,
      *     centro_custo_destino: string, observacao?: string|null, origem: string}  $cabecalho
      * @param  list<array{produto_codigo: string, produto_descricao: string, um: string, quantidade: float|string, observacao?: string|null, solicitacao_material_item_id?: int|null}>  $itens
      */
@@ -87,6 +88,7 @@ final class PedidoCompraMuro
                 'centro_custo_destino' => trim($cabecalho['centro_custo_destino']),
                 'observacao' => isset($cabecalho['observacao']) ? mb_substr(trim((string) $cabecalho['observacao']), 0, 250) : null,
                 'status' => 'aguardando_protheus',
+                'tipo' => ($cabecalho['tipo'] ?? 'pedido') === 'solicitacao' ? 'solicitacao' : 'pedido',
             ]);
             foreach (array_values($itens) as $n => $item) {
                 $pedido->itens()->create([
@@ -115,6 +117,7 @@ final class PedidoCompraMuro
             $muro->table(config('compras.tabela_pedidos'))->insert([
                 $c('FILIAL') => ' ',
                 $c('IDPORT') => self::chave($pedido->id),
+                $c('TIPO') => $pedido->ehSolicitacao() ? 'SC' : 'PC',
                 $c('ORIGEM') => mb_substr($origem, 0, 30),
                 $c('FILPED') => $pedido->filial !== '' ? $pedido->filial : ' ',
                 $c('CCORIG') => $pedido->centro_custo_origem,
@@ -145,7 +148,7 @@ final class PedidoCompraMuro
                 $i('QUANT') => $item->quantidade,
                 $i('PRECO') => 0,
                 $i('OBS') => (string) $item->observacao !== '' ? mb_substr((string) $item->observacao, 0, 100) : ' ',
-                $i('C7ITEM') => ' ', $i('VUNIT') => 0, $i('VTOTAL') => 0, $i('QTDENT') => 0,
+                $i('C7ITEM') => ' ', $i('NUMPC') => ' ', $i('VUNIT') => 0, $i('VTOTAL') => 0, $i('QTDENT') => 0,
                 'D_E_L_E_T_' => ' ',
                 'R_E_C_N_O_' => $recno + $n,
             ])->all());
@@ -206,13 +209,13 @@ final class PedidoCompraMuro
     public function cancelar(PedidoCompra $pedido): void
     {
         $this->trocarStatus($pedido, ['AGUARDANDO_PROTHEUS', 'ERRO'], 'CANCELADO', 'Pedido cancelado no portal.',
-            'O Protheus já pegou este pedido: não dá mais para cancelar pelo portal (cancele no Protheus).');
+            'O Protheus já pegou este documento: não dá mais para cancelar pelo portal (cancele no Protheus).');
     }
 
     /** Pedido com erro volta para a fila do Protheus (depois de corrigido o cadastro lá). */
     public function reenviar(PedidoCompra $pedido): void
     {
-        $this->trocarStatus($pedido, ['ERRO'], 'AGUARDANDO_PROTHEUS', null, 'Só pedido com erro pode ser reenviado.');
+        $this->trocarStatus($pedido, ['ERRO'], 'AGUARDANDO_PROTHEUS', null, 'Só o que deu erro no Protheus pode ser reenviado.');
     }
 
     private function trocarStatus(PedidoCompra $pedido, array $de, string $para, ?string $mensagem, string $recusa): void
@@ -258,6 +261,7 @@ final class PedidoCompraMuro
                 'valor_unitario' => $v($linha, self::ite('VUNIT')),
                 'valor_total' => $v($linha, self::ite('VTOTAL')),
                 'quantidade_entregue' => $v($linha, self::ite('QTDENT')),
+                'pedido_gerado' => $texto($v($linha, self::ite('NUMPC')), 10),
             ]);
             if ($item->isDirty()) {
                 $item->saveQuietly();

@@ -110,7 +110,8 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   pode mudar) ou reprova com motivo; grava quem e quando (`aprovado_por_id`, `aprovado_em`); solicitação = pendente →
   em análise → analisada (ou cancelada enquanto nada foi analisado). Gerar a requisição ao almoxarifado ainda está
   pendente ("em breve").
-- **Pedido de compra pelo Protheus (tabela muro)**: o ADMINISTRADOR DA UNIDADE marca itens APROVADOS da solicitação de
+- **Pedido ou solicitação de compra pelo Protheus (tabela muro)**: o administrador escolhe o tipo (pedido = SC7/MATA120;
+  solicitação = SC1/MATA110, atendida quando vira pedido, valor = pedidos gerados). O ADMINISTRADOR DA UNIDADE marca itens APROVADOS da solicitação de
   material (quantidade = aprovada; um item só fica em um pedido ativo) ou escolhe produtos direto na OS ABERTA, com CC
   de ORIGEM e de DESTINO (`PedidoCompraController`). Portal: `pedidos_compra` + `pedidos_compra_itens`; Protheus:
   tabelas NATIVAS `ZP1` + `ZP2` (dicionário pelo compatibilizador `OEEUPDPC.tlpp`; conexão `muro`,

@@ -7,7 +7,10 @@ use App\Models\Manutencao\SolicitacaoMaterialItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** Item do pedido de compra (vai para o Protheus como uma linha do pedido, C7_ITEM = item). */
+/**
+ * Item do pedido (C7_ITEM) ou da solicitação de compra (C1_ITEM) = item. Na solicitação, quantidade_entregue = já em
+ * pedido (C1_QUJE), pedido_gerado = nº do pedido e os valores são os desse pedido.
+ */
 class PedidoCompraItem extends Model
 {
     use Auditavel;

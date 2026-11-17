@@ -619,6 +619,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        nvarchar(12) tipo
     }
     pedidos_compra_itens {
         bigint id PK
@@ -637,6 +638,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        nvarchar(10) pedido_gerado
     }
     plantas {
         bigint id PK
@@ -1003,8 +1005,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`os_planos_preventiva`](#os_planos_preventiva) | Sistema | `id` | 19 | 5 |
 | [`os_sugestoes_descricao`](#os_sugestoes_descricao) | Sistema | `id` | 8 | 2 |
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
-| [`pedidos_compra`](#pedidos_compra) | Sistema | `id` | 21 | 4 |
-| [`pedidos_compra_itens`](#pedidos_compra_itens) | Sistema | `id` | 16 | 4 |
+| [`pedidos_compra`](#pedidos_compra) | Sistema | `id` | 22 | 4 |
+| [`pedidos_compra_itens`](#pedidos_compra_itens) | Sistema | `id` | 17 | 4 |
 | [`plantas`](#plantas) | Sistema | `id` | 9 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
 | [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 11 | 0 |
@@ -2017,10 +2019,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `tipo` | `nvarchar(12)` | não | `'pedido'` |  |
 
 **Índices:** `pedidos_compra_solicitacao_material_id_id_index` (solicitacao_material_id, id) · `pedidos_compra_ordem_servico_id_id_index` (ordem_servico_id, id) · `pedidos_compra_status_id_index` (status, id)
 
-**Regras (CHECK, só no SQL Server):** `ck_pedidos_compra_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_pedidos_compra_status`: `status IN ('aguardando_protheus', 'aguardando_aprovacao', 'aprovado', 'concluido', 'reprovado', 'erro', 'cancelado')` · `ck_pedidos_compra_origem`: `solicitacao_material_id IS NOT NULL OR ordem_servico_id IS NOT NULL`
+**Regras (CHECK, só no SQL Server):** `ck_pedidos_compra_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_pedidos_compra_status`: `status IN ('aguardando_protheus', 'aguardando_aprovacao', 'aprovado', 'concluido', 'reprovado', 'erro', 'cancelado')` · `ck_pedidos_compra_origem`: `solicitacao_material_id IS NOT NULL OR ordem_servico_id IS NOT NULL` · `ck_pedidos_compra_tipo`: `tipo IN ('pedido', 'solicitacao')`
 
 ### pedidos_compra_itens
 
@@ -2044,6 +2047,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `pedido_gerado` | `nvarchar(10)` | sim |  |  |
 
 **Índices:** `pedidos_compra_itens_pedido_compra_id_id_index` (pedido_compra_id, id) · `pedidos_compra_itens_solicitacao_material_item_id_index` (solicitacao_material_item_id)
 

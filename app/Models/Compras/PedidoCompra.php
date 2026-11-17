@@ -10,8 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Pedido de compra pedido no portal (de uma solicitação de material ou de uma OS) e gerado no Protheus pela tabela muro
+ * Pedido de compra (tipo "pedido", SC7/MATA120) ou solicitação de compra (tipo "solicitacao", SC1/MATA110) pedido no
+ * portal (de uma solicitação de material ou de uma OS) e gerado no Protheus pela tabela muro
  * (App\Services\Compras\PedidoCompraMuro). Situação, número, aprovação, conclusão e valores vêm do Protheus.
+ * Na solicitação de compra, "concluído" = atendida (virou pedido) e o valor é o dos pedidos gerados a partir dela.
  */
 class PedidoCompra extends Model
 {
@@ -27,6 +29,17 @@ class PedidoCompra extends Model
         'cancelado' => 'Cancelado',
     ];
 
+    public const TIPOS = ['pedido' => 'Pedido de compra', 'solicitacao' => 'Solicitação de compra'];
+
+    /** Rótulos que mudam na solicitação de compra (o resto é igual ao pedido). */
+    private const STATUS_SOLICITACAO = [
+        'aguardando_aprovacao' => 'Integrada — aguardando aprovação',
+        'aprovado' => 'Aprovada — aguardando pedido',
+        'concluido' => 'Atendida (pedido gerado)',
+        'reprovado' => 'Reprovada',
+        'cancelado' => 'Cancelada',
+    ];
+
     /** Situações que não mudam mais: não são lidas de novo na tabela muro. */
     public const FINAIS = ['concluido', 'reprovado', 'cancelado'];
 
@@ -36,7 +49,7 @@ class PedidoCompra extends Model
     protected $table = 'pedidos_compra';
 
     protected $fillable = ['unidade', 'solicitacao_material_id', 'ordem_servico_id', 'filial', 'centro_custo_origem',
-        'centro_custo_destino', 'observacao', 'status'];
+        'centro_custo_destino', 'observacao', 'status', 'tipo'];
 
     protected function casts(): array
     {
@@ -61,11 +74,31 @@ class PedidoCompra extends Model
 
     public function numeroFormatado(): string
     {
-        return 'PC-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+        return ($this->ehSolicitacao() ? 'SC-' : 'PC-').str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+    }
+
+    public function ehSolicitacao(): bool
+    {
+        return $this->tipo === 'solicitacao';
+    }
+
+    public function rotuloTipo(): string
+    {
+        return self::TIPOS[$this->tipo ?? 'pedido'] ?? (string) $this->tipo;
+    }
+
+    /** Como o Protheus chama o número: "Pedido 012345" ou "SC 012345". */
+    public function rotuloNumeroProtheus(): string
+    {
+        return ($this->ehSolicitacao() ? 'SC Protheus ' : 'Pedido Protheus ').$this->numero_pedido;
     }
 
     public function rotuloStatus(): string
     {
+        if ($this->ehSolicitacao() && isset(self::STATUS_SOLICITACAO[$this->status])) {
+            return self::STATUS_SOLICITACAO[$this->status];
+        }
+
         return self::STATUS[$this->status] ?? (string) $this->status;
     }
 

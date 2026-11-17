@@ -1,4 +1,4 @@
-{{-- Pedidos de compra (tabela muro do Protheus). Variáveis: $pedidos (com itens), $podeAdministrar (admin da unidade),
+{{-- Pedidos e solicitações de compra (tabela muro do Protheus). Variáveis: $pedidos (com itens), $podeAdministrar (admin da unidade),
      $muroOk (false = não deu para consultar o Protheus agora). --}}
 @use('App\Services\Manutencao\CustoOrdemServico')
 @use('App\Models\Manutencao\SolicitacaoMaterialItem')
@@ -10,11 +10,12 @@
     <header class="pc-cabeca">
       <div>
         <strong>{{ $pc->numeroFormatado() }}</strong>
+        <span class="suave">{{ $pc->rotuloTipo() }}</span>
         <span class="etiqueta pc-{{ $pc->status }}">{{ $pc->rotuloStatus() }}</span>
-        @if ($pc->numero_pedido)<span class="etiqueta pc-num-protheus" title="Número do pedido no Protheus">Pedido Protheus {{ $pc->numero_pedido }}</span>@endif
+        @if ($pc->numero_pedido)<span class="etiqueta pc-num-protheus" title="Número no Protheus">{{ $pc->rotuloNumeroProtheus() }}</span>@endif
       </div>
       <div class="pc-valor">
-        @if ($pc->valor_total !== null)<strong>{{ CustoOrdemServico::reais((float) $pc->valor_total) }}</strong>@else<span class="suave">valor: aguardando Protheus</span>@endif
+        @if ($pc->valor_total !== null)<strong>{{ CustoOrdemServico::reais((float) $pc->valor_total) }}</strong>@else<span class="suave">valor: {{ $pc->ehSolicitacao() ? 'quando virar pedido' : 'aguardando Protheus' }}</span>@endif
       </div>
     </header>
     <dl class="pc-dados">
@@ -28,7 +29,8 @@
     @if ($pc->mensagem)<p class="aviso {{ $pc->status === 'erro' ? 'erro' : '' }} pc-mensagem">{{ $pc->mensagem }}</p>@endif
     <div class="rolagem">
     <table class="tabela pc-itens">
-      <thead><tr><th>Item</th><th>Produto</th><th class="num">Quantidade</th><th class="num">Entregue</th><th class="num">Valor unit.</th><th class="num">Total</th></tr></thead>
+      <thead><tr><th>Item</th><th>Produto</th><th class="num">Quantidade</th><th class="num">{{ $pc->ehSolicitacao() ? 'Em pedido' : 'Entregue' }}</th>
+        @if ($pc->ehSolicitacao())<th>Pedido</th>@endif<th class="num">Valor unit.</th><th class="num">Total</th></tr></thead>
       <tbody>
       @foreach ($pc->itens->sortBy('item') as $it)
         <tr>
@@ -36,6 +38,7 @@
           <td><code>{{ $it->produto_codigo }}</code> {{ $it->produto_descricao }}@if ($it->observacao)<br><small class="suave">{{ $it->observacao }}</small>@endif</td>
           <td class="num">{{ SolicitacaoMaterialItem::quantidade($it->quantidade) }} {{ $it->um }}</td>
           <td class="num">{{ $it->quantidade_entregue !== null ? SolicitacaoMaterialItem::quantidade($it->quantidade_entregue) : '—' }}</td>
+          @if ($pc->ehSolicitacao())<td>{{ $it->pedido_gerado ?? '—' }}</td>@endif
           <td class="num">{{ $it->valor_unitario !== null ? CustoOrdemServico::reais((float) $it->valor_unitario) : '—' }}</td>
           <td class="num">{{ $it->valor_total !== null ? CustoOrdemServico::reais((float) $it->valor_total) : '—' }}</td>
         </tr>
@@ -49,11 +52,11 @@
           <form method="post" action="{{ route('os.pedidos-compra.reenviar', $pc) }}">@csrf
             <button class="botao pequeno" type="submit">Reenviar ao Protheus</button></form>
         @endif
-        <form method="post" action="{{ route('os.pedidos-compra.cancelar', $pc) }}" onsubmit="return confirm('Cancelar o pedido {{ $pc->numeroFormatado() }}?')">@csrf
-          <button class="botao pequeno secundario" type="submit">Cancelar pedido</button></form>
+        <form method="post" action="{{ route('os.pedidos-compra.cancelar', $pc) }}" onsubmit="return confirm('Cancelar {{ $pc->numeroFormatado() }}?')">@csrf
+          <button class="botao pequeno secundario" type="submit">Cancelar</button></form>
       </div>
     @endif
   </article>
 @empty
-  <p class="suave">Nenhum pedido de compra gerado.</p>
+  <p class="suave">Nenhum pedido ou solicitação de compra gerado.</p>
 @endforelse

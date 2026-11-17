@@ -74,7 +74,7 @@
                     <a class="etiqueta pc-num-protheus" href="#pedidos-compra">{{ $emPedido[$item->id] }}</a>
                   @elseif ($podeGerarPedido)
                     <label class="opcao"><input type="checkbox" class="pc-marcar" name="pedido_itens[]" value="{{ $item->id }}" form="sm-pedido"
-                      @checked(in_array($item->id, array_map('intval', (array) old('pedido_itens', [])), true))> <span>Pedido de compra</span></label>
+                      @checked(in_array($item->id, array_map('intval', (array) old('pedido_itens', [])), true))> <span>Comprar no Protheus</span></label>
                   @endif
                   @if ($podeAnalisar)<button class="botao pequeno secundario" type="button" disabled title="Em breve">Gerar requisição</button>@endif
                 </div>
@@ -95,17 +95,17 @@
 
 @if ($pedidos->isNotEmpty() || $podeGerarPedido)
 <section class="cartao" id="pedidos-compra">
-  <h2>Pedidos de compra</h2>
-  <p class="suave">O pedido vai para o Protheus, que devolve o número, a aprovação, a conclusão e os valores.</p>
+  <h2>Compras no Protheus</h2>
+  <p class="suave">Pedido ou solicitação de compra: o Protheus devolve o número, a aprovação, a conclusão e os valores.</p>
   @if ($podeGerarPedido)
     <form method="post" action="{{ route('os.pedidos-compra.da-solicitacao', $sm) }}" id="sm-pedido" class="pc-novo">
       @csrf
-      <h3>Gerar pedido de compra</h3>
-      <p class="suave">Marque na tabela acima os itens aprovados (coluna da direita) e informe os centros de custo do pedido. A quantidade é a aprovada.</p>
+      <h3>Gerar pedido ou solicitação de compra</h3>
+      <p class="suave">Marque na tabela acima os itens aprovados ("Comprar no Protheus") e informe os centros de custo. A quantidade é a aprovada.</p>
       @error('pedido_itens')<p class="aviso erro" role="alert">{{ $message }}</p>@enderror
       @error('pedido')<p class="aviso erro" role="alert">{{ $message }}</p>@enderror
       @include('manutencao.pedidos-compra._cabecalho', ['centros' => $centros, 'ccOrigem' => $ccPedido, 'ccDestino' => $ccPedido])
-      <div class="acoes"><button class="botao" type="submit">Gerar pedido de compra com os itens marcados</button></div>
+      <div class="acoes"><button class="botao" type="submit">Gerar no Protheus com os itens marcados</button></div>
     </form>
   @endif
   @include('manutencao.pedidos-compra._lista', ['pedidos' => $pedidos, 'podeAdministrar' => $podeAnalisar, 'muroOk' => $muroOk])

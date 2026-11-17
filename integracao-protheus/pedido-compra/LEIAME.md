@@ -1,16 +1,17 @@
-# Pedidos de compra: OEE Alumbra → Protheus (tabelas muro nativas ZP1 / ZP2)
+# Pedidos e solicitações de compra: OEE Alumbra → Protheus (tabelas muro nativas ZP1 / ZP2)
 
-O administrador da unidade gera o pedido de compra no portal, a partir dos itens aprovados de uma **Solicitação de
+O administrador da unidade gera um **pedido de compra** (SC7, MATA120) ou uma **solicitação de compra** (SC1, MATA110)
+no portal — escolhe na hora, campo `ZP1_TIPO` = `PC` ou `SC` —, a partir dos itens aprovados de uma **Solicitação de
 material** ou direto numa **Ordem de serviço** aberta, com o centro de custo de **origem** (quem pede) e de **destino**
-(recebe o custo; vai no `C7_CC`). O portal grava o pedido em duas tabelas NATIVAS do Protheus (criadas pelo dicionário);
-um job do Protheus gera o pedido e devolve o número, a aprovação, a conclusão e os valores.
+(recebe o custo; vai no `C7_CC` / `C1_CC`). O portal grava o documento em duas tabelas NATIVAS do Protheus (criadas pelo dicionário);
+um job do Protheus gera o pedido ou a solicitação e devolve o número, a aprovação, a conclusão e os valores.
 
 ```
 Portal ──INSERT──▶ ZP1 (cabeçalho) + ZP2 (itens)   ZP1_STATUS = AGUARDANDO_PROTHEUS
                          │
              U_OEEPCJOB (Schedule do Protheus)
-                         ├─ MATA120 (ExecAuto) ─▶ SC7   AGUARDANDO_APROVACAO + ZP1_NUMPED
-                         └─ confere SC7/SCR/SD1          APROVADO (ZP1_APROV, data) → CONCLUIDO (data, valores)
+                         ├─ PC: MATA120 ─▶ SC7 / SC: MATA110 ─▶ SC1   AGUARDANDO_APROVACAO + ZP1_NUMPED
+                         └─ confere SC7/SCR/SD1 (PC) ou SC1/SCR/SC7 (SC)  APROVADO → CONCLUIDO (data, valores)
                                                          REPROVADO · ERRO (ZP1_MSG) · CANCELADO
 Portal ◀──SELECT── a cada 10 min (compras:atualizar-pedidos) e ao abrir a solicitação ou a OS
 ```
@@ -43,6 +44,7 @@ leitura na transação), `_FILIAL` em branco (tabela compartilhada), datas `AAAA
 |---|---|---|
 | ZP1_FILIAL | C filial | em branco (compartilhada) |
 | ZP1_IDPORT | C 10 | nº do pedido no portal (zeros à esquerda) |
+| ZP1_TIPO | C 2 | `PC` pedido de compra / `SC` solicitação de compra (em branco = PC) |
 | ZP1_ORIGEM | C 30 | SM-000123 ou OS-000045 |
 | ZP1_FILPED | C filial | filial do pedido (vazio = a do job) |
 | ZP1_CCORIG / ZP1_CCDEST | C (CTT_CUSTO) | centro de custo de origem / de destino (C7_CC) |
@@ -51,11 +53,11 @@ leitura na transação), `_FILIAL` em branco (tabela compartilhada), datas `AAAA
 | ZP1_OBS | C 250 | observação do pedido |
 | ZP1_STATUS | C 20 | AGUARDANDO_PROTHEUS, PROCESSANDO, AGUARDANDO_APROVACAO, APROVADO, CONCLUIDO, REPROVADO, ERRO, CANCELADO |
 | ZP1_MSG | C 250 | erro do ExecAuto ou aviso |
-| ZP1_NUMPED | C (C7_NUM) | número do pedido gerado |
+| ZP1_NUMPED | C (C7_NUM) | número do pedido (PC) ou da solicitação (SC) gerada |
 | ZP1_DTINT / ZP1_HRINT | D / C 8 | integração |
 | ZP1_APROV, ZP1_DTAPRO / ZP1_HRAPRO | C 60, D / C 8 | aprovação |
 | ZP1_DTCONC / ZP1_HRCONC | D / C 8 | conclusão |
-| ZP1_VALOR | N 16,2 | soma do C7_TOTAL (concluído: o entregue) |
+| ZP1_VALOR | N 16,2 | PC: soma do C7_TOTAL (concluído: o entregue); SC: soma dos pedidos gerados a partir dela |
 | ZP1_TENTAT | N 3 | tentativas de geração |
 | ZP1_DTCRIA / ZP1_HRCRIA, ZP1_DTATU / ZP1_HRATU | D / C 8 | gravação pelo portal / última alteração |
 
@@ -67,14 +69,15 @@ leitura na transação), `_FILIAL` em branco (tabela compartilhada), datas `AAAA
 |---|---|---|
 | ZP2_FILIAL | C filial | em branco |
 | ZP2_IDPORT | C 10 | nº do pedido no portal (liga com ZP1) |
-| ZP2_ITEM | C 4 | 0001, 0002... (vira o C7_ITEM) |
+| ZP2_ITEM | C 4 | 0001, 0002... (vira o C7_ITEM / C1_ITEM) |
 | ZP2_IDITEM | C 10 | nº do item no portal |
 | ZP2_PROD / ZP2_DESC / ZP2_UM | C | produto (B1_COD), descrição (60), unidade |
 | ZP2_QUANT | N 14,4 | quantidade |
 | ZP2_PRECO | N 16,4 | 0 = o job usa B1_UPRC (ou B2_CM1) |
 | ZP2_OBS | C 100 | observação do item |
-| ZP2_C7ITEM | C 4 | item gerado no pedido |
-| ZP2_VUNIT / ZP2_VTOTAL / ZP2_QTDENT | N | C7_PRECO / C7_TOTAL / C7_QUJE |
+| ZP2_C7ITEM | C 4 | item gerado no pedido / na solicitação |
+| ZP2_VUNIT / ZP2_VTOTAL / ZP2_QTDENT | N | PC: C7_PRECO / C7_TOTAL / C7_QUJE (entregue). SC: do pedido gerado / C1_QUJE (já em pedido) |
+| ZP2_NUMPC | C (C7_NUM) | SC: pedido que atendeu o item (C7_NUMSC/C7_ITEMSC) |
 
 Índice: 1 `FILIAL+IDPORT+ITEM`.
 
@@ -88,6 +91,8 @@ Parâmetros (SX6, caractere, todos opcionais):
 | `MV_XOEELOJ` | loja padrão                                                 | `01`        |
 | `MV_XOEECND` | condição de pagamento padrão                                | `001`       |
 | `MV_XOEECCO` | campo da SC7 que recebe o CC de origem (crie o campo antes) | `C7_XCCORI` |
+| `MV_XOEECCS` | campo da SC1 que recebe o CC de origem (crie o campo antes) | `C1_XCCORI` |
+| `MV_XOEEDSC` | dias até a necessidade da solicitação (`C1_DATPRF`), numérico | `7`     |
 | `MV_XOEEPCC` | alias da tabela do cabeçalho                                | `ZP1`       |
 | `MV_XOEEPCI` | alias da tabela dos itens                                   | `ZP2`       |
 
@@ -98,6 +103,18 @@ Agende `U_OEEPCJOB` no Schedule (SIGACFG), com a empresa/filial, a cada 5 ou 10 
 `U_OEEPCJOB({"01", "0101"})`.
 
 ## Regras do job
+
+### Solicitação de compra (`ZP1_TIPO = SC`)
+
+- MATA110 com `C1_SOLICIT` = quem gerou no portal, `C1_CC` = CC de destino, `C1_DATPRF` = hoje + `MV_XOEEDSC` dias.
+  Sem fornecedor nem preço (o setor de compras cota).
+- Aprovação: `C1_APROV` = `B` aguardando, `L` (ou em branco) liberada, `R` reprovada; aprovador = último `CR_USERLIB`
+  da SCR tipo `SC`.
+- Concluída (= **atendida**): todos os itens viraram pedido (`C1_QUJE >= C1_QUANT`) ou foram eliminados por resíduo.
+  Por item: o pedido gerado (`C7_NUMSC`/`C7_ITEMSC`, mesma filial) e o valor dele; o valor da solicitação é a soma
+  desses pedidos (o portal soma no custo da OS). Data = emissão do último pedido gerado.
+
+### Pedido de compra (`ZP1_TIPO = PC`)
 
 - Preço do item: `ZP2_PRECO` (o portal manda 0) → `B1_UPRC` → custo médio `B2_CM1` do armazém padrão; sem nenhum, o
   pedido fica com `ERRO` e a mensagem. No portal o administrador pode **reenviar** (depois de corrigir o cadastro) ou

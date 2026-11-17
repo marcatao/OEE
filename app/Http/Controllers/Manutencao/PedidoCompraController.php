@@ -13,10 +13,12 @@ use App\Services\Compras\PedidoCompraMuro;
 use App\Support\AcessoOs;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Pedido de compra pelo Protheus (tabela muro): o ADMINISTRADOR DA UNIDADE gera o pedido escolhendo os itens aprovados
+ * Pedido de compra ou solicitação de compra pelo Protheus (tabela muro; campo "tipo"): o ADMINISTRADOR DA UNIDADE gera
+ * escolhendo os itens aprovados
  * de uma solicitação de material, ou os produtos direto numa OS aberta, com centro de custo de origem e de destino.
  * Cancelar ou reenviar só enquanto o Protheus não pegou o pedido (ou deu erro).
  */
@@ -31,10 +33,10 @@ class PedidoCompraController extends Controller
     {
         $u = $request->user();
         $sm = SolicitacaoMaterial::with('itens')->findOrFail($solicitacao);
-        abort_unless(AcessoOs::ehAdminDa($u, $sm->unidade), 403, 'Só o administrador da unidade gera o pedido de compra.');
+        abort_unless(AcessoOs::ehAdminDa($u, $sm->unidade), 403, 'Só o administrador da unidade gera pedido ou solicitação de compra.');
         $dados = $request->validate($this->regrasCabecalho() + [
             'pedido_itens' => ['required', 'array', 'min:1', 'max:'.self::MAX_ITENS], 'pedido_itens.*' => ['integer'],
-        ], $this->mensagens() + ['pedido_itens.required' => 'Marque os itens aprovados que vão para o pedido de compra.']);
+        ], $this->mensagens() + ['pedido_itens.required' => 'Marque os itens aprovados que vão para o Protheus.']);
         $this->conferirCentros($dados);
 
         $emPedido = self::itensEmPedido($sm->itens->pluck('id')->all());
@@ -42,10 +44,10 @@ class PedidoCompraController extends Controller
         foreach (array_unique($dados['pedido_itens']) as $id) {
             $item = $sm->itens->firstWhere('id', (int) $id);
             if ($item === null || $item->status !== 'aprovado' || (float) $item->quantidade_aprovada <= 0) {
-                throw ValidationException::withMessages(['pedido_itens' => 'Só itens APROVADOS entram no pedido de compra.']);
+                throw ValidationException::withMessages(['pedido_itens' => 'Só itens APROVADOS vão para o Protheus.']);
             }
             if (isset($emPedido[$item->id])) {
-                throw ValidationException::withMessages(['pedido_itens' => "O item {$item->produto_codigo} já está no pedido {$emPedido[$item->id]}."]);
+                throw ValidationException::withMessages(['pedido_itens' => "O item {$item->produto_codigo} já está em {$emPedido[$item->id]}."]);
             }
             $itens[] = ['solicitacao_material_item_id' => $item->id, 'produto_codigo' => $item->produto_codigo, 'produto_descricao' => $item->produto_descricao,
                 'um' => $item->um, 'quantidade' => $item->quantidade_aprovada, 'observacao' => $item->observacao];
@@ -60,8 +62,8 @@ class PedidoCompraController extends Controller
     {
         $u = $request->user();
         $os = AcessoOs::filtrar(OrdemServico::query(), $u)->findOrFail($ordem);
-        abort_unless(AcessoOs::ehAdminDa($u, $os->unidade), 403, 'Só o administrador da unidade gera o pedido de compra.');
-        abort_unless($os->estaAberta(), 422, 'A OS não está aberta: não dá mais para gerar pedido de compra.');
+        abort_unless(AcessoOs::ehAdminDa($u, $os->unidade), 403, 'Só o administrador da unidade gera pedido ou solicitação de compra.');
+        abort_unless($os->estaAberta(), 422, 'A OS não está aberta: não dá mais para gerar pedido ou solicitação de compra.');
         $request->merge(['itens' => array_values(array_filter((array) $request->input('itens', []), fn ($i) => trim((string) ($i['produto_codigo'] ?? '')) !== ''))]);
         $dados = $request->validate($this->regrasCabecalho() + [
             'itens' => ['required', 'array', 'min:1', 'max:'.self::MAX_ITENS],
@@ -97,7 +99,7 @@ class PedidoCompraController extends Controller
         $this->exigirAdmin($request->user(), $pedido);
         $this->muro->cancelar($pedido);
 
-        return redirect()->to($this->voltar($pedido))->with('ok', "Pedido {$pedido->numeroFormatado()} cancelado.");
+        return redirect()->to($this->voltar($pedido))->with('ok', 'Cancelado: '.$this->nome($pedido).'.');
     }
 
     public function reenviar(Request $request, PedidoCompra $pedido): RedirectResponse
@@ -105,7 +107,7 @@ class PedidoCompraController extends Controller
         $this->exigirAdmin($request->user(), $pedido);
         $this->muro->reenviar($pedido);
 
-        return redirect()->to($this->voltar($pedido))->with('ok', "Pedido {$pedido->numeroFormatado()} reenviado ao Protheus.");
+        return redirect()->to($this->voltar($pedido))->with('ok', 'Reenviado ao Protheus: '.$this->nome($pedido).'.');
     }
 
     /**
@@ -138,7 +140,7 @@ class PedidoCompraController extends Controller
             return redirect()->to($destino)->withInput()->withErrors(['pedido' => 'Não foi possível gravar o pedido na tabela de integração do Protheus. Nada foi gravado; tente de novo em instantes. ('.$e->getMessage().')']);
         }
 
-        return redirect()->to($destino)->with('ok', "Pedido de compra {$pedido->numeroFormatado()} enviado ao Protheus com ".count($itens).' item(ns). Situação: aguardando Protheus.');
+        return redirect()->to($destino)->with('ok', 'Enviado ao Protheus: '.$this->nome($pedido).', com '.count($itens).' item(ns). Situação: aguardando Protheus.');
     }
 
     private function regrasCabecalho(): array
@@ -147,6 +149,7 @@ class PedidoCompraController extends Controller
             'centro_custo_origem' => ['required', 'string', 'max:20'],
             'centro_custo_destino' => ['required', 'string', 'max:20'],
             'observacao_pedido' => ['nullable', 'string', 'max:250'],
+            'tipo' => ['nullable', Rule::in(array_keys(PedidoCompra::TIPOS))],
         ];
     }
 
@@ -166,11 +169,18 @@ class PedidoCompraController extends Controller
             }
         }
         $dados['observacao'] = $dados['observacao_pedido'] ?? null;
+        $dados['tipo'] = ($dados['tipo'] ?? null) ?: 'pedido';
     }
 
     private function exigirAdmin(Usuario $u, PedidoCompra $pedido): void
     {
-        abort_unless(AcessoOs::ehAdminDa($u, $pedido->unidade), 403, 'Só o administrador da unidade mexe no pedido de compra.');
+        abort_unless(AcessoOs::ehAdminDa($u, $pedido->unidade), 403, 'Só o administrador da unidade mexe no pedido ou na solicitação de compra.');
+    }
+
+    /** "PC-000001 (pedido de compra)" / "SC-000002 (solicitação de compra)". */
+    private function nome(PedidoCompra $pedido): string
+    {
+        return $pedido->numeroFormatado().' ('.mb_strtolower($pedido->rotuloTipo()).')';
     }
 
     private function voltar(PedidoCompra $pedido): string

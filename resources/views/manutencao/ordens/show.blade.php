@@ -161,9 +161,9 @@
         <h3>Quanto esta OS está custando</h3>
         <p class="os-custo-total">{{ \App\Services\Manutencao\CustoOrdemServico::reais($custo['total']) }}</p>
         <dl>
-          <dt>Pedidos de compra</dt>
+          <dt>Compras (PC e SC)</dt>
           <dd>{{ \App\Services\Manutencao\CustoOrdemServico::reais($custo['pedidos']) }}
-            <small class="suave">{{ $custo['pedidos_qtd'] }} pedido(s)@if ($custo['pedidos_sem_valor']) · {{ $custo['pedidos_sem_valor'] }} aguardando valor do Protheus @endif</small></dd>
+            <small class="suave">{{ $custo['pedidos_qtd'] }} pedido(s)/solicitação(ões)@if ($custo['pedidos_sem_valor']) · {{ $custo['pedidos_sem_valor'] }} ainda sem valor @endif</small></dd>
           <dt>Materiais (almoxarifado)</dt>
           <dd>{{ \App\Services\Manutencao\CustoOrdemServico::reais($custo['materiais']) }}
             @if ($custo['materiais_sem_custo'])<small class="suave">{{ $custo['materiais_sem_custo'] }} sem custo informado</small>@endif</dd>
@@ -374,15 +374,15 @@
 </section>
 
 <section class="cartao" id="pedidos-compra">
-  <h2>Pedidos de compra</h2>
-  <p class="suave">Gerados pelo administrador da unidade e enviados ao Protheus, que devolve o número, a aprovação, a conclusão e os valores
-    (somados no custo da OS).</p>
+  <h2>Compras no Protheus</h2>
+  <p class="suave">Pedidos e solicitações de compra gerados pelo administrador da unidade. O Protheus devolve o número, a aprovação, a
+    conclusão e os valores (somados no custo da OS; na solicitação, o valor dos pedidos gerados a partir dela).</p>
   @include('manutencao.pedidos-compra._lista', ['pedidos' => $pedidos, 'podeAdministrar' => $podeAdministrarPedidos, 'muroOk' => $muroOk])
   @if ($podeGerarPedido)
     @php($itensPc = old('itens') ?: [['produto_codigo' => '', 'quantidade' => '', 'observacao' => '']])
     <form method="post" action="{{ route('os.pedidos-compra.da-ordem', $os) }}" class="pc-novo" id="os-pedido">
       @csrf
-      <h3>Gerar pedido de compra</h3>
+      <h3>Gerar pedido ou solicitação de compra</h3>
       @error('pedido')<p class="aviso erro" role="alert">{{ $message }}</p>@enderror
       @include('manutencao.pedidos-compra._cabecalho', ['centros' => $centrosPedido, 'ccOrigem' => (string) $os->centro_custo, 'ccDestino' => (string) $os->centro_custo])
       <div id="pc-linhas">
@@ -393,7 +393,7 @@
       <template id="pc-modelo">@include('manutencao.pedidos-compra._linha', ['i' => '__I__', 'linha' => []])</template>
       <div class="acoes">
         <button class="botao secundario" type="button" id="pc-adicionar">@include('layouts.partials.icone', ['nome' => 'mais']) Adicionar produto</button>
-        <button class="botao" type="submit">Gerar pedido de compra</button>
+        <button class="botao" type="submit">Gerar no Protheus</button>
       </div>
     </form>
     <script>

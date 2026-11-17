@@ -21,6 +21,7 @@ trait TabelaMuroDeCompras
         $esquema->create(config('compras.tabela_pedidos'), function (Blueprint $t) use ($c) {
             $t->string($c('FILIAL'), 8)->default(' ');
             $t->string($c('IDPORT'), 10)->default(' ');
+            $t->string($c('TIPO'), 2)->default(' ');
             $t->string($c('ORIGEM'), 30)->default(' ');
             $t->string($c('FILPED'), 8)->default(' ');
             $t->string($c('CCORIG'), 20)->default(' ');
@@ -56,6 +57,7 @@ trait TabelaMuroDeCompras
             $t->decimal($i('PRECO'), 16, 4)->default(0);
             $t->string($i('OBS'), 100)->default(' ');
             $t->string($i('C7ITEM'), 4)->default(' ');
+            $t->string($i('NUMPC'), 6)->default(' ');
             $t->decimal($i('VUNIT'), 16, 4)->default(0);
             $t->decimal($i('VTOTAL'), 16, 2)->default(0);
             $t->decimal($i('QTDENT'), 14, 4)->default(0);
