@@ -243,7 +243,7 @@ class SolicitacaoMaterialController extends Controller
         return ProdutoProtheus::query()->where('d_e_l_e_t_', '<>', '*')->where('b1_msblql', '<>', '1');
     }
 
-    /** O solicitante vê as dele; o administrador da área vê todas da área (Adm. Tecnologia: todas). */
+    /** O solicitante vê as dele; o administrador da área vê todas da área (só das unidades que administra). */
     private function visiveis(Usuario $u): Builder
     {
         $admin = AcessoOs::unidadesAdmin($u);
