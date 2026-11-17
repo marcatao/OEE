@@ -61,7 +61,7 @@ cd app-movel/android
    (aguardar material, retomar, concluir), `avaliacoes`, `avaliar` (avaliação do SOLICITANTE no celular do mantenedor:
    `FluxoOrdemServico::avaliar` com o solicitante + assinatura PNG em `os_assinaturas`).
    Pendências: alerta de SS com o app fechado (Etapa 5, serviço em segundo plano).
-   Texto original do pedido: SS/OS (abrir, aprovar, concluir); apontamento com cronômetro: o app TRAVA na tela (sem voltar nem
+   Regras pedidas: SS/OS (abrir, aprovar, concluir); apontamento com cronômetro: o app TRAVA na tela (sem voltar nem
    sair; o cronômetro segue com o celular bloqueado) mostrando a OS atendida, o setor, o centro de custo e o
    solicitante que vai avaliar; só o botão deslizante "Encerrar apontamento" libera, gravando início e fim e
    perguntando se fecha a OS e se a máquina estava/está parada. Avaliação da OS concluída no celular do mantenedor,
