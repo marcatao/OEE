@@ -136,6 +136,17 @@ class Maquina extends Model
         });
     }
 
+    /** Com IoT ATIVO: pelo menos um canal com canal preenchido e dispositivo ativo (ex.: Dashboard por máquina). */
+    public function scopeComIotAtivo(Builder $q): Builder
+    {
+        return $q->where(function ($w) {
+            foreach (self::CANAIS_IOT as $n) {
+                $w->orWhere(fn ($c) => $c->whereNotNull("iot{$n}_canal")->where("iot{$n}_canal", '<>', '')
+                    ->whereIn("iot{$n}_dispositivo_id", DispositivoIot::withoutGlobalScopes()->where('ativo', true)->select('id')));
+            }
+        });
+    }
+
     /** Tem pelo menos um canal IoT com dispositivo ATIVO? (condição para a máquina ficar ativa) */
     public function temCanalIotAtivo(?array $dados = null): bool
     {

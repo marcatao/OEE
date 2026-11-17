@@ -8,6 +8,7 @@ use App\Models\Maquina;
 use App\Models\Planta;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
 
 /**
@@ -16,6 +17,7 @@ use Tests\TestCase;
  */
 class UnidadesTest extends TestCase
 {
+    use IotDeTeste;
     use RefreshDatabase;
 
     private Linha $linha;
@@ -25,9 +27,9 @@ class UnidadesTest extends TestCase
         parent::setUp();
         $planta = Planta::create(['codigo' => 'P', 'nome' => 'Planta']);
         $this->linha = Linha::create(['planta_id' => $planta->id, 'codigo' => 'L', 'nome' => 'Linha']);
-        Maquina::create(['linha_id' => $this->linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ativo' => true]);
-        Maquina::create(['linha_id' => $this->linha->id, 'codigo' => 'SRV-01', 'nome' => 'Servidor 01', 'ativo' => true, 'unidade' => 'tecnologia']);
-        Maquina::create(['linha_id' => $this->linha->id, 'codigo' => 'NOB-01', 'nome' => 'Nobreak 01', 'ativo' => true, 'unidade' => 'ambos']);
+        Maquina::create(['linha_id' => $this->linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ativo' => true] + $this->iotGravado());
+        Maquina::create(['linha_id' => $this->linha->id, 'codigo' => 'SRV-01', 'nome' => 'Servidor 01', 'ativo' => true, 'unidade' => 'tecnologia'] + $this->iotGravado());
+        Maquina::create(['linha_id' => $this->linha->id, 'codigo' => 'NOB-01', 'nome' => 'Nobreak 01', 'ativo' => true, 'unidade' => 'ambos'] + $this->iotGravado());
     }
 
     private function usuario(array $perfis, string $email): Usuario

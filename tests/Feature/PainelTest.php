@@ -3,18 +3,23 @@
 namespace Tests\Feature;
 
 use App\Models\Apontamento;
+use App\Models\ApontamentoEstado;
 use App\Models\DispositivoIot;
 use App\Models\Grupo;
+use App\Models\Legenda;
 use App\Models\Linha;
 use App\Models\Maquina;
 use App\Models\Planta;
 use App\Models\Usuario;
+use App\Services\SituacaoMaquina;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
 
 class PainelTest extends TestCase
 {
+    use IotDeTeste;
     use RefreshDatabase;
 
     private function usuario(string $perfil, string $email, array $permissoes = []): Usuario
@@ -34,7 +39,7 @@ class PainelTest extends TestCase
         $planta = Planta::create(['codigo' => 'MATRIZ', 'nome' => 'Planta Matriz']);
         $linha = Linha::create(['planta_id' => $planta->id, 'codigo' => 'L1', 'nome' => 'Linha 1']);
 
-        return Maquina::create(['linha_id' => $linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ciclo_ideal_s' => 1]);
+        return Maquina::create(['linha_id' => $linha->id, 'codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'ciclo_ideal_s' => 1] + $this->iotGravado());
     }
 
     public function test_inicio_tem_logo_menu_recolhivel_e_atalhos_do_usuario(): void
@@ -119,7 +124,33 @@ class PainelTest extends TestCase
         $this->get('/producao/dashboard')->assertOk()->assertSee('Injetora 01')->assertSee('100%');
         $this->get("/producao/dashboard/{$maquina->id}?periodo=hoje")->assertOk()
             ->assertSee('100,0%')->assertSee('Tempo operando')->assertSee('2 h 00 min');
-        $this->get("/producao/dashboard/{$maquina->id}?periodo=ontem")->assertOk()->assertSee('Sem apontamentos');
+        $this->get("/producao/dashboard/{$maquina->id}?periodo=ontem")->assertOk()->assertSee('sem contagem de peças');
+
+        Carbon::setTestNow();
+    }
+
+    public function test_panorama_pelos_apontamentos_reais_so_com_iot_ativo(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-05 15:00', 'UTC')); // 12:00 em São Paulo
+        $maquina = $this->maquina();
+        $semIot = Maquina::create(['linha_id' => $maquina->linha_id, 'codigo' => 'TOR-01', 'nome' => 'Torno sem IoT', 'ativo' => true]);
+        $iotInativo = Maquina::create(['linha_id' => $maquina->linha_id, 'codigo' => 'PRE-01', 'nome' => 'Prensa IoT desligado', 'ativo' => true] + $this->iotGravado());
+        DispositivoIot::whereKey($iotInativo->iot1_dispositivo_id)->update(['ativo' => false]);
+        $produz = Legenda::create(['codigo' => '1', 'descricao' => 'Produzindo', 'tipo' => 'produzindo', 'cor' => '#2e7d32']);
+        $parada = Legenda::create(['codigo' => '31', 'descricao' => 'Manutenção corretiva', 'tipo' => 'parada', 'cor' => '#c62828']);
+        // 09:00–10:30 produzindo, 10:30–11:00 parada, 11:00–agora (12:00) produzindo: 2h30 produzindo, 30 min parada.
+        foreach ([['12:00', '13:30', $produz], ['13:30', '14:00', $parada], ['14:00', null, $produz]] as [$ini, $fim, $leg]) {
+            $a = ApontamentoEstado::create(['maquina_id' => $maquina->id, 'legenda_id' => $leg->id,
+                'inicio' => Carbon::parse("2026-11-05 {$ini}", 'UTC'), 'fim' => $fim ? Carbon::parse("2026-11-05 {$fim}", 'UTC') : null]);
+            app(SituacaoMaquina::class)->aplicar($a);
+        }
+
+        $this->actingAs($this->usuario('operador', 'op@empresa.com', ['dashboard_maquina']));
+        $this->get('/producao/dashboard')->assertOk()
+            ->assertSee('Injetora 01')->assertDontSee('Torno sem IoT')->assertDontSee('Prensa IoT desligado')
+            ->assertSee('Produzindo agora')->assertSee('83,3%')->assertSee('2 h 30 min')->assertSee('Maior parada: 31');
+        $this->get("/producao/dashboard/{$maquina->id}")->assertOk()
+            ->assertSee('Apontamentos reais')->assertSee('Manutenção corretiva')->assertSee('em aberto');
 
         Carbon::setTestNow();
     }

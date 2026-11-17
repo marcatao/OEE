@@ -37,11 +37,58 @@
   @endif
 </section>
 
+{{-- Panorama pelos apontamentos reais (Timeline): agora, OP, molde, tempos e as legendas do período --}}
+@php($dadosMaq = $panorama['maquinas'][$maquina->id])
+<div class="pm-detalhe">
+  @include('dashboard._cartao-maquina', ['sit' => $panorama['situacoes'][$maquina->id] ?? [], 'dados' => $dadosMaq, 'ind' => null, 'link' => null])
+  <section class="cartao">
+    <h3>Tempo por legenda — {{ $periodo->rotulo() }}</h3>
+    @php($maiorLeg = max(array_column($panorama['geral']['totais'], 'segundos') ?: [0]))
+    @forelse ($panorama['geral']['totais'] as $t)
+      <div style="margin-top:.7rem">
+        <div class="barra-rotulo"><span><i class="tl-cor" style="background: {{ $t['legenda']->cor }}"></i> {{ $t['legenda']->codigo }} · {{ $t['legenda']->descricao }}
+          <small class="suave">({{ \App\Models\Legenda::TIPOS[$t['legenda']->tipo] ?? $t['legenda']->tipo }})</small></span>
+          <strong>{{ Formato::minutos($t['segundos'] / 60) }} · {{ Formato::pct($t['pct']) }}</strong></div>
+        <div class="barra"><i style="width: {{ $maiorLeg > 0 ? round($t['segundos'] / $maiorLeg * 100, 1) : 0 }}%; background: {{ $t['legenda']->cor }}"></i></div>
+      </div>
+    @empty
+      <p class="suave">Nenhum apontamento real desta máquina em {{ mb_strtolower($periodo->rotulo()) }}.</p>
+    @endforelse
+  </section>
+</div>
+
+<section class="cartao" style="margin-top:1.25rem">
+  <h3>Apontamentos reais — {{ $periodo->rotulo() }}</h3>
+  <div class="rolagem">
+  <table class="tabela">
+    <thead><tr><th>Dia</th><th>Legenda</th><th>Início</th><th>Fim</th><th class="num">Duração</th><th>OP</th><th>Referência</th>
+      @if (auth()->user()->pode('apontamentos'))<th></th>@endif</tr></thead>
+    <tbody>
+    @forelse ($apontamentosReais as $a)
+      @php($ini = $a->inicio->copy()->setTimezone(config('oee.fuso_exibicao')))
+      <tr>
+        <td>{{ $ini->format('d/m/Y') }}</td>
+        <td>@if ($a->legenda)<span class="tl-chip"><i class="tl-cor" style="background: {{ $a->legenda->cor }}"></i>{{ $a->legenda->codigo }}</span> <small>{{ $a->legenda->descricao }}</small>@endif</td>
+        <td>{{ $ini->format('H:i:s') }}</td>
+        <td>@if ($a->fim){{ $a->fim->copy()->setTimezone(config('oee.fuso_exibicao'))->format('H:i:s') }}@else<span class="etiqueta situacao-online">em aberto</span>@endif</td>
+        <td class="num">{{ Formato::minutos($a->duracaoMin()) }}</td>
+        <td>@if ($a->ordemProducao)<code>{{ $a->ordemProducao->numero }}</code>@elseif ($a->legenda?->exige_op)<small class="texto-alerta">sem OP</small>@else - @endif</td>
+        <td>{{ $a->referencia ?: '-' }}</td>
+        @if (auth()->user()->pode('apontamentos'))<td><a href="{{ route('apontamentos.edit', $a) }}">Editar</a></td>@endif
+      </tr>
+    @empty
+      <tr><td colspan="8" class="suave">Nenhum apontamento real nesse período.</td></tr>
+    @endforelse
+    </tbody>
+  </table>
+  </div>
+</section>
+
 @if (! $ind->temDados())
-  <section class="cartao vazio">
+  <section class="cartao vazio" style="margin-top:1.25rem">
     @include('layouts.partials.icone', ['nome' => 'dashboard'])
-    <p>Sem apontamentos de produção desta máquina em <strong>{{ mb_strtolower($periodo->rotulo()) }}</strong>.</p>
-    <p><small>Os apontamentos chegam pelos dispositivos IoT ligados à máquina.</small></p>
+    <p>OEE completo (performance e qualidade): ainda sem contagem de peças desta máquina em <strong>{{ mb_strtolower($periodo->rotulo()) }}</strong>.</p>
+    <p><small>A contagem de peças chegará pelos dispositivos IoT ligados à máquina. A disponibilidade acima vem dos apontamentos reais.</small></p>
   </section>
 @else
   <div class="grade duas">

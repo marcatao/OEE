@@ -3,32 +3,40 @@
 namespace App\Http\Controllers;
 
 use App\Models\Apontamento;
+use App\Models\ApontamentoEstado;
 use App\Models\Maquina;
 use App\Models\Parada;
 use App\Services\IndicadoresOee;
+use App\Services\PanoramaMaquinas;
 use App\Services\Periodo;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * Produção > Dashboard por máquina: visão geral (todas as máquinas) e painel de uma máquina.
+ * Produção > Dashboard por máquina: panorama de todas as máquinas ativas com IoT ativo e painel de uma máquina.
+ *
+ * O panorama vem dos APONTAMENTOS REAIS (os da Timeline: situação, OP, molde, tempos e disponibilidade). O OEE
+ * completo (performance e qualidade) usa a contagem de peças (tabelas antigas apontamentos/paradas, que virão do IoT)
+ * e só aparece quando houver esses dados.
  */
 class DashboardController extends Controller
 {
-    public function index(Request $request, IndicadoresOee $indicadores): View
+    public function index(Request $request, IndicadoresOee $indicadores, PanoramaMaquinas $panorama): View
     {
         $periodo = Periodo::de($request->query('periodo'));
-        $maquinas = Maquina::with('linha.planta')->where('ativo', true)->orderBy('nome')->get();
+        // Só máquinas ativas e com IoT ativo (canal com dispositivo ativo).
+        $maquinas = Maquina::with('linha.planta')->where('ativo', true)->comIotAtivo()->orderBy('nome')->get();
 
         return view('dashboard.maquinas', [
             'periodo' => $periodo,
             'maquinas' => $maquinas,
+            'panorama' => $panorama->montar($maquinas, $periodo->inicio, $periodo->fim),
             'indicadores' => $maquinas->isEmpty() ? [] : $indicadores->porMaquina($periodo->inicio, $periodo->fim, $maquinas->modelKeys()),
-            'paradasAbertas' => Parada::whereNull('fim')->pluck('maquina_id')->flip(),
         ]);
     }
 
-    public function maquina(Request $request, Maquina $maquina, IndicadoresOee $indicadores): View
+    public function maquina(Request $request, Maquina $maquina, IndicadoresOee $indicadores, PanoramaMaquinas $panorama): View
     {
         $periodo = Periodo::de($request->query('periodo'));
         $maquina->load(['linha.planta', 'dispositivos' => fn ($q) => $q->orderBy('nome')]);
@@ -36,7 +44,13 @@ class DashboardController extends Controller
         return view('dashboard.maquina', [
             'periodo' => $periodo,
             'maquina' => $maquina,
-            'maquinas' => Maquina::where('ativo', true)->orderBy('nome')->get(['id', 'codigo', 'nome']),
+            'maquinas' => Maquina::where(fn ($q) => $q->where('ativo', true)->comIotAtivo())->orWhere('id', $maquina->id)
+                ->orderBy('nome')->get(['id', 'codigo', 'nome']),
+            'panorama' => $panorama->montar(new Collection([$maquina]), $periodo->inicio, $periodo->fim),
+            // Apontamentos reais (Timeline) que tocam o período, do mais recente para o mais antigo.
+            'apontamentosReais' => ApontamentoEstado::with(['legenda', 'ordemProducao'])->where('maquina_id', $maquina->id)
+                ->where('inicio', '<', $periodo->fim)->where(fn ($q) => $q->whereNull('fim')->orWhere('fim', '>', $periodo->inicio))
+                ->orderByDesc('inicio')->limit(50)->get(),
             'ind' => $indicadores->daMaquina($maquina->id, $periodo->inicio, $periodo->fim),
             'apontamentos' => Apontamento::where('maquina_id', $maquina->id)
                 ->where('inicio', '>=', $periodo->inicio)->where('inicio', '<', $periodo->fim)

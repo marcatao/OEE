@@ -119,6 +119,10 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   só mostra máquinas ATIVAS e com IoT cadastrado (dispositivo + canal, `Maquina::comIot()`; nos testes,
   `Tests\Concerns\IotDeTeste`). Novos
   relatórios seguem o mesmo padrão.
+- **Dashboard por máquina** (`DashboardController`): só máquinas ativas com IoT ATIVO (`Maquina::comIotAtivo()`).
+  Panorama pelos APONTAMENTOS REAIS (`App\Services\PanoramaMaquinas`, sobre a `Timeline`): situação agora, OP,
+  produto, molde e cavidades, tempos por tipo e disponibilidade (partial `dashboard._cartao-maquina`). O OEE completo
+  (performance e qualidade) ainda vem das tabelas antigas de peças (`apontamentos`, `paradas`) e só aparece com dados.
 - Canais IoT da máquina usam `iotN_dispositivo_id` (FK para `dispositivos_iot`). As colunas antigas `iotN_id`
   (texto) só são lidas, para mostrar o valor antigo; não grave nelas. O canal é um dos 6 de `config('oee.iot_canais')`
   (chd1_value…chd6_value; dados virão de MQTT.dbo.IOT001). Dispositivo + canal só em UMA máquina (todas as unidades).
