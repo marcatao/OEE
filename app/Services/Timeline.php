@@ -8,6 +8,7 @@ use App\Models\Legenda;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\ProdutoProtheus;
+use App\Services\Manutencao\ChamadoDaParada;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -60,6 +61,8 @@ class Timeline
                 'produto' => $op ? ($produtos[rtrim($op->c2_produto)] ?? null) : null,
                 'moldes' => $op ? self::moldesDaMaquina($roteiros[$op->id], (string) $m->codigo) : [],
                 // Ciclo médio (segundos por peça) do apontamento real mais recente da máquina; null = não informado.
+                // Máquina parada com SS/OS aberta pela legenda: número e situação (vai no lugar da meta).
+                'chamado' => ChamadoDaParada::da($m),
                 'cicloMedio' => ($c = ApontamentoEstado::where('maquina_id', $m->id)->orderByDesc('inicio')->orderByDesc('id')->value('ciclo_medio')) === null ? null : (int) $c,
             ];
         }

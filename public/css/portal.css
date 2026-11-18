@@ -1122,3 +1122,16 @@ a.pm-cartao:hover { border-color:var(--primaria); border-top-color:var(--estado)
 .ss-alerta-risco.marcado .ss-alerta-icone { background:var(--erro); color:var(--branco); }
 .etiqueta.os-risco { color:var(--erro); background:var(--erro-suave); border-color:transparent; font-weight:700; }
 .etiqueta.os-automatica { color:var(--protheus); background:var(--protheus-suave); border-color:transparent; }
+/* SS/OS da parada no lugar da meta (Timeline): pisca discreto enquanto ninguém assumiu. */
+a.tl-chamado { text-decoration:none; border-color:var(--alerta); background:var(--alerta-suave); }
+a.tl-chamado .tl-meta-titulo, a.tl-chamado small { color:var(--alerta); white-space:normal; text-align:center; }
+a.tl-chamado.chamado-em_execucao, a.tl-chamado.chamado-aberta, a.tl-chamado.chamado-aguardando_material { border-color:var(--protheus); background:var(--protheus-suave); }
+a.tl-chamado.chamado-em_execucao .tl-meta-titulo, a.tl-chamado.chamado-em_execucao small,
+a.tl-chamado.chamado-aberta .tl-meta-titulo, a.tl-chamado.chamado-aberta small,
+a.tl-chamado.chamado-aguardando_material .tl-meta-titulo, a.tl-chamado.chamado-aguardando_material small { color:var(--protheus); }
+a.tl-chamado.chamado-concluida, a.tl-chamado.chamado-encerrada { border-color:var(--ok); background:var(--ok-suave); }
+a.tl-chamado.chamado-concluida .tl-meta-titulo, a.tl-chamado.chamado-concluida small,
+a.tl-chamado.chamado-encerrada .tl-meta-titulo, a.tl-chamado.chamado-encerrada small { color:var(--ok); }
+a.tl-chamado.chamado-pendente { animation:tl-chamado-pisca 1.6s ease-in-out infinite; }
+@keyframes tl-chamado-pisca { 50% { opacity:.55; } }
+@media (prefers-reduced-motion: reduce) { a.tl-chamado.chamado-pendente { animation:none; } }

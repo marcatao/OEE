@@ -108,6 +108,32 @@ class SsAutomaticaTest extends TestCase
         $this->assertSame(2, SolicitacaoServico::count());
     }
 
+    public function test_apontado_no_portal_o_solicitante_e_quem_apontou_e_ele_avalia(): void
+    {
+        $this->quebra->forceFill(['abre_ss_unidade' => 'manutencao', 'abre_ss_area_executante_id' => $this->mecanica->id])->save();
+        $lider = $this->usuario(['admin_producao', 'solicitante_manutencao'], 'lider@empresa.com');
+        $operador = $this->usuario(['operador', 'solicitante_manutencao'], 'operador@empresa.com');
+        $this->actingAs($operador);
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->quebra->id, 'inicio' => now()->subMinutes(5)]);
+
+        $ss = SolicitacaoServico::sole();
+        $this->assertSame($operador->id, $ss->solicitante_id);
+        $this->assertNull($ss->origem_iot);
+        $this->assertStringContainsString('apontado por Operador', $ss->historico()->value('observacao'));
+
+        // Timeline: máquina parada mostra a SS no lugar da meta.
+        $this->maquina->forceFill(['situacao' => 'parada', 'situacao_desde' => now()->subMinutes(5), 'ativo' => true])->save();
+        $this->assertSame($ss->numeroFormatado(), \App\Services\Manutencao\ChamadoDaParada::da($this->maquina->fresh())['numero']);
+
+        // A OS é avaliada pelo próprio operador (solicitante), não pelo administrador.
+        $this->actingAs($lider)->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar")->assertRedirect();
+        $os = OrdemServico::where('solicitacao_id', $ss->id)->firstOrFail();
+        $os->forceFill(['status' => 'concluida', 'concluida_em' => now()])->save();
+        $this->post("/ordens-de-servico/ordens/{$os->id}/avaliar", ['avaliacao' => 'boa'])->assertForbidden();
+        $this->actingAs($operador)->post("/ordens-de-servico/ordens/{$os->id}/avaliar", ['avaliacao' => 'boa'])->assertRedirect();
+        $this->assertSame('encerrada', $os->fresh()->status);
+    }
+
     public function test_legenda_sem_abre_ss_nao_abre(): void
     {
         ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->quebra->id, 'inicio' => now()]);

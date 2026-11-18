@@ -12,6 +12,7 @@ use App\Services\CustoOrdemProducao;
 use App\Services\EngenhariaOrdemProducao;
 use App\Services\Filtros\FiltroTimeline;
 use App\Services\HorarioApontamento;
+use App\Services\Manutencao\ChamadoDaParada;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use App\Support\JornadaSemanal;
@@ -59,6 +60,8 @@ class MaquinasAplicativo
             'legenda' => $this->legenda($m->situacaoLegenda),
             'op' => $m->ordemProducao ? $this->resumoOp($m->ordemProducao, $produtos) : null,
             'sem_motivo' => (int) ($pendentes[$m->id] ?? 0),
+            // Parada com SS/OS aberta pela legenda: número e situação, para o operador acompanhar.
+            'chamado' => ChamadoDaParada::da($m),
         ])->values()->all();
     }
 
@@ -100,6 +103,7 @@ class MaquinasAplicativo
                 'situacao' => $maquina->situacao,
                 'situacao_desde' => $this->hora($maquina->situacao_desde, $fuso, 'd/m H:i'),
                 'legenda' => $this->legenda($maquina->situacaoLegenda),
+                'chamado' => ChamadoDaParada::da($maquina),
             ],
             'apontamentos' => $apontamentos->map(fn ($a) => $this->apontamento($a, $fuso))->values()->all(),
             'sem_motivo' => $pendentes->map(fn ($a) => $this->apontamento($a, $fuso))->values()->all(),

@@ -121,9 +121,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   pela `prioridadeAtual`; painéis contam `PRIORIDADES_ALTAS`) (`risco_integridade`, copiado para a OS). **SS automática**: legenda com
   "Abre SS" (`legendas.abre_ss_unidade` + `abre_ss_area_executante_id`) abre a SS ao ser apontada (portal, app ou IoT;
   evento `saved` de `ApontamentoEstado` → `App\Services\Manutencao\SsAutomatica`): título "OS automática — …", CC da
-  máquina, solicitante = usuário técnico inativo "IoT (automático)" + `origem_iot` (dispositivo/canal); uma por
-  apontamento e nenhuma nova com outra automática em aberto da mesma máquina e área; OS automática é avaliada pelo
-  administrador da unidade.
+  máquina, solicitante = QUEM APONTOU (usuário logado no portal ou no app: criado_por/atualizado_por do apontamento);
+  só apontamento do IoT sem usuário usa o usuário técnico inativo "IoT (automático)" + `origem_iot` (e aí a OS é avaliada
+  pelo administrador da unidade); uma por apontamento e nenhuma nova com outra automática em aberto da mesma máquina e
+  área. Máquina PARADA com SS/OS da parada atual: número e situação no lugar da meta (Timeline e app;
+  `App\Services\Manutencao\ChamadoDaParada`, campo `chamado` da API).
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
   Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
   área de resultado é trocada sem recarregar a página (`?parcial=1`). Os filtros podem ser escondidos (botão +

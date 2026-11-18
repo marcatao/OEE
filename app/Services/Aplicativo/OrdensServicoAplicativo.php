@@ -11,6 +11,7 @@ use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Usuario;
 use App\Services\HorarioApontamento;
 use App\Services\Manutencao\FluxoOrdemServico;
+use App\Services\Manutencao\SsAutomatica;
 use App\Support\AcessoOs;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -254,7 +255,7 @@ class OrdensServicoAplicativo
     {
         $os = $this->buscarOs($u, $osId);
         abort_unless($os->status === 'concluida', 422, 'Só dá para avaliar uma OS concluída.');
-        abort_if((bool) $os->automatica, 422, 'OS automática (aberta pelo IoT): quem avalia é o administrador da unidade, no portal.');
+        abort_if($os->automatica && SsAutomatica::solicitanteEhIot($os->solicitante_id), 422, 'OS aberta pelo IoT: quem avalia é o administrador da unidade, no portal.');
         abort_unless(AcessoOs::podeExecutar($u, $os) || (int) $os->solicitante_id === (int) $u->id, 403, 'Esta OS não é sua.');
         $solicitante = $os->solicitante;
         if (! $solicitante) {

@@ -8,6 +8,7 @@ use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Maquina;
 use App\Models\Usuario;
+use App\Services\Manutencao\SsAutomatica;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -227,15 +228,15 @@ final class AcessoOs
     }
 
     /**
-     * Só o próprio solicitante avalia (nem o administrador, a não ser que ele seja o solicitante). OS automática (o
-     * solicitante é o IoT, que não entra no portal): avalia o administrador da unidade.
+     * Só o próprio solicitante avalia (nem o administrador, a não ser que ele seja o solicitante). OS automática aberta
+     * pelo IoT (o solicitante é o usuário técnico, que não entra no portal): avalia o administrador da unidade.
      */
     public static function podeAvaliar(Usuario $u, OrdemServico $os): bool
     {
         if ($os->status !== 'concluida') {
             return false;
         }
-        if ($os->automatica) {
+        if ($os->automatica && SsAutomatica::solicitanteEhIot($os->solicitante_id)) {
             return self::ehAdminDa($u, $os->unidade);
         }
 

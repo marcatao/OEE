@@ -134,6 +134,21 @@ class AplicativoMaquinasTest extends TestCase
         $this->assertTrue($ss->automatica);
         $this->assertSame([$this->maquina->id, $area->id, $ap->id], [$ss->maquina_id, $ss->area_executante_id, $ss->apontamento_estado_id]);
         $this->assertStringStartsWith('OS automática', $ss->titulo);
+        // Solicitante = o operador logado no app (não o IoT).
+        $this->assertSame('Operador', $ss->solicitante->nome);
+        $this->assertNull($ss->origem_iot);
+
+        // Máquina parada: no lugar da meta vem o número e a situação da SS (e, aprovada, da OS).
+        $this->assertSame('parada', $this->maquina->fresh()->situacao);
+        $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()
+            ->assertJsonPath('maquina.chamado.numero', $ss->numeroFormatado())->assertJsonPath('maquina.chamado.rotulo', 'Aguardando análise');
+        $os = app(\App\Services\Manutencao\FluxoOrdemServico::class)->aprovar($ss, $ss->solicitante, []);
+        $lista = collect($this->api('GET', 'maquinas')->assertOk()->json('maquinas'))->firstWhere('id', $this->maquina->id);
+        $this->assertSame([$os->numeroFormatado(), 'os'], [$lista['chamado']['numero'], $lista['chamado']['tipo']]);
+
+        // Voltou a produzir: some (volta a meta).
+        $this->maquina->forceFill(['situacao' => 'produzindo', 'situacao_desde' => now()])->save();
+        $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()->assertJsonPath('maquina.chamado', null);
     }
 
     public function test_alteracoes_pelo_aplicativo_gravam_quem_alterou_e_quando(): void

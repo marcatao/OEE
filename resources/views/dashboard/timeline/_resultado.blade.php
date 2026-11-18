@@ -109,11 +109,21 @@
             @else
               <div class="tl-estado estado-sem"><span class="tl-estado-titulo"><i class="tl-pulso" aria-hidden="true"></i>Sem informação</span></div>
             @endif
-            {{-- Meta de produção da máquina: em breve --}}
-            <div class="tl-meta" title="Meta de produção: em breve">
-              <span class="tl-meta-titulo">Meta</span>
-              <small>em breve</small>
-            </div>
+            @if ($sit && ! empty($sit['chamado']))
+              {{-- Máquina parada com SS/OS aberta pela legenda: número e situação no lugar da meta. --}}
+              @php($ch = $sit['chamado'])
+              <a class="tl-meta tl-chamado chamado-{{ $ch['status'] }}" title="{{ $ch['numero'] }} · {{ $ch['rotulo'] }}"
+                 href="{{ $ch['tipo'] === 'os' ? route('os.ordens.show', $ch['id']) : route('os.solicitacoes.show', $ch['id']) }}">
+                <span class="tl-meta-titulo">{{ $ch['numero'] }}</span>
+                <small>{{ $ch['rotulo'] }}</small>
+              </a>
+            @else
+              {{-- Meta de produção da máquina: em breve --}}
+              <div class="tl-meta" title="Meta de produção: em breve">
+                <span class="tl-meta-titulo">Meta</span>
+                <small>em breve</small>
+              </div>
+            @endif
           </div>
         @endforeach
         <div class="tl-linha tl-linha-eixo">
