@@ -28,9 +28,31 @@ use Illuminate\View\View;
 class CadastroManutencaoController extends Controller
 {
     // ---------- Áreas executantes ----------
-    public function areas(): View
+    public function areas(Request $request): View
     {
-        return view('manutencao.cadastros.areas', ['areas' => AreaExecutante::orderByDesc('ativo')->orderBy('nome')->get(), 'nova' => new AreaExecutante(['ativo' => true])]);
+        [$unidades, $unidade] = $this->filtroUnidade($request);
+
+        return view('manutencao.cadastros.areas', [
+            'areas' => AreaExecutante::when($unidade !== '', fn ($q) => $q->whereIn('unidade', [$unidade, 'ambos']))
+                ->orderByDesc('ativo')->orderBy('nome')->get(),
+            'nova' => new AreaExecutante(['ativo' => true, 'unidade' => $unidade !== '' ? $unidade : null]),
+            'unidades' => $unidades,
+            'unidade' => $unidade,
+        ]);
+    }
+
+    /**
+     * Filtro de unidade das listas: só as unidades habilitadas no login (as outras não aparecem nem pela URL).
+     * Escolhida uma unidade, a lista mostra os cadastros dela e os de "Todas".
+     *
+     * @return array{0: list<string>, 1: string} unidades permitidas e a escolhida ('' = todas as minhas)
+     */
+    private function filtroUnidade(Request $request): array
+    {
+        $unidades = AcessoOs::unidadesHabilitadas($request->user());
+        $unidade = (string) $request->query('unidade', '');
+
+        return [$unidades, in_array($unidade, $unidades, true) ? $unidade : ''];
     }
 
     public function salvarArea(Request $request, ?int $area = null): RedirectResponse
@@ -56,17 +78,24 @@ class CadastroManutencaoController extends Controller
         }
         $registro->fill($dados)->save();
 
-        return redirect()->route('os.cadastros.areas')->with('ok', "Área {$registro->nome} salva.");
+        // Volta para a lista com o mesmo filtro de unidade.
+        return redirect()->route('os.cadastros.areas', array_filter(['unidade' => (string) $request->query('unidade', '')]))
+            ->with('ok', "Área {$registro->nome} salva.");
     }
 
     // ---------- Mantenedores ----------
     // O mantenedor é um USUÁRIO do portal (Segurança › Usuários): nome, foto, e-mail e departamento vêm do login
     // (Entra ID). Aqui ficam só os dados da manutenção: áreas executantes, matrícula, centro de custo e jornada.
-    public function mantenedores(): View
+    public function mantenedores(Request $request): View
     {
+        [$unidades, $unidade] = $this->filtroUnidade($request);
+
         return view('manutencao.cadastros.mantenedores', [
             'mantenedores' => Mantenedor::with(['usuario', 'areas', 'ferramentas' => fn ($q) => $q->where('ativo', true)->orderBy('codigo')])
+                ->when($unidade !== '', fn ($q) => $q->whereIn('unidade', [$unidade, 'ambos']))
                 ->orderByDesc('ativo')->orderBy('nome')->get(),
+            'unidades' => $unidades,
+            'unidade' => $unidade,
         ]);
     }
 

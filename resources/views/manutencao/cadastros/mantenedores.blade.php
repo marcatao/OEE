@@ -12,6 +12,7 @@
     <a class="botao" href="{{ route('os.cadastros.mantenedores.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Novo mantenedor</a>
   </div>
   <p class="suave">Usuários do portal que executam as OS. A <strong>jornada</strong> separa hora normal × extra e dá as horas disponíveis.</p>
+  @include('partials.filtro-unidade')
   <div class="rolagem">
   <table class="tabela">
     <thead><tr><th>Mantenedor</th><th>Unidade</th><th>Áreas executantes</th><th>Equipamentos</th><th>Matrícula</th><th>Jornada</th><th class="num">Horas/dia</th><th>Situação</th><th></th></tr></thead>
