@@ -323,11 +323,19 @@
   @endif
 </section>
 
+{{-- OS aberta: os pedidos/SC e o formulário. OS fechada: só se houver pedido ou SC, com produto e valor do concluído. --}}
+@if ($editavel || $pedidos->isNotEmpty())
 <section class="cartao" id="pedidos-compra">
   <h2>Compras no Protheus</h2>
+  @if ($editavel)
   <p class="suave">Pedidos e solicitações de compra gerados pelo administrador da unidade. O Protheus devolve o número, a aprovação, a
     conclusão e os valores (somados no custo da OS; na solicitação, o valor dos pedidos gerados a partir dela).</p>
   @include('manutencao.pedidos-compra._lista', ['pedidos' => $pedidos, 'podeAdministrar' => $podeAdministrarPedidos, 'muroOk' => $muroOk])
+  @else
+  <p class="suave">Pedidos e solicitações de compra desta OS. O valor de cada produto aparece quando o pedido é concluído no Protheus
+    (pedido: o que foi entregue; solicitação: o pedido gerado a partir dela).</p>
+  @include('manutencao.pedidos-compra._resumo', ['pedidos' => $pedidos, 'muroOk' => $muroOk])
+  @endif
   @if ($podeGerarPedido)
     @php($itensPc = old('itens') ?: [['produto_codigo' => '', 'quantidade' => '', 'observacao' => '']])
     <form method="post" action="{{ route('os.pedidos-compra.da-ordem', $os) }}" class="pc-novo" id="os-pedido">
@@ -363,6 +371,7 @@
     </script>
   @endif
 </section>
+@endif
 
 @if ($checklist->isNotEmpty())
 <section class="cartao">

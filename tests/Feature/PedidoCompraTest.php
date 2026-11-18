@@ -177,6 +177,20 @@ class PedidoCompraTest extends TestCase
         // OS concluída: não gera mais pedido.
         $os->forceFill(['status' => 'concluida'])->save();
         $this->post($url, ['centro_custo_origem' => '1001', 'centro_custo_destino' => '3003', 'itens' => [['produto_codigo' => 'MP0001', 'quantidade' => 1]]])->assertStatus(422);
+
+        // OS concluída: só a lista do que foi comprado; o valor do produto aparece quando o pedido conclui.
+        $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertSee('Compras no Protheus')->assertSee('quando concluir')
+            ->assertDontSee('Gerar pedido ou solicitação de compra');
+        $this->muro()->update(['ZP1_STATUS' => 'CONCLUIDO', 'ZP1_DTCONC' => '20261120', 'ZP1_HRCONC' => '10:00:00', 'ZP1_VALOR' => 130]);
+        $this->muroItens()->where('ZP2_ITEM', '0001')->update(['ZP2_VUNIT' => 50, 'ZP2_VTOTAL' => 100, 'ZP2_QTDENT' => 2]);
+        $this->muroItens()->where('ZP2_ITEM', '0002')->update(['ZP2_VUNIT' => 30, 'ZP2_VTOTAL' => 30, 'ZP2_QTDENT' => 1]);
+        $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertSee('ROLAMENTO 6204 ZZ')->assertSee('R$ 100,00')
+            ->assertSee('GRAXA LITIO 1KG')->assertSee('R$ 30,00')->assertSee('Total dos concluídos');
+
+        // OS fechada sem pedido nem SC: o box não aparece.
+        $outra = OrdemServico::create(['unidade' => 'manutencao', 'tipo' => 'corretiva', 'area_executante_id' => $area->id, 'prioridade' => 'media',
+            'descricao' => 'Sem compras', 'solicitante_id' => $adm->id, 'status' => 'concluida']);
+        $this->get("/ordens-de-servico/ordens/{$outra->id}")->assertOk()->assertDontSee('Compras no Protheus');
     }
 
     public function test_falha_na_tabela_muro_nao_grava_nada_no_portal(): void

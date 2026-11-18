@@ -1096,3 +1096,6 @@ a.pm-cartao:hover { border-color:var(--primaria); border-top-color:var(--estado)
 .chat-sistema { width:2.125rem; height:2.125rem; border-radius:50%; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center;
   background:var(--fundo); border:1px solid var(--borda-forte); color:var(--suave); }
 .chat-sistema .icone { width:1.1rem; height:1.1rem; }
+.pc-resumo td { vertical-align:top; }
+.pc-resumo tr.pc-resumo-inicio td { border-top:2px solid var(--borda-forte); }
+.pc-resumo tfoot th { text-align:right; }
