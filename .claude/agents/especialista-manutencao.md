@@ -189,3 +189,7 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
 - **Painel de OS**: abas das unidades do login (Manutenção, Tecnologia, Ferramentaria) e período De/Até (padrão: mês
   atual). Tempo médio de ATENDIMENTO = abertura do chamado (SS) → 1º apontamento de horas; de REPARO = 1º apontamento →
   conclusão (OS concluídas no período, sem apontamento ficam fora). Encerradas/avaliações pela data da avaliação.
+- **Metas das áreas executantes** (`meta_atendimento_min`, `meta_reparo_min`; na tela hh:mm): o painel mostra os tempos
+  × meta (resumo da unidade, por área acionada no período e, com mais de um mês, gráfico mês a mês — partial
+  `manutencao/_tempos`, `PainelManutencao::indicadores`). Concluir a OS EXIGE a área executante que atendeu (a da OS,
+  corrigível pela tela; `FluxoOrdemServico` recusa concluir sem área).

@@ -435,6 +435,8 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        int meta_atendimento_min
+        int meta_reparo_min
     }
     os_assinaturas {
         bigint id PK
@@ -1026,7 +1028,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`ordens_producao`](#ordens_producao) | Protheus | `id` | 28 | 0 |
 | [`ordens_servico`](#ordens_servico) | Sistema | `id` | 36 | 12 |
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
-| [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 9 | 2 |
+| [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 11 | 2 |
 | [`os_assinaturas`](#os_assinaturas) | Sistema | `id` | 8 | 3 |
 | [`os_checklist`](#os_checklist) | Sistema | `id` | 9 | 3 |
 | [`os_ferramentas`](#os_ferramentas) | Sistema | `id` | 14 | 3 |
@@ -1748,6 +1750,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `meta_atendimento_min` | `int` | sim |  |  |
+| `meta_reparo_min` | `int` | sim |  |  |
 
 **Índices:** `os_areas_executantes_codigo_unique` único (codigo) · `os_areas_executantes_unidade_index` (unidade)
 

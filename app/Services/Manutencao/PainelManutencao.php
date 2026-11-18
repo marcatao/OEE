@@ -3,6 +3,7 @@
 namespace App\Services\Manutencao;
 
 use App\Models\Manutencao\ApontamentoHoras;
+use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\InteracaoOs;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\OrdemServico;
@@ -52,8 +53,17 @@ final class PainelManutencao
         $fechadas = $os()->where('status', 'encerrada')->where('aceite_em', '>=', $desde)->where('aceite_em', '<', $ateExclusivo)
             ->get(['id', 'avaliacao']);
         $avaliacoes = collect(OrdemServico::AVALIACOES)->map(fn ($r, $k) => $fechadas->where('avaliacao', $k)->count());
-        [$atendimento, $reparo] = $this->tempos($os()->whereIn('status', ['concluida', 'encerrada'])
+        $linhas = $this->linhasDeTempo($os()->whereIn('status', ['concluida', 'encerrada'])
             ->where('concluida_em', '>=', $desde)->where('concluida_em', '<', $ateExclusivo));
+        $resumoTempos = self::indicadores($linhas);
+        // Por área executante acionada no período (com a meta de cada uma) e, com mais de um mês, mês a mês.
+        $areas = AreaExecutante::withoutGlobalScopes()->whereIn('id', $linhas->pluck('area_id')->unique())->get()->keyBy('id');
+        $temposPorArea = $linhas->groupBy('area_id')->map(fn ($g, $id) => ['area' => $areas[$id] ?? null] + self::indicadores($g))
+            ->sortBy(fn ($l) => $l['area']?->nome)->values();
+        $meses = [];
+        for ($m = $deLocal->startOfMonth(); $m->lte($ateLocal); $m = $m->addMonth()) {
+            $meses[$m->format('Y-m')] = ['rotulo' => $m->locale('pt_BR')->translatedFormat('M/y')] + self::indicadores($linhas->where('mes', $m->format('Y-m'))->values());
+        }
 
         $minutosMes = (int) ApontamentoHoras::whereNotNull('fim')->where('inicio', '>=', $desde)->where('inicio', '<', $ateExclusivo)
             ->whereIn('ordem_servico_id', $os()->select('ordens_servico.id'))
@@ -72,8 +82,11 @@ final class PainelManutencao
             'porMantenedor' => $this->porMantenedor($abertas, $unidade, $desde, $ateExclusivo),
             'porArea' => $abertas->groupBy(fn ($o) => $o->areaExecutante?->nome ?? '—')->map->count()->sortDesc(),
             'encerradas30' => $fechadas->count(),
-            'tempoMedioMin' => $atendimento,
-            'tempoReparoMin' => $reparo,
+            'tempoMedioMin' => $resumoTempos['atendimento'],
+            'tempoReparoMin' => $resumoTempos['reparo'],
+            'resumoTempos' => $resumoTempos,
+            'temposPorArea' => $temposPorArea,
+            'temposPorMes' => count($meses) > 1 ? $meses : [],
             'periodoDe' => $deLocal,
             'periodoAte' => $ateLocal,
             'avaliacoes' => $avaliacoes,
@@ -112,35 +125,63 @@ final class PainelManutencao
      * @return Collection<int, array<string, mixed>>
      */
     /**
-     * Tempos médios (minutos) das OS concluídas no período, pelo 1º apontamento de horas (o 1º mantenedor começou):
+     * Tempos (minutos) das OS concluídas no período, pelo 1º apontamento de horas (o 1º mantenedor começou):
      * atendimento = abertura do chamado (SS; preventiva sem SS: emissão da OS) → 1º apontamento;
-     * reparo = 1º apontamento → conclusão. OS sem apontamento ficam fora. @return array{0: ?float, 1: ?float}
+     * reparo = 1º apontamento → conclusão. OS sem apontamento ficam fora. Uma linha por OS, com a área executante
+     * (e as metas dela) e o mês (local) da conclusão.
+     *
+     * @return Collection<int, array{area_id: int, mes: string, atendimento: float, reparo: ?float, meta_atendimento: ?int, meta_reparo: ?int}>
      */
-    private function tempos($consulta): array
+    private function linhasDeTempo($consulta): Collection
     {
-        $ordens = $consulta->with('solicitacao:id,criado_em')->get(['id', 'solicitacao_id', 'criado_em', 'concluida_em']);
+        $ordens = $consulta->with(['solicitacao:id,criado_em', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes()])
+            ->get(['id', 'solicitacao_id', 'area_executante_id', 'criado_em', 'concluida_em']);
         if ($ordens->isEmpty()) {
-            return [null, null];
+            return collect();
         }
         $primeiros = ApontamentoHoras::whereIn('ordem_servico_id', $ordens->pluck('id'))->groupBy('ordem_servico_id')
             ->selectRaw('ordem_servico_id, MIN(inicio) as primeiro')->pluck('primeiro', 'ordem_servico_id');
-        $atendimento = collect();
-        $reparo = collect();
+        $fuso = HorasManutencao::fuso();
+        $linhas = collect();
         foreach ($ordens as $o) {
-            if (! isset($primeiros[$o->id])) {
+            $abertura = $o->solicitacao?->criado_em ?? $o->criado_em;
+            if (! isset($primeiros[$o->id]) || ! $abertura) {
                 continue;
             }
             $primeiro = CarbonImmutable::parse($primeiros[$o->id], 'UTC');
-            $abertura = $o->solicitacao?->criado_em ?? $o->criado_em;
-            if ($abertura) {
-                $atendimento->push(max(0, $primeiro->getTimestamp() - $abertura->getTimestamp()) / 60);
-            }
-            if ($o->concluida_em) {
-                $reparo->push(max(0, $o->concluida_em->getTimestamp() - $primeiro->getTimestamp()) / 60);
-            }
+            $linhas->push([
+                'area_id' => (int) $o->area_executante_id,
+                'mes' => $o->concluida_em ? $o->concluida_em->copy()->setTimezone($fuso)->format('Y-m') : $primeiro->setTimezone($fuso)->format('Y-m'),
+                'atendimento' => max(0, $primeiro->getTimestamp() - $abertura->getTimestamp()) / 60,
+                'reparo' => $o->concluida_em ? max(0, $o->concluida_em->getTimestamp() - $primeiro->getTimestamp()) / 60 : null,
+                'meta_atendimento' => $o->areaExecutante?->meta_atendimento_min,
+                'meta_reparo' => $o->areaExecutante?->meta_reparo_min,
+            ]);
         }
 
-        return [$atendimento->isNotEmpty() ? $atendimento->avg() : null, $reparo->isNotEmpty() ? $reparo->avg() : null];
+        return $linhas;
+    }
+
+    /**
+     * Indicadores de um grupo de linhas: quantidade, médias, meta (média das metas das áreas das OS, pesada pelo nº de
+     * OS) e quantas ficaram dentro da meta. @return array<string, mixed>
+     */
+    public static function indicadores(Collection $linhas): array
+    {
+        $media = fn (string $c) => ($v = $linhas->pluck($c)->filter(fn ($x) => $x !== null))->isNotEmpty() ? $v->avg() : null;
+        $dentro = fn (string $c, string $meta) => $linhas->filter(fn ($l) => $l[$meta] !== null && $l[$c] !== null);
+
+        return [
+            'os' => $linhas->count(),
+            'atendimento' => $media('atendimento'),
+            'reparo' => $media('reparo'),
+            'meta_atendimento' => $media('meta_atendimento'),
+            'meta_reparo' => $media('meta_reparo'),
+            'com_meta_atendimento' => $dentro('atendimento', 'meta_atendimento')->count(),
+            'dentro_atendimento' => $dentro('atendimento', 'meta_atendimento')->filter(fn ($l) => $l['atendimento'] <= $l['meta_atendimento'])->count(),
+            'com_meta_reparo' => $dentro('reparo', 'meta_reparo')->count(),
+            'dentro_reparo' => $dentro('reparo', 'meta_reparo')->filter(fn ($l) => $l['reparo'] <= $l['meta_reparo'])->count(),
+        ];
     }
 
     private function porMantenedor(Collection $abertas, string $unidade, CarbonImmutable $desde, CarbonImmutable $ateExclusivo): Collection

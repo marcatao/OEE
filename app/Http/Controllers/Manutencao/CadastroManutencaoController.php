@@ -42,7 +42,18 @@ class CadastroManutencaoController extends Controller
             'codigo' => ['required', 'string', 'max:20', Rule::unique('os_areas_executantes', 'codigo')->ignore($registro->id)],
             'nome' => ['required', 'string', 'max:80'],
             'ativo' => ['required', 'boolean'],
+            'meta_atendimento' => ['nullable', 'string', 'max:8'],
+            'meta_reparo' => ['nullable', 'string', 'max:8'],
         ], ['codigo.unique' => 'Já existe uma área com esse código.', 'codigo.required' => 'Informe o código.', 'nome.required' => 'Informe o nome.']);
+        // Metas em horas:minutos (ex.: 01:30) gravadas em minutos; vazio = sem meta.
+        foreach (['meta_atendimento' => 'atendimento', 'meta_reparo' => 'reparo'] as $campo => $nome) {
+            $min = AreaExecutante::minutosDe($dados[$campo] ?? null);
+            if ($min === false) {
+                throw ValidationException::withMessages([$campo => "Meta de {$nome}: use horas:minutos, ex.: 01:30."]);
+            }
+            $dados[$campo.'_min'] = $min;
+            unset($dados[$campo]);
+        }
         $registro->fill($dados)->save();
 
         return redirect()->route('os.cadastros.areas')->with('ok', "Área {$registro->nome} salva.");

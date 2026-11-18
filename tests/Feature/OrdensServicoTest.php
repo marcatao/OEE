@@ -711,4 +711,39 @@ class OrdensServicoTest extends TestCase
         $this->get('/ordens-de-servico/painel?unidade=manutencao&de=2020-01-01&ate=2020-01-31')->assertOk()->assertDontSee('2 h 30 min');
         $this->get('/ordens-de-servico/painel?unidade=ferramentaria')->assertOk()->assertSee('Painel — Ferramentaria');
     }
+
+    public function test_metas_da_area_tempos_por_area_e_mes_e_area_obrigatoria_na_conclusao(): void
+    {
+        $adm = $this->usuario(['admin_producao'], 'adm-metas@empresa.com');
+        $this->actingAs($adm)->put("/ordens-de-servico/cadastros/areas/{$this->mecanica->id}", ['unidade' => 'manutencao', 'codigo' => 'MEC', 'nome' => 'Mecânica',
+            'ativo' => 1, 'meta_atendimento' => '0:20', 'meta_reparo' => '17:01'])->assertSessionHasNoErrors();
+        $this->assertSame([20, 1021], [$this->mecanica->fresh()->meta_atendimento_min, $this->mecanica->fresh()->meta_reparo_min]);
+        $this->put("/ordens-de-servico/cadastros/areas/{$this->mecanica->id}", ['unidade' => 'manutencao', 'codigo' => 'MEC', 'nome' => 'Mecânica',
+            'ativo' => 1, 'meta_atendimento' => '1h30'])->assertSessionHasErrors('meta_atendimento');
+        $this->get('/ordens-de-servico/cadastros/areas')->assertSee('value="17:01"', false);
+
+        // OS concluída: atendimento 30 min (acima da meta de 20) e reparo 2 h 30 (dentro).
+        $m = Mantenedor::create(['nome' => 'Mecânico']);
+        $mesPassado = now(config('oee.fuso_exibicao'))->subMonthNoOverflow()->startOfMonth()->setTime(8, 0)->utc();
+        $os = OrdemServico::create(['unidade' => 'manutencao', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'prioridade' => 'alta', 'descricao' => 'x', 'solicitante_id' => $adm->id, 'status' => 'encerrada', 'concluida_em' => $mesPassado->copy()->addHours(3)]);
+        $os->forceFill(['criado_em' => $mesPassado])->saveQuietly();
+        ApontamentoHoras::create(['ordem_servico_id' => $os->id, 'mantenedor_id' => $m->id,
+            'inicio' => $mesPassado->copy()->addMinutes(30), 'fim' => $mesPassado->copy()->addHours(3), 'minutos_normais' => 150, 'minutos_extras' => 0]);
+        $de = now(config('oee.fuso_exibicao'))->subMonthNoOverflow()->startOfMonth()->format('Y-m-d');
+        $pagina = $this->get("/ordens-de-servico/painel?unidade=manutencao&de={$de}")->assertOk()
+            ->assertSee('Tempos de atendimento e reparo')->assertSee('Por área executante acionada')->assertSee('acima da meta')
+            ->assertSee('Tempos mês a mês × meta')->assertSee('class="grafico-tempos"', false)->getContent();
+        $this->assertStringContainsString('Mecânica', substr($pagina, strpos($pagina, 'Por área executante acionada')));
+        // Só o mês atual: sem o gráfico mês a mês.
+        $this->get('/ordens-de-servico/painel?unidade=manutencao')->assertOk()->assertDontSee('Tempos mês a mês × meta');
+
+        // Concluir pela tela pede a área executante (vem a da OS; aceita só da mesma unidade).
+        $aberta = OrdemServico::create(['unidade' => 'manutencao', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'prioridade' => 'baixa', 'descricao' => 'y', 'solicitante_id' => $adm->id, 'status' => 'em_execucao']);
+        $this->get("/ordens-de-servico/ordens/{$aberta->id}")->assertSee('Área executante que atendeu');
+        $this->post("/ordens-de-servico/ordens/{$aberta->id}/acao", ['acao' => 'concluir', 'area_executante_id' => $this->ti->id])->assertSessionHasErrors('area_executante_id');
+        $this->post("/ordens-de-servico/ordens/{$aberta->id}/acao", ['acao' => 'concluir', 'area_executante_id' => $this->mecanica->id])->assertSessionHasNoErrors();
+        $this->assertSame('concluida', $aberta->fresh()->status);
+    }
 }

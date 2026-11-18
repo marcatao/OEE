@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Manutencao;
 use App\Http\Controllers\Controller;
 use App\Models\CentroCusto;
 use App\Models\Compras\PedidoCompra;
+use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
 use App\Services\Compras\PedidoCompraMuro;
@@ -19,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -140,6 +142,8 @@ class OrdemServicoController extends Controller
             'podeExecutar' => AcessoOs::podeExecutar($u, $os),
             'podeCancelar' => AcessoOs::podeCancelar($u, $os),
             'podeAvaliar' => AcessoOs::podeAvaliar($u, $os),
+            // Áreas executantes da unidade da OS (e de "Todas") para informar quem atendeu ao concluir.
+            'areasConclusao' => $this->areasDaOs($os),
             // Avaliada (encerrada): nota, comentário e a assinatura feita no aplicativo (se houver). Concluída de novo depois
             // de uma avaliação Ruim ainda espera a nova avaliação.
             'avaliada' => $os->status === 'encerrada' && $os->avaliacao !== null,
@@ -210,6 +214,9 @@ class OrdemServicoController extends Controller
         } else {
             abort_unless(AcessoOs::podeExecutar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         }
+        if ($dados['acao'] === 'concluir') {
+            $this->definirAreaNaConclusao($request, $os);
+        }
         $this->fluxo->executarAcao($os, $dados['acao'], $request->user(), $dados['observacao'] ?? null);
 
         return redirect()->route('os.ordens.show', $os)->with('ok', 'OS '.mb_strtolower(OrdemServico::STATUS[$os->status]).'.');
@@ -256,6 +263,37 @@ class OrdemServicoController extends Controller
      *
      * @return list<array{rotulo: string, quando: ?CarbonInterface, quem: ?string, detalhe: ?string}>
      */
+    /** Áreas executantes ativas da unidade da OS (e as de "Todas"), mais a atual da OS. */
+    private function areasDaOs(OrdemServico $os): Collection
+    {
+        $areas = AreaExecutante::withoutGlobalScopes()->where('ativo', true)->whereIn('unidade', [$os->unidade, 'ambos'])->orderBy('nome')->get();
+        if ($os->areaExecutante && ! $areas->contains('id', $os->area_executante_id)) {
+            $areas->prepend($os->areaExecutante);
+        }
+
+        return $areas;
+    }
+
+    /**
+     * Concluir exige a área executante que atendeu (vem a da OS; pode corrigir para outra da mesma unidade). Mudou:
+     * grava na OS e no histórico (os tempos e as metas do painel são por área).
+     */
+    private function definirAreaNaConclusao(Request $request, OrdemServico $os): void
+    {
+        $request->mergeIfMissing(['area_executante_id' => $os->area_executante_id]);
+        $id = (int) $request->validate(['area_executante_id' => ['required', 'integer']],
+            ['area_executante_id.required' => 'Informe a área executante que atendeu para concluir a OS.'])['area_executante_id'];
+        $area = $this->areasDaOs($os)->firstWhere('id', $id);
+        if (! $area) {
+            throw ValidationException::withMessages(['area_executante_id' => 'Escolha uma área executante da unidade da OS para concluir.']);
+        }
+        if ((int) $os->area_executante_id !== $area->id) {
+            $antes = $os->areaExecutante?->nome;
+            $os->forceFill(['area_executante_id' => $area->id])->save();
+            $this->fluxo->registrar($os, null, 'alterada', $os->status, $os->status, "Área executante na conclusão: {$antes} → {$area->nome}.", $request->user());
+        }
+    }
+
     /**
      * Mensagens e eventos do histórico numa lista só, do mais antigo para o mais novo (no mesmo instante, o evento
      * vem antes da mensagem). @return Collection<int, array{tipo: string, item: mixed}>

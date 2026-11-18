@@ -145,6 +145,13 @@
           <form method="post" action="{{ route('os.ordens.acao', $os) }}" class="os-acoes">
             @csrf
             <label>Observação <input name="observacao" maxlength="2000" placeholder="opcional (obrigatória para cancelar)"></label>
+            @if (isset($acoesVisiveis['concluir']))
+              {{-- Para concluir é obrigatório informar a área executante que atendeu (vem a da OS; pode corrigir). --}}
+              <label>Área executante que atendeu
+                <select name="area_executante_id" aria-label="Área executante que atendeu">
+                  @foreach ($areasConclusao as $ar)<option value="{{ $ar->id }}" @selected((int) old('area_executante_id', $os->area_executante_id) === $ar->id)>{{ $ar->nome }}</option>@endforeach
+                </select></label>
+            @endif
             @foreach ($acoesVisiveis as $acao => $rotulo)
               <button class="botao {{ in_array($acao, ['cancelar', 'reabrir', 'aguardar_material'], true) ? 'secundario' : '' }}" type="submit" name="acao" value="{{ $acao }}"
                 @if ($acao === 'cancelar') onclick="return confirm('Cancelar esta OS?')" @endif>{{ $rotulo }}</button>

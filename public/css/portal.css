@@ -11,6 +11,7 @@
   --logo-filtro:none; --trilha-medidor:#e3ebe6; --fundo-escurecido:rgba(0,0,0,.45);
   --tl-texto-claro:#ffffff; --tl-texto-escuro:#1b2a21; --tl-vazio:#eef2ef; --tl-separador:rgba(255,255,255,.55); --tl-agora:#c62828;
   --grafico-1:#008650; --grafico-2:#1d5fa8; --grafico-3:#d97706; --grafico-4:#7c3aed; --grafico-5:#0f766e; --grafico-6:#be123c; /* séries dos gráficos do assistente */
+  --tempo-atendimento:#008650; --tempo-reparo:#1d5fa8; /* gráfico de tempos do painel de OS (validado) */
   --largura-menu:clamp(14.5rem, 13vw, 16.5rem); --largura-menu-recolhido:4.25rem; --altura-topo:3.75rem;
 }
 @media (prefers-color-scheme: dark) {
@@ -25,6 +26,7 @@
     --logo-filtro:brightness(0) invert(1); --trilha-medidor:#22302a;
     --tl-vazio:#1c2721; --tl-separador:rgba(0,0,0,.35); --tl-agora:#ff6b6b;
     --grafico-1:#3fbf82; --grafico-2:#7cb2ee; --grafico-3:#fbbf24; --grafico-4:#b794f6; --grafico-5:#5fd4c4; --grafico-6:#fb7185;
+    --tempo-atendimento:#2fa86f; --tempo-reparo:#5a95d6;
   }
 }
 
@@ -1135,3 +1137,32 @@ a.tl-chamado.chamado-encerrada .tl-meta-titulo, a.tl-chamado.chamado-encerrada s
 a.tl-chamado.chamado-pendente { animation:tl-chamado-pisca 1.6s ease-in-out infinite; }
 @keyframes tl-chamado-pisca { 50% { opacity:.55; } }
 @media (prefers-reduced-motion: reduce) { a.tl-chamado.chamado-pendente { animation:none; } }
+/* ---------- Painel de OS: tempos de atendimento e reparo × meta ---------- */
+.tempos-resumo { display:grid; grid-template-columns:repeat(auto-fit, minmax(14rem, 1fr)); gap:.75rem; margin:.75rem 0 1rem; }
+.tempo-cartao { display:flex; flex-direction:column; gap:.15rem; border:1px solid var(--borda); border-radius:10px; padding:.75rem 1rem; }
+.tempo-cartao strong { font-size:1.5rem; }
+.tempo-cartao small { color:var(--suave); }
+.tempo-titulo { display:inline-flex; align-items:center; gap:.4rem; color:var(--suave); font-size:.85rem; }
+.tempo-titulo i { width:.7rem; height:.7rem; border-radius:3px; display:inline-block; }
+.tempo-atendimento .tempo-titulo i { background:var(--tempo-atendimento); }
+.tempo-reparo .tempo-titulo i { background:var(--tempo-reparo); }
+.tempo-sit { display:inline-block; margin-left:.35rem; font-weight:650; }
+.tempo-sit-dentro { color:var(--ok); }
+.tempo-sit-fora { color:var(--erro); font-weight:650; }
+.tempos-areas td { white-space:nowrap; }
+.grafico-legenda { display:flex; flex-wrap:wrap; gap:.5rem 1.25rem; font-size:.85rem; color:var(--suave); margin:.25rem 0 .5rem; }
+.grafico-legenda span { display:inline-flex; align-items:center; gap:.4rem; }
+.leg-barra { width:.8rem; height:.8rem; border-radius:3px; display:inline-block; }
+.leg-atendimento { background:var(--tempo-atendimento); }
+.leg-reparo { background:var(--tempo-reparo); }
+.leg-meta { width:1.1rem; height:0; border-top:2px dashed var(--texto); display:inline-block; }
+.grafico-tempos { width:100%; height:auto; max-height:22rem; display:block; }
+.grafico-tempos .g-grade { stroke:var(--borda); stroke-width:1; }
+.grafico-tempos .g-base { stroke:var(--borda-forte); stroke-width:1; }
+.grafico-tempos .g-eixo { fill:var(--suave); font-size:11px; }
+.grafico-tempos .g-atendimento { fill:var(--tempo-atendimento); }
+.grafico-tempos .g-reparo { fill:var(--tempo-reparo); }
+.grafico-tempos rect:hover { opacity:.8; }
+.grafico-tempos .g-meta { stroke:var(--texto); stroke-width:2; stroke-dasharray:4 3; }
+.grafico-tabela { margin-top:.5rem; }
+.grafico-tabela summary { cursor:pointer; color:var(--primaria); font-size:.9rem; }

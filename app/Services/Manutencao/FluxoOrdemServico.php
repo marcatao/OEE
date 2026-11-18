@@ -135,6 +135,10 @@ final class FluxoOrdemServico
             throw ValidationException::withMessages(['acao' => 'Esta OS já foi avaliada pelo solicitante e está encerrada: não pode ser reaberta. Se o problema voltou, abra uma nova solicitação.']);
         }
         $this->exigirStatus($os->status, $de, 'Esta ação não vale para uma OS '.mb_strtolower(OrdemServico::STATUS[$os->status] ?? $os->status).'.');
+        // Toda OS concluída tem de ter a área executante que atendeu (cronômetro, app ou botão da tela).
+        if ($acao === 'concluir' && ! $os->area_executante_id) {
+            throw ValidationException::withMessages(['area_executante_id' => 'Informe a área executante que atendeu para concluir a OS.']);
+        }
         if ($acao === 'cancelar' && trim((string) $obs) === '') {
             throw ValidationException::withMessages(['observacao' => 'Informe o motivo do cancelamento.']);
         }

@@ -72,6 +72,8 @@
   </div>
 </section>
 
+@include('manutencao._tempos')
+
 <div class="grade duas painel-grade">
   <section class="cartao">
     <h2>OS abertas por mantenedor</h2>
