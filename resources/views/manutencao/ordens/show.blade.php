@@ -73,7 +73,13 @@
     <p class="aviso">Serviço concluído: aguardando a avaliação de {{ $os->solicitante?->nome ?? 'quem solicitou' }}.</p>
   @endif
   @if ($os->status === 'cancelada')<p class="aviso erro">Cancelada: {{ $os->cancelamento_motivo }}</p>@endif
-  @if (! $editavel && ! $podeAvaliar)<p class="aviso">OS fechada: dados, conversa, horas e materiais ficam só para consulta. Para alterar, reabra a OS.</p>@endif
+  @if (! $editavel && ! $podeAvaliar)
+    @if ($os->status === 'encerrada')
+      <p class="aviso">OS encerrada (avaliada pelo solicitante): fica só para consulta e não pode ser reaberta. Se o problema voltou, abra uma nova solicitação.</p>
+    @else
+      <p class="aviso">OS fechada: dados, conversa, horas e materiais ficam só para consulta. Para alterar, reabra a OS.</p>
+    @endif
+  @endif
   @if ($os->avaliacao === 'ruim' && $os->status !== 'encerrada' && $os->aceite_observacao)
     <p class="aviso erro">Avaliada como <strong>Ruim</strong> por {{ $os->aceitePor?->nome }} em @dataHora($os->aceite_em): {{ $os->aceite_observacao }}</p>
   @endif
@@ -479,7 +485,7 @@
     })();
   </script>
   @else
-    <p class="aviso">Esta OS está {{ mb_strtolower($os->rotuloStatus()) }}: a conversa fica só para leitura. Para escrever, ela precisa ser reaberta.</p>
+    <p class="aviso">Esta OS está {{ mb_strtolower($os->rotuloStatus()) }}: a conversa fica só para leitura.{{ $os->status === 'encerrada' ? '' : ' Para escrever, ela precisa ser reaberta.' }}</p>
   @endif
 </section>
 @endsection

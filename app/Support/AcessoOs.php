@@ -222,7 +222,7 @@ final class AcessoOs
     {
         if (! $os->estaAberta()) {
             throw ValidationException::withMessages(['os' => 'Esta OS está '.mb_strtolower(OrdemServico::STATUS[$os->status] ?? $os->status)
-                .'. Para alterar, conversar ou apontar, ela precisa ser reaberta.']);
+                .($os->status === 'encerrada' ? ' (avaliada pelo solicitante) e não pode mais ser alterada.' : '. Para alterar, conversar ou apontar, ela precisa ser reaberta.')]);
         }
     }
 

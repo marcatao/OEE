@@ -173,3 +173,6 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   perfis do login (`AcessoOs::unidadesHabilitadas`: unidades dos perfis + as em que é Solicitante; `AcessoOs::filtrar`
   restringe sempre a elas, inclusive no aplicativo e nos alertas). O Administrador de Tecnologia NÃO vê as outras
   unidades: precisa do perfil de cada uma. Lista de OS: filtros de unidade (só se tiver mais de uma) e de data de emissão.
+- **OS avaliada não reabre**: depois da avaliação Excelente/Boa do solicitante (status encerrada) ninguém reabre a OS,
+  nem o administrador (`FluxoOrdemServico::ACOES['reabrir']` só para concluída e cancelada). Avaliação Ruim já devolve
+  a OS para execução. Problema que voltou = nova solicitação.

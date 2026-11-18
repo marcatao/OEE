@@ -316,10 +316,12 @@ class OrdensServicoTest extends TestCase
         $this->actingAs($operador)->post("/ordens-de-servico/ordens/{$os->id}/avaliar", ['avaliacao' => 'boa'])->assertRedirect();
         $this->assertSame('encerrada', $os->fresh()->status);
 
-        // Reabrir libera de novo.
-        $this->actingAs($adm)->post("/ordens-de-servico/ordens/{$os->id}/acao", ['acao' => 'reabrir'])->assertRedirect();
-        $this->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => 'Reaberta para ajuste'])->assertRedirect();
-        $this->assertSame(1, $os->interacoes()->count());
+        // Avaliada (encerrada): ninguém reabre, nem o administrador; o botão some.
+        $this->actingAs($adm)->post("/ordens-de-servico/ordens/{$os->id}/acao", ['acao' => 'reabrir'])->assertSessionHasErrors('acao');
+        $this->assertSame('encerrada', $os->fresh()->status);
+        $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertSee('não pode ser reaberta')->assertDontSee('value="reabrir"', false);
+        $this->post("/ordens-de-servico/ordens/{$os->id}/interacoes", ['texto' => 'Reaberta para ajuste'])->assertSessionHasErrors('os');
+        $this->assertSame(0, $os->interacoes()->count());
     }
 
     public function test_painel_da_area_com_area_padrao(): void

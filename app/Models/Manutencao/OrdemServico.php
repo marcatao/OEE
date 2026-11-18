@@ -80,7 +80,10 @@ class OrdemServico extends Model
         return 'manutencao';
     }
 
-    /** Aberta (aberta, em execução ou aguardando material)? Fechada = concluída, encerrada ou cancelada: só reabrir. */
+    /**
+     * Aberta (aberta, em execução ou aguardando material)? Fechada = concluída, encerrada ou cancelada: concluída e
+     * cancelada só reabrindo; encerrada (avaliada pelo solicitante) não reabre mais.
+     */
     public function estaAberta(): bool
     {
         return in_array($this->status, self::STATUS_ABERTOS, true);

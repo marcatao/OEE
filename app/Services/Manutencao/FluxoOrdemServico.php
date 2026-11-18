@@ -26,7 +26,7 @@ final class FluxoOrdemServico
         'aguardar_material' => [['aberta', 'em_execucao'], 'aguardando_material', 'Aguardando material'],
         'retomar' => [['aguardando_material'], 'em_execucao', 'Retomar execução'],
         'concluir' => [['aberta', 'em_execucao', 'aguardando_material'], 'concluida', 'Concluir serviço'],
-        'reabrir' => [['concluida', 'encerrada', 'cancelada'], 'em_execucao', 'Reabrir'],
+        'reabrir' => [['concluida', 'cancelada'], 'em_execucao', 'Reabrir'], // encerrada (avaliada pelo solicitante) não reabre
         'cancelar' => [['aberta', 'em_execucao', 'aguardando_material'], 'cancelada', 'Cancelar OS'],
     ];
 
@@ -127,6 +127,9 @@ final class FluxoOrdemServico
             throw ValidationException::withMessages(['acao' => 'Ação desconhecida.']);
         }
         [$de, $para] = self::ACOES[$acao];
+        if ($acao === 'reabrir' && $os->status === 'encerrada') {
+            throw ValidationException::withMessages(['acao' => 'Esta OS já foi avaliada pelo solicitante e está encerrada: não pode ser reaberta. Se o problema voltou, abra uma nova solicitação.']);
+        }
         $this->exigirStatus($os->status, $de, 'Esta ação não vale para uma OS '.mb_strtolower(OrdemServico::STATUS[$os->status] ?? $os->status).'.');
         if ($acao === 'cancelar' && trim((string) $obs) === '') {
             throw ValidationException::withMessages(['observacao' => 'Informe o motivo do cancelamento.']);
