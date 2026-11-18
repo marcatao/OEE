@@ -121,6 +121,25 @@
   @endif
 
   @if ($u->pode('apontamentos'))
+    {{-- Parada sem motivo (98): escolher a legenda de parada daquele apontamento. --}}
+    <dialog id="tl-dialogo-motivo" class="dialogo">
+      <form method="dialog" id="tl-form-motivo">
+        <h2>Informar motivo da parada</h2>
+        <p class="suave" data-motivo-descricao></p>
+        <label>Motivo (legenda de parada)
+          <select name="legenda_id" data-busca="Buscar legenda…">
+            <option value="">Escolha…</option>
+            @foreach ($legendasMotivo as $l)<option value="{{ $l->id }}">{{ $l->codigo }} — {{ $l->descricao }}</option>@endforeach
+          </select></label>
+        <p class="erro" data-motivo-erro hidden></p>
+        <div class="acoes">
+          <button class="botao" type="submit" value="gravar">Gravar motivo</button>
+          <button class="botao secundario" type="button" data-motivo-cancelar>Cancelar</button>
+        </div>
+        <small class="suave">A legenda é trocada só neste apontamento.</small>
+      </form>
+    </dialog>
+
     {{-- "Trocar OP" da máquina: 1) escolhe a OP (só abertas); 2) escolhe se troca no apontamento atual ou num novo. --}}
     <dialog id="tl-dialogo-troca" class="dialogo">
       <form method="dialog" id="tl-form-troca">
@@ -285,6 +304,35 @@
           dialogo.close(); atualizar();
         })
         .catch(function () { erroOp.textContent = 'Não foi possível gravar. Tente de novo.'; erroOp.hidden = false; });
+    });
+  }
+
+  // Parada sem motivo (aviso no topo ou bloco piscando): escolhe a legenda; ao gravar, atualiza (aparecem as próximas).
+  var dMotivo = document.getElementById('tl-dialogo-motivo');
+  if (dMotivo) {
+    var fMotivo = document.getElementById('tl-form-motivo'), selMotivo = fMotivo.querySelector('select'), erroMotivo = fMotivo.querySelector('[data-motivo-erro]');
+    var urlMotivo = null;
+    resultado.addEventListener('click', function (e) {
+      var alvo = e.target.closest('[data-informar-motivo]');
+      if (!alvo) return;
+      urlMotivo = alvo.dataset.informarMotivo;
+      fMotivo.querySelector('[data-motivo-descricao]').textContent = alvo.dataset.maquina + ' · ' + alvo.dataset.descricao;
+      selMotivo.value = ''; selMotivo.dispatchEvent(new Event('change'));
+      erroMotivo.hidden = true;
+      dMotivo.showModal();
+    });
+    fMotivo.querySelector('[data-motivo-cancelar]').addEventListener('click', function () { dMotivo.close(); });
+    fMotivo.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!selMotivo.value) { erroMotivo.textContent = 'Escolha o motivo da parada.'; erroMotivo.hidden = false; return; }
+      fetch(urlMotivo, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: JSON.stringify({ legenda_id: selMotivo.value }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { erroMotivo.textContent = (res.j.errors && res.j.errors.legenda_id) ? res.j.errors.legenda_id[0] : (res.j.message || 'Não foi possível gravar.'); erroMotivo.hidden = false; return; }
+          dMotivo.close(); atualizar();
+        })
+        .catch(function () { erroMotivo.textContent = 'Não foi possível gravar. Tente de novo.'; erroMotivo.hidden = false; });
     });
   }
 

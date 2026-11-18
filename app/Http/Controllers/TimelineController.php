@@ -6,6 +6,7 @@ use App\Models\FiltroUsuario;
 use App\Models\Legenda;
 use App\Models\Turno;
 use App\Services\Filtros\FiltroTimeline;
+use App\Services\MotivoParada;
 use App\Services\SituacaoMaquina;
 use App\Services\Timeline;
 use Illuminate\Http\RedirectResponse;
@@ -52,6 +53,7 @@ class TimelineController extends Controller
             'escolhido' => $escolhido,
             'hoje' => FiltroTimeline::padrao(),
             'legendas' => Legenda::where('ativo', true)->orderBy('ordem')->orderBy('codigo')->get(),
+            'legendasMotivo' => app(MotivoParada::class)->legendas(),
         ]);
     }
 
@@ -111,6 +113,7 @@ class TimelineController extends Controller
             'disponibilidade' => $dados['disponibilidade'],
             'pendentesOp' => $dados['pendentesOp'],
             'pendentes' => $dados['pendentes'],
+            'semMotivo' => $dados['semMotivo'],
             'situacoes' => $timeline->situacoes($maquinas),
             'marcas' => $timeline->marcas($inicio->utc(), $fim->utc()),
             'agora' => $agora > $inicio->getTimestamp() && $agora < $fim->getTimestamp()

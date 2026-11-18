@@ -9,6 +9,7 @@ use App\Models\OrdemProducao;
 use App\Providers\AppServiceProvider;
 use App\Services\CustoOrdemProducao;
 use App\Services\HorarioApontamento;
+use App\Services\MotivoParada;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use App\Services\TrocaOpMaquina;
@@ -314,5 +315,18 @@ class ApontamentoEstadoController extends Controller
         }
 
         return response()->json(['ok' => true, 'mensagem' => "{$registro->nome}: OP {$op->numero}."]);
+    }
+
+    /**
+     * Timeline › "Informar motivo": a parada sem motivo (98) daquele apontamento passa para a legenda de parada
+     * escolhida. Regra em App\Services\MotivoParada (a mesma do aplicativo). JSON.
+     */
+    public function informarMotivo(Request $request, ApontamentoEstado $apontamento, MotivoParada $motivo): JsonResponse
+    {
+        $dados = $request->validate(['legenda_id' => ['required', 'integer']], ['legenda_id.required' => 'Escolha o motivo da parada.']);
+        abort_unless(Maquina::whereKey($apontamento->maquina_id)->exists(), 404); // máquina de outra unidade
+        $motivo->informar($apontamento->load('legenda', 'ordemProducao'), (int) $dados['legenda_id']);
+
+        return response()->json(['ok' => true]);
     }
 }

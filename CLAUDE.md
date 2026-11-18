@@ -75,7 +75,10 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (rota `apontamentos.informar-op`, JSON; `SituacaoMaquina::informarOp`). "Trocar OP" (texto ao lado da OP na
   Timeline e botão no app; rota `apontamentos.trocar-op`, JSON): escolhe a OP aberta e o modo — `atual` (o apontamento
   em andamento inteiro passa para a OP nova) ou `novo` (encerra agora com a OP anterior e começa outro na mesma
-  legenda) — regra única em `App\Services\TrocaOpMaquina`.
+  legenda) — regra única em `App\Services\TrocaOpMaquina`. Parada sem motivo (legenda 98 do IoT): aviso no topo da
+  Timeline no mesmo formato do de OP, 2 por vez (as mais antigas primeiro), e bloco piscando "INFORMAR MOTIVO"; troca a
+  legenda só daquele apontamento por uma do tipo parada (rota `apontamentos.informar-motivo`, JSON) — regra única em
+  `App\Services\MotivoParada` (a mesma do app).
 - Horário do apontamento real (`App\Services\HorarioApontamento`): campos Dia + horário inicial/final (com segundos);
   um apontamento não passa de um dia (máx. 23:59:59). Se a máquina já tem apontamento no dia, o novo começa
   OBRIGATORIAMENTE 1 segundo depois do fim do último (campo travado; rota `apontamentos.proximo-inicio`); o primeiro do

@@ -34,6 +34,34 @@
     </div>
   @endif
 
+  @if (count($semMotivo) > 0)
+    {{-- Paradas sem motivo (98, do IoT): no formato do aviso de OP, 2 por vez; ao informar, aparecem as próximas. --}}
+    @php($totalSemMotivo = count($semMotivo))
+    <div class="aviso alerta tl-aviso-op tl-aviso-motivo">
+      <p>{{ $totalSemMotivo }} {{ $totalSemMotivo === 1 ? 'parada está' : 'paradas estão' }} <strong>sem motivo</strong>.
+        @if ($podeApontar) Clique em <strong>Informar motivo</strong> abaixo (ou no bloco piscando na linha da máquina) para escolher a legenda
+        da parada. @endif</p>
+      <ul class="tl-pendentes">
+        @foreach (array_slice($semMotivo, 0, 2) as $p)
+          @php($pDica = $p['maquina']->nome.' · '.$p['legenda']->codigo.' · '.$p['legenda']->descricao.' · '
+              .\Carbon\Carbon::createFromTimestamp($p['inicio'], $fuso)->format('d/m H:i:s').'–'
+              .($p['aberto'] ? 'agora' : \Carbon\Carbon::createFromTimestamp($p['fim'], $fuso)->format('H:i:s'))
+              .' ('.Formato::minutos(($p['fim'] - $p['inicio']) / 60).')')
+          <li>
+            <span>{{ $pDica }}</span>
+            @if ($podeApontar)
+              <button type="button" class="botao pequeno" data-informar-motivo="{{ route('apontamentos.informar-motivo', $p['apontamento']) }}"
+                      data-maquina="{{ $p['maquina']->nome }}" data-descricao="{{ \Illuminate\Support\Str::after($pDica, $p['maquina']->nome.' · ') }}">Informar motivo</button>
+            @endif
+          </li>
+        @endforeach
+      </ul>
+      @if ($totalSemMotivo > 2)
+        <p class="suave tl-mais">E mais {{ $totalSemMotivo - 2 }} {{ $totalSemMotivo - 2 === 1 ? 'parada' : 'paradas' }} sem motivo: aparecem aqui conforme as de cima forem informadas.</p>
+      @endif
+    </div>
+  @endif
+
   <div class="tl-resumo">
     <span class="{{ Formato::nivel($disponibilidade) }}">Disponibilidade: <strong class="texto-nivel">{{ Formato::pct($disponibilidade) }}</strong></span>
     @forelse ($totais as $t)
@@ -65,9 +93,10 @@
               @endif
               @if ($sit && $sit['op'])
                 <span class="tl-op" title="OP {{ $sit['op']->numero }}{{ $sit['produto'] ? ' · '.$sit['produto']->codigo().' '.$sit['produto']->descricao() : '' }}">
-                  <strong>OP {{ $sit['op']->numero }}@if ($podeApontar)<button type="button" class="tl-trocar-op"
+                  <strong>OP {{ $sit['op']->numero }}</strong>
+                  @if ($podeApontar)<button type="button" class="tl-trocar-op"
                       data-trocar-op="{{ route('apontamentos.trocar-op', $maquina->id) }}" data-maquina="{{ $maquina->nome }}"
-                      data-op="{{ $sit['op']->numero }}">Trocar OP</button>@endif</strong>
+                      data-op="{{ $sit['op']->numero }}">Trocar OP</button>@endif
                   <small>{{ $sit['produto'] ? $sit['produto']->codigo().' · '.$sit['produto']->descricao() : rtrim($sit['op']->c2_produto) }}</small>
                   @foreach ($sit['moldes'] as $molde)
                     <small class="tl-molde" title="Molde {{ $molde['codigo'] }}{{ $molde['ferramenta'] ? ' · '.$molde['ferramenta']->h4_descri.' · '.$molde['ferramenta']->h4_qtdcavativas.' cavidades ativas de '.$molde['ferramenta']->h4_qtdcav : '' }}">
@@ -94,6 +123,10 @@
                   <button type="button" class="tl-bloco tl-pendente-op {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="INFORMAR OP · {{ $dica }}"
                      data-informar-op="{{ route('apontamentos.informar-op', $b['apontamento']) }}" data-maquina="{{ $maquina->nome }}"
                      data-descricao="{{ $dica }}"><span><b>INFORMAR OP</b><em class="tl-desc"> · {{ $legenda->codigo }}</em></span></button>
+                @elseif ($b['semMotivo'] && $podeApontar)
+                  <button type="button" class="tl-bloco tl-pendente-op {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="INFORMAR MOTIVO · {{ $dica }}"
+                     data-informar-motivo="{{ route('apontamentos.informar-motivo', $b['apontamento']) }}" data-maquina="{{ $maquina->nome }}"
+                     data-descricao="{{ $dica }}"><span><b>INFORMAR MOTIVO</b><em class="tl-desc"> · {{ $legenda->codigo }}</em></span></button>
                 @elseif ($b['pendenteOp'])
                   <div class="tl-bloco tl-pendente-op {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="Sem OP · {{ $dica }}"><span><b>SEM OP</b><em class="tl-desc"> · {{ $legenda->codigo }}</em></span></div>
                 @elseif ($podeApontar)

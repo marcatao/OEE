@@ -87,7 +87,7 @@ class Timeline
 
     /**
      * @param  Collection<int, Maquina>  $maquinas
-     * @return array{linhas: array<int, list<array>>, totais: list<array>, disponibilidade: ?float, segundos: array<string, int>, pendentesOp: int, pendentes: list<array>}
+     * @return array{linhas: array<int, list<array>>, totais: list<array>, disponibilidade: ?float, segundos: array<string, int>, pendentesOp: int, pendentes: list<array>, semMotivo: list<array>}
      */
     public function montar(Collection $maquinas, CarbonInterface $inicio, CarbonInterface $fim): array
     {
@@ -106,6 +106,7 @@ class Timeline
 
         $linhas = [];
         $pendentes = [];
+        $semMotivo = [];
         $porLegenda = [];
         $porTipo = array_fill_keys(array_keys(Legenda::TIPOS), 0);
 
@@ -128,9 +129,14 @@ class Timeline
                     'aberto' => $a->fim === null,
                     // Legenda exige OP e o apontamento está sem: pisca na timeline com "Informar OP".
                     'pendenteOp' => (bool) $a->legenda?->exige_op && $a->ordem_producao_id === null,
+                    // Parada "sem motivo" (98, do IoT): pisca com "Informar motivo".
+                    'semMotivo' => MotivoParada::ehSemMotivo($a->legenda),
                 ];
                 if (end($blocos)['pendenteOp']) {
                     $pendentes[] = ['maquina' => $maquina] + end($blocos);
+                }
+                if (end($blocos)['semMotivo']) {
+                    $semMotivo[] = ['maquina' => $maquina] + end($blocos);
                 }
 
                 $id = $a->legenda_id;
@@ -155,6 +161,8 @@ class Timeline
             'pendentesOp' => count($pendentes),
             // Apontamentos sem OP numa legenda que exige OP (a tela lista no aviso, com o botão "Informar OP").
             'pendentes' => $pendentes,
+            // Paradas sem motivo (98), as mais antigas primeiro (a tela mostra 2 por vez, com "Informar motivo").
+            'semMotivo' => collect($semMotivo)->sortBy('inicio')->values()->all(),
         ];
     }
 

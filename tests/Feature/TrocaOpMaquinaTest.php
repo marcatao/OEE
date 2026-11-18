@@ -9,6 +9,7 @@ use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\Planta;
 use App\Models\Usuario;
+use App\Services\Filtros\FiltroTimeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CalendarioDeTeste;
 use Tests\Concerns\IotDeTeste;
@@ -88,6 +89,28 @@ class TrocaOpMaquinaTest extends TestCase
         $this->assertSame($this->op2->id, $novo->ordem_producao_id);
         $this->assertSame($this->produzindo->id, $novo->legenda_id);
         $this->assertSame($ap->fresh()->fim->addSecond()->getTimestamp(), $novo->inicio->getTimestamp());
+    }
+
+    public function test_paradas_sem_motivo_aparecem_duas_por_vez_e_recebem_a_legenda(): void
+    {
+        $semMotivo = Legenda::create(['codigo' => '98', 'descricao' => 'Parada sem motivo', 'tipo' => 'parada', 'cor' => '#b42318']);
+        $quebra = Legenda::create(['codigo' => '10', 'descricao' => 'Quebra de molde', 'tipo' => 'parada', 'cor' => '#d97706']);
+        $hoje = FiltroTimeline::padrao()->de;
+        $aps = collect([1, 2, 3])->map(fn ($h) => ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $semMotivo->id,
+            'inicio' => $hoje->addHours($h)->utc(), 'fim' => $hoje->addHours($h)->addMinutes(30)->utc()]));
+        $this->travelTo($hoje->addHours(5));
+
+        $pagina = $this->get('/dashboards/timeline')->assertOk()
+            ->assertSee('3 paradas estão')->assertSee('E mais 1 parada sem motivo')->assertSee('INFORMAR MOTIVO')
+            ->assertSee('tl-dialogo-motivo', false)->assertSee('10 — Quebra de molde')->getContent();
+        // 2 no aviso + 3 blocos piscando
+        $this->assertSame(5, substr_count($pagina, 'data-informar-motivo='));
+
+        $this->postJson("/producao/apontamentos/{$aps[0]->id}/informar-motivo", ['legenda_id' => $this->produzindo->id])->assertUnprocessable();
+        $this->postJson("/producao/apontamentos/{$aps[0]->id}/informar-motivo", ['legenda_id' => $quebra->id])->assertOk()->assertJson(['ok' => true]);
+        $this->assertSame($quebra->id, $aps[0]->fresh()->legenda_id);
+
+        $this->get('/dashboards/timeline')->assertOk()->assertSee('2 paradas estão')->assertDontSee('E mais');
     }
 
     public function test_recusa_op_fechada_e_modo_invalido(): void

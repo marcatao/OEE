@@ -323,9 +323,10 @@ a.kpi:hover { border-color:var(--primaria); }
 .tl-op .tl-molde { color:var(--texto); }
 .tl-op .tl-molde b { font-weight:700; }
 /* "Trocar OP" ao lado do número da OP (texto clicável). */
-.tl-trocar-op { background:none; border:0; padding:0; margin-left:.35rem; font:inherit; font-size:.7rem; font-weight:600;
+.tl-trocar-op { background:none; border:0; padding:0; margin:0; font:inherit; font-size:.7rem; font-weight:600;
   color:var(--primaria); text-decoration:underline; cursor:pointer; }
 .tl-trocar-op:hover { color:var(--primaria-escura); }
+.tl-aviso-motivo .tl-mais { margin:.5rem 0 0; }
 .tl-troca-modos { display:grid; gap:.6rem; margin:.8rem 0; }
 .tl-troca-modos button { text-align:left; display:block; width:100%; }
 .tl-troca-modos small { display:block; font-weight:400; opacity:.85; }

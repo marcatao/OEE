@@ -79,6 +79,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('{apontamento}', [ApontamentoEstadoController::class, 'destroy'])->name('destroy');
         // Timeline: informar a OP num apontamento cuja legenda exige OP (JSON)
         Route::post('{apontamento}/informar-op', [ApontamentoEstadoController::class, 'informarOp'])->name('informar-op');
+        // Timeline › parada sem motivo (98): troca a legenda daquele apontamento por uma de parada (JSON).
+        Route::post('{apontamento}/informar-motivo', [ApontamentoEstadoController::class, 'informarMotivo'])->name('informar-motivo');
         // Timeline › "Trocar OP" da máquina (JSON): no apontamento atual ou num novo apontamento a partir de agora.
         Route::post('maquinas/{maquina}/trocar-op', [ApontamentoEstadoController::class, 'trocarOp'])->whereNumber('maquina')->name('trocar-op');
     });

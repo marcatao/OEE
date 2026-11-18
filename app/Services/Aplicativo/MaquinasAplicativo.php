@@ -13,6 +13,7 @@ use App\Services\EngenhariaOrdemProducao;
 use App\Services\Filtros\FiltroTimeline;
 use App\Services\HorarioApontamento;
 use App\Services\Manutencao\ChamadoDaParada;
+use App\Services\MotivoParada;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use App\Services\TrocaOpMaquina;
@@ -134,20 +135,11 @@ class MaquinasAplicativo
             .' às '.$padrao->ate->format('H:i').($jornada ? ' (fora do calendário de trabalho)' : '')];
     }
 
-    /** Troca a legenda "sem motivo" de UM apontamento pela legenda de parada escolhida pelo operador. */
+    /** Troca a legenda "sem motivo" de UM apontamento (regra única em App\Services\MotivoParada, a mesma da Timeline). */
     public function informarMotivo(ApontamentoEstado $apontamento, int $legendaId): void
     {
         $this->conferirMaquina($apontamento->maquina_id);
-        if ($apontamento->legenda?->codigo !== $this->codigoSemMotivo()) {
-            throw ValidationException::withMessages(['legenda_id' => 'Este apontamento já tem motivo.']);
-        }
-        $legenda = $this->legendasMotivo()->firstWhere('id', $legendaId);
-        if (! $legenda) {
-            throw ValidationException::withMessages(['legenda_id' => 'Escolha uma legenda de parada.']);
-        }
-        $apontamento->update(['legenda_id' => $legenda->id]);
-        $this->situacao->aplicar($apontamento->fresh());
-        $this->status->atualizar($apontamento->ordemProducao);
+        app(MotivoParada::class)->informar($apontamento, $legendaId);
     }
 
     /** Troca a OP da máquina: regra única em App\Services\TrocaOpMaquina (a mesma da Timeline do portal). */
@@ -198,8 +190,7 @@ class MaquinasAplicativo
 
     private function legendasMotivo()
     {
-        return Legenda::where('ativo', true)->whereIn('tipo', (array) config('oee.app.tipos_legenda_motivo', ['parada']))
-            ->where('codigo', '<>', $this->codigoSemMotivo())->orderBy('ordem')->orderBy('codigo')->get();
+        return app(MotivoParada::class)->legendas();
     }
 
     private function legenda(?Legenda $l): ?array
