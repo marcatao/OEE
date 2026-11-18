@@ -114,6 +114,14 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   local `compras.fuso_muro`); cópia no portal em `pedidos_compra` + `pedidos_compra_itens`. Mudou a muro? Mude os dois
   `.tlpp`, o LEIAME e `Tests\Concerns\TabelaMuroDeCompras`.
   Custo da OS (card na tela da OS): `App\Services\Manutencao\CustoOrdemServico`.
+- **Abertura de SS**: em etapas (unidade → área executante → máquina/CC → o que precisa → descrição); a unidade só
+  lista as liberadas ao login (`SolicitacaoController::unidadesPermitidas`) e filtra áreas e máquinas; flags "máquina
+  parada" e **"oferece risco à integridade"** (`risco_integridade`, copiado para a OS). **SS automática**: legenda com
+  "Abre SS" (`legendas.abre_ss_unidade` + `abre_ss_area_executante_id`) abre a SS ao ser apontada (portal, app ou IoT;
+  evento `saved` de `ApontamentoEstado` → `App\Services\Manutencao\SsAutomatica`): título "OS automática — …", CC da
+  máquina, solicitante = usuário técnico inativo "IoT (automático)" + `origem_iot` (dispositivo/canal); uma por
+  apontamento e nenhuma nova com outra automática em aberto da mesma máquina e área; OS automática é avaliada pelo
+  administrador da unidade.
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
   Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
   área de resultado é trocada sem recarregar a página (`?parcial=1`). Os filtros podem ser escondidos (botão +

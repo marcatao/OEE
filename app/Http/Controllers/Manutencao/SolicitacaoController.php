@@ -11,6 +11,7 @@ use App\Models\Manutencao\SugestaoDescricao;
 use App\Models\Maquina;
 use App\Services\Manutencao\FluxoOrdemServico;
 use App\Support\AcessoOs;
+use App\Support\Unidades;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -202,6 +203,27 @@ class SolicitacaoController extends Controller
         return AcessoOs::areasParaSolicitar($u);
     }
 
+    /**
+     * Unidades que a pessoa pode escolher na SS: quem solicita, as em que é Solicitante (ou administrador); quem aprova
+     * (ao revisar), as das áreas que pode escolher. Sempre dentro das unidades habilitadas do login. @return list<string>
+     */
+    private function unidadesPermitidas(Request $request, SolicitacaoServico $ss): array
+    {
+        $u = $request->user();
+        if ($ss->exists && $ss->solicitante_id !== $u->id && AcessoOs::podeAprovar($u, $ss)) {
+            $dasAreas = AcessoOs::areas()->pluck('unidade')->all();
+            $unidades = in_array('ambos', $dasAreas, true) ? Unidades::areas() : $dasAreas;
+            $unidades = array_intersect($unidades, AcessoOs::unidadesHabilitadas($u));
+        } else {
+            $unidades = AcessoOs::unidadesSolicitante($u);
+        }
+        if ($ss->exists && $ss->unidade) {
+            $unidades[] = $ss->unidade;
+        }
+
+        return array_values(array_intersect(Unidades::areas(), $unidades));
+    }
+
     private function dadosFormulario(SolicitacaoServico $ss, Request $request): array
     {
         $u = $request->user();
@@ -213,7 +235,8 @@ class SolicitacaoController extends Controller
 
         return [
             'ss' => $ss,
-            // Só as máquinas das áreas que a pessoa pode escolher (a tela ainda filtra pela área escolhida).
+            'unidadesSs' => $this->unidadesPermitidas($request, $ss),
+            // Só as máquinas das áreas que a pessoa pode escolher (a tela ainda filtra pela unidade escolhida).
             'maquinas' => AcessoOs::maquinasDasAreas($areas),
             'areas' => $areas,
             'centros' => AcessoOs::centrosCusto(),
@@ -225,6 +248,7 @@ class SolicitacaoController extends Controller
     private function salvar(Request $request, SolicitacaoServico $ss): void
     {
         $dados = $request->validate([
+            'unidade' => ['nullable', 'string', 'max:20'],
             'titulo' => ['required', 'string', 'max:120'],
             'tipo' => ['required', Rule::in(array_keys(SolicitacaoServico::TIPOS))],
             'maquina_id' => ['nullable', 'integer', Rule::exists('maquinas', 'id')],
@@ -232,6 +256,7 @@ class SolicitacaoController extends Controller
             'centro_custo' => ['nullable', 'string', 'max:20'],
             'prioridade' => ['required', Rule::in(array_keys(SolicitacaoServico::PRIORIDADES))],
             'maquina_parada' => ['nullable', 'boolean'],
+            'risco_integridade' => ['nullable', 'boolean'],
             'descricao' => ['required', 'string', 'max:2000'],
             'apontamento_estado_id' => ['nullable', 'integer', Rule::exists('apontamentos_estado', 'id')],
             'ordem_producao_id' => ['nullable', 'integer', Rule::exists('ordens_producao', 'id')],
@@ -241,6 +266,10 @@ class SolicitacaoController extends Controller
             'descricao.required' => 'Descreva o problema ou o serviço.',
         ]);
         $dados['maquina_parada'] = (bool) ($dados['maquina_parada'] ?? false);
+        $dados['risco_integridade'] = (bool) ($dados['risco_integridade'] ?? false);
+        if (filled($dados['unidade'] ?? null) && ! in_array($dados['unidade'], $this->unidadesPermitidas($request, $ss), true)) {
+            throw ValidationException::withMessages(['unidade' => 'Escolha uma das unidades liberadas para você.']);
+        }
         if (! $this->areasPermitidas($request, $ss)->contains('id', (int) $dados['area_executante_id'])
             && ! ($ss->exists && (int) $ss->area_executante_id === (int) $dados['area_executante_id'])) {
             throw ValidationException::withMessages(['area_executante_id' => 'Você não é solicitante da área desta área executante.']);
@@ -250,6 +279,18 @@ class SolicitacaoController extends Controller
         $maquina = isset($dados['maquina_id']) ? Maquina::withoutGlobalScopes()->find($dados['maquina_id']) : null;
         if ($maquina && ! AcessoOs::maquinaDaArea($maquina, $area)) {
             throw ValidationException::withMessages(['maquina_id' => 'Esta máquina não é da área executante escolhida.']);
+        }
+        // Unidade escolhida na tela (só as permitidas ao login); a área e a máquina têm de ser dela (ou de "Todas").
+        // Sem unidade no envio (ex.: telas antigas), vale a da área/máquina.
+        $unidade = trim((string) ($dados['unidade'] ?? '')) ?: OrdemServico::unidadePara($area, $maquina);
+        if (! in_array($unidade, $this->unidadesPermitidas($request, $ss), true)) {
+            throw ValidationException::withMessages(['unidade' => 'Escolha uma das unidades liberadas para você.']);
+        }
+        if ($area && ! in_array($area->unidade, [$unidade, 'ambos'], true)) {
+            throw ValidationException::withMessages(['area_executante_id' => 'Esta área executante não é da unidade escolhida.']);
+        }
+        if ($maquina && ! in_array($maquina->unidade, [$unidade, 'ambos'], true)) {
+            throw ValidationException::withMessages(['maquina_id' => 'Esta máquina não é da unidade escolhida.']);
         }
 
         // Centro de custo: o da máquina (travado); sem máquina ou máquina sem CC, o informado ou o do autor; senão é obrigatório.
@@ -263,7 +304,7 @@ class SolicitacaoController extends Controller
             throw ValidationException::withMessages(['centro_custo' => 'Escolha um centro de custo da lista.']);
         }
         $dados['centro_custo'] = $cc;
-        $dados['unidade'] = OrdemServico::unidadePara($area, $maquina);
+        $dados['unidade'] = $unidade;
         $ehAprovadorEditando = $ss->exists && $ss->solicitante_id !== $request->user()->id && AcessoOs::podeAprovar($request->user(), $ss);
         if (! $ehAprovadorEditando && ! in_array($dados['unidade'], AcessoOs::unidadesSolicitante($request->user()), true)) {
             throw ValidationException::withMessages(['area_executante_id' => 'Você não é solicitante de '.(config('oee.unidades')[$dados['unidade']] ?? $dados['unidade']).'.']);

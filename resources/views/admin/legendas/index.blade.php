@@ -14,7 +14,7 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Cor</th><th>Unidade</th><th>Sigla</th><th>Descrição</th><th>Tipo</th><th>Exige OP</th><th class="num">Ordem</th><th class="num">Apontamentos</th><th>Situação</th><th></th></tr></thead>
+    <thead><tr><th>Cor</th><th>Unidade</th><th>Sigla</th><th>Descrição</th><th>Tipo</th><th>Exige OP</th><th>Abre SS</th><th class="num">Ordem</th><th class="num">Apontamentos</th><th>Situação</th><th></th></tr></thead>
     <tbody>
     @forelse ($legendas as $l)
       <tr>
@@ -24,13 +24,14 @@
         <td>{{ $l->descricao }}</td>
         <td>{{ $l->rotuloTipo() }}</td>
         <td>@if ($l->exige_op)<span class="etiqueta op-andamento">Sim</span>@else<span class="suave">Não</span>@endif</td>
+        <td>@if ($l->abreSs())<span class="etiqueta os-automatica">{{ config('oee.unidades')[$l->abre_ss_unidade] ?? $l->abre_ss_unidade }} · {{ $l->abreSsArea?->nome }}</span>@else<span class="suave">Não</span>@endif</td>
         <td class="num">{{ $l->ordem }}</td>
         <td class="num">{{ $l->apontamentos_count }}</td>
         <td><span class="etiqueta {{ $l->ativo ? 'situacao-online' : 'situacao-inativo' }}">{{ $l->ativo ? 'Ativa' : 'Inativa' }}</span></td>
         <td><a class="botao pequeno secundario" href="{{ route('admin.legendas.edit', $l) }}">Editar</a></td>
       </tr>
     @empty
-      <tr><td colspan="10" class="suave">Nenhuma legenda cadastrada.</td></tr>
+      <tr><td colspan="11" class="suave">Nenhuma legenda cadastrada.</td></tr>
     @endforelse
     </tbody>
   </table>

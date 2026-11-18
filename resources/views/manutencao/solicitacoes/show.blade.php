@@ -58,7 +58,8 @@
       <div><dt>Aberta em</dt><dd>@dataHora($ss->criado_em)</dd></div>
       <div><dt>Tipo</dt><dd>{{ $ss->rotuloTipo() }}</dd></div>
       <div><dt>Prioridade</dt><dd class="prioridade-{{ $ss->prioridade }}">{{ $ss->rotuloPrioridade() }}</dd></div>
-      <div><dt>Máquina</dt><dd>@include('manutencao._maquina', ['maquina' => $ss->maquina])@if ($ss->maquina_parada)<br><span class="os-parada">máquina parada</span>@endif</dd></div>
+      <div><dt>Máquina</dt><dd>@include('manutencao._maquina', ['maquina' => $ss->maquina])@if ($ss->maquina_parada)<br><span class="os-parada">máquina parada</span>@endif
+        @if ($ss->risco_integridade)<br><span class="os-parada">oferece risco à integridade</span>@endif</dd></div>
       <div><dt>Área executante</dt><dd>{{ $ss->areaExecutante?->nome }} <span class="etiqueta unidade-{{ $ss->unidade }}">{{ config('oee.unidades')[$ss->unidade] ?? $ss->unidade }}</span></dd></div>
       <div><dt>Centro de custo</dt><dd>{{ $ss->centro_custo ?: '—' }}</dd></div>
     </dl>

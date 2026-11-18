@@ -64,7 +64,9 @@
           @if ($os->prevista_para)<br><small class="suave">prevista {{ $os->prevista_para->format('d/m/Y') }}</small>@endif</td>
         <td><span class="etiqueta os-{{ $os->status }}">{{ $os->rotuloStatus() }}</span></td>
         <td>{{ $os->rotuloTipo() }}</td>
-        <td><span class="prioridade-{{ $os->prioridade }}">{{ $os->rotuloPrioridade() }}</span>@if ($os->maquina_parada && in_array($os->status, OrdemServico::STATUS_ABERTOS, true))<br><small class="os-parada">máquina parada</small>@endif</td>
+        <td><span class="prioridade-{{ $os->prioridade }}">{{ $os->rotuloPrioridade() }}</span>@if ($os->maquina_parada && in_array($os->status, OrdemServico::STATUS_ABERTOS, true))<br><small class="os-parada">máquina parada</small>@endif
+          @if ($os->risco_integridade)<br><small class="os-parada">risco à integridade</small>@endif
+          @if ($os->automatica)<br><small class="suave">automática</small>@endif</td>
         <td>@include('manutencao._maquina', ['maquina' => $os->maquina])</td>
         <td>{{ $os->areaExecutante?->nome }}<br><small class="suave">{{ $os->mantenedoresAtribuidos()->map->nomeExibicao()->join(', ') ?: 'definir depois' }}</small></td>
         <td><strong>{{ $os->titulo ?: \Illuminate\Support\Str::limit($os->descricao, 60) }}</strong>@if ($os->titulo)<br><small class="suave">{{ \Illuminate\Support\Str::limit($os->descricao, 80) }}</small>@endif</td>

@@ -46,13 +46,13 @@ class SolicitacaoServico extends Model
 
     protected $fillable = ['titulo', 'unidade', 'solicitante_id', 'tipo', 'maquina_id', 'area_executante_id', 'centro_custo',
         'centro_custo_solicitante', 'prioridade', 'maquina_parada', 'descricao', 'status', 'analisado_por_id',
-        'analisado_em', 'motivo_rejeicao', 'apontamento_estado_id', 'ordem_producao_id'];
+        'analisado_em', 'motivo_rejeicao', 'apontamento_estado_id', 'ordem_producao_id', 'risco_integridade', 'automatica', 'origem_iot'];
 
     protected $attributes = ['prioridade' => 'media', 'maquina_parada' => false, 'status' => 'pendente'];
 
     protected function casts(): array
     {
-        return ['maquina_parada' => 'boolean', 'analisado_em' => 'datetime'];
+        return ['maquina_parada' => 'boolean', 'risco_integridade' => 'boolean', 'automatica' => 'boolean', 'analisado_em' => 'datetime'];
     }
 
     /** SS que o usuário enxerga: as da(s) unidade(s) dele e, sempre, as que ele mesmo abriu. */

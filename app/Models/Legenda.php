@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Models\Concerns\Auditavel;
 use App\Models\Concerns\TemUnidade;
+use App\Models\Manutencao\AreaExecutante;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -25,13 +27,24 @@ class Legenda extends Model
 
     protected $table = 'legendas';
 
-    protected $fillable = ['unidade', 'codigo', 'descricao', 'tipo', 'cor', 'ordem', 'ativo', 'exige_op'];
+    protected $fillable = ['unidade', 'codigo', 'descricao', 'tipo', 'cor', 'ordem', 'ativo', 'exige_op', 'abre_ss_unidade', 'abre_ss_area_executante_id'];
 
     protected $attributes = ['ativo' => true, 'ordem' => 0];
 
     protected function casts(): array
     {
         return ['exige_op' => 'boolean', 'ativo' => 'boolean', 'ordem' => 'integer'];
+    }
+
+    /** Área executante para a qual o apontamento desta legenda abre uma SS automática (null = não abre). */
+    public function abreSsArea(): BelongsTo
+    {
+        return $this->belongsTo(AreaExecutante::class, 'abre_ss_area_executante_id')->withoutGlobalScopes();
+    }
+
+    public function abreSs(): bool
+    {
+        return $this->abre_ss_area_executante_id !== null;
     }
 
     public function apontamentos(): HasMany

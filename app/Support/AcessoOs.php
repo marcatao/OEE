@@ -226,10 +226,20 @@ final class AcessoOs
         }
     }
 
-    /** Só o próprio solicitante avalia (nem o administrador, a não ser que ele seja o solicitante). */
+    /**
+     * Só o próprio solicitante avalia (nem o administrador, a não ser que ele seja o solicitante). OS automática (o
+     * solicitante é o IoT, que não entra no portal): avalia o administrador da unidade.
+     */
     public static function podeAvaliar(Usuario $u, OrdemServico $os): bool
     {
-        return $os->status === 'concluida' && $os->solicitante_id !== null && (int) $os->solicitante_id === (int) $u->id;
+        if ($os->status !== 'concluida') {
+            return false;
+        }
+        if ($os->automatica) {
+            return self::ehAdminDa($u, $os->unidade);
+        }
+
+        return $os->solicitante_id !== null && (int) $os->solicitante_id === (int) $u->id;
     }
 
     /** OS concluídas que o usuário (solicitante) ainda precisa avaliar. */

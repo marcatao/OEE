@@ -438,9 +438,18 @@ class OrdensServicoTest extends TestCase
         $ambos2 = $this->usuario(['solicitante_manutencao', 'solicitante_tecnologia'], 'duas@empresa.com');
         $soManutencao = $this->usuario(['solicitante_manutencao'], 'uma@empresa.com');
 
-        // A tela leva a unidade de cada máquina e de cada área (o filtro é feito ao escolher a área).
+        // A tela leva a unidade de cada máquina e de cada área (o filtro é feito ao escolher a unidade) e só lista as
+        // unidades em que a pessoa é solicitante.
         $this->actingAs($ambos2)->get('/ordens-de-servico/solicitacoes/nova')->assertOk()
-            ->assertSee('data-unidade="tecnologia"', false)->assertSee('SRV-01')->assertSee('Escolha primeiro a área executante');
+            ->assertSee('data-unidade="tecnologia"', false)->assertSee('SRV-01')->assertSee('name="unidade"', false)
+            ->assertSee('<option value="manutencao"', false)->assertSee('<option value="tecnologia"', false)->assertDontSee('<option value="ferramentaria"', false);
+        // Área de outra unidade é recusada.
+        $this->post('/ordens-de-servico/solicitacoes', ['unidade' => 'tecnologia', 'titulo' => 'x', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'prioridade' => 'media', 'descricao' => 'x', 'centro_custo' => '1001'])->assertSessionHasErrors('area_executante_id');
+        // Unidade que a pessoa não solicita é recusada.
+        $this->actingAs($soManutencao)->post('/ordens-de-servico/solicitacoes', ['unidade' => 'tecnologia', 'titulo' => 'x', 'tipo' => 'corretiva',
+            'area_executante_id' => $this->ti->id, 'prioridade' => 'media', 'descricao' => 'x', 'centro_custo' => '1001'])->assertSessionHasErrors('unidade');
+        $this->actingAs($ambos2);
         // Máquina de outra área é recusada; a de "Todas" vale para qualquer área.
         $this->post('/ordens-de-servico/solicitacoes', ['titulo' => 'x', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
             'maquina_id' => $servidor->id, 'prioridade' => 'media', 'descricao' => 'x'])->assertSessionHasErrors('maquina_id');

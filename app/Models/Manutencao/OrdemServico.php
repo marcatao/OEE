@@ -46,13 +46,13 @@ class OrdemServico extends Model
         'area_executante_id', 'centro_custo', 'centro_custo_solicitante', 'prioridade', 'maquina_parada', 'descricao',
         'solicitante_id', 'aprovado_por_id', 'responsavel_id', 'status', 'iniciada_em', 'concluida_em', 'solucao',
         'aceite_por_id', 'aceite_em', 'aceite_observacao', 'cancelamento_motivo', 'ordem_producao_id',
-        'apontamento_estado_id', 'total_minutos'];
+        'apontamento_estado_id', 'total_minutos', 'risco_integridade', 'automatica', 'origem_iot'];
 
     protected $attributes = ['prioridade' => 'media', 'maquina_parada' => false, 'status' => 'aberta', 'total_minutos' => 0];
 
     protected function casts(): array
     {
-        return ['maquina_parada' => 'boolean', 'prevista_para' => 'date', 'iniciada_em' => 'datetime',
+        return ['maquina_parada' => 'boolean', 'risco_integridade' => 'boolean', 'automatica' => 'boolean', 'prevista_para' => 'date', 'iniciada_em' => 'datetime',
             'concluida_em' => 'datetime', 'aceite_em' => 'datetime', 'total_minutos' => 'integer'];
     }
 

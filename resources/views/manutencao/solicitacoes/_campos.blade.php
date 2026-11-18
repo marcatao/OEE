@@ -1,40 +1,35 @@
-{{-- Campos da SS (abertura, edição e revisão do aprovador no detalhe). Variáveis: $ss, $maquinas, $areas, $centros,
-     $ccUsuario, $sugestoes. Precisa estar dentro de um <form>. --}}
+{{-- Campos da SS (abertura, edição e revisão do aprovador no detalhe), em etapas: para quem → onde → o que → detalhes.
+     Variáveis: $ss, $unidadesSs, $maquinas, $areas, $centros, $ccUsuario, $sugestoes. Precisa estar dentro de um <form>. --}}
 @use('App\Models\Manutencao\SolicitacaoServico')
+@php($unidadeAtual = (string) old('unidade', $ss->unidade ?: (count($unidadesSs) === 1 ? $unidadesSs[0] : '')))
     <input type="hidden" name="apontamento_estado_id" value="{{ old('apontamento_estado_id', $ss->apontamento_estado_id) }}">
     <input type="hidden" name="ordem_producao_id" value="{{ old('ordem_producao_id', $ss->ordem_producao_id) }}">
 
-    <fieldset>
-      <legend>O que precisa</legend>
-      <div class="campos ss-campos">
-        <label class="largo">Título resumido
-          <input name="titulo" required maxlength="120" value="{{ old('titulo', $ss->titulo) }}" placeholder="Ex.: Vazamento de óleo no cilindro da injetora" autofocus>
-        </label>
-        <label>Tipo
-          <select name="tipo" required>
-            @foreach (SolicitacaoServico::TIPOS as $valor => $rotulo)<option value="{{ $valor }}" @selected(old('tipo', $ss->tipo) === $valor)>{{ $rotulo }}</option>@endforeach
+    <fieldset class="ss-etapa">
+      <legend><span class="ss-passo">1</span> Para quem é o serviço</legend>
+      <p class="suave ss-ajuda">Escolha a unidade e a área que vai executar. Só aparecem as unidades liberadas para você.</p>
+      <div class="campos ss-campos alinhar-topo">
+        <label class="largo-2">Unidade
+          <select name="unidade" id="ss-unidade" required>
+            @if (count($unidadesSs) !== 1)<option value="">Escolha a unidade…</option>@endif
+            @foreach ($unidadesSs as $un)<option value="{{ $un }}" @selected($unidadeAtual === $un)>{{ config('oee.unidades')[$un] ?? $un }}</option>@endforeach
           </select>
         </label>
-        <label>Prioridade
-          <select name="prioridade" required>
-            @foreach (SolicitacaoServico::PRIORIDADES as $valor => $rotulo)<option value="{{ $valor }}" @selected(old('prioridade', $ss->prioridade) === $valor)>{{ $rotulo }}</option>@endforeach
-          </select>
-        </label>
-        <label>Área executante
+        <label class="largo-2">Área executante
           <select name="area_executante_id" id="ss-area" required>
-            <option value="">Escolha…</option>
+            <option value="">Escolha a área…</option>
             @foreach ($areas as $a)
-              <option value="{{ $a->id }}" data-unidade="{{ $a->unidade }}" @selected((int) old('area_executante_id', $ss->area_executante_id) === $a->id)>{{ $a->nome }} — {{ config('oee.unidades')[$a->unidade] ?? $a->unidade }}</option>
+              <option value="{{ $a->id }}" data-unidade="{{ $a->unidade }}" @selected((int) old('area_executante_id', $ss->area_executante_id) === $a->id)>{{ $a->nome }}</option>
             @endforeach
           </select>
+          <small id="ss-area-info" class="suave"></small>
         </label>
-        <label class="opcao ss-parada"><input type="checkbox" name="maquina_parada" value="1" @checked(old('maquina_parada', $ss->maquina_parada))>
-          <span><strong>Máquina parada?</strong><small>marque se o problema parou a máquina</small></span></label>
       </div>
     </fieldset>
 
-    <fieldset>
-      <legend>Onde</legend>
+    <fieldset class="ss-etapa">
+      <legend><span class="ss-passo">2</span> Onde</legend>
+      <p class="suave ss-ajuda">Com máquina, o centro de custo vem do cadastro dela. Sem máquina, é um serviço geral: informe o centro de custo.</p>
       <div class="campos ss-campos alinhar-topo">
         <label class="largo-2">Máquina / equipamento
           <select name="maquina_id" id="ss-maquina" data-busca="Buscar máquina por código ou nome…">
@@ -56,11 +51,42 @@
       </div>
     </fieldset>
 
-    <fieldset>
-      <legend>Descrição do problema ou do serviço</legend>
-      <textarea name="descricao" rows="6" maxlength="2000" required id="ss-descricao" placeholder="Conte o que está acontecendo, desde quando, o que já foi feito…">{{ old('descricao', $ss->descricao) }}</textarea>
+    <fieldset class="ss-etapa">
+      <legend><span class="ss-passo">3</span> O que precisa</legend>
+      <div class="campos ss-campos">
+        <label class="largo-2">Título resumido
+          <input name="titulo" required maxlength="120" value="{{ old('titulo', $ss->titulo) }}" placeholder="Ex.: Vazamento de óleo no cilindro da injetora">
+        </label>
+        <label>Tipo
+          <select name="tipo" required>
+            @foreach (SolicitacaoServico::TIPOS as $valor => $rotulo)<option value="{{ $valor }}" @selected(old('tipo', $ss->tipo) === $valor)>{{ $rotulo }}</option>@endforeach
+          </select>
+        </label>
+        <label>Prioridade
+          <select name="prioridade" required>
+            @foreach (SolicitacaoServico::PRIORIDADES as $valor => $rotulo)<option value="{{ $valor }}" @selected(old('prioridade', $ss->prioridade) === $valor)>{{ $rotulo }}</option>@endforeach
+          </select>
+        </label>
+      </div>
+      <div class="ss-alertas">
+        <label class="ss-alerta ss-alerta-parada">
+          <input type="checkbox" name="maquina_parada" value="1" @checked(old('maquina_parada', $ss->maquina_parada))>
+          <span class="ss-alerta-icone">@include('layouts.partials.icone', ['nome' => 'alerta'])</span>
+          <span><strong>Máquina parada</strong><small>O problema parou a máquina ou o equipamento.</small></span>
+        </label>
+        <label class="ss-alerta ss-alerta-risco">
+          <input type="checkbox" name="risco_integridade" value="1" @checked(old('risco_integridade', $ss->risco_integridade))>
+          <span class="ss-alerta-icone">@include('layouts.partials.icone', ['nome' => 'alerta'])</span>
+          <span><strong>Oferece risco à integridade</strong><small>Risco para pessoas, para o meio ambiente ou de dano ao equipamento.</small></span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="ss-etapa">
+      <legend><span class="ss-passo">4</span> Conte o problema ou o serviço</legend>
+      <textarea name="descricao" rows="6" maxlength="2000" required id="ss-descricao" placeholder="O que está acontecendo, desde quando, o que já foi feito…">{{ old('descricao', $ss->descricao) }}</textarea>
       @if ($sugestoes->isNotEmpty())
-        <div class="ss-sugestoes"><small class="suave">Sugestões:</small>
+        <div class="ss-sugestoes"><small class="suave">Sugestões (clique para usar):</small>
           @foreach ($sugestoes as $s)<button type="button" class="ss-chip" data-sugestao="{{ $s }}">{{ $s }}</button>@endforeach
         </div>
       @endif
@@ -68,8 +94,11 @@
 <script>
   (function () {
     var ccUsuario = @json((string) $ccUsuario);
+    var unidade = document.getElementById('ss-unidade'), area = document.getElementById('ss-area'), areaInfo = document.getElementById('ss-area-info');
     var maquina = document.getElementById('ss-maquina'), cc = document.getElementById('ss-cc'), info = document.getElementById('ss-cc-info');
+    var maquinaInfo = document.getElementById('ss-maquina-info');
     function temOpcao(v) { return v && Array.prototype.some.call(cc.options, function (o) { return o.value === v; }); }
+
     // Máquina com CC: usa o dela e trava (o servidor também força). Sem máquina ou máquina sem CC: o do solicitante
     // (se tiver) e libera; sem nenhum, é obrigatório escolher.
     function aplicarMaquina(inicio) {
@@ -85,27 +114,45 @@
       }
       cc.dispatchEvent(new Event('change'));
     }
-    maquina.addEventListener('change', function () { aplicarMaquina(false); });
 
-    // Máquinas só da área executante escolhida (as da mesma unidade e as cadastradas para "Todas"); sem área, nenhuma.
-    var area = document.getElementById('ss-area'), maquinaInfo = document.getElementById('ss-maquina-info');
-    var todasMaquinas = Array.prototype.slice.call(maquina.options).filter(function (o) { return o.value !== ''; });
-    var semMaquina = maquina.options[0];
-    function filtrarMaquinas(inicio) {
-      var op = area.selectedOptions[0], unidade = op && op.value ? op.dataset.unidade : null, atual = maquina.value;
-      todasMaquinas.forEach(function (o) { if (o.parentNode) o.remove(); });
-      var cabem = unidade ? todasMaquinas.filter(function (o) { return unidade === 'ambos' || o.dataset.unidade === unidade || o.dataset.unidade === 'ambos'; }) : [];
-      cabem.forEach(function (o) { maquina.add(o); });
-      semMaquina.textContent = unidade ? 'Sem máquina (serviço geral)' : 'Escolha primeiro a área executante';
-      maquinaInfo.textContent = unidade ? (cabem.length ? cabem.length + ' máquina(s) da área.' : 'Nenhuma máquina cadastrada nesta área.') : '';
-      var continua = cabem.some(function (o) { return o.value === atual; });
-      maquina.value = continua ? atual : '';
-      if (!continua && atual && !inicio) maquina.dispatchEvent(new Event('change'));
+    // Lista só o que é da unidade escolhida (e o cadastrado para "Todas"). Guarda as opções para poder voltar.
+    function filtro(select, vazio) {
+      var todas = Array.prototype.slice.call(select.options).filter(function (o) { return o.value !== ''; });
+      return function (un, inicio) {
+        var atual = select.value;
+        todas.forEach(function (o) { if (o.parentNode) o.remove(); });
+        var cabem = un ? todas.filter(function (o) { return o.dataset.unidade === un || o.dataset.unidade === 'ambos'; }) : [];
+        cabem.forEach(function (o) { select.add(o); });
+        var continua = cabem.some(function (o) { return o.value === atual; });
+        select.value = continua ? atual : '';
+        if (!continua && atual && !inicio) select.dispatchEvent(new Event('change'));
+        return cabem.length;
+      };
     }
-    area.addEventListener('change', function () { filtrarMaquinas(false); });
-    filtrarMaquinas(true);
+    var filtrarAreas = filtro(area), filtrarMaquinas = filtro(maquina);
+    var semMaquina = maquina.options[0];
+
+    function aplicarUnidade(inicio) {
+      var un = unidade.value;
+      var nAreas = filtrarAreas(un, inicio), nMaquinas = filtrarMaquinas(un, inicio);
+      area.disabled = !un;
+      area.options[0].textContent = un ? 'Escolha a área…' : 'Escolha primeiro a unidade';
+      areaInfo.textContent = un && !nAreas ? 'Nenhuma área executante cadastrada nesta unidade.' : '';
+      semMaquina.textContent = un ? 'Sem máquina (serviço geral)' : 'Escolha primeiro a unidade';
+      maquinaInfo.textContent = un ? (nMaquinas ? nMaquinas + ' máquina(s) desta unidade.' : 'Nenhuma máquina cadastrada nesta unidade.') : '';
+      if (!inicio && nAreas === 1) { area.value = area.options[1].value; }
+    }
+    unidade.addEventListener('change', function () { aplicarUnidade(false); });
+    maquina.addEventListener('change', function () { aplicarMaquina(false); });
     cc.addEventListener('change', function () { if (!cc.disabled && cc.value) info.textContent = cc.value === ccUsuario ? 'Centro de custo do seu cadastro.' : ''; });
+    aplicarUnidade(true);
     aplicarMaquina(true);
+
+    // Os avisos ficam destacados quando marcados.
+    document.querySelectorAll('.ss-alerta input').forEach(function (c) {
+      var marcar = function () { c.closest('.ss-alerta').classList.toggle('marcado', c.checked); };
+      c.addEventListener('change', marcar); marcar();
+    });
 
     document.querySelectorAll('[data-sugestao]').forEach(function (b) {
       b.addEventListener('click', function () {

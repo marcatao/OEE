@@ -107,7 +107,8 @@
       @forelse ($pendentes->take(8) as $ss)
         <li><a href="{{ route('os.solicitacoes.show', $ss) }}"><strong>{{ $ss->numeroFormatado() }}</strong> {{ \Illuminate\Support\Str::limit($ss->titulo ?: $ss->descricao, 60) }}</a>
           <small class="suave">{{ $ss->solicitante?->nome }} · {{ $ss->areaExecutante?->nome }} · há {{ $idade($ss->criado_em) }}</small>
-          @if ($ss->prioridade === 'urgente' || $ss->maquina_parada)<span class="etiqueta os-rejeitada">{{ $ss->maquina_parada ? 'máquina parada' : 'urgente' }}</span>@endif</li>
+          @if ($ss->prioridade === 'urgente' || $ss->maquina_parada)<span class="etiqueta os-rejeitada">{{ $ss->maquina_parada ? 'máquina parada' : 'urgente' }}</span>@endif
+          @if ($ss->risco_integridade)<span class="etiqueta os-risco">risco</span>@endif</li>
       @empty
         <li class="suave">Nenhuma solicitação esperando aprovação.</li>
       @endforelse

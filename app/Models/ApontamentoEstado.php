@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditavel;
+use App\Services\Manutencao\SsAutomatica;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +24,24 @@ class ApontamentoEstado extends Model
 
     /** Marca que o Integrador MQTT põe no início da observação dos apontamentos automáticos. */
     public const MARCA_IOT = '[IoT]';
+
+    /**
+     * Legenda que "abre SS": ao gravar o apontamento com ela (novo ou trocando a legenda), abre a SS automática
+     * (App\Services\Manutencao\SsAutomatica). Falha ali não impede o apontamento.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (ApontamentoEstado $ap) {
+            if (! $ap->wasRecentlyCreated && ! $ap->wasChanged('legenda_id')) {
+                return;
+            }
+            try {
+                app(SsAutomatica::class)->aoApontar($ap);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        });
+    }
 
     protected function casts(): array
     {

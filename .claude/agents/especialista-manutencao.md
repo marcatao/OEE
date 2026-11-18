@@ -178,3 +178,9 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   a OS para execução. Problema que voltou = nova solicitação.
 - **Sem botão "Iniciar execução"**: a OS passa a "Em atendimento" (em_execucao, marco da linha do tempo) só no
   PRIMEIRO apontamento de horas (cronômetro, app ou horas lançadas à mão). A ação "iniciar" não é aceita pela tela.
+- **Abertura de SS em etapas** com UNIDADE (só as liberadas ao login) que filtra áreas executantes e máquinas, e os
+  avisos "máquina parada" e "oferece risco à integridade" (`risco_integridade`, vai para a OS, etiqueta vermelha).
+- **SS automática pela legenda** ("Abre SS": unidade + área executante no cadastro da legenda): ao apontar a legenda
+  numa máquina (portal, app ou IoT) abre a SS "OS automática — …" com o CC da máquina e o IoT/canal como solicitante
+  (usuário técnico inativo "IoT (automático)", `origem_iot`); não repete enquanto houver outra automática em aberto da
+  mesma máquina e área; a OS automática é avaliada pelo administrador da unidade (não pelo app).

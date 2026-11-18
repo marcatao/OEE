@@ -219,7 +219,8 @@ class OrdemServicoController extends Controller
     {
         $os = $this->buscar($request, $ordem);
         $u = $request->user();
-        abort_unless((int) $os->solicitante_id === (int) $u->id, 403, 'Só quem solicitou o serviço pode avaliar a OS.');
+        abort_unless($os->status !== 'concluida' || AcessoOs::podeAvaliar($u, $os), 403,
+            $os->automatica ? 'OS automática: quem avalia é o administrador da unidade.' : 'Só quem solicitou o serviço pode avaliar a OS.');
         $dados = $request->validate(['avaliacao' => ['required', Rule::in(array_keys(OrdemServico::AVALIACOES))], 'observacao' => ['nullable', 'string', 'max:500']],
             ['avaliacao.required' => 'Escolha Excelente, Boa ou Ruim.']);
         $this->fluxo->avaliar($os, $u, $dados['avaliacao'], $dados['observacao'] ?? null);

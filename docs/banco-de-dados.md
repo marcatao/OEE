@@ -228,6 +228,8 @@ erDiagram
         bigint atualizado_por_id FK
         nvarchar(20) unidade
         bit exige_op
+        nvarchar(20) abre_ss_unidade
+        bigint abre_ss_area_executante_id FK
     }
     linhas {
         bigint id PK
@@ -405,6 +407,9 @@ erDiagram
         bigint atualizado_por_id FK
         nvarchar(120) titulo
         nvarchar(10) avaliacao
+        bit risco_integridade
+        bit automatica
+        nvarchar(120) origem_iot
     }
     os_apontamentos_horas {
         bigint id PK
@@ -788,6 +793,9 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
         nvarchar(120) titulo
+        bit risco_integridade
+        bit automatica
+        nvarchar(120) origem_iot
     }
     tokens_aplicativo {
         bigint id PK
@@ -859,6 +867,7 @@ erDiagram
     grupos ||--o{ grupo_permissoes : "grupo_id"
     grupos ||--o{ grupo_usuario : "grupo_id"
     usuarios ||--o{ grupo_usuario : "usuario_id"
+    os_areas_executantes |o--o{ legendas : "abre_ss_area_executante_id"
     plantas ||--o{ linhas : "planta_id"
     linhas ||--o{ maquinas : "linha_id"
     dispositivos_iot |o--o{ maquinas : "iot1_dispositivo_id"
@@ -1000,14 +1009,14 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`grupos`](#grupos) | Sistema | `id` | 8 | 2 |
 | [`job_batches`](#job_batches) | Infra | `id` | 10 | 0 |
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
-| [`legendas`](#legendas) | Sistema | `id` | 13 | 2 |
+| [`legendas`](#legendas) | Sistema | `id` | 15 | 3 |
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
 | [`maquinas`](#maquinas) | Mista | `id` | 42 | 9 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
 | [`ordens_producao`](#ordens_producao) | Protheus | `id` | 28 | 0 |
-| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 33 | 12 |
+| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 36 | 12 |
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
 | [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 9 | 2 |
 | [`os_assinaturas`](#os_assinaturas) | Sistema | `id` | 8 | 3 |
@@ -1036,7 +1045,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 16 | 1 |
 | [`solicitacoes_material`](#solicitacoes_material) | Sistema | `id` | 9 | 3 |
 | [`solicitacoes_material_itens`](#solicitacoes_material_itens) | Sistema | `id` | 18 | 4 |
-| [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 22 | 8 |
+| [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 25 | 8 |
 | [`tokens_aplicativo`](#tokens_aplicativo) | Sistema | `id` | 8 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
@@ -1448,6 +1457,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
 | `exige_op` | `bit` | não | `'0'` |  |
+| `abre_ss_unidade` | `nvarchar(20)` | sim |  |  |
+| `abre_ss_area_executante_id` | `bigint` | sim |  | FK → `os_areas_executantes.id` |
 
 **Índices:** `legendas_codigo_unique` único (codigo) · `legendas_unidade_index` (unidade)
 
@@ -1682,6 +1693,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `titulo` | `nvarchar(120)` | sim |  |  |
 | `avaliacao` | `nvarchar(10)` | sim |  |  |
+| `risco_integridade` | `bit` | não | `'0'` |  |
+| `automatica` | `bit` | não | `'0'` |  |
+| `origem_iot` | `nvarchar(120)` | sim |  |  |
 
 **Índices:** `ux_ordens_servico_solicitacao` único (solicitacao_id) filtrado `WHERE solicitacao_id IS NOT NULL` (só SQL Server) · `ux_ordens_servico_plano_prevista` único (plano_preventiva_id, prevista_para) filtrado `WHERE plano_preventiva_id IS NOT NULL` (só SQL Server) · `ordens_servico_unidade_status_id_index` (unidade, status, id) · `ordens_servico_responsavel_id_status_index` (responsavel_id, status) · `ordens_servico_maquina_id_criado_em_index` (maquina_id, criado_em) · `ordens_servico_status_prevista_para_index` (status, prevista_para) · `ordens_servico_solicitante_id_index` (solicitante_id)
 
@@ -2314,6 +2328,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `titulo` | `nvarchar(120)` | sim |  |  |
+| `risco_integridade` | `bit` | não | `'0'` |  |
+| `automatica` | `bit` | não | `'0'` |  |
+| `origem_iot` | `nvarchar(120)` | sim |  |  |
 
 **Índices:** `solicitacoes_servico_unidade_status_id_index` (unidade, status, id) · `solicitacoes_servico_solicitante_id_id_index` (solicitante_id, id) · `solicitacoes_servico_maquina_id_index` (maquina_id)
 

@@ -22,6 +22,8 @@
         <span class="etiqueta">{{ $os->rotuloTipo() }}</span>
         <span class="etiqueta prioridade-{{ $os->prioridade }}">Prioridade {{ mb_strtolower($os->rotuloPrioridade()) }}</span>
         @if ($os->maquina_parada)<span class="etiqueta os-rejeitada">Máquina parada</span>@endif
+        @if ($os->risco_integridade)<span class="etiqueta os-risco">Risco à integridade</span>@endif
+        @if ($os->automatica)<span class="etiqueta os-automatica" title="Aberta pelo apontamento da máquina{{ $os->origem_iot ? ' — '.$os->origem_iot : '' }}">Automática{{ $os->origem_iot ? ' · '.$os->origem_iot : '' }}</span>@endif
         @if ($os->avaliacao && $os->status === 'encerrada')<span class="etiqueta avaliacao-{{ $os->avaliacao }}">Avaliação: {{ \App\Models\Manutencao\OrdemServico::AVALIACOES[$os->avaliacao] }}</span>@endif
       </div>
     </div>

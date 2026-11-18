@@ -49,6 +49,42 @@
       <label class="opcao"><input type="radio" name="exige_op" value="0" @checked(old('exige_op', (int) $legenda->exige_op) == 0)> <span>Não</span></label>
     </fieldset>
 
+    <fieldset>
+      <legend>Abre SS</legend>
+      <p class="suave">Toda vez que esta legenda for apontada numa máquina (no portal, no aplicativo ou pelo IoT), uma solicitação de serviço
+        é aberta sozinha para a área escolhida, com a máquina, o centro de custo dela e o IoT/canal como solicitante. Deixe em branco para não abrir.</p>
+      @php($unSs = (string) old('abre_ss_unidade', $legenda->abre_ss_unidade))
+      <div class="campos">
+        <label>Unidade
+          <select name="abre_ss_unidade" id="leg-ss-unidade">
+            <option value="">Não abre SS</option>
+            @foreach ($unidadesSs as $un)<option value="{{ $un }}" @selected($unSs === $un)>{{ config('oee.unidades')[$un] ?? $un }}</option>@endforeach
+          </select>
+        </label>
+        <label>Área executante
+          <select name="abre_ss_area_executante_id" id="leg-ss-area">
+            <option value="">Escolha a área…</option>
+            @foreach ($areasSs as $a)<option value="{{ $a->id }}" data-unidade="{{ $a->unidade }}" @selected((int) old('abre_ss_area_executante_id', $legenda->abre_ss_area_executante_id) === $a->id)>{{ $a->nome }}</option>@endforeach
+          </select>
+        </label>
+      </div>
+    </fieldset>
+    <script>
+      (function () {
+        var un = document.getElementById('leg-ss-unidade'), area = document.getElementById('leg-ss-area');
+        var todas = Array.prototype.slice.call(area.options).filter(function (o) { return o.value !== ''; });
+        function aplicar() {
+          var atual = area.value;
+          todas.forEach(function (o) { if (o.parentNode) o.remove(); });
+          todas.filter(function (o) { return un.value && (o.dataset.unidade === un.value || o.dataset.unidade === 'ambos'); }).forEach(function (o) { area.add(o); });
+          area.value = Array.prototype.some.call(area.options, function (o) { return o.value === atual; }) ? atual : '';
+          area.disabled = !un.value; area.required = !!un.value;
+          area.options[0].textContent = un.value ? 'Escolha a área…' : '—';
+        }
+        un.addEventListener('change', aplicar); aplicar();
+      })();
+    </script>
+
     <fieldset class="opcoes-linha">
       <legend>Situação</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @checked(old('ativo', (int) $legenda->ativo) == 1)> <span>Ativa</span></label>

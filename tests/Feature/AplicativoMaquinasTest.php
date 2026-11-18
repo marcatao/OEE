@@ -6,6 +6,8 @@ use App\Models\ApontamentoEstado;
 use App\Models\Ferramenta;
 use App\Models\Legenda;
 use App\Models\Linha;
+use App\Models\Manutencao\AreaExecutante;
+use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\Planta;
@@ -118,6 +120,20 @@ class AplicativoMaquinasTest extends TestCase
         $this->assertSame($this->quebra->id, $ap->fresh()->legenda_id);
         $this->assertSame('parada', $this->maquina->fresh()->situacao);
         $this->api('POST', "apontamentos/{$ap->id}/motivo", ['legenda_id' => $this->quebra->id])->assertUnprocessable(); // já tem motivo
+    }
+
+    public function test_motivo_com_legenda_que_abre_ss_abre_a_ss_automatica(): void
+    {
+        $area = AreaExecutante::create(['codigo' => 'MEC', 'nome' => 'Mecânica', 'unidade' => 'manutencao', 'ativo' => true]);
+        $this->quebra->forceFill(['abre_ss_unidade' => 'manutencao', 'abre_ss_area_executante_id' => $area->id])->save();
+        $ap = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->semMotivo->id, 'inicio' => now()->subHour()]);
+        $this->assertSame(0, SolicitacaoServico::count()); // "sem motivo" não abre
+
+        $this->api('POST', "apontamentos/{$ap->id}/motivo", ['legenda_id' => $this->quebra->id])->assertOk();
+        $ss = SolicitacaoServico::sole();
+        $this->assertTrue($ss->automatica);
+        $this->assertSame([$this->maquina->id, $area->id, $ap->id], [$ss->maquina_id, $ss->area_executante_id, $ss->apontamento_estado_id]);
+        $this->assertStringStartsWith('OS automática', $ss->titulo);
     }
 
     public function test_alteracoes_pelo_aplicativo_gravam_quem_alterou_e_quando(): void

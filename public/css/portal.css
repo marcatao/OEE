@@ -1101,3 +1101,24 @@ a.pm-cartao:hover { border-color:var(--primaria); border-top-color:var(--estado)
 .pc-resumo td { vertical-align:top; }
 .pc-resumo tr.pc-resumo-inicio td { border-top:2px solid var(--borda-forte); }
 .pc-resumo tfoot th { text-align:right; }
+/* ---------- Abertura da SS em etapas ---------- */
+.ss-etapa > legend { display:inline-flex; align-items:center; gap:.5rem; font-size:1rem; }
+.ss-passo { display:inline-flex; align-items:center; justify-content:center; width:1.6rem; height:1.6rem; border-radius:50%;
+  background:var(--primaria); color:var(--primaria-texto); font-size:.85rem; font-weight:700; }
+.ss-ajuda { margin:.1rem 0 .75rem; font-size:.88rem; }
+.ss-alertas { display:grid; grid-template-columns:repeat(auto-fit, minmax(16rem, 1fr)); gap:.75rem; margin-top:1rem; }
+.ss-alerta { position:relative; display:flex; align-items:center; gap:.75rem; padding:.75rem 1rem; border:1.5px solid var(--borda-forte);
+  border-radius:12px; cursor:pointer; background:var(--cartao); transition:border-color .15s, background .15s; }
+.ss-alerta:hover { border-color:var(--alerta); }
+.ss-alerta input { width:1.15rem; height:1.15rem; margin:0; flex-shrink:0; }
+.ss-alerta strong { display:block; }
+.ss-alerta small { display:block; color:var(--suave); font-size:.82rem; }
+.ss-alerta-icone { display:inline-flex; width:2.1rem; height:2.1rem; border-radius:50%; align-items:center; justify-content:center;
+  background:var(--fundo); color:var(--suave); flex-shrink:0; }
+.ss-alerta-icone .icone { width:1.15rem; height:1.15rem; }
+.ss-alerta-parada.marcado { border-color:var(--alerta); background:var(--alerta-suave); }
+.ss-alerta-parada.marcado .ss-alerta-icone { background:var(--alerta); color:var(--branco); }
+.ss-alerta-risco.marcado { border-color:var(--erro); background:var(--erro-suave); }
+.ss-alerta-risco.marcado .ss-alerta-icone { background:var(--erro); color:var(--branco); }
+.etiqueta.os-risco { color:var(--erro); background:var(--erro-suave); border-color:transparent; font-weight:700; }
+.etiqueta.os-automatica { color:var(--protheus); background:var(--protheus-suave); border-color:transparent; }
