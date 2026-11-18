@@ -55,6 +55,7 @@ class HistoricoOs extends Model
         'aceite' => 'Aceite do solicitante', 'servico_recusado' => 'Serviço recusado pelo solicitante',
         'maquina_parada' => 'Máquina parada / liberada', 'horas_lancadas' => 'Horas lançadas', 'horas_excluidas' => 'Horas excluídas',
         'material_requisitado' => 'Material requisitado', 'assinatura' => 'Assinatura no aplicativo',
+        'nao_aceita' => 'SS não aceita pelo mantenedor (aplicativo)',
     ];
 
     /** Ações que marcam as etapas da SS/OS (destacadas). */

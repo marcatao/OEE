@@ -175,7 +175,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Função Ordens de serviço (mantenedor): `App\Services\Aplicativo\OrdensServicoAplicativo` sobre `AcessoOs` e
   `FluxoOrdemServico` — "assumir" SS = aprovar com o mantenedor como principal (só o primeiro leva), apontamento de
   horas com a tela travada no cronômetro, avaliação do solicitante no celular do mantenedor com assinatura
-  (`os_assinaturas`, PNG base64).
+  (`os_assinaturas`, PNG base64). Alerta de SS: a cada toque o app consulta `/api/app/os/alerta` (para quando outro
+  assume); "Recusar" grava em `os_recusas_aplicativo` (só aquela SS para de tocar para ele) e no histórico
+  (`nao_aceita`, "SS não aceita por …").
 
 ## Git
 

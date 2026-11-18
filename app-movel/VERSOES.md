@@ -1,5 +1,13 @@
 # Versões do aplicativo
 
+## 0.8.0 (build 12)
+- **Alerta de SS**: a CADA toque o app confere no portal se a SS ainda está pendente para quem está tocando
+  (`GET /api/app/os/alerta`, consulta leve). Se outro mantenedor assumiu, para de tocar na hora — com o app aberto ou
+  fechado.
+- Botão **Recusar** no alerta: só aquela SS deixa de tocar para quem recusou (as próximas SS tocam normalmente); a SS
+  continua pendente para os outros e na lista dele, marcada "Você recusou" (ele ainda pode assumir). O histórico da SS
+  registra **"SS não aceita por <nome> (aplicativo)"**. Portal: tabela nova `os_recusas_aplicativo`.
+
 ## 0.7.0 (build 11)
 - **Máquinas**: com a máquina **parada** e uma SS aberta pelo apontamento de uma legenda que "abre SS", a lista e a
   tela da máquina mostram o **número da SS (ou da OS, depois de aprovada) e a situação dela** (aguardando análise,

@@ -72,6 +72,8 @@ class MainActivity : ComponentActivity() {
     private var diferencaServidor by mutableLongStateOf(0L)
     private var silenciadoAte by mutableLongStateOf(0L)
     private var assumindo by mutableStateOf<Int?>(null)
+    /** SS que ainda tocam para este usuário (pendentes, que ele pode assumir e não recusou). */
+    private var alertaSs by mutableStateOf<List<br.com.alumbra.oee.os.SsApp>>(emptyList())
     private var atualizarResumo by mutableIntStateOf(0)
     private var encerramento by mutableStateOf<EncerramentoPendente?>(null)
     private var enviandoEncerramento by mutableStateOf(false)
@@ -138,8 +140,8 @@ class MainActivity : ComponentActivity() {
                         val usaOs = u.mantenedor || u.aprovarOs || u.solicitarOs
                         LaunchedEffect(u, bloqueada, atualizarResumo) { if (usaOs && !bloqueada) acompanharOs() }
                         val resumo = resumoOs
-                        val pendentes = resumo?.pendentes.orEmpty()
-                        LaunchedEffect(pendentes.map { it.id }, silenciadoAte) { tocarSsNova(pendentes.isNotEmpty(), pendentes.any { it.maquinaParada }) }
+                        val pendentes = alertaSs
+                        LaunchedEffect(pendentes.isNotEmpty(), silenciadoAte) { tocarSsNova(pendentes.isNotEmpty()) }
 
                         val rodando = resumo?.rodando
                         val pend = encerramento
@@ -169,7 +171,7 @@ class MainActivity : ComponentActivity() {
                             TelaLogado(u, atual, bloqueada, resumo)
                         }
                         if (pendentes.isNotEmpty() && System.currentTimeMillis() >= silenciadoAte && !bloqueada) {
-                            AlertaNovaSs(pendentes, assumindo, aoAssumir = ::assumir, aoVerDepois = { silenciadoAte = System.currentTimeMillis() + 180_000 })
+                            AlertaNovaSs(pendentes, assumindo, aoAssumir = ::assumir, aoRecusar = ::recusar, aoVerDepois = { silenciadoAte = System.currentTimeMillis() + 180_000 })
                         }
                     }
                 }
@@ -297,6 +299,7 @@ class MainActivity : ComponentActivity() {
                     val r = repositorioOs.resumo()
                     r.servidorAgoraMs?.let { diferencaServidor = it - (antes + System.currentTimeMillis()) / 2 }
                     resumoOs = r
+                    alertaSs = r.pendentes.filterNot { it.recusada }
                     // O portal já encerrou (ex.: pelo computador): descarta o encerramento guardado.
                     if (r.rodando == null && encerramento != null) reenviarOuDescartar()
                 } catch (e: ErroApi) {
@@ -307,15 +310,45 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** SS esperando alguém assumir: toca até o primeiro mantenedor assumir (mais forte se a máquina está parada). */
-    private suspend fun tocarSsNova(tem: Boolean, maquinaParada: Boolean) {
+    /**
+     * SS esperando alguém assumir: toca até o primeiro mantenedor assumir (mais forte se a máquina está parada). A CADA
+     * toque confere no portal se ainda há SS para este usuário: se outro assumiu (ou ele recusou), para na hora.
+     */
+    private suspend fun tocarSsNova(tem: Boolean) {
         if (!tem) return
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             while (true) {
-                if (System.currentTimeMillis() >= silenciadoAte) {
-                    if (maquinaParada) alarme.urgente() else alarme.aviso()
+                val atuais = try {
+                    repositorioOs.alerta()
+                } catch (e: ErroApi) {
+                    if (e.semAcesso) perderAcesso(e.message ?: "")
+                    null // sem rede: segue com a última lista
                 }
-                delay(if (maquinaParada) 3_000 else 6_000)
+                if (atuais != null) alertaSs = atuais
+                if (alertaSs.isEmpty()) {
+                    atualizarResumo++
+                    break
+                }
+                val parada = alertaSs.any { it.maquinaParada }
+                if (System.currentTimeMillis() >= silenciadoAte) {
+                    if (parada) alarme.urgente() else alarme.aviso()
+                }
+                delay(if (parada) 3_000 else 6_000)
+            }
+        }
+    }
+
+    /** Recusa a SS: só ela para de tocar para este mantenedor; o histórico registra "SS não aceita por …". */
+    private fun recusar(ss: br.com.alumbra.oee.os.SsApp) {
+        assumindo = ss.id
+        lifecycleScope.launch {
+            try {
+                alertaSs = repositorioOs.recusar(ss.id)
+            } catch (e: ErroApi) {
+                if (e.semAcesso) perderAcesso(e.message ?: "") else Toast.makeText(this@MainActivity, e.message, Toast.LENGTH_LONG).show()
+            } finally {
+                assumindo = null
+                atualizarResumo++
             }
         }
     }

@@ -101,7 +101,7 @@ class ServicoAlertas : Service() {
             var texto: String? = null
             try {
                 if (usuario.mantenedor || usuario.aprovarOs) {
-                    val pendentes = os.resumo().pendentes
+                    val pendentes = os.alerta() // sem as que ele recusou e sem as já assumidas
                     if (pendentes.isNotEmpty()) {
                         val parada = pendentes.filter { it.maquinaParada }
                         urgente = parada.isNotEmpty()
@@ -144,15 +144,31 @@ class ServicoAlertas : Service() {
         }
     }
 
-    /** Toca em laço até o próximo ciclo dizer que acabou. */
+    /**
+     * Toca em laço. A CADA toque das SS confere no portal se ainda há SS para este usuário: se outro mantenedor assumiu
+     * (ou ele recusou), para na hora e tira o aviso.
+     */
     private fun tocar(tocar: Boolean, urgente: Boolean) {
         if (!tocar) return pararToque()
         if (toque?.isActive == true) return
+        val os = RepositorioOs { sessao.token }
+        val usuario = sessao.usuario
         toque = escopo.launch {
+            var forte = urgente
             while (isActive) {
-                if (urgente) alarme.urgente() else alarme.aviso()
-                delay(if (urgente) 3_000 else 6_000)
+                if (usuario != null && (usuario.mantenedor || usuario.aprovarOs) && sessao.maquinaVigiada == 0) {
+                    val atuais = runCatching { os.alerta() }.getOrNull()
+                    if (atuais != null && atuais.isEmpty()) {
+                        cancelarAlerta()
+                        break
+                    }
+                    if (atuais != null) forte = atuais.any { it.maquinaParada }
+                }
+                if (System.currentTimeMillis() < silenciadoAte || appNaFrente) break
+                if (forte) alarme.urgente() else alarme.aviso()
+                delay(if (forte) 3_000 else 6_000)
             }
+            toque = null
         }
     }
 

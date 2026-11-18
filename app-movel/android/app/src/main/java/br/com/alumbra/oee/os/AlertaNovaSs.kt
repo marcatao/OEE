@@ -15,12 +15,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,7 +37,13 @@ import br.com.alumbra.oee.ui.CoresOee
  * Vermelho quando a máquina está parada.
  */
 @Composable
-fun AlertaNovaSs(pendentes: List<SsApp>, assumindo: Int?, aoAssumir: (SsApp) -> Unit, aoVerDepois: () -> Unit) {
+fun AlertaNovaSs(
+    pendentes: List<SsApp>,
+    assumindo: Int?,
+    aoAssumir: (SsApp) -> Unit,
+    aoRecusar: (SsApp) -> Unit,
+    aoVerDepois: () -> Unit,
+) {
     val c = CoresOee.atual
     val parada = pendentes.any { it.maquinaParada }
     val transicao = rememberInfiniteTransition(label = "ss")
@@ -59,20 +65,26 @@ fun AlertaNovaSs(pendentes: List<SsApp>, assumindo: Int?, aoAssumir: (SsApp) -> 
             Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 pendentes.take(5).forEach { ss ->
                     Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
-                        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(ss.titulo, style = MaterialTheme.typography.titleMedium)
-                                Text(listOfNotNull(ss.maquina, ss.area, if (ss.maquinaParada) "MÁQUINA PARADA" else null).joinToString(" · "),
-                                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Column(Modifier.fillMaxWidth().padding(10.dp)) {
+                            Text(ss.titulo, style = MaterialTheme.typography.titleMedium)
+                            Text(listOfNotNull(ss.maquina, ss.area, if (ss.maquinaParada) "MÁQUINA PARADA" else null).joinToString(" · "),
+                                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = { aoRecusar(ss) },
+                                    enabled = assumindo == null,
+                                    shape = MaterialTheme.shapes.medium,
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                ) { Text("Recusar") }
+                                Button(
+                                    onClick = { aoAssumir(ss) },
+                                    enabled = assumindo == null,
+                                    colors = ButtonDefaults.buttonColors(containerColor = fundo, contentColor = c.heroiTexto),
+                                    shape = MaterialTheme.shapes.medium,
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                ) { Text(if (assumindo == ss.id) "…" else "Assumir") }
                             }
-                            Spacer(Modifier.width(8.dp))
-                            Button(
-                                onClick = { aoAssumir(ss) },
-                                enabled = assumindo == null,
-                                colors = ButtonDefaults.buttonColors(containerColor = fundo, contentColor = c.heroiTexto),
-                                shape = MaterialTheme.shapes.medium,
-                                modifier = Modifier.height(48.dp),
-                            ) { Text(if (assumindo == ss.id) "…" else "Assumir") }
                         }
                     }
                 }

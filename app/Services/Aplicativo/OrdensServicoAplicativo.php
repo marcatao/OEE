@@ -45,11 +45,63 @@ class OrdensServicoAplicativo
             'pode_aprovar' => AcessoOs::podeAprovar($u),
             'pode_executar' => AcessoOs::podeExecutar($u),
             'pode_solicitar' => AcessoOs::podeSolicitar($u),
-            'pendentes' => $pendentes->map(fn ($ss) => $this->ss($ss))->values()->all(),
+            'pendentes' => $this->comRecusa($pendentes, $u),
             'minhas_abertas' => $m ? $this->minhasOrdens($u, $m)->count() : 0,
             'avaliacoes' => $m ? $this->paraAvaliar($u, $m)->count() : 0,
             'rodando' => ($ap = $this->rodando($m)) ? $this->apontamento($ap) + ['os' => $this->osResumo($ap->ordemServico)] : null,
         ];
+    }
+
+    /**
+     * Consulta leve feita a CADA toque do alarme: as SS que ainda devem tocar para o usuário (pendentes, que ele pode
+     * aprovar e que ele não recusou). Vazia = parar de tocar (outro mantenedor assumiu, ou ele recusou todas).
+     */
+    public function alerta(Usuario $u): array
+    {
+        $recusadas = $this->recusadas($u);
+
+        return $this->pendentesParaAprovar($u)->reject(fn ($ss) => in_array((int) $ss->id, $recusadas, true))
+            ->map(fn ($ss) => ['id' => $ss->id, 'maquina_parada' => (bool) $ss->maquina_parada, 'titulo' => $ss->titulo,
+                'maquina' => $ss->maquina ? trim(rtrim((string) $ss->maquina->codigo).' · '.$ss->maquina->nome) : null])
+            ->values()->all();
+    }
+
+    /**
+     * O mantenedor recusa a SS no aplicativo: só ela deixa de tocar para ele (as próximas tocam) e o histórico da SS
+     * registra "SS não aceita por <nome>". A SS continua pendente para os outros mantenedores.
+     */
+    public function recusar(Usuario $u, int $ssId): void
+    {
+        $ss = $this->visiveis(SolicitacaoServico::query(), $u)->findOrFail($ssId);
+        abort_unless(AcessoOs::podeAprovar($u, $ss), 403, 'Esta SS é de uma área executante que você não atende.');
+        if ($ss->status !== 'pendente') {
+            throw ValidationException::withMessages(['ss' => 'Esta solicitação já foi analisada.']);
+        }
+        $nova = DB::table('os_recusas_aplicativo')->insertOrIgnore([
+            'solicitacao_id' => $ss->id, 'usuario_id' => $u->id, 'criado_em' => now(),
+        ]);
+        if ($nova) {
+            $this->fluxo->registrar(null, $ss, 'nao_aceita', 'pendente', 'pendente', 'SS não aceita por '.$u->nome.' (aplicativo).', $u);
+        }
+    }
+
+    /** Ids das SS que o usuário recusou no aplicativo. @return list<int> */
+    private function recusadas(Usuario $u): array
+    {
+        return DB::table('os_recusas_aplicativo')->where('usuario_id', $u->id)->pluck('solicitacao_id')->map(fn ($i) => (int) $i)->all();
+    }
+
+    /** SS com a marca "recusada" (por este usuário). */
+    private function comRecusa(Collection $lista, Usuario $u): array
+    {
+        $recusadas = $this->recusadas($u);
+
+        return $lista->map(fn ($ss) => $this->ss($ss) + ['recusada' => in_array((int) $ss->id, $recusadas, true)])->values()->all();
+    }
+
+    public function pendentesComRecusa(Usuario $u): array
+    {
+        return $this->comRecusa($this->pendentesParaAprovar($u), $u);
     }
 
     /** SS aguardando análise que o usuário pode aprovar (as de máquina parada primeiro). */

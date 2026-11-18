@@ -40,6 +40,8 @@ Route::prefix('app')->name('api.app.')->group(function () {
             });
             Route::middleware('permissao:os_aprovar')->group(function () {
                 Route::post('solicitacoes/{solicitacao}/assumir', [OsApp::class, 'assumir'])->whereNumber('solicitacao')->name('assumir');
+                Route::get('alerta', [OsApp::class, 'alerta'])->name('alerta');
+                Route::post('solicitacoes/{solicitacao}/recusar', [OsApp::class, 'recusar'])->whereNumber('solicitacao')->name('recusar');
                 Route::post('solicitacoes/{solicitacao}/rejeitar', [OsApp::class, 'rejeitar'])->whereNumber('solicitacao')->name('rejeitar');
             });
             Route::middleware('permissao:solicitacoes_manutencao,os_aprovar')->group(function () {

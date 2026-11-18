@@ -19,6 +19,12 @@ class RepositorioOs(private val token: () -> String?) {
 
     suspend fun assumir(ssId: Int): OsApp = osDe(ApiPortal.post("os/solicitacoes/$ssId/assumir", token()).getJSONObject("ordem"))
 
+    /** Consulta leve feita a cada toque: SS que ainda devem tocar (vazia = parar). */
+    suspend fun alerta(): List<SsApp> = alertaDe(ApiPortal.get("os/alerta", token()))
+
+    /** Recusa a SS: só ela para de tocar para este mantenedor. Devolve o que ainda deve tocar. */
+    suspend fun recusar(ssId: Int): List<SsApp> = alertaDe(ApiPortal.post("os/solicitacoes/$ssId/recusar", token()))
+
     suspend fun rejeitar(ssId: Int, motivo: String) {
         ApiPortal.post("os/solicitacoes/$ssId/rejeitar", token(), JSONObject().put("motivo", motivo))
     }

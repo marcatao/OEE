@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **55** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **56** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -593,6 +593,12 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
     }
+    os_recusas_aplicativo {
+        bigint id PK
+        bigint solicitacao_id FK
+        bigint usuario_id FK
+        datetime criado_em
+    }
     os_sugestoes_descricao {
         bigint id PK
         nvarchar(20) unidade
@@ -913,6 +919,8 @@ erDiagram
     maquinas |o--o{ os_planos_preventiva : "maquina_id"
     os_areas_executantes ||--o{ os_planos_preventiva : "area_executante_id"
     os_mantenedores |o--o{ os_planos_preventiva : "responsavel_id"
+    solicitacoes_servico ||--o{ os_recusas_aplicativo : "solicitacao_id"
+    usuarios ||--o{ os_recusas_aplicativo : "usuario_id"
     maquinas ||--o{ paradas : "maquina_id"
     motivos_parada |o--o{ paradas : "motivo_id"
     solicitacoes_material |o--o{ pedidos_compra : "solicitacao_material_id"
@@ -1032,6 +1040,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`os_ordem_mantenedores`](#os_ordem_mantenedores) | Sistema | `id` | 5 | 3 |
 | [`os_planos_itens`](#os_planos_itens) | Sistema | `id` | 9 | 3 |
 | [`os_planos_preventiva`](#os_planos_preventiva) | Sistema | `id` | 19 | 5 |
+| [`os_recusas_aplicativo`](#os_recusas_aplicativo) | Sistema | `id` | 4 | 2 |
 | [`os_sugestoes_descricao`](#os_sugestoes_descricao) | Sistema | `id` | 8 | 2 |
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`pedidos_compra`](#pedidos_compra) | Sistema | `id` | 22 | 4 |
@@ -2005,6 +2014,19 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `os_planos_preventiva_codigo_unique` único (codigo) · `os_planos_preventiva_unidade_index` (unidade) · `os_planos_preventiva_ativo_proxima_em_index` (ativo, proxima_em) · `os_planos_preventiva_maquina_id_index` (maquina_id)
 
 **Regras (CHECK, só no SQL Server):** `ck_os_planos_preventiva_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')` · `ck_os_planos_preventiva_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_os_planos_preventiva_periodicidade`: `periodicidade IN ('semanal', 'quinzenal', 'meses')` · `ck_os_planos_preventiva_meses`: `LEN(meses) = 12 AND meses NOT LIKE '%[^01]%'` · `ck_os_planos_preventiva_dia_mes`: `dia_mes BETWEEN 1 AND 31` · `ck_os_planos_preventiva_antecedencia`: `antecedencia_dias >= 0` · `ck_os_planos_preventiva_duracao`: `duracao_prevista_min IS NULL OR duracao_prevista_min > 0`
+
+### os_recusas_aplicativo
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `solicitacao_id` | `bigint` | não |  | FK → `solicitacoes_servico.id` |
+| `usuario_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `criado_em` | `datetime` | sim |  |  |
+
+**Índices:** `os_recusas_aplicativo_solicitacao_id_usuario_id_unique` único (solicitacao_id, usuario_id)
 
 ### os_sugestoes_descricao
 

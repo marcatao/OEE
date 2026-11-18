@@ -26,7 +26,7 @@ class OrdensServicoAplicativoController extends Controller
         $u = $request->user();
 
         return response()->json([
-            'pendentes' => $this->os->pendentesParaAprovar($u)->map(fn ($ss) => $this->os->ssPublica($ss))->values(),
+            'pendentes' => $this->os->pendentesComRecusa($u),
             'minhas' => $this->os->minhasSolicitacoes($u)->map(fn ($ss) => $this->os->ssPublica($ss))->values(),
         ]);
     }
@@ -52,6 +52,20 @@ class OrdensServicoAplicativoController extends Controller
 
         return response()->json(['ok' => true, 'mensagem' => "Você assumiu: emitida a {$os->numeroFormatado()}.",
             'ordem' => $this->os->detalhe($request->user(), $this->os->buscarOs($request->user(), $os->id))]);
+    }
+
+    /** Consulta leve a cada toque do alarme: SS que ainda devem tocar para o usuário. */
+    public function alerta(Request $request): JsonResponse
+    {
+        return response()->json(['pendentes' => $this->os->alerta($request->user())]);
+    }
+
+    /** Recusar a SS: só ela para de tocar para este mantenedor; o histórico registra "SS não aceita por …". */
+    public function recusar(Request $request, int $solicitacao): JsonResponse
+    {
+        $this->os->recusar($request->user(), $solicitacao);
+
+        return response()->json(['ok' => true, 'pendentes' => $this->os->alerta($request->user())]);
     }
 
     public function rejeitar(Request $request, int $solicitacao): JsonResponse

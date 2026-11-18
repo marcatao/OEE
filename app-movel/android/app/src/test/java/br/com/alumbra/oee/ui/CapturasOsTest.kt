@@ -43,7 +43,7 @@ class CapturasOsTest {
                     CartaoSs(ss, assumindo = false) {}
                     CartaoOs(os.copy(maquinaParada = false, prioridade = "Média")) {}
                 }
-                AlertaNovaSs(listOf(ss, ss.copy(id = 2, titulo = "Troca de lâmpada", maquinaParada = false, maquina = null)), null, {}, {})
+                AlertaNovaSs(listOf(ss, ss.copy(id = 2, titulo = "Troca de lâmpada", maquinaParada = false, maquina = null)), null, {}, {}, {})
             }
         }
     }

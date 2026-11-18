@@ -7,6 +7,7 @@ use App\Models\Linha;
 use App\Models\Manutencao\ApontamentoHoras;
 use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\AssinaturaOs;
+use App\Models\Manutencao\HistoricoOs;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
@@ -199,6 +200,37 @@ class AplicativoOrdensServicoTest extends TestCase
         $this->assertSame([], $this->api($this->joao, 'GET', 'resumo')->json('pendentes'));
         $this->api($this->joao, 'POST', "solicitacoes/{$ss->id}/assumir")->assertNotFound();
         $this->assertSame([], $this->api($this->joao, 'GET', 'solicitacoes')->json('pendentes'));
+    }
+
+    public function test_alerta_para_de_tocar_quando_outro_assume(): void
+    {
+        $ss = $this->abrirSs();
+        $this->assertSame($ss->id, $this->api($this->pedro, 'GET', 'alerta')->json('pendentes.0.id'));
+
+        $this->api($this->joao, 'POST', "solicitacoes/{$ss->id}/assumir")->assertOk();
+        $this->assertSame([], $this->api($this->pedro, 'GET', 'alerta')->json('pendentes'));
+    }
+
+    public function test_recusar_so_aquela_ss_para_de_tocar_e_vai_para_o_historico(): void
+    {
+        $ss1 = $this->abrirSs();
+        $this->api($this->pedro, 'POST', "solicitacoes/{$ss1->id}/recusar")->assertOk()->assertJsonPath('pendentes', []);
+        $this->api($this->pedro, 'POST', "solicitacoes/{$ss1->id}/recusar")->assertOk(); // de novo: não duplica
+
+        $this->assertSame(1, HistoricoOs::where('solicitacao_id', $ss1->id)->where('acao', 'nao_aceita')->count());
+        $this->assertStringContainsString('SS não aceita por Pedro',
+            HistoricoOs::where('acao', 'nao_aceita')->value('observacao'));
+
+        // Para o João continua tocando; para o Pedro, a próxima SS volta a tocar.
+        $this->assertSame($ss1->id, $this->api($this->joao, 'GET', 'alerta')->json('pendentes.0.id'));
+        $ss2 = $this->abrirSs();
+        $this->assertSame([$ss2->id], array_column($this->api($this->pedro, 'GET', 'alerta')->json('pendentes'), 'id'));
+
+        // Na lista ela continua (marcada como recusada) e ele ainda pode assumir.
+        $lista = collect($this->api($this->pedro, 'GET', 'solicitacoes')->json('pendentes'))->keyBy('id');
+        $this->assertTrue($lista[$ss1->id]['recusada']);
+        $this->assertFalse($lista[$ss2->id]['recusada']);
+        $this->api($this->pedro, 'POST', "solicitacoes/{$ss1->id}/assumir")->assertOk();
     }
 
     public function test_quem_nao_e_mantenedor_nao_inicia(): void

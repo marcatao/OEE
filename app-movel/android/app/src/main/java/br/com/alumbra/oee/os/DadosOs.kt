@@ -21,6 +21,8 @@ data class SsApp(
     val abertaEm: String?,
     val os: String?,
     val motivoRejeicao: String?,
+    /** Este mantenedor recusou a SS no app (não toca mais para ele; ainda pode assumir). */
+    val recusada: Boolean = false,
 )
 
 data class ApontamentoOs(
@@ -97,8 +99,14 @@ fun paraMs(iso: String?): Long? = iso?.let { runCatching { OffsetDateTime.parse(
 fun ssDe(j: JSONObject) = SsApp(
     j.optInt("id"), j.optString("numero"), j.optString("titulo"), j.optString("descricao"), j.optString("status_rotulo"),
     j.optString("prioridade_rotulo"), j.optString("tipo"), j.texto("maquina"), j.optBoolean("maquina_parada"), j.texto("area"),
-    j.texto("solicitante"), j.texto("aberta_em"), j.texto("os"), j.texto("motivo_rejeicao"),
+    j.texto("solicitante"), j.texto("aberta_em"), j.texto("os"), j.texto("motivo_rejeicao"), j.optBoolean("recusada"),
 )
+
+/** /os/alerta: só as SS que ainda devem tocar para o usuário. */
+fun alertaDe(j: JSONObject) = j.optJSONArray("pendentes").lista {
+    SsApp(it.optInt("id"), "", it.optString("titulo"), "", "", "", "", it.texto("maquina"), it.optBoolean("maquina_parada"),
+        null, null, null, null, null)
+}
 
 fun apontamentoOsDe(j: JSONObject?) = j?.let {
     ApontamentoOs(

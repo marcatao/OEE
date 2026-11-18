@@ -180,6 +180,7 @@ fun CartaoSs(ss: SsApp, assumindo: Boolean, aoAssumir: (() -> Unit)?) {
                     Text("SS ${ss.numero}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f))
                     if (aoAssumir == null) Selo(ss.os?.let { "OS $it" } ?: ss.statusRotulo, Situacao.NEUTRA)
+                    if (ss.recusada) Selo("Você recusou", Situacao.NEUTRA)
                 }
                 Text(ss.titulo, style = MaterialTheme.typography.titleMedium)
                 Text(ss.descricao, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
