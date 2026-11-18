@@ -17,20 +17,19 @@ Route::prefix('app')->name('api.app.')->group(function () {
         Route::get('eu', [ApiAplicativoController::class, 'eu'])->name('eu');
         Route::post('sair', [ApiAplicativoController::class, 'sair'])->name('sair');
 
-        // Função "Máquinas" (operador): consultar com apontamentos ou timeline; alterar só com apontamentos.
-        Route::middleware('permissao:apontamentos,timeline')->group(function () {
+        // Função "Máquinas": só quem tem o perfil OPERADOR no login (e a permissão de apontamento real).
+        Route::middleware(['perfil:operador', 'permissao:apontamentos'])->group(function () {
             Route::get('maquinas', [MaquinasAplicativoController::class, 'index'])->name('maquinas');
             Route::get('maquinas/{maquina}', [MaquinasAplicativoController::class, 'show'])->whereNumber('maquina')->name('maquinas.show');
-        });
-        Route::middleware('permissao:apontamentos')->group(function () {
             Route::get('ops', [MaquinasAplicativoController::class, 'ops'])->name('ops');
             Route::post('maquinas/{maquina}/op', [MaquinasAplicativoController::class, 'op'])->whereNumber('maquina')->name('maquinas.op');
             Route::post('apontamentos/{apontamento}/motivo', [MaquinasAplicativoController::class, 'motivo'])->whereNumber('apontamento')->name('apontamentos.motivo');
             Route::post('ferramentas/{ferramenta}/cavidades', [MaquinasAplicativoController::class, 'cavidades'])->whereNumber('ferramenta')->name('ferramentas.cavidades');
         });
 
-        // Ordens de serviço (mantenedor): mesmas permissões das telas de OS do portal.
-        Route::prefix('os')->name('os.')->group(function () {
+        // Ordens de serviço: só quem tem um perfil de MANTENEDOR no login (oee.mantenedores_area), mais as mesmas
+        // permissões das telas de OS do portal.
+        Route::prefix('os')->name('os.')->middleware('perfil:'.implode(',', config('oee.mantenedores_area')))->group(function () {
             Route::middleware('permissao:os_solicitar,os_aprovar,solicitacoes_manutencao,os_almoxarifado')->group(function () {
                 Route::get('resumo', [OsApp::class, 'resumo'])->name('resumo');
                 Route::get('solicitacoes', [OsApp::class, 'solicitacoes'])->name('solicitacoes');

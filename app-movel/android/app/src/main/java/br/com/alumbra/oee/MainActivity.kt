@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
         sessao = Sessao(this)
         usuario = if (sessao.token != null) sessao.usuario else null
         encerramento = EncerramentoPendente.de(sessao.encerramentoPendente)
+        sessao.maquinaVigiada = 0 // máquinas não alertam mais com o app fechado (versões antigas gravavam aqui)
         tratarRetornoDoLogin(intent)
         if (usuario != null) ligarAlertas()
 
@@ -138,7 +139,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         relogio // lido aqui para recompor quando o app volta
                         val bloqueada = sessao.bloqueadaPorTempo()
-                        val usaOs = u.mantenedor || u.aprovarOs || u.solicitarOs
+                        val usaOs = u.mantenedor
                         LaunchedEffect(u, bloqueada, atualizarResumo) { if (usaOs && !bloqueada) acompanharOs() }
                         val resumo = resumoOs
                         val pendentes = alertaSs
@@ -195,7 +196,7 @@ class MainActivity : ComponentActivity() {
                 aoSair = ::sair,
                 aoAbrirFuncao = { funcao -> tela = if (funcao == "maquinas") Tela.Maquinas else Tela.Os },
                 pendenciasOs = (resumo?.pendentes?.size ?: 0) + (resumo?.avaliacoes ?: 0),
-                itensAlerta = if (u.operador || u.mantenedor || u.aprovarOs) itensAlerta else null,
+                itensAlerta = if (u.mantenedor) itensAlerta else null,
                 aoAjustarAlerta = { runCatching { startActivity(it) } },
                 aoTestarAlerta = {
                     ServicoAlertas.testar(this)
@@ -208,14 +209,14 @@ class MainActivity : ComponentActivity() {
                 aoAbrir = { tela = Tela.Maquina(it.id, it.nome) },
                 aoPerderAcesso = ::perderAcesso,
             )
-            is Tela.Maquina -> TelaMaquinaVigiada(atual.id) { TelaMaquina(
+            is Tela.Maquina -> TelaMaquina(
                 repositorio = repositorioMaquinas,
                 maquinaId = atual.id,
                 nomeInicial = atual.nome,
                 podeAlterar = u.operador,
                 aoVoltar = { tela = Tela.Maquinas },
                 aoPerderAcesso = ::perderAcesso,
-            ) }
+            )
             Tela.Os -> TelaOrdensServico(
                 repositorio = repositorioOs,
                 resumo = resumo,
@@ -259,23 +260,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Enquanto a tela da máquina está aberta, o serviço de alertas vigia a parada sem motivo dela (mesmo com o app fechado). */
-    @androidx.compose.runtime.Composable
-    private fun TelaMaquinaVigiada(id: Int, conteudo: @androidx.compose.runtime.Composable () -> Unit) {
-        androidx.compose.runtime.DisposableEffect(id) {
-            sessao.maquinaVigiada = id
-            onDispose { if (!isFinishing && !isChangingConfigurations && tela !is Tela.Maquina) sessao.maquinaVigiada = 0 }
-        }
-        conteudo()
-    }
-
     /**
      * Liga o serviço de alertas (toca com o app fechado e a tela desligada) e pede, uma vez, o que ele precisa:
      * notificações, ficar fora da economia de bateria e abrir em tela cheia sobre o bloqueio.
      */
     private fun ligarAlertas() {
         val u = sessao.usuario ?: return
-        if (!(u.operador || u.mantenedor || u.aprovarOs)) return
+        if (!u.mantenedor) return // só as SS dos mantenedores tocam com o app fechado
         val ajustes = getSharedPreferences("ajustes", MODE_PRIVATE)
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             pedirNotificacoes.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -427,7 +418,7 @@ class MainActivity : ComponentActivity() {
         itensAlerta = br.com.alumbra.oee.alertas.ConferenciaAlertas.itens(this)
         // Religa o serviço de alertas a cada abertura (o sistema pode tê-lo matado).
         val u = sessao.usuario
-        if (sessao.token != null && u != null && (u.operador || u.mantenedor || u.aprovarOs)) runCatching { ServicoAlertas.iniciar(this) }
+        if (sessao.token != null && u != null && u.mantenedor) runCatching { ServicoAlertas.iniciar(this) }
         tentativaRede++
         relogio++
     }

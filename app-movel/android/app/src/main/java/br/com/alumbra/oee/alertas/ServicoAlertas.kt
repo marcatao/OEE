@@ -21,7 +21,6 @@ import br.com.alumbra.oee.MainActivity
 import br.com.alumbra.oee.R
 import br.com.alumbra.oee.api.ErroApi
 import br.com.alumbra.oee.maquinas.Alarme
-import br.com.alumbra.oee.maquinas.RepositorioMaquinas
 import br.com.alumbra.oee.os.RepositorioOs
 import br.com.alumbra.oee.sessao.Sessao
 import kotlinx.coroutines.CoroutineScope
@@ -34,10 +33,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * Alertas com o app FECHADO e a tela DESLIGADA (serviço em primeiro plano, com notificação fixa):
- * - mantenedor/aprovador: SS esperando alguém assumir — toca até o primeiro assumir; SS de máquina parada toca forte,
- *   acende a tela e abre o app por cima da tela de bloqueio;
- * - operador: parada sem motivo (98) da última máquina aberta no app.
+ * Alertas com o app FECHADO e a tela DESLIGADA (serviço em primeiro plano, com notificação fixa), SÓ para
+ * mantenedores: SS esperando alguém assumir — toca até o primeiro assumir; SS de máquina parada toca forte, acende a
+ * tela e abre o app por cima da tela de bloqueio. Os alertas das máquinas (parada sem motivo, sem OP) NÃO tocam com o
+ * app fechado: só com a tela daquela máquina aberta.
  * Consulta o portal a cada [INTERVALO_MS]. Com o app na frente, quem toca é o próprio app (o serviço só consulta).
  */
 class ServicoAlertas : Service() {
@@ -66,7 +65,7 @@ class ServicoAlertas : Service() {
             return START_STICKY
         }
         ServiceCompat.startForeground(
-            this, ID_FIXA, notificacaoFixa("Vigiando alertas de máquina parada e de SS."),
+            this, ID_FIXA, notificacaoFixa("Vigiando as solicitações de serviço (SS)."),
             if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0,
         )
         if (sessao.token == null) {
@@ -97,7 +96,6 @@ class ServicoAlertas : Service() {
 
     private suspend fun vigiar() {
         val os = RepositorioOs { sessao.token }
-        val maquinas = RepositorioMaquinas { sessao.token }
         while (escopo.isActive) {
             val usuario = sessao.usuario
             if (sessao.token == null || usuario == null) {
@@ -109,7 +107,11 @@ class ServicoAlertas : Service() {
             var titulo: String? = null
             var texto: String? = null
             try {
-                if (usuario.mantenedor || usuario.aprovarOs) {
+                if (!usuario.mantenedor) {
+                    parar()
+                    return
+                }
+                run {
                     val pendentes = os.alerta() // sem as que ele recusou e sem as já assumidas
                     if (pendentes.isNotEmpty()) {
                         val parada = pendentes.filter { it.maquinaParada }
@@ -118,15 +120,6 @@ class ServicoAlertas : Service() {
                         titulo = if (urgente) "SS DE MÁQUINA PARADA" else "Nova solicitação de serviço"
                         texto = (parada.ifEmpty { pendentes }).joinToString(" · ") { listOfNotNull(it.maquina, it.titulo).joinToString(": ") } +
                             " — toque para assumir"
-                    }
-                }
-                val vigiada = sessao.maquinaVigiada
-                if (usuario.operador && vigiada > 0) {
-                    val d = maquinas.detalhe(vigiada)
-                    if (d.semMotivo.isNotEmpty()) {
-                        urgente = true
-                        titulo = "${d.nome}: PARADA SEM MOTIVO"
-                        texto = "Informe o motivo da parada no aplicativo."
                     }
                 }
             } catch (e: ErroApi) {
@@ -167,7 +160,7 @@ class ServicoAlertas : Service() {
         toque = escopo.launch {
             var forte = urgente
             while (isActive) {
-                if (usuario != null && (usuario.mantenedor || usuario.aprovarOs) && sessao.maquinaVigiada == 0) {
+                if (usuario != null && usuario.mantenedor) {
                     val atuais = runCatching { os.alerta() }.getOrNull()
                     if (atuais != null && atuais.isEmpty()) {
                         cancelarAlerta()

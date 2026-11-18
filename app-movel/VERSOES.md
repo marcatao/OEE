@@ -1,5 +1,13 @@
 # Versões do aplicativo
 
+## 0.10.0 (build 15)
+- **Acesso por perfil** (o app e a API do portal conferem igual):
+  - **Máquinas**: só quem tem o perfil **Operador** no login;
+  - **Ordens de serviço**: só quem tem um perfil de **Mantenedor** (de Produção, Tecnologia ou Ferramentaria).
+- **Máquinas não alertam com o app fechado**: o alerta de parada sem motivo e de OP pendente só acontece com a tela
+  daquela máquina aberta (como já fazia). O serviço em segundo plano fica só para as SS dos mantenedores (e só é
+  ligado para eles); o cartão "Alarme com a tela apagada" aparece só para mantenedores.
+
 ## 0.9.0 (build 14)
 - **Trocar OP** (tela da máquina): depois de escolher e confirmar a OP, o app pergunta como lançar —
   **"Trocar no apontamento atual"** (todo o apontamento em andamento passa para a OP nova) ou **"Novo apontamento a

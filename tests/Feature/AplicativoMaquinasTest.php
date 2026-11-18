@@ -239,6 +239,19 @@ class AplicativoMaquinasTest extends TestCase
         $this->assertEqualsCanonicalizing([$this->op1->numero, $this->op2->numero], $numeros);
     }
 
+    public function test_maquinas_no_app_so_para_o_perfil_operador(): void
+    {
+        $mantenedor = Usuario::create(['entra_oid' => 'mant', 'nome' => 'Mantenedor', 'email' => 'mant@alumbra.com.br']);
+        $mantenedor->definirPerfis(['mantenedor_producao']);
+        $login = app(LoginAplicativo::class);
+        $token = $login->trocarCodigo($login->criarCodigo($mantenedor->fresh(), LoginAplicativo::desafioDe(self::VERIFICADOR)), self::VERIFICADOR, null, null);
+
+        $this->assertFalse($token['usuario']->temPerfil('operador'));
+        app('auth')->forgetGuards();
+        $this->getJson('/api/app/maquinas', ['Authorization' => 'Bearer '.$token['token']])->assertForbidden();
+        $this->api('GET', 'maquinas')->assertOk(); // o operador entra
+    }
+
     public function test_maquina_inativa_ou_sem_iot_nao_abre(): void
     {
         $sem = Maquina::withoutGlobalScopes()->where('codigo', 'INJ-02')->first();

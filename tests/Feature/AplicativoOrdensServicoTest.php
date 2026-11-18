@@ -85,23 +85,30 @@ class AplicativoOrdensServicoTest extends TestCase
         return $this->json($metodo, '/api/app/os/'.$url, $dados, ['Authorization' => 'Bearer '.$this->token($u)]);
     }
 
+    /** SS aberta pelo solicitante (no portal), pendente para os mantenedores. */
     private function abrirSs(): SolicitacaoServico
     {
-        $this->api($this->solicitante, 'POST', 'solicitacoes', [
+        return SolicitacaoServico::create(['titulo' => 'Vazamento de óleo', 'unidade' => 'manutencao', 'solicitante_id' => $this->solicitante->id,
+            'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id, 'maquina_id' => $this->injetora->id, 'centro_custo' => '1001',
+            'prioridade' => 'alta', 'maquina_parada' => true, 'descricao' => 'Vazamento no cilindro', 'status' => 'pendente']);
+    }
+
+    public function test_os_no_app_so_para_quem_tem_perfil_de_mantenedor(): void
+    {
+        // Só solicitante: não entra nas Ordens de serviço do app.
+        $this->api($this->solicitante, 'GET', 'resumo')->assertForbidden();
+        $this->api($this->solicitante, 'GET', 'formulario')->assertForbidden();
+
+        // Mantenedor que também é solicitante abre SS pelo app, com as regras do portal (CC da máquina).
+        $this->joao->definirPerfis(['mantenedor_producao', 'solicitante_manutencao']);
+        $this->api($this->joao->fresh(), 'GET', 'formulario')->assertOk()->assertJsonPath('areas.0.nome', 'Mecânica');
+        $this->api($this->joao->fresh(), 'POST', 'solicitacoes', [
             'titulo' => 'Vazamento de óleo', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
             'maquina_id' => $this->injetora->id, 'prioridade' => 'alta', 'maquina_parada' => true, 'descricao' => 'Vazamento no cilindro',
         ])->assertOk()->assertJsonPath('ok', true);
-
-        return SolicitacaoServico::latest('id')->firstOrFail();
-    }
-
-    public function test_solicitante_abre_ss_pelo_app_com_as_regras_do_portal(): void
-    {
-        $this->api($this->solicitante, 'GET', 'formulario')->assertOk()->assertJsonPath('areas.0.nome', 'Mecânica');
-        $ss = $this->abrirSs();
+        $ss = SolicitacaoServico::latest('id')->firstOrFail();
         $this->assertSame('pendente', $ss->status);
-        $this->assertSame('1001', $ss->centro_custo); // o CC da máquina
-        $this->api($this->solicitante, 'POST', 'solicitacoes', ['titulo' => 'x'])->assertUnprocessable();
+        $this->assertSame('1001', $ss->centro_custo);
     }
 
     public function test_primeiro_que_assume_leva_a_ss(): void
@@ -246,7 +253,7 @@ class AplicativoOrdensServicoTest extends TestCase
     {
         $ss = $this->abrirSs();
         $osId = $this->api($this->joao, 'POST', "solicitacoes/{$ss->id}/assumir")->json('ordem.id');
-        $this->api($this->solicitante, 'POST', "ordens/{$osId}/iniciar")->assertForbidden();
+        $this->api($this->solicitante, 'POST', "ordens/{$osId}/iniciar")->assertForbidden(); // não é mantenedor
     }
 
     public function test_app_nao_mostra_nem_alerta_ss_de_unidade_fora_do_login(): void

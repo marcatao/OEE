@@ -174,7 +174,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   MESMOS serviços, permissões e escopo de unidade das telas; conflito = vale a alteração mais recente pelo horário.
   A cada mudança no app: suba `codigo` (e ajuste `nome`) em `app-movel/android/versao.properties`, registre em
   `app-movel/VERSOES.md` e gere o APK. A chave em `app-movel/android/keystore/` fica no repositório com autorização do
-  usuário (só assina o APK) e nunca deve ser trocada. Plano e regras em `app-movel/README.md`. Função Máquinas
+  usuário (só assina o APK) e nunca deve ser trocada. Plano e regras em `app-movel/README.md`. Acesso no app (e na
+  API): Máquinas SÓ com o perfil `operador`; Ordens de serviço SÓ com um perfil de `oee.mantenedores_area`. Alertas com
+  o app fechado: só SS para mantenedores; os das máquinas só com a tela daquela máquina aberta. Função Máquinas
   (operador): `App\Services\Aplicativo\MaquinasAplicativo` — máquinas ativas com IoT ativo, apontamento com legenda
   `oee.app.legenda_sem_motivo` (98, do IoT) obriga escolher um motivo do tipo parada (troca a legenda só dele), máquina
   sem OP obriga escolher a OP, troca de OP divide o apontamento em aberto, cavidades ativas editáveis pelo operador.

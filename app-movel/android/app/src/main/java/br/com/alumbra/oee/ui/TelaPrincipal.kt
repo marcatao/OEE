@@ -94,8 +94,9 @@ fun TelaPrincipal(
             if (itensAlerta != null) CartaoAlertas(itensAlerta, aoAjustarAlerta, aoTestarAlerta)
 
             TituloSecao("Funções")
-            val temFuncao = usuario.operador || usuario.timeline || usuario.mantenedor || usuario.aprovarOs || usuario.solicitarOs
-            if (usuario.operador || usuario.timeline) {
+            // Máquinas: só o perfil Operador; Ordens de serviço: só os perfis de Mantenedor.
+            val temFuncao = usuario.operador || usuario.mantenedor
+            if (usuario.operador) {
                 AtalhoFuncao(
                     icone = R.drawable.ic_maquina,
                     titulo = "Máquinas",
@@ -105,7 +106,7 @@ fun TelaPrincipal(
                     aoTocar = { aoAbrirFuncao("maquinas") },
                 )
             }
-            if (usuario.mantenedor || usuario.aprovarOs || usuario.solicitarOs) {
+            if (usuario.mantenedor) {
                 AtalhoFuncao(
                     vetor = Icons.Filled.Build,
                     titulo = "Ordens de serviço",

@@ -57,10 +57,11 @@ class ApiAplicativoController extends Controller
                 'perfis' => array_map(fn ($p) => ['chave' => $p, 'rotulo' => $perfis[$p]['rotulo'] ?? $p], $usuario->perfisAcesso()),
                 'unidades' => $usuario->unidades(),
                 'permissoes' => $permissoes,
+                // Máquinas: só o perfil Operador; Ordens de serviço: só os perfis de Mantenedor (a API confere igual).
                 'funcoes' => [
-                    'operador' => $usuario->pode('apontamentos'),
+                    'operador' => $usuario->temPerfil('operador') && $usuario->pode('apontamentos'),
                     'timeline' => $usuario->pode('timeline'),
-                    'mantenedor' => $usuario->pode('solicitacoes_manutencao'),
+                    'mantenedor' => $usuario->temPerfil(...array_values(config('oee.mantenedores_area'))),
                     'aprovar_os' => $usuario->pode('os_aprovar'),
                     'solicitar_os' => $usuario->pode('os_solicitar'),
                 ],
