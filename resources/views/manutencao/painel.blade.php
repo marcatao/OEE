@@ -4,6 +4,7 @@
 
 @use('App\Models\Manutencao\OrdemServico')
 @use('App\Services\Manutencao\HorasManutencao')
+@use('App\Services\Manutencao\PainelManutencao')
 @use('App\Http\Controllers\Manutencao\OrdemServicoController')
 
 @section('conteudo')
@@ -76,18 +77,18 @@
 
 <div class="grade duas painel-grade">
   <section class="cartao">
-    <h2>OS abertas por solicitante <small class="suave">5 que mais pediram</small></h2>
+    <h2>OS por solicitante <small class="suave">5 que mais pediram · {{ $rotuloPeriodo }}</small></h2>
     @php($maior = max(1, $porSolicitante->where('outras', false)->max('total') ?? 1, $porSolicitante->max('total') ?? 1))
     <div class="rolagem">
     <table class="tabela painel-mantenedores">
-      <thead><tr><th>Solicitante</th><th>OS abertas</th><th class="num">Horas apontadas</th></tr></thead>
+      <thead><tr><th>Solicitante</th><th>OS no período</th><th class="num">Horas apontadas</th></tr></thead>
       <tbody>
       @forelse ($porSolicitante as $l)
         <tr @class(['painel-outras' => $l['outras']])>
           <td>@if ($l['solicitante'])<span class="os-pessoa">@include('partials.avatar', ['usuario' => $l['solicitante']]) <span>{{ $l['nome'] }}</span></span>@else<span class="suave">{{ $l['nome'] }}</span>@endif</td>
           <td>
-            <div class="painel-barra" title="{{ $l['porStatus']['aberta'] }} abertas · {{ $l['porStatus']['em_execucao'] }} em execução · {{ $l['porStatus']['aguardando_material'] }} aguardando material">
-              @foreach (OrdemServico::STATUS_ABERTOS as $st)
+            <div class="painel-barra" title="{{ collect(PainelManutencao::ROTULOS_GRUPOS)->filter(fn ($r, $k) => $l['porStatus'][$k])->map(fn ($r, $k) => $l['porStatus'][$k].' '.$r)->implode(' · ') }}">
+              @foreach (array_keys(PainelManutencao::GRUPOS_STATUS) as $st)
                 @if ($l['porStatus'][$st])<span class="seg-{{ $st }}" style="width: {{ $l['porStatus'][$st] / $maior * 100 }}%"></span>@endif
               @endforeach
               <strong>{{ $l['total'] }}</strong>
@@ -96,19 +97,19 @@
           <td class="num">{{ HorasManutencao::hhmm($l['minutos']) }}</td>
         </tr>
       @empty
-        <tr><td colspan="3" class="suave">Nenhuma OS aberta.</td></tr>
+        <tr><td colspan="3" class="suave">Nenhuma OS no período.</td></tr>
       @endforelse
       </tbody>
     </table>
     </div>
-    <p class="painel-legenda suave"><span class="seg-aberta"></span> aberta <span class="seg-em_execucao"></span> em execução <span class="seg-aguardando_material"></span> aguardando material</p>
+    <p class="painel-legenda suave">@foreach (PainelManutencao::ROTULOS_GRUPOS as $k => $r)<span class="seg-{{ $k }}"></span> {{ $r }} @endforeach</p>
 
-    <h2>OS abertas por área executante</h2>
+    <h2>OS por área executante <small class="suave">{{ $rotuloPeriodo }}</small></h2>
     @php($maiorArea = max(1, $porArea->max() ?? 1))
     @forelse ($porArea as $area => $qtd)
       <div class="painel-linha-area"><span>{{ $area }}</span><div class="painel-barra"><span class="seg-em_execucao" style="width: {{ $qtd / $maiorArea * 100 }}%"></span><strong>{{ $qtd }}</strong></div></div>
     @empty
-      <p class="suave">Nenhuma OS aberta.</p>
+      <p class="suave">Nenhuma OS no período.</p>
     @endforelse
   </section>
 

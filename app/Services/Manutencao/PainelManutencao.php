@@ -27,6 +27,18 @@ final class PainelManutencao
      *
      * @return array<string, mixed>
      */
+    /** Situações das barras "por solicitante" (a OS encerrada conta como concluída). */
+    public const GRUPOS_STATUS = [
+        'aberta' => ['aberta'],
+        'em_execucao' => ['em_execucao'],
+        'aguardando_material' => ['aguardando_material'],
+        'concluida' => ['concluida', 'encerrada'],
+        'cancelada' => ['cancelada'],
+    ];
+
+    public const ROTULOS_GRUPOS = ['aberta' => 'aberta', 'em_execucao' => 'em execução', 'aguardando_material' => 'aguardando material',
+        'concluida' => 'concluída', 'cancelada' => 'cancelada'];
+
     public function dados(Usuario $u, string $unidade, ?CarbonImmutable $deLocal = null, ?CarbonImmutable $ateLocal = null): array
     {
         $hojeLocal = CarbonImmutable::now(HorasManutencao::fuso())->startOfDay();
@@ -47,6 +59,10 @@ final class PainelManutencao
             ->with(['solicitante', 'mantenedores.usuario', 'responsavel' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
                 'maquina' => fn ($q) => $q->withoutGlobalScopes()])
             ->get();
+        // Todas as OS emitidas no período (qualquer situação): caixas por solicitante e por área executante.
+        $doPeriodo = $os()->where('criado_em', '>=', $desde)->where('criado_em', '<', $ateExclusivo)
+            ->with(['solicitante', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes()])
+            ->get(['id', 'status', 'solicitante_id', 'area_executante_id', 'total_minutos']);
         $concluidas = $os()->where('status', 'concluida')->with('solicitante')->orderBy('concluida_em')->get();
 
         // Encerradas/avaliadas nos últimos 30 dias: tempo médio de atendimento (emissão da OS → conclusão) e avaliações.
@@ -79,8 +95,8 @@ final class PainelManutencao
             'preventivasAtrasadas' => $abertas->filter(fn ($o) => $o->tipo === 'preventiva' && $o->prevista_para && $o->prevista_para->lt($hojeLocal))->values(),
             'aguardandoAvaliacao' => $concluidas,
             'semResposta' => $this->semResposta($abertas->merge($concluidas), $unidade),
-            'porSolicitante' => $this->porSolicitante($abertas),
-            'porArea' => $abertas->groupBy(fn ($o) => $o->areaExecutante?->nome ?? '—')->map->count()->sortDesc(),
+            'porSolicitante' => $this->porSolicitante($doPeriodo),
+            'porArea' => $doPeriodo->groupBy(fn ($o) => $o->areaExecutante?->nome ?? '—')->map->count()->sortDesc(),
             'encerradas30' => $fechadas->count(),
             'tempoMedioMin' => $resumoTempos['atendimento'],
             'tempoReparoMin' => $resumoTempos['reparo'],
@@ -180,29 +196,30 @@ final class PainelManutencao
     }
 
     /**
-     * OS abertas por SOLICITANTE: os 5 com mais OS (desempate pelas horas apontadas nelas) e, numa 6ª linha "Outras", a
+     * OS do período por SOLICITANTE (todas as situações, agrupadas em GRUPOS_STATUS): os 5 com mais OS (desempate pelas horas apontadas nelas) e, numa 6ª linha "Outras", a
      * soma do resto. Horas = apontadas nessas OS (total_minutos).
      *
      * @return Collection<int, array{solicitante: ?Usuario, nome: string, total: int, porStatus: Collection, minutos: int, outras: bool}>
      */
-    private function porSolicitante(Collection $abertas): Collection
+    private function porSolicitante(Collection $ordens): Collection
     {
+        $porGrupo = fn (Collection $g) => collect(self::GRUPOS_STATUS)->map(fn ($sts) => $g->whereIn('status', $sts)->count());
         $linha = fn (Collection $g, ?Usuario $quem, string $nome, bool $outras) => [
             'solicitante' => $quem,
             'nome' => $nome,
             'total' => $g->count(),
-            'porStatus' => collect(OrdemServico::STATUS_ABERTOS)->mapWithKeys(fn ($s) => [$s => $g->where('status', $s)->count()]),
+            'porStatus' => $porGrupo($g),
             'minutos' => (int) $g->sum('total_minutos'),
             'outras' => $outras,
         ];
-        $grupos = $abertas->groupBy(fn ($o) => (int) $o->solicitante_id)
+        $grupos = $ordens->groupBy(fn ($o) => (int) $o->solicitante_id)
             ->map(fn ($g) => $linha($g, $g->first()->solicitante, $g->first()->solicitante?->nome ?? 'Sem solicitante (preventiva)', false))
             ->sortBy([['total', 'desc'], ['minutos', 'desc']])->values();
         $top = $grupos->take(5);
         $resto = $grupos->slice(5);
         if ($resto->isNotEmpty()) {
             $top->push(['solicitante' => null, 'nome' => 'Outras ('.$resto->count().' solicitantes)', 'total' => $resto->sum('total'),
-                'porStatus' => collect(OrdemServico::STATUS_ABERTOS)->mapWithKeys(fn ($s) => [$s => $resto->sum(fn ($l) => $l['porStatus'][$s])]),
+                'porStatus' => collect(self::GRUPOS_STATUS)->map(fn ($sts, $k) => $resto->sum(fn ($l) => $l['porStatus'][$k])),
                 'minutos' => $resto->sum('minutos'), 'outras' => true]);
         }
 

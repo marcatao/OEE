@@ -754,6 +754,8 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .seg-aberta { background:var(--protheus); }
 .seg-em_execucao { background:var(--primaria); }
 .seg-aguardando_material { background:var(--alerta); }
+.seg-concluida { background:var(--grafico-4); }
+.seg-cancelada { background:var(--borda-forte); }
 .painel-legenda { display:flex; flex-wrap:wrap; gap:.3rem .9rem; align-items:center; font-size:.8rem; margin:.4rem 0 0; }
 .painel-legenda span { display:inline-block; width:.8rem; height:.8rem; border-radius:3px; margin-right:-.5rem; }
 .painel-linha-area { display:grid; grid-template-columns:minmax(6rem, 12rem) 1fr; gap:.75rem; align-items:center; padding:.3rem 0; font-size:.92rem; }

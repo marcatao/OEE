@@ -737,6 +737,24 @@ class OrdensServicoTest extends TestCase
         $this->get('/ordens-de-servico/painel?unidade=ferramentaria')->assertOk()->assertSee('Painel — Ferramentaria');
     }
 
+    public function test_painel_por_solicitante_e_area_conta_todas_as_os_do_periodo(): void
+    {
+        $adm = $this->usuario(['admin_producao'], 'adm-sol@empresa.com');
+        $base = ['unidade' => 'manutencao', 'tipo' => 'corretiva', 'prioridade' => 'alta', 'descricao' => 'x', 'solicitante_id' => $adm->id, 'area_executante_id' => $this->mecanica->id];
+        foreach (['aberta', 'encerrada', 'cancelada'] as $st) {
+            OrdemServico::create($base + ['status' => $st]);
+        }
+        $antiga = OrdemServico::create($base + ['status' => 'concluida']);
+        $antiga->forceFill(['criado_em' => now()->subYears(2)])->saveQuietly();
+
+        $dados = app(PainelManutencao::class)->dados($adm, 'manutencao');
+        $linha = $dados['porSolicitante']->first();
+        $this->assertSame(3, $linha['total']); // a de 2 anos atrás fica fora do período
+        $this->assertSame([1, 1, 1], [$linha['porStatus']['aberta'], $linha['porStatus']['concluida'], $linha['porStatus']['cancelada']]);
+        $this->assertSame(3, $dados['porArea']['Mecânica']);
+        $this->actingAs($adm)->get('/ordens-de-servico/painel?unidade=manutencao')->assertOk()->assertSee('OS por solicitante')->assertSee('concluída');
+    }
+
     public function test_metas_da_area_tempos_por_area_e_mes_e_area_obrigatoria_na_conclusao(): void
     {
         $adm = $this->usuario(['admin_producao'], 'adm-metas@empresa.com');
