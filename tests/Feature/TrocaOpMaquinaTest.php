@@ -113,6 +113,14 @@ class TrocaOpMaquinaTest extends TestCase
         $this->get('/dashboards/timeline')->assertOk()->assertSee('2 paradas estão')->assertDontSee('E mais');
     }
 
+    public function test_filtros_da_timeline_comecam_escondidos(): void
+    {
+        $this->get('/dashboards/timeline')->assertOk()
+            ->assertSee('<div id="tl-painel-filtros" class="tl-painel-filtros" hidden>', false)
+            ->assertSee('<span data-rotulo>Mostrar filtros</span>', false)
+            ->assertDontSee('localStorage.getItem(\'oee-timeline-filtros\')', false);
+    }
+
     public function test_recusa_op_fechada_e_modo_invalido(): void
     {
         $this->emAndamento();

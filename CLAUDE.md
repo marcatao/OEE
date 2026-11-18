@@ -135,7 +135,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
   Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
   área de resultado é trocada sem recarregar a página (`?parcial=1`). Os filtros podem ser escondidos (botão +
-  linha de resumo; escolha lembrada no navegador) e se recolhem sozinhos após 3 minutos sem mexer na tela. A Timeline
+  linha de resumo; na Timeline SEMPRE começam escondidos) e se recolhem sozinhos após 3 minutos sem mexer na tela. A Timeline
   só mostra máquinas ATIVAS e com IoT cadastrado (dispositivo + canal, `Maquina::comIot()`; nos testes,
   `Tests\Concerns\IotDeTeste`). Novos
   relatórios seguem o mesmo padrão.

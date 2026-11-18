@@ -9,9 +9,9 @@
   <div class="tl-topo">
     <h1>Timeline</h1>
     <div class="tl-topo-acoes">
-      <button type="button" id="tl-alternar-filtros" class="botao secundario pequeno" aria-expanded="true" aria-controls="tl-painel-filtros"
+      <button type="button" id="tl-alternar-filtros" class="botao secundario pequeno" aria-expanded="false" aria-controls="tl-painel-filtros"
               title="Esconder ou mostrar os filtros (se recolhem sozinhos após 3 minutos sem mexer na tela)">
-        @include('layouts.partials.icone', ['nome' => 'filtro']) <span data-rotulo>Esconder filtros</span>
+        @include('layouts.partials.icone', ['nome' => 'filtro']) <span data-rotulo>Mostrar filtros</span>
       </button>
       @if ($u->pode('apontamentos'))
         <a class="botao" href="{{ route('apontamentos.create', ['voltar' => 'timeline']) }}">@include('layouts.partials.icone', ['nome' => 'mais']) Novo apontamento</a>
@@ -19,12 +19,12 @@
     </div>
   </div>
 
-  {{-- Com os filtros escondidos, uma linha mostra o que está aplicado (clique para mostrar os filtros). --}}
-  <button type="button" id="tl-resumo-filtros" class="tl-resumo-filtros" hidden title="Mostrar filtros">
+  {{-- Os filtros sempre começam escondidos. Com eles escondidos, uma linha mostra o que está aplicado (clique para mostrar os filtros). --}}
+  <button type="button" id="tl-resumo-filtros" class="tl-resumo-filtros" title="Mostrar filtros">
     @include('layouts.partials.icone', ['nome' => 'filtro']) <span data-texto></span>
   </button>
 
-  <div id="tl-painel-filtros" class="tl-painel-filtros">
+  <div id="tl-painel-filtros" class="tl-painel-filtros" hidden>
   {{-- Filtros: qualquer mudança atualiza só os dados (sem recarregar a página). --}}
   <form id="tl-filtros" class="tl-filtros" method="get" action="{{ route('timeline') }}"
         data-hoje-de="{{ $hoje->de->format('Y-m-d\TH:i') }}" data-hoje-ate="{{ $hoje->ate->format('Y-m-d\TH:i') }}">
@@ -406,7 +406,6 @@
       paineis.forEach(function (d) { d.open = false; });
       resumoFiltros.querySelector('[data-texto]').textContent = textoResumo();
     }
-    if (lembrar) { try { localStorage.setItem('oee-timeline-filtros', mostrar ? 'aberto' : 'recolhido'); } catch (e) {} }
     contarOciosidade();
   }
 
@@ -434,9 +433,8 @@
   });
 
   cascata();
-  var preferencia = null;
-  try { preferencia = localStorage.getItem('oee-timeline-filtros'); } catch (e) {}
-  mostrarFiltros(preferencia !== 'recolhido', false);
+  // Sempre começa com os filtros escondidos (só a linha de resumo); o botão "Mostrar filtros" abre.
+  mostrarFiltros(false, false);
 })();
 </script>
 @endsection
