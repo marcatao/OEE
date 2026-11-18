@@ -684,6 +684,31 @@ class OrdensServicoTest extends TestCase
             ->assertOk()->assertSee('id="unidade-tecnologia"', false)->assertDontSee('id="unidade-manutencao"', false);
     }
 
+    public function test_relatorio_de_horas_filtra_unidade_e_area_executante_e_mostra_a_area(): void
+    {
+        $base = ['tipo' => 'corretiva', 'prioridade' => 'alta', 'status' => 'aberta', 'descricao' => 'x'];
+        $manut = OrdemServico::create($base + ['unidade' => 'manutencao', 'area_executante_id' => $this->mecanica->id, 'centro_custo' => '110101']);
+        $ti = OrdemServico::create($base + ['unidade' => 'tecnologia', 'area_executante_id' => $this->ti->id, 'centro_custo' => '220202']);
+        $inicio = now()->setTime(12, 0);
+        $m = Mantenedor::create(['nome' => 'Joao']);
+        foreach ([$manut, $ti] as $os) {
+            ApontamentoHoras::create(['ordem_servico_id' => $os->id, 'mantenedor_id' => $m->id, 'inicio' => $inicio, 'fim' => $inicio->copy()->addHour(),
+                'minutos_normais' => 60, 'minutos_extras' => 0]);
+        }
+        $url = '/ordens-de-servico/relatorios/horas';
+        $this->actingAs($this->usuario(['admin_producao', 'admin_tecnologia'], 'adm-h@empresa.com'));
+        $this->get($url)->assertOk()->assertSee('Área executante')->assertSee('name="unidade"', false)
+            ->assertSee($manut->numeroFormatado())->assertSee($ti->numeroFormatado())->assertSee('Mecânica')->assertSee('Suporte de TI');
+        $this->get($url.'?unidade=tecnologia')->assertOk()->assertSee($ti->numeroFormatado())->assertDontSee($manut->numeroFormatado());
+        $this->get($url.'?area='.$this->mecanica->id)->assertOk()->assertSee($manut->numeroFormatado())->assertDontSee($ti->numeroFormatado());
+        $csv = $this->get($url.'?formato=csv&area='.$this->ti->id)->assertOk()->streamedContent();
+        $this->assertStringContainsString('Suporte de TI', $csv);
+        $this->assertStringNotContainsString('Mecânica', $csv);
+        // Unidade fora do login é ignorada (e só a Tecnologia aparece).
+        $this->actingAs($this->usuario(['admin_tecnologia'], 'rafa-h@empresa.com'));
+        $this->get($url.'?unidade=manutencao')->assertOk()->assertSee($ti->numeroFormatado())->assertDontSee($manut->numeroFormatado());
+    }
+
     public function test_painel_tempos_de_atendimento_e_reparo_por_periodo_e_aba_ferramentaria(): void
     {
         $adm = $this->usuario(['admin_producao', 'admin_ferramentaria'], 'adm-pf@empresa.com');

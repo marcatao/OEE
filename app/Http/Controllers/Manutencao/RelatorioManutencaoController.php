@@ -38,6 +38,9 @@ class RelatorioManutencaoController extends Controller
             'maquina' => $request->integer('maquina') ?: null,
             'mantenedor' => $request->integer('mantenedor') ?: null,
             'centro_custo' => trim((string) $request->input('centro_custo')) ?: null,
+            // Só as unidades habilitadas no login (as outras nem aparecem na lista).
+            'unidade' => in_array($request->input('unidade'), AcessoOs::unidadesHabilitadas($request->user()), true) ? $request->input('unidade') : null,
+            'area' => $request->integer('area') ?: null,
         ];
         $consulta = $this->relatorio->apontamentos($request->user(), $de, $ate->addDay(), $filtros);
 
@@ -55,6 +58,8 @@ class RelatorioManutencaoController extends Controller
             'maquinas' => AcessoOs::maquinas(),
             'mantenedores' => AcessoOs::mantenedores(),
             'centros' => AcessoOs::centrosCusto(),
+            'unidades' => AcessoOs::unidadesHabilitadas($request->user()),
+            'areas' => AcessoOs::areas(),
             'aproveitamento' => $this->relatorio->aproveitamento($request->user(), $de->startOfDay(), $ate->addDay()->startOfDay()),
         ]);
     }
@@ -96,7 +101,7 @@ class RelatorioManutencaoController extends Controller
         return response()->streamDownload(function () use ($consulta, $fuso) {
             $saida = fopen('php://output', 'w');
             fwrite($saida, "\xEF\xBB\xBF"); // Excel abre acentos certos com o BOM
-            fputcsv($saida, ['Cód. OS', 'Data', 'Máquina', 'Tipo OS', 'Hora inicial', 'Hora final', 'Total hrs sem hora extra', 'Total hora extra',
+            fputcsv($saida, ['Cód. OS', 'Data', 'Unidade', 'Área executante', 'Máquina', 'Tipo OS', 'Hora inicial', 'Hora final', 'Total hrs sem hora extra', 'Total hora extra',
                 'Total hora normal + extra', 'Décimo', 'Funcionário', 'Usuário (lançado por)', 'Centro de custo', 'C.C. solicitante', 'Descrição'], ';');
             $consulta->chunk(500, function ($linhas) use ($saida, $fuso) {
                 foreach ($linhas as $a) {
@@ -104,6 +109,7 @@ class RelatorioManutencaoController extends Controller
                     $total = (int) $a->minutos_normais + (int) $a->minutos_extras;
                     fputcsv($saida, [
                         $os->numeroFormatado(), $a->inicio->setTimezone($fuso)->format('d/m/Y'),
+                        config('oee.unidades')[$os->unidade] ?? $os->unidade, $os->areaExecutante?->nome,
                         trim(($os->maquina?->codigo ?? '').' '.($os->maquina?->nome ?? '')), SolicitacaoServico::TIPOS[$os->tipo] ?? $os->tipo,
                         $a->inicio->setTimezone($fuso)->format('H:i'), $a->fim->setTimezone($fuso)->format('H:i'),
                         HorasManutencao::hhmm($a->minutos_normais), HorasManutencao::hhmm($a->minutos_extras), HorasManutencao::hhmm($total),

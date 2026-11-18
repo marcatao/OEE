@@ -43,9 +43,16 @@ final class RelatorioHorasManutencao
                 if (! empty($filtros['centro_custo'])) {
                     $q->where('centro_custo', $filtros['centro_custo']);
                 }
+                if (! empty($filtros['unidade'])) {
+                    $q->where('unidade', $filtros['unidade']);
+                }
+                if (! empty($filtros['area'])) {
+                    $q->where('area_executante_id', $filtros['area']);
+                }
             })
             ->when(! empty($filtros['mantenedor']), fn ($q) => $q->where('mantenedor_id', $filtros['mantenedor']))
-            ->with(['ordemServico.maquina' => fn ($q) => $q->withoutGlobalScopes(), 'mantenedor' => fn ($q) => $q->withoutGlobalScopes(), 'criadoPor'])
+            ->with(['ordemServico.maquina' => fn ($q) => $q->withoutGlobalScopes(),
+                'ordemServico.areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'mantenedor' => fn ($q) => $q->withoutGlobalScopes(), 'criadoPor'])
             ->orderBy('inicio');
     }
 
