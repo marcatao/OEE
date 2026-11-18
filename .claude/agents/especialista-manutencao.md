@@ -176,3 +176,5 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
 - **OS avaliada não reabre**: depois da avaliação Excelente/Boa do solicitante (status encerrada) ninguém reabre a OS,
   nem o administrador (`FluxoOrdemServico::ACOES['reabrir']` só para concluída e cancelada). Avaliação Ruim já devolve
   a OS para execução. Problema que voltou = nova solicitação.
+- **Sem botão "Iniciar execução"**: a OS passa a "Em atendimento" (em_execucao, marco da linha do tempo) só no
+  PRIMEIRO apontamento de horas (cronômetro, app ou horas lançadas à mão). A ação "iniciar" não é aceita pela tela.

@@ -11,6 +11,7 @@ use App\Services\Manutencao\FluxoOrdemServico;
 use App\Support\AcessoOs;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -86,7 +87,13 @@ class ApontamentoHorasController extends Controller
         $mantenedor = Mantenedor::withoutGlobalScopes()->findOrFail($dados['mantenedor_id']);
         $ap = new ApontamentoHoras(['ordem_servico_id' => $os->id, 'mantenedor_id' => $mantenedor->id]);
         $ap->setRelation('mantenedor', $mantenedor);
-        $this->gravar($ap, $dados);
+        DB::transaction(function () use ($ap, $dados, $os, $request) {
+            $this->gravar($ap, $dados);
+            // Primeiras horas da OS: ela entra em atendimento, como no cronômetro.
+            if ($os->status === 'aberta') {
+                $this->fluxo->executarAcao($os, 'iniciar', $request->user(), 'Primeiras horas lançadas');
+            }
+        });
         $this->fluxo->registrar($os, null, 'horas_lancadas', $os->status, $os->status, "{$mantenedor->nome}: ".$ap->inicio->setTimezone(config('oee.fuso_exibicao'))->format('d/m H:i').' a '.$ap->fim->setTimezone(config('oee.fuso_exibicao'))->format('d/m H:i'), $request->user());
 
         return back()->with('ok', 'Horas lançadas.');

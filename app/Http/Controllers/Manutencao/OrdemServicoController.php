@@ -198,7 +198,9 @@ class OrdemServicoController extends Controller
     public function acao(Request $request, int $ordem): RedirectResponse
     {
         $os = $this->buscar($request, $ordem);
-        $dados = $request->validate(['acao' => ['required', Rule::in(array_keys(FluxoOrdemServico::ACOES))], 'observacao' => ['nullable', 'string', 'max:2000']]);
+        // "iniciar" não vem da tela: a OS entra em atendimento no primeiro apontamento de horas (FluxoOrdemServico::iniciarApontamento).
+        $dados = $request->validate(['acao' => ['required', Rule::in(array_diff(array_keys(FluxoOrdemServico::ACOES), ['iniciar']))],
+            'observacao' => ['nullable', 'string', 'max:2000']]);
         if ($dados['acao'] !== 'reabrir') {
             AcessoOs::exigirAberta($os);
         }

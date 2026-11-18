@@ -113,7 +113,8 @@ final class FluxoOrdemServico
     {
         $acoes = [];
         foreach (self::ACOES as $acao => [$de, , $rotulo]) {
-            if (in_array($os->status, $de, true)) {
+            // "Iniciar" não é botão: a OS entra em atendimento sozinha no primeiro apontamento de horas.
+            if ($acao !== 'iniciar' && in_array($os->status, $de, true)) {
                 $acoes[$acao] = $rotulo;
             }
         }

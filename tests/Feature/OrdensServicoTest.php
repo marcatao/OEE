@@ -115,10 +115,16 @@ class OrdensServicoTest extends TestCase
         $this->assertSame([$mantenedor->id], $os->mantenedores()->pluck('os_mantenedores.id')->map(fn ($i) => (int) $i)->all());
         $this->assertSame($mantenedor->id, $os->responsavel_id);
 
-        // Mecânico inicia, requisita material e encerra o apontamento.
+        // Sem botão "Iniciar execução": a OS só entra em atendimento no primeiro apontamento de horas.
+        $this->actingAs($mecanico)->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertDontSee('value="iniciar"', false);
+        $this->post("/ordens-de-servico/ordens/{$os->id}/acao", ['acao' => 'iniciar'])->assertSessionHasErrors('acao');
+        $this->assertSame('aberta', $os->fresh()->status);
+
+        // Mecânico inicia o apontamento (a OS entra em atendimento), requisita material e encerra o apontamento.
         $this->actingAs($mecanico)->get('/ordens-de-servico/minhas')->assertOk()->assertSee($os->numeroFormatado());
         $this->post("/ordens-de-servico/ordens/{$os->id}/apontamentos/iniciar")->assertRedirect();
         $this->assertSame('em_execucao', $os->fresh()->status);
+        $this->assertSame(1, $os->historico()->where('acao', 'iniciar')->count()); // "Em atendimento" na linha do tempo
         $this->post("/ordens-de-servico/ordens/{$os->id}/materiais", ['descricao' => 'Retentor 40mm', 'quantidade' => 2, 'um' => 'PC'])->assertRedirect();
         $ap = ApontamentoHoras::firstOrFail();
         $ap->forceFill(['inicio' => now()->startOfMinute()->subMinutes(90)])->save();
