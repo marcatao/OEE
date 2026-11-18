@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
     private var diferencaServidor by mutableLongStateOf(0L)
     private var silenciadoAte by mutableLongStateOf(0L)
     private var assumindo by mutableStateOf<Int?>(null)
+    private var itensAlerta by mutableStateOf<List<br.com.alumbra.oee.alertas.ItemAlerta>>(emptyList())
     /** SS que ainda tocam para este usuário (pendentes, que ele pode assumir e não recusou). */
     private var alertaSs by mutableStateOf<List<br.com.alumbra.oee.os.SsApp>>(emptyList())
     private var atualizarResumo by mutableIntStateOf(0)
@@ -194,6 +195,12 @@ class MainActivity : ComponentActivity() {
                 aoSair = ::sair,
                 aoAbrirFuncao = { funcao -> tela = if (funcao == "maquinas") Tela.Maquinas else Tela.Os },
                 pendenciasOs = (resumo?.pendentes?.size ?: 0) + (resumo?.avaliacoes ?: 0),
+                itensAlerta = if (u.operador || u.mantenedor || u.aprovarOs) itensAlerta else null,
+                aoAjustarAlerta = { runCatching { startActivity(it) } },
+                aoTestarAlerta = {
+                    ServicoAlertas.testar(this)
+                    Toast.makeText(this, "Apague a tela agora: o alarme toca em 15 segundos.", Toast.LENGTH_LONG).show()
+                },
             )
             Tela.Maquinas -> TelaMaquinas(
                 repositorio = repositorioMaquinas,
@@ -417,6 +424,10 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         ServicoAlertas.appNaFrente = true
+        itensAlerta = br.com.alumbra.oee.alertas.ConferenciaAlertas.itens(this)
+        // Religa o serviço de alertas a cada abertura (o sistema pode tê-lo matado).
+        val u = sessao.usuario
+        if (sessao.token != null && u != null && (u.operador || u.mantenedor || u.aprovarOs)) runCatching { ServicoAlertas.iniciar(this) }
         tentativaRede++
         relogio++
     }

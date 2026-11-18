@@ -74,7 +74,16 @@ class ServicoAlertas : Service() {
             return START_NOT_STICKY
         }
         segurarCpuEWifi()
+        Despertador.agendar(this) // religa o serviço se o sistema o matar
         if (laco?.isActive != true) laco = escopo.launch { vigiar() }
+        if (intent?.action == ACAO_TESTE) {
+            escopo.launch {
+                delay(15_000)
+                mostrarAlerta("Teste de alarme", "Se você está ouvindo com a tela apagada, os alertas estão funcionando.", true)
+                repeat(4) { alarme.urgente(); delay(3_000) }
+                cancelarAlerta()
+            }
+        }
         return START_STICKY
     }
 
@@ -126,6 +135,8 @@ class ServicoAlertas : Service() {
                     return
                 }
                 // Sem rede: tenta de novo no próximo ciclo.
+            } catch (e: Exception) {
+                // Resposta inesperada: não deixa a vigia morrer; tenta de novo no próximo ciclo.
             }
 
             when {
@@ -216,6 +227,7 @@ class ServicoAlertas : Service() {
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(abrir)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
     }
 
@@ -248,6 +260,7 @@ class ServicoAlertas : Service() {
         private const val CANAL_URGENTE = "maquina_parada"
         private const val CANAL_AVISO = "nova_ss"
         private const val ACAO_SILENCIAR = "br.com.alumbra.oee.SILENCIAR"
+        private const val ACAO_TESTE = "br.com.alumbra.oee.TESTE"
 
         /** O app está na frente? (ele mesmo toca; o serviço só consulta) */
         @Volatile var appNaFrente = false
@@ -259,7 +272,13 @@ class ServicoAlertas : Service() {
         }
 
         fun parar(contexto: Context) {
+            Despertador.cancelar(contexto)
             contexto.stopService(Intent(contexto, ServicoAlertas::class.java))
+        }
+
+        /** Toca um alarme de teste daqui a 15 s (para conferir com a tela apagada). */
+        fun testar(contexto: Context) {
+            ContextCompat.startForegroundService(contexto, Intent(contexto, ServicoAlertas::class.java).setAction(ACAO_TESTE))
         }
 
         fun criarCanais(contexto: Context) {

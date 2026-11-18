@@ -17,6 +17,7 @@ use App\Models\Usuario;
 use App\Services\Aplicativo\LoginAplicativo;
 use App\Support\AcessoOs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Concerns\CalendarioDeTeste;
 use Tests\TestCase;
 
@@ -214,8 +215,16 @@ class AplicativoOrdensServicoTest extends TestCase
     public function test_recusar_so_aquela_ss_para_de_tocar_e_vai_para_o_historico(): void
     {
         $ss1 = $this->abrirSs();
+        // "insert or ignore" não existe no SQL Server (o servidor de produção): não pode ser usado.
+        $semIgnore = [];
+        DB::listen(function ($q) use (&$semIgnore) {
+            if (stripos($q->sql, 'or ignore') !== false) {
+                $semIgnore[] = $q->sql;
+            }
+        });
         $this->api($this->pedro, 'POST', "solicitacoes/{$ss1->id}/recusar")->assertOk()->assertJsonPath('pendentes', []);
         $this->api($this->pedro, 'POST', "solicitacoes/{$ss1->id}/recusar")->assertOk(); // de novo: não duplica
+        $this->assertSame([], $semIgnore);
 
         $this->assertSame(1, HistoricoOs::where('solicitacao_id', $ss1->id)->where('acao', 'nao_aceita')->count());
         $this->assertStringContainsString('SS não aceita por Pedro',

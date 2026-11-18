@@ -1,5 +1,16 @@
 # Versões do aplicativo
 
+## 0.8.1 (build 13)
+- Correção (portal): **Recusar** não funcionava no servidor — usava `insertOrIgnore`, que o SQL Server não tem (erro
+  no portal). Agora confere e grava; o teste falha se voltar a usar "insert or ignore".
+- Alarme com a **tela apagada e o app fechado** mais firme:
+  - a vigia não morre com uma resposta inesperada do portal;
+  - "despertador" do Android (a cada ~15 min, mesmo em economia) religa o serviço se o sistema o matar; o app
+    também religa ao abrir;
+  - cartão **"Alarme com a tela apagada"** na tela inicial: mostra o que falta liberar (notificações, fora da economia
+    de bateria, tela cheia sobre o bloqueio, volume de alarme) e abre o ajuste de cada item;
+  - botão **"Testar com a tela apagada"**: toca um alarme de teste 15 s depois (dá tempo de apagar a tela).
+
 ## 0.8.0 (build 12)
 - **Alerta de SS**: a CADA toque o app confere no portal se a SS ainda está pendente para quem está tocando
   (`GET /api/app/os/alerta`, consulta leve). Se outro mantenedor assumiu, para de tocar na hora — com o app aberto ou

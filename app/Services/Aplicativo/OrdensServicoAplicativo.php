@@ -16,6 +16,7 @@ use App\Support\AcessoOs;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -77,9 +78,16 @@ class OrdensServicoAplicativo
         if ($ss->status !== 'pendente') {
             throw ValidationException::withMessages(['ss' => 'Esta solicitação já foi analisada.']);
         }
-        $nova = DB::table('os_recusas_aplicativo')->insertOrIgnore([
-            'solicitacao_id' => $ss->id, 'usuario_id' => $u->id, 'criado_em' => now(),
-        ]);
+        // Sem insertOrIgnore: o SQL Server não tem. Confere e grava (a chave única segura um toque duplo).
+        $tabela = DB::table('os_recusas_aplicativo');
+        $nova = ! (clone $tabela)->where('solicitacao_id', $ss->id)->where('usuario_id', $u->id)->exists();
+        if ($nova) {
+            try {
+                $tabela->insert(['solicitacao_id' => $ss->id, 'usuario_id' => $u->id, 'criado_em' => now()]);
+            } catch (UniqueConstraintViolationException) {
+                $nova = false;
+            }
+        }
         if ($nova) {
             $this->fluxo->registrar(null, $ss, 'nao_aceita', 'pendente', 'pendente', 'SS não aceita por '.$u->nome.' (aplicativo).', $u);
         }

@@ -2,6 +2,7 @@ package br.com.alumbra.oee.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,6 +68,9 @@ fun TelaPrincipal(
     aoSair: () -> Unit,
     aoAbrirFuncao: (String) -> Unit = {},
     pendenciasOs: Int = 0,
+    itensAlerta: List<br.com.alumbra.oee.alertas.ItemAlerta>? = null,
+    aoAjustarAlerta: (android.content.Intent) -> Unit = {},
+    aoTestarAlerta: () -> Unit = {},
     agora: Long = System.currentTimeMillis(),
 ) {
     var confirmarSaida by remember { mutableStateOf(false) }
@@ -86,6 +90,8 @@ fun TelaPrincipal(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CartaoSincronizacao(ultimaSincronizacao, horasOffline, bloqueada, sincronizando, mensagem, naRedeDaFabrica, aoSincronizar, agora)
+
+            if (itensAlerta != null) CartaoAlertas(itensAlerta, aoAjustarAlerta, aoTestarAlerta)
 
             TituloSecao("Funções")
             val temFuncao = usuario.operador || usuario.timeline || usuario.mantenedor || usuario.aprovarOs || usuario.solicitarOs
@@ -145,6 +151,52 @@ fun TelaPrincipal(
             text = { Text("Para entrar de novo será preciso estar na rede ${BuildConfig.REDE_WIFI}.") },
             confirmButton = { TextButton(onClick = { confirmarSaida = false; aoSair() }) { Text("Sair") } },
             dismissButton = { TextButton(onClick = { confirmarSaida = false }) { Text("Cancelar") } },
+        )
+    }
+}
+
+/** Situação dos alertas com a tela apagada e o app fechado: o que falta liberar e um teste. */
+@Composable
+private fun CartaoAlertas(
+    itens: List<br.com.alumbra.oee.alertas.ItemAlerta>,
+    aoAjustar: (android.content.Intent) -> Unit,
+    aoTestar: () -> Unit,
+) {
+    val tudoOk = itens.all { it.ok }
+    Cartao {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconeRedondo(vetor = Icons.Filled.Lock, situacao = if (tudoOk) Situacao.OK else Situacao.ERRO, tamanho = 44.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Alarme com a tela apagada", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (tudoOk) "Liberado: o celular toca mesmo com o app fechado." else "Falta liberar no celular: toque em cada item.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        itens.forEach { item ->
+            Row(
+                Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small)
+                    .clickable(enabled = !item.ok && item.ajuste != null) { item.ajuste?.let(aoAjustar) }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(item.titulo, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Selo(if (item.ok) "OK" else "Liberar", if (item.ok) Situacao.OK else Situacao.ERRO)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = aoTestar, modifier = Modifier.fillMaxWidth().height(48.dp), shape = MaterialTheme.shapes.medium) {
+            Text("Testar com a tela apagada (toca em 15 s)")
+        }
+        Text(
+            "Em Xiaomi, Samsung e Motorola, libere também \"Início automático\" / \"Sem restrições\" do app na bateria.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp),
         )
     }
 }

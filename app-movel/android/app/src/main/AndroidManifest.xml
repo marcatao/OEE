@@ -55,6 +55,8 @@
                 android:value="Alarme de máquina parada e de solicitação de serviço no chão de fábrica (app interno)" />
         </service>
 
+        <receiver android:name=".alertas.Despertador" android:exported="false" />
+
         <receiver android:name=".alertas.IniciarNoBoot" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
