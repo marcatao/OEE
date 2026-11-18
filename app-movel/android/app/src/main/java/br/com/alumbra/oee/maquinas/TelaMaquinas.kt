@@ -188,6 +188,8 @@ private fun CartaoMaquina(m: MaquinaResumo, aoTocar: () -> Unit) {
                         else -> Selo("Sem apontamento", Situacao.NEUTRA)
                     }
                     if (m.op != null) Selo("OP ${m.op.numero}", Situacao.NEUTRA) else Selo("Sem OP", Situacao.ALERTA)
+                    // Parada com SS/OS aberta pela legenda: número e situação, para acompanhar o desfecho.
+                    m.chamado?.let { Selo("${it.numero} · ${it.rotulo}", it.situacao) }
                 }
             }
         }

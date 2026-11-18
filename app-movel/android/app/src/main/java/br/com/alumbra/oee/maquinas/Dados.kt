@@ -17,6 +17,18 @@ data class OpResumo(
     val produzido: Double,
 )
 
+/** SS/OS aberta pela legenda da parada atual (o portal só manda com a máquina parada). */
+data class ChamadoApp(val tipo: String, val numero: String, val status: String, val rotulo: String) {
+    /** Cor do selo: aguardando análise = alerta; aberta/em execução = neutra; concluída/encerrada = ok. */
+    val situacao: br.com.alumbra.oee.ui.Situacao
+        get() = when (status) {
+            "pendente" -> br.com.alumbra.oee.ui.Situacao.ALERTA
+            "concluida", "encerrada" -> br.com.alumbra.oee.ui.Situacao.OK
+            "rejeitada", "cancelada" -> br.com.alumbra.oee.ui.Situacao.ERRO
+            else -> br.com.alumbra.oee.ui.Situacao.NEUTRA
+        }
+}
+
 data class MaquinaResumo(
     val id: Int,
     val codigo: String,
@@ -26,6 +38,7 @@ data class MaquinaResumo(
     val legenda: LegendaApp?,
     val op: OpResumo?,
     val semMotivo: Int,
+    val chamado: ChamadoApp? = null,
 )
 
 data class ApontamentoApp(
@@ -55,6 +68,7 @@ data class DetalheMaquina(
     val situacao: String?,
     val situacaoDesde: String?,
     val legenda: LegendaApp?,
+    val chamado: ChamadoApp? = null,
     val apontamentos: List<ApontamentoApp>,
     val semMotivo: List<ApontamentoApp>,
     val op: OpDetalhe?,
@@ -76,6 +90,10 @@ fun legendaDe(j: JSONObject?): LegendaApp? = j?.let {
     LegendaApp(it.optInt("id"), it.optString("codigo"), it.optString("descricao"), it.optString("tipo"), it.texto("cor"))
 }
 
+fun chamadoDe(j: JSONObject?): ChamadoApp? = j?.let {
+    ChamadoApp(it.optString("tipo"), it.optString("numero"), it.optString("status"), it.optString("rotulo"))
+}
+
 fun opResumoDe(j: JSONObject?): OpResumo? = j?.let {
     OpResumo(
         it.optInt("id"), it.optString("numero"), it.optString("produto"), it.texto("descricao"),
@@ -87,6 +105,7 @@ fun maquinasDe(j: JSONObject): List<MaquinaResumo> = j.optJSONArray("maquinas").
     MaquinaResumo(
         it.optInt("id"), it.optString("codigo"), it.optString("nome"), it.optString("local"), it.texto("situacao"),
         legendaDe(it.optJSONObject("legenda")), opResumoDe(it.optJSONObject("op")), it.optInt("sem_motivo"),
+        chamadoDe(it.optJSONObject("chamado")),
     )
 }
 
@@ -115,6 +134,7 @@ fun detalheDe(j: JSONObject): DetalheMaquina {
     return DetalheMaquina(
         id = m.optInt("id"), codigo = m.optString("codigo"), nome = m.optString("nome"), local = m.optString("local"),
         situacao = m.texto("situacao"), situacaoDesde = m.texto("situacao_desde"), legenda = legendaDe(m.optJSONObject("legenda")),
+        chamado = chamadoDe(m.optJSONObject("chamado")),
         apontamentos = j.optJSONArray("apontamentos").lista(::apontamentoDe),
         semMotivo = j.optJSONArray("sem_motivo").lista(::apontamentoDe),
         op = op,

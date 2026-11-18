@@ -350,6 +350,11 @@ private fun CartaoSituacao(d: DetalheMaquina, atualizadoEm: Long, hora: SimpleDa
                 if (d.situacaoDesde != null) {
                     Text("Desde ${d.situacaoDesde}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                // Parada com SS/OS aberta pela legenda: o operador acompanha o número e a situação.
+                d.chamado?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Selo("${it.numero} · ${it.rotulo}", it.situacao)
+                }
                 Spacer(Modifier.height(8.dp))
                 Text(
                     if (atualizadoEm > 0) "Atualizado às ${hora.format(Date(atualizadoEm))} · a cada ${d.segundosAtualizacao} s" else "",

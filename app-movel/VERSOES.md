@@ -1,5 +1,11 @@
 # Versões do aplicativo
 
+## 0.7.0 (build 11)
+- **Máquinas**: com a máquina **parada** e uma SS aberta pelo apontamento de uma legenda que "abre SS", a lista e a
+  tela da máquina mostram o **número da SS (ou da OS, depois de aprovada) e a situação dela** (aguardando análise,
+  aberta, em execução, concluída…), para o operador acompanhar o desfecho. Some quando a máquina volta a produzir.
+- Portal: a SS aberta pela legenda tem como solicitante o **usuário logado** que apontou (no app ou no portal).
+
 ## 0.6.1 (build 10)
 - Correção (portal): encerrar o apontamento de horas respondia **403** no servidor. No SQL Server os ids chegam como
   texto e a conferência "o apontamento é deste mantenedor?" comparava texto com número. O mesmo cuidado foi aplicado
