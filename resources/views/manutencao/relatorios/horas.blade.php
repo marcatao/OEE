@@ -81,7 +81,7 @@
 </section>
 
 <section class="cartao">
-  <h2>Total apontado × total disponível</h2>
+  <h2>Total apontado × total disponível <small class="suave">com os filtros acima</small></h2>
   <p class="suave">Disponível = jornada − intervalo nos dias de trabalho do período (até hoje). Meta: acima de 90%.</p>
   @include('manutencao._aproveitamento', ['aproveitamento' => $aproveitamento])
 </section>

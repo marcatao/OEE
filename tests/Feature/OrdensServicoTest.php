@@ -690,9 +690,10 @@ class OrdensServicoTest extends TestCase
         $manut = OrdemServico::create($base + ['unidade' => 'manutencao', 'area_executante_id' => $this->mecanica->id, 'centro_custo' => '110101']);
         $ti = OrdemServico::create($base + ['unidade' => 'tecnologia', 'area_executante_id' => $this->ti->id, 'centro_custo' => '220202']);
         $inicio = now()->setTime(12, 0);
-        $m = Mantenedor::create(['nome' => 'Joao']);
+        $mant = ['manutencao' => Mantenedor::create(['nome' => 'Joao Mecanico', 'unidade' => 'manutencao', 'area_executante_id' => $this->mecanica->id]),
+            'tecnologia' => Mantenedor::create(['nome' => 'Rafa Suporte', 'unidade' => 'tecnologia', 'area_executante_id' => $this->ti->id])];
         foreach ([$manut, $ti] as $os) {
-            ApontamentoHoras::create(['ordem_servico_id' => $os->id, 'mantenedor_id' => $m->id, 'inicio' => $inicio, 'fim' => $inicio->copy()->addHour(),
+            ApontamentoHoras::create(['ordem_servico_id' => $os->id, 'mantenedor_id' => $mant[$os->unidade]->id, 'inicio' => $inicio, 'fim' => $inicio->copy()->addHour(),
                 'minutos_normais' => 60, 'minutos_extras' => 0]);
         }
         $url = '/ordens-de-servico/relatorios/horas';
@@ -701,6 +702,11 @@ class OrdensServicoTest extends TestCase
             ->assertSee($manut->numeroFormatado())->assertSee($ti->numeroFormatado())->assertSee('Mecânica')->assertSee('Suporte de TI');
         $this->get($url.'?unidade=tecnologia')->assertOk()->assertSee($ti->numeroFormatado())->assertDontSee($manut->numeroFormatado());
         $this->get($url.'?area='.$this->mecanica->id)->assertOk()->assertSee($manut->numeroFormatado())->assertDontSee($ti->numeroFormatado());
+        // O box apontado × disponível também segue os filtros.
+        $nomes = fn ($r) => collect($r->viewData('aproveitamento'))->map(fn ($l) => $l['mantenedor']->nome)->all();
+        $this->assertSame(['Joao Mecanico'], $nomes($this->get($url.'?area='.$this->mecanica->id)));
+        $this->assertSame(['Rafa Suporte'], $nomes($this->get($url.'?unidade=tecnologia')));
+        $this->assertSame([], $nomes($this->get($url.'?centro_custo=999999')));
         $csv = $this->get($url.'?formato=csv&area='.$this->ti->id)->assertOk()->streamedContent();
         $this->assertStringContainsString('Suporte de TI', $csv);
         $this->assertStringNotContainsString('Mecânica', $csv);

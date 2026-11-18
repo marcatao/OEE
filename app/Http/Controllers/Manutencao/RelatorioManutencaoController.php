@@ -60,7 +60,7 @@ class RelatorioManutencaoController extends Controller
             'centros' => AcessoOs::centrosCusto(),
             'unidades' => AcessoOs::unidadesHabilitadas($request->user()),
             'areas' => AcessoOs::areas(),
-            'aproveitamento' => $this->relatorio->aproveitamento($request->user(), $de->startOfDay(), $ate->addDay()->startOfDay()),
+            'aproveitamento' => $this->relatorio->aproveitamento($request->user(), $de->startOfDay(), $ate->addDay()->startOfDay(), $filtros),
         ]);
     }
 

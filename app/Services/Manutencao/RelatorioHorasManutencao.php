@@ -104,21 +104,35 @@ final class RelatorioHorasManutencao
 
     /**
      * Apontado × disponível por mantenedor no período (até hoje, se o período ainda não acabou).
+     * Com $filtros (os do relatório de horas): o apontado segue os mesmos filtros da lista; unidade, área executante e
+     * mantenedor também limitam os mantenedores; com tipo, máquina ou centro de custo, só aparece quem apontou neles.
      *
      * @return list<array{mantenedor: Mantenedor, apontado: int, disponivel: int, aproveitamento: ?float}>
      */
-    public function aproveitamento(Usuario $u, CarbonImmutable $de, CarbonImmutable $ate): array
+    public function aproveitamento(Usuario $u, CarbonImmutable $de, CarbonImmutable $ate, ?array $filtros = null): array
     {
         $hoje = CarbonImmutable::now(HorasManutencao::fuso())->endOfDay();
         $fimDisponivel = $ate->subSecond() < $hoje ? $ate->subSecond() : $hoje;
-        $apontado = ApontamentoHoras::whereNotNull('fim')->where('inicio', '>=', $de->utc())->where('inicio', '<', $ate->utc())
-            ->groupBy('mantenedor_id')->selectRaw('mantenedor_id, SUM(COALESCE(minutos_normais, 0) + COALESCE(minutos_extras, 0)) as minutos')
+        $consulta = $filtros === null
+            ? ApontamentoHoras::whereNotNull('fim')->where('inicio', '>=', $de->utc())->where('inicio', '<', $ate->utc())
+            : $this->apontamentos($u, $de, $ate, $filtros)->setEagerLoads([])->reorder();
+        $apontado = $consulta->groupBy('mantenedor_id')
+            ->selectRaw('mantenedor_id, SUM(COALESCE(minutos_normais, 0) + COALESCE(minutos_extras, 0)) as minutos')
             ->pluck('minutos', 'mantenedor_id');
 
+        $filtros ??= [];
+        $soQuemApontou = ! empty($filtros['tipo']) || ! empty($filtros['maquina']) || ! empty($filtros['centro_custo']);
+        $mantenedores = Mantenedor::query()
+            ->when(! empty($filtros['mantenedor']), fn ($q) => $q->whereKey($filtros['mantenedor']))
+            ->when(! empty($filtros['unidade']), fn ($q) => $q->whereIn('unidade', [$filtros['unidade'], 'ambos']))
+            ->when(! empty($filtros['area']), fn ($q) => $q->where(fn ($q) => $q->where('area_executante_id', $filtros['area'])
+                ->orWhereHas('areas', fn ($a) => $a->whereKey($filtros['area']))))
+            ->orderBy('nome')->get();
+
         $linhas = [];
-        foreach (Mantenedor::orderBy('nome')->get() as $m) {
+        foreach ($mantenedores as $m) {
             $minutos = (int) ($apontado[$m->id] ?? 0);
-            if (! $m->ativo && $minutos === 0) {
+            if ($minutos === 0 && (! $m->ativo || $soQuemApontou)) {
                 continue;
             }
             $disponivel = $fimDisponivel >= $de ? HorasManutencao::de($m)->minutosDisponiveis($de, $fimDisponivel) : 0;
