@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Manutencao\AreaExecutante;
+use App\Models\Manutencao\Ferramenta;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\PlanoPreventiva;
 use App\Models\Usuario;
@@ -74,6 +75,48 @@ class FiltroUnidadeCadastrosOsTest extends TestCase
             ->assertSee('PRV-FER')->assertDontSee('PRV-MAN')
             ->assertSee('ano=2026&amp;unidade=ferramentaria', false); // o ano anterior mantém o filtro
         $this->get('/ordens-de-servico/preventivas?unidade=tecnologia')->assertOk()->assertSee('PRV-MAN')->assertDontSee('PRV-TI');
+    }
+
+    public function test_equipamentos_filtram_pela_unidade(): void
+    {
+        $this->cenario();
+        Ferramenta::create(['codigo' => 'MULT-01', 'descricao' => 'Multímetro', 'unidade' => 'manutencao']);
+        Ferramenta::create(['codigo' => 'TORQ-01', 'descricao' => 'Torquímetro', 'unidade' => 'ferramentaria']);
+        Ferramenta::create(['codigo' => 'NOTE-01', 'descricao' => 'Notebook', 'unidade' => 'tecnologia']);
+        $this->actingAs($this->usuario(['admin_producao', 'admin_ferramentaria']));
+
+        $this->get('/ordens-de-servico/cadastros/equipamentos')->assertOk()
+            ->assertSee('MULT-01')->assertSee('TORQ-01')->assertDontSee('NOTE-01');
+        $this->get('/ordens-de-servico/cadastros/equipamentos?unidade=ferramentaria')->assertOk()
+            ->assertSee('TORQ-01')->assertDontSee('MULT-01')->assertSee('situacao=avulsas&amp;unidade=ferramentaria', false);
+        $this->get('/ordens-de-servico/cadastros/equipamentos?unidade=tecnologia')->assertOk()->assertSee('MULT-01')->assertDontSee('NOTE-01');
+    }
+
+    public function test_atributos_do_equipamento_quantos_quiser_e_busca_pelo_valor(): void
+    {
+        $this->cenario();
+        $this->actingAs($this->usuario(['admin_producao']));
+        $dados = ['unidade' => 'manutencao', 'codigo' => 'clp-01', 'descricao' => 'CLP da injetora', 'ativo' => 1];
+
+        $this->post('/ordens-de-servico/cadastros/equipamentos', $dados + ['atributos' => [
+            ['nome' => 'IP', 'valor' => '10.0.5.20'], ['nome' => 'Porta', 'valor' => '502'], ['nome' => '', 'valor' => ''],
+        ]])->assertRedirect()->assertSessionHasNoErrors();
+        $f = Ferramenta::where('codigo', 'CLP-01')->firstOrFail();
+        $this->assertSame(['IP' => '10.0.5.20', 'Porta' => '502'], $f->atributos()->pluck('valor', 'nome')->all());
+
+        // Busca pelo IP e coluna na lista; o formulário traz os atributos.
+        $this->get('/ordens-de-servico/cadastros/equipamentos?busca=10.0.5.20')->assertOk()->assertSee('CLP-01')->assertSee('IP:');
+        $this->get("/ordens-de-servico/cadastros/equipamentos/{$f->id}/editar")->assertOk()->assertSee('value="10.0.5.20"', false);
+
+        // Edita um, remove outro e acrescenta um terceiro.
+        $this->put("/ordens-de-servico/cadastros/equipamentos/{$f->id}", $dados + ['codigo' => 'CLP-01', 'atributos' => [
+            ['nome' => 'IP', 'valor' => '10.0.5.21'], ['nome' => 'Firmware', 'valor' => '3.2'],
+        ]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(['IP' => '10.0.5.21', 'Firmware' => '3.2'], $f->atributos()->pluck('valor', 'nome')->all());
+
+        // Valor sem nome não passa.
+        $this->put("/ordens-de-servico/cadastros/equipamentos/{$f->id}", $dados + ['codigo' => 'CLP-01', 'atributos' => [['nome' => '', 'valor' => 'x']]])
+            ->assertSessionHasErrors('atributos.0.nome');
     }
 
     public function test_com_uma_unidade_so_nao_mostra_o_filtro(): void

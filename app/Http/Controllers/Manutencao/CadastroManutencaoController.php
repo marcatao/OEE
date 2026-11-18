@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Manutencao;
 use App\Http\Controllers\Controller;
 use App\Models\Calendario;
 use App\Models\Manutencao\AreaExecutante;
+use App\Models\Manutencao\AtributoFerramenta;
 use App\Models\Manutencao\Ferramenta;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\SugestaoDescricao;
@@ -192,31 +193,39 @@ class CadastroManutencaoController extends Controller
     {
         $situacao = (string) $request->input('situacao', '');
         $busca = trim((string) $request->input('busca', ''));
-        $consulta = Ferramenta::with(['mantenedor.usuario'])
+        [$unidades, $unidade] = $this->filtroUnidade($request);
+        // Unidade escolhida: os equipamentos dela e os de "Todas" (vale também para os totais).
+        $daUnidade = fn ($q) => $q->when($unidade !== '', fn ($w) => $w->whereIn('unidade', [$unidade, 'ambos']));
+        $consulta = Ferramenta::with(['mantenedor.usuario', 'atributos'])->tap($daUnidade)
             ->when($situacao === 'avulsas', fn ($q) => $q->whereNull('mantenedor_id')->where('ativo', true))
             ->when($situacao === 'com_mantenedor', fn ($q) => $q->whereNotNull('mantenedor_id')->where('ativo', true))
             ->when($situacao === 'inativas', fn ($q) => $q->where('ativo', false))
             ->when($request->integer('mantenedor'), fn ($q, $id) => $q->where('mantenedor_id', $id))
             ->when($busca !== '', fn ($q) => $q->where(fn ($w) => $w->where('codigo', 'like', "%{$busca}%")->orWhere('descricao', 'like', "%{$busca}%")
-                ->orWhere('marca_modelo', 'like', "%{$busca}%")->orWhere('numero_serie', 'like', "%{$busca}%")));
+                ->orWhere('marca_modelo', 'like', "%{$busca}%")->orWhere('numero_serie', 'like', "%{$busca}%")
+                // Busca também nos atributos (ex.: digitar o IP).
+                ->orWhereHas('atributos', fn ($a) => $a->where('valor', 'like', "%{$busca}%")->orWhere('nome', 'like', "%{$busca}%"))));
         $totais = [
-            'todas' => Ferramenta::where('ativo', true)->count(),
-            'avulsas' => Ferramenta::where('ativo', true)->whereNull('mantenedor_id')->count(),
-            'com_mantenedor' => Ferramenta::where('ativo', true)->whereNotNull('mantenedor_id')->count(),
+            'todas' => Ferramenta::tap($daUnidade)->where('ativo', true)->count(),
+            'avulsas' => Ferramenta::tap($daUnidade)->where('ativo', true)->whereNull('mantenedor_id')->count(),
+            'com_mantenedor' => Ferramenta::tap($daUnidade)->where('ativo', true)->whereNotNull('mantenedor_id')->count(),
         ];
 
         return view('manutencao.cadastros.ferramentas', [
             'ferramentas' => $consulta->orderByDesc('ativo')->orderBy('codigo')->paginate(50)->withQueryString(),
             'situacao' => $situacao, 'busca' => $busca, 'totais' => $totais,
             'mantenedores' => AcessoOs::mantenedores(), 'mantenedorFiltro' => $request->integer('mantenedor') ?: null,
+            'unidades' => $unidades, 'unidade' => $unidade,
         ]);
     }
 
     public function ferramenta(?int $ferramenta = null): View
     {
         return view('manutencao.cadastros.ferramenta', [
-            'f' => $ferramenta ? Ferramenta::with('mantenedor.usuario')->findOrFail($ferramenta) : new Ferramenta(['ativo' => true]),
+            'f' => $ferramenta ? Ferramenta::with(['mantenedor.usuario', 'atributos'])->findOrFail($ferramenta) : new Ferramenta(['ativo' => true]),
             'mantenedores' => AcessoOs::mantenedores(),
+            // Nomes já usados (sugestões ao digitar, para todos escreverem "IP" do mesmo jeito).
+            'nomesAtributos' => AtributoFerramenta::query()->select('nome')->distinct()->orderBy('nome')->limit(200)->pluck('nome'),
         ]);
     }
 
@@ -233,11 +242,18 @@ class CadastroManutencaoController extends Controller
             'mantenedor_id' => ['nullable', 'integer', Rule::exists('os_mantenedores', 'id')],
             'observacao' => ['nullable', 'string', 'max:500'],
             'ativo' => ['required', 'boolean'],
+            'atributos' => ['nullable', 'array', 'max:100'],
+            'atributos.*.nome' => ['nullable', 'string', 'max:60', 'required_with:atributos.*.valor'],
+            'atributos.*.valor' => ['nullable', 'string', 'max:255'],
         ], ['codigo.required' => 'Informe o código ou patrimônio.', 'codigo.unique' => 'Já existe um equipamento com esse código.',
-            'descricao.required' => 'Informe a descrição.']);
-        $f->fill(collect($dados)->except('mantenedor_id')->all());
-        $f->entregarPara($dados['mantenedor_id'] ?? null);
-        $f->save();
+            'descricao.required' => 'Informe a descrição.', 'atributos.*.nome.required_with' => 'Informe o nome do atributo (ex.: IP).',
+            'atributos.*.nome.max' => 'Nome do atributo: até 60 letras.', 'atributos.*.valor.max' => 'Valor do atributo: até 255 letras.']);
+        DB::transaction(function () use ($f, $dados) {
+            $f->fill(collect($dados)->except(['mantenedor_id', 'atributos'])->all());
+            $f->entregarPara($dados['mantenedor_id'] ?? null);
+            $f->save();
+            $f->gravarAtributos($dados['atributos'] ?? []);
+        });
 
         return redirect()->route('os.cadastros.ferramentas')->with('ok', "Equipamento {$f->codigo} salvo".($f->mantenedor_id ? ' com '.$f->mantenedor?->nomeExibicao() : ' (avulso)').'.');
     }
