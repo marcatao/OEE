@@ -33,7 +33,7 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Máquina</th><th>Legenda</th><th>Início</th><th>Fim</th><th class="num">Duração</th><th>Ordem de produção</th><th>Referência</th><th>Registrado por</th><th></th></tr></thead>
+    <thead><tr><th>Máquina</th><th>Legenda</th><th>Início</th><th>Fim</th><th class="num">Duração</th><th>Ordem de produção</th><th>Referência</th><th>Registrado por</th><th>Alterado</th><th></th></tr></thead>
     <tbody>
     @forelse ($apontamentos as $a)
       <tr>
@@ -44,14 +44,15 @@
         <td class="num">{{ Formato::minutos($a->duracaoMin()) }}</td>
         <td>@if ($a->ordemProducao)<code>{{ $a->ordemProducao->numero }}</code> <span class="etiqueta op-{{ $a->ordemProducao->status }}">{{ $a->ordemProducao->rotuloStatus() }}</span>@else - @endif</td>
         <td>{{ $a->referencia ?? '-' }}</td>
-        <td>{{ $a->criadoPor?->nome ?? '-' }}</td>
+        <td>{{ $a->criadoPor?->nome ?? '-' }}@if ($a->automaticoIot()) <span class="etiqueta selo-iot" title="{{ $a->textoOrigem() }}">IoT</span>@endif</td>
+        <td>@if ($a->atualizado_por_id){{ $a->atualizadoPor?->nome ?? '-' }}<br><small class="suave">{{ $a->atualizado_em?->copy()->setTimezone(config('oee.fuso_exibicao'))->format('d/m H:i') }}</small>@else<span class="suave">-</span>@endif</td>
         <td><a class="botao pequeno secundario" href="{{ route('apontamentos.edit', $a) }}">Editar</a>
           @if (in_array($a->legenda?->tipo, ['parada', 'planejada'], true) && (auth()->user()->pode('os_solicitar') || auth()->user()->pode('os_aprovar')))
             <a class="botao pequeno secundario" href="{{ route('os.solicitacoes.create', ['apontamento' => $a->id]) }}" title="Abrir solicitação de serviço para esta parada">Abrir SS</a>
           @endif</td>
       </tr>
     @empty
-      <tr><td colspan="9" class="suave">Nenhum apontamento encontrado.</td></tr>
+      <tr><td colspan="10" class="suave">Nenhum apontamento encontrado.</td></tr>
     @endforelse
     </tbody>
   </table>

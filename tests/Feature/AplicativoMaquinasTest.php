@@ -120,6 +120,27 @@ class AplicativoMaquinasTest extends TestCase
         $this->api('POST', "apontamentos/{$ap->id}/motivo", ['legenda_id' => $this->quebra->id])->assertUnprocessable(); // já tem motivo
     }
 
+    public function test_alteracoes_pelo_aplicativo_gravam_quem_alterou_e_quando(): void
+    {
+        $operador = Usuario::where('entra_oid', 'op')->first();
+        $ap = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->semMotivo->id,
+            'ordem_producao_id' => $this->op1->id, 'inicio' => now()->subHour()]);
+        $this->assertNull($ap->atualizado_por_id);
+
+        // Motivo da parada.
+        $this->api('POST', "apontamentos/{$ap->id}/motivo", ['legenda_id' => $this->quebra->id])->assertOk();
+        $this->assertSame($operador->id, (int) $ap->fresh()->atualizado_por_id);
+        $this->assertNotNull($ap->fresh()->atualizado_em);
+
+        // Troca de OP: o aberto é encerrado (alterado pelo operador) e o novo é registrado por ele.
+        $ap->forceFill(['atualizado_por_id' => null])->saveQuietly();
+        $this->api('POST', "maquinas/{$this->maquina->id}/op", ['numero' => $this->op2->numero])->assertOk();
+        $this->assertNotNull($ap->fresh()->fim);
+        $this->assertSame($operador->id, (int) $ap->fresh()->atualizado_por_id);
+        $novo = ApontamentoEstado::where('maquina_id', $this->maquina->id)->whereNull('fim')->first();
+        $this->assertSame($operador->id, (int) $novo->criado_por_id);
+    }
+
     public function test_trocar_op_divide_o_apontamento_aberto_com_outra_op(): void
     {
         $ap = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id,

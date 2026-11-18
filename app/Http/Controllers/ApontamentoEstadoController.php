@@ -35,7 +35,7 @@ class ApontamentoEstadoController extends Controller
             'maquinas' => Maquina::orderBy('nome')->get(['id', 'codigo', 'nome']),
             'filtroMaquina' => $request->integer('maquina_id') ?: null,
             'filtroData' => $data,
-            'apontamentos' => ApontamentoEstado::with(['maquina', 'legenda', 'criadoPor', 'ordemProducao'])
+            'apontamentos' => ApontamentoEstado::with(['maquina', 'legenda', 'criadoPor', 'atualizadoPor', 'iotDispositivo', 'ordemProducao'])
                 ->whereHas('maquina') // só das máquinas que o usuário enxerga (unidades dos perfis dele)
                 ->when($request->integer('maquina_id'), fn ($q, $id) => $q->where('maquina_id', $id))
                 ->when($data, function ($q, $d) use ($fuso) {

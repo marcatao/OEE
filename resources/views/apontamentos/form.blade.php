@@ -72,6 +72,12 @@
       <input type="hidden" name="voltar" value="{{ $voltar }}">
       <button class="botao secundario pequeno" type="submit">@include('layouts.partials.icone', ['nome' => 'lixeira']) Excluir apontamento</button>
       <small class="suave">Registrado por {{ $apontamento->criadoPor?->nome ?? '-' }} em @dataHora($apontamento->criado_em)</small>
+      @if ($apontamento->atualizado_por_id)
+        <small class="suave auditoria-linha">Alterado por {{ $apontamento->atualizadoPor?->nome ?? '-' }} em @dataHora($apontamento->atualizado_em)</small>
+      @endif
+      @if ($apontamento->automaticoIot())
+        <small class="suave auditoria-linha"><span class="etiqueta selo-iot">IoT</span> {{ $apontamento->textoOrigem() }}</small>
+      @endif
     </form>
   @endif
 </section>

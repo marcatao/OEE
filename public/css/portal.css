@@ -181,6 +181,8 @@ dd { margin:0; }
 .filtros { display:flex; gap:1rem; align-items:end; flex-wrap:wrap; margin:1rem 0; }
 .filtros label { display:flex; flex-direction:column; gap:.3rem; color:var(--suave); font-size:.88rem; }
 .etiqueta { display:inline-flex; align-items:center; gap:.35rem; padding:.1rem .6rem; border-radius:999px; font-size:.8rem; font-weight:600; border:1px solid currentColor; }
+.etiqueta.selo-iot { color:var(--primaria); background:var(--primaria-suave); font-size:.7rem; padding:0 .45rem; vertical-align:middle; cursor:help; }
+.auditoria-linha { display:block; margin-top:.35rem; }
 .perfil-admin { color:var(--primaria-texto); background:var(--primaria); border-color:var(--primaria); }
 .perfil-operador { color:var(--ok); }
 .perfil-sem_acesso { color:var(--alerta); }

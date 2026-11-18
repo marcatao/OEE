@@ -18,7 +18,11 @@ class ApontamentoEstado extends Model
 
     protected $table = 'apontamentos_estado';
 
+    /** iot_dispositivo_id e iot_canal ficam FORA de propósito: só o Integrador MQTT grava a origem IoT. */
     protected $fillable = ['maquina_id', 'legenda_id', 'ordem_producao_id', 'inicio', 'fim', 'referencia', 'observacao'];
+
+    /** Marca que o Integrador MQTT põe no início da observação dos apontamentos automáticos. */
+    public const MARCA_IOT = '[IoT]';
 
     protected function casts(): array
     {
@@ -38,6 +42,40 @@ class ApontamentoEstado extends Model
     public function ordemProducao(): BelongsTo
     {
         return $this->belongsTo(OrdemProducao::class, 'ordem_producao_id');
+    }
+
+    /** Dispositivo IoT que gerou o apontamento automático (gravado pelo integrador). Sem o filtro de unidade: quem
+     * enxerga a máquina enxerga de onde veio o apontamento dela. */
+    public function iotDispositivo(): BelongsTo
+    {
+        return $this->belongsTo(DispositivoIot::class, 'iot_dispositivo_id')->withoutGlobalScopes();
+    }
+
+    /** Apontamento automático do Integrador MQTT: observação com a marca "[IoT]" ou dispositivo de origem gravado. */
+    public function automaticoIot(): bool
+    {
+        return str_starts_with(ltrim((string) $this->observacao), self::MARCA_IOT) || $this->iot_dispositivo_id !== null;
+    }
+
+    /** Dispositivo e canal de origem ("TESTE_ALUMBRA / chd1_value"); vazio se o integrador não informou. */
+    public function origemIot(): string
+    {
+        $dispositivo = $this->iot_dispositivo_id !== null
+            ? ($this->iotDispositivo?->codigo ?? 'dispositivo #'.$this->iot_dispositivo_id)
+            : null;
+
+        return implode(' / ', array_filter([$dispositivo, $this->iot_canal]));
+    }
+
+    /** "Automático (IoT: TESTE_ALUMBRA / chd1_value)" ou "Automático (IoT)"; null se for manual. */
+    public function textoOrigem(): ?string
+    {
+        if (! $this->automaticoIot()) {
+            return null;
+        }
+        $origem = $this->origemIot();
+
+        return $origem === '' ? 'Automático (IoT)' : "Automático (IoT: {$origem})";
     }
 
     /** Texto dentro da barra da Timeline: referência digitada, senão o número da OP, senão a legenda. */
