@@ -41,18 +41,10 @@ class CadastroManutencaoController extends Controller
         ]);
     }
 
-    /**
-     * Filtro de unidade das listas: só as unidades habilitadas no login (as outras não aparecem nem pela URL).
-     * Escolhida uma unidade, a lista mostra os cadastros dela e os de "Todas".
-     *
-     * @return array{0: list<string>, 1: string} unidades permitidas e a escolhida ('' = todas as minhas)
-     */
+    /** @return array{0: list<string>, 1: string} */
     private function filtroUnidade(Request $request): array
     {
-        $unidades = AcessoOs::unidadesHabilitadas($request->user());
-        $unidade = (string) $request->query('unidade', '');
-
-        return [$unidades, in_array($unidade, $unidades, true) ? $unidade : ''];
+        return AcessoOs::filtroUnidade($request->user(), $request->query('unidade'));
     }
 
     public function salvarArea(Request $request, ?int $area = null): RedirectResponse

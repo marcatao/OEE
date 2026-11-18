@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\Mantenedor;
+use App\Models\Manutencao\PlanoPreventiva;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CalendarioDeTeste;
@@ -52,6 +53,27 @@ class FiltroUnidadeCadastrosOsTest extends TestCase
         // Unidade fora do login pela URL: ignorada (mostra só as dele).
         $this->get('/ordens-de-servico/cadastros/mantenedores?unidade=tecnologia')->assertOk()
             ->assertSee('Mecânico Zé')->assertSee('Ferramenteiro Lu')->assertDontSee('Técnico TI');
+    }
+
+    public function test_preventivas_filtram_pela_unidade_e_mantem_o_ano(): void
+    {
+        $this->cenario();
+        $area = AreaExecutante::where('codigo', 'MEC')->first();
+        PlanoPreventiva::create(['codigo' => 'PRV-MAN', 'descricao' => 'Lubrificação injetora', 'unidade' => 'manutencao',
+            'area_executante_id' => $area->id, 'periodicidade' => 'semanal']);
+        PlanoPreventiva::create(['codigo' => 'PRV-FER', 'descricao' => 'Revisão de molde', 'unidade' => 'ferramentaria',
+            'area_executante_id' => $area->id, 'periodicidade' => 'semanal']);
+        PlanoPreventiva::create(['codigo' => 'PRV-TI', 'descricao' => 'Backup servidor', 'unidade' => 'tecnologia',
+            'area_executante_id' => $area->id, 'periodicidade' => 'semanal']);
+        $this->actingAs($this->usuario(['admin_producao', 'admin_ferramentaria']));
+
+        $this->get('/ordens-de-servico/preventivas?ano=2027')->assertOk()
+            ->assertSee('PRV-MAN')->assertSee('PRV-FER')->assertDontSee('PRV-TI')
+            ->assertSee('<input type="hidden" name="ano" value="2027">', false)->assertDontSee('<option value="tecnologia"', false);
+        $this->get('/ordens-de-servico/preventivas?ano=2027&unidade=ferramentaria')->assertOk()
+            ->assertSee('PRV-FER')->assertDontSee('PRV-MAN')
+            ->assertSee('ano=2026&amp;unidade=ferramentaria', false); // o ano anterior mantém o filtro
+        $this->get('/ordens-de-servico/preventivas?unidade=tecnologia')->assertOk()->assertSee('PRV-MAN')->assertDontSee('PRV-TI');
     }
 
     public function test_com_uma_unidade_so_nao_mostra_o_filtro(): void

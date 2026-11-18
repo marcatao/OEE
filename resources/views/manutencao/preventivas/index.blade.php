@@ -10,8 +10,8 @@
   <div class="titulo-com-acao">
     <h1>Preventivas — PAMP {{ $ano }}</h1>
     <div class="os-cabecalho">
-      <a class="botao secundario" href="{{ route('os.preventivas.index', ['ano' => $ano - 1]) }}">@include('layouts.partials.icone', ['nome' => 'anterior']) {{ $ano - 1 }}</a>
-      <a class="botao secundario" href="{{ route('os.preventivas.index', ['ano' => $ano + 1]) }}">{{ $ano + 1 }} @include('layouts.partials.icone', ['nome' => 'seta'])</a>
+      <a class="botao secundario" href="{{ route('os.preventivas.index', ['ano' => $ano - 1] + array_filter(['unidade' => $unidade])) }}">@include('layouts.partials.icone', ['nome' => 'anterior']) {{ $ano - 1 }}</a>
+      <a class="botao secundario" href="{{ route('os.preventivas.index', ['ano' => $ano + 1] + array_filter(['unidade' => $unidade])) }}">{{ $ano + 1 }} @include('layouts.partials.icone', ['nome' => 'seta'])</a>
       <form method="post" action="{{ route('os.preventivas.gerar') }}" style="margin:0">@csrf<button class="botao secundario" type="submit">Gerar OS agora</button></form>
       <a class="botao" href="{{ route('os.preventivas.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova preventiva</a>
     </div>
@@ -19,6 +19,7 @@
   <p class="suave">O sistema gera sozinho a OS de cada preventiva todo dia de madrugada, alguns dias antes da data (antecedência do plano).
     No calendário: <span class="marca programada" style="display:inline-block;padding:0 .3rem">P</span> programada,
     <span class="etiqueta os-concluida">em aberto</span>, <span class="etiqueta os-rejeitada">atrasada</span>, <span class="etiqueta os-encerrada">feita</span>.</p>
+  @include('partials.filtro-unidade', ['manter' => ['ano' => $ano]])
 
   <div class="rolagem">
   <table class="tabela pamp">

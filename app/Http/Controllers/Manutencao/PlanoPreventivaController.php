@@ -26,7 +26,9 @@ class PlanoPreventivaController extends Controller
     public function index(Request $request): View
     {
         $ano = max(2000, min(2100, $request->integer('ano') ?: (int) now(config('oee.fuso_exibicao'))->year));
-        $planos = PlanoPreventiva::with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
+        // Filtro de unidade: só as do login; escolhida uma, os planos dela e os de "Todas".
+        [$unidades, $unidade] = AcessoOs::filtroUnidade($request->user(), $request->query('unidade'));
+        $planos = PlanoPreventiva::when($unidade !== '', fn ($q) => $q->whereIn('unidade', [$unidade, 'ambos']))->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
             'responsavel' => fn ($q) => $q->withoutGlobalScopes()])->withCount('itens')
             ->orderByDesc('ativo')->orderBy('codigo')->get();
 
@@ -39,7 +41,7 @@ class PlanoPreventivaController extends Controller
             $calendario[$os->plano_preventiva_id][(int) $os->prevista_para->format('n')][] = $os;
         }
 
-        return view('manutencao.preventivas.index', compact('planos', 'ano', 'calendario'));
+        return view('manutencao.preventivas.index', compact('planos', 'ano', 'calendario', 'unidades', 'unidade'));
     }
 
     public function create(Request $request): View

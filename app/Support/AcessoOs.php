@@ -68,6 +68,19 @@ final class AcessoOs
         return $dele !== [] ? $dele : Unidades::areas();
     }
 
+    /**
+     * Filtro de unidade das listas (Mantenedores, Áreas executantes, Preventivas): só as unidades habilitadas no login;
+     * unidade pedida fora delas é ignorada.
+     *
+     * @return array{0: list<string>, 1: string} unidades permitidas e a escolhida ('' = todas as minhas)
+     */
+    public static function filtroUnidade(Usuario $u, ?string $pedida): array
+    {
+        $unidades = self::unidadesHabilitadas($u);
+
+        return [$unidades, in_array((string) $pedida, $unidades, true) ? (string) $pedida : ''];
+    }
+
     /** Restringe um cadastro com "unidade" às unidades habilitadas do usuário logado (e às de "Todas"). */
     private static function daUnidadeDoUsuario(Builder $consulta): Builder
     {
