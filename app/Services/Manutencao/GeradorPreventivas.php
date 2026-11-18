@@ -5,6 +5,7 @@ namespace App\Services\Manutencao;
 use App\Models\Manutencao\ChecklistOs;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\PlanoPreventiva;
+use App\Models\Manutencao\SolicitacaoServico;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -65,7 +66,7 @@ final class GeradorPreventivas
                 'maquina_id' => $plano->maquina_id,
                 'area_executante_id' => $plano->area_executante_id,
                 'centro_custo' => $maquina?->centro_custo,
-                'prioridade' => $plano->prioridade ?: 'media',
+                'prioridade' => SolicitacaoServico::prioridadeAtual($plano->prioridade),
                 'maquina_parada' => false,
                 'titulo' => mb_substr("Preventiva {$plano->codigo}: {$plano->descricao}", 0, 120),
                 'descricao' => "Preventiva {$plano->codigo}: {$plano->descricao}",

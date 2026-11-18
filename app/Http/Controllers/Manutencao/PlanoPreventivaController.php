@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\PlanoPreventiva;
 use App\Models\Manutencao\PlanoPreventivaItem;
+use App\Models\Manutencao\SolicitacaoServico;
 use App\Services\Manutencao\GeradorPreventivas;
 use App\Support\AcessoOs;
 use App\Support\Unidades;
@@ -44,7 +45,7 @@ class PlanoPreventivaController extends Controller
     public function create(Request $request): View
     {
         return view('manutencao.preventivas.form', $this->dados(new PlanoPreventiva([
-            'ativo' => true, 'periodicidade' => 'meses', 'meses' => '111111111111', 'dia_mes' => 1, 'antecedencia_dias' => 7, 'prioridade' => 'media',
+            'ativo' => true, 'periodicidade' => 'meses', 'meses' => '111111111111', 'dia_mes' => 1, 'antecedencia_dias' => 7, 'prioridade' => 'baixa',
         ])));
     }
 
@@ -96,7 +97,7 @@ class PlanoPreventivaController extends Controller
             'maquina_id' => ['nullable', 'integer', Rule::exists('maquinas', 'id')],
             'area_executante_id' => ['required', 'integer', Rule::exists('os_areas_executantes', 'id')],
             'responsavel_id' => ['nullable', 'integer', Rule::exists('os_mantenedores', 'id')],
-            'prioridade' => ['required', Rule::in(['baixa', 'media', 'alta', 'urgente'])],
+            'prioridade' => ['required', Rule::in(array_keys(SolicitacaoServico::PRIORIDADES))],
             'periodicidade' => ['required', Rule::in(array_keys(PlanoPreventiva::PERIODICIDADES))],
             'meses' => ['array'], 'meses.*' => ['integer', 'between:1,12'],
             'dia_mes' => ['nullable', 'integer', 'between:1,28'],

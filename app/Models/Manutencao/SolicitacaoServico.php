@@ -28,12 +28,26 @@ class SolicitacaoServico extends Model
         'servico_geral' => 'Serviço geral',
     ];
 
+    /** Prioridades que se escolhem na SS, na OS e nos planos de preventiva. */
     public const PRIORIDADES = [
-        'baixa' => 'Baixa',
-        'media' => 'Média',
         'alta' => 'Alta',
-        'urgente' => 'Urgente',
+        'baixa' => 'Baixa',
     ];
+
+    /** Prioridades antigas: só para exibir o que já foi gravado (não se escolhem mais). */
+    public const PRIORIDADES_ANTIGAS = ['urgente' => 'Urgente (antiga)', 'media' => 'Média (antiga)'];
+
+    /** Prioridades que contam como "alta" nos painéis (inclui a antiga "urgente"). */
+    public const PRIORIDADES_ALTAS = ['alta', 'urgente'];
+
+    /** Antigas → atuais (ex.: plano de preventiva gravado com "média" gera OS "baixa"). */
+    public static function prioridadeAtual(?string $prioridade): string
+    {
+        return match ($prioridade) {
+            'alta', 'urgente' => 'alta',
+            default => 'baixa',
+        };
+    }
 
     public const STATUS = [
         'pendente' => 'Aguardando análise',
@@ -48,7 +62,7 @@ class SolicitacaoServico extends Model
         'centro_custo_solicitante', 'prioridade', 'maquina_parada', 'descricao', 'status', 'analisado_por_id',
         'analisado_em', 'motivo_rejeicao', 'apontamento_estado_id', 'ordem_producao_id', 'risco_integridade', 'automatica', 'origem_iot'];
 
-    protected $attributes = ['prioridade' => 'media', 'maquina_parada' => false, 'status' => 'pendente'];
+    protected $attributes = ['prioridade' => 'baixa', 'maquina_parada' => false, 'status' => 'pendente'];
 
     protected function casts(): array
     {
@@ -83,7 +97,7 @@ class SolicitacaoServico extends Model
 
     public function rotuloPrioridade(): string
     {
-        return self::PRIORIDADES[$this->prioridade] ?? (string) $this->prioridade;
+        return self::PRIORIDADES[$this->prioridade] ?? self::PRIORIDADES_ANTIGAS[$this->prioridade] ?? (string) $this->prioridade;
     }
 
     public function rotuloStatus(): string

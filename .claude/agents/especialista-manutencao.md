@@ -184,3 +184,5 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   numa máquina (portal, app ou IoT) abre a SS "OS automática — …" com o CC da máquina e o IoT/canal como solicitante
   (usuário técnico inativo "IoT (automático)", `origem_iot`); não repete enquanto houver outra automática em aberto da
   mesma máquina e área; a OS automática é avaliada pelo administrador da unidade (não pelo app).
+- **Prioridade da SS/OS/preventiva: só Alta ou Baixa.** As antigas (urgente, média) continuam gravadas e aparecem como
+  "(antiga)"; plano de preventiva antigo gera OS com urgente→alta e média→baixa; o painel conta alta + urgente antiga.

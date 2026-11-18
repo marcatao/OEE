@@ -58,7 +58,7 @@ final class PainelManutencao
             'abertas' => $abertas,
             'porStatus' => collect(OrdemServico::STATUS_ABERTOS)->mapWithKeys(fn ($s) => [$s => $abertas->where('status', $s)->count()]),
             'maquinasParadas' => $abertas->where('maquina_parada', true)->pluck('maquina_id')->filter()->unique()->count(),
-            'urgentes' => $abertas->where('prioridade', 'urgente')->count(),
+            'urgentes' => $abertas->whereIn('prioridade', SolicitacaoServico::PRIORIDADES_ALTAS)->count(),
             'semMantenedor' => $abertas->filter(fn ($o) => $o->responsavel_id === null && $o->mantenedores->isEmpty())->values(),
             'preventivasAtrasadas' => $abertas->filter(fn ($o) => $o->tipo === 'preventiva' && $o->prevista_para && $o->prevista_para->lt($hojeLocal))->values(),
             'aguardandoAvaliacao' => $concluidas,
@@ -69,7 +69,7 @@ final class PainelManutencao
             'tempoMedioMin' => $tempos->isNotEmpty() ? $tempos->avg() : null,
             'avaliacoes' => $avaliacoes,
             'minutosMes' => $minutosMes,
-            'urgentesLista' => $abertas->filter(fn ($o) => $o->prioridade === 'urgente' || $o->maquina_parada)->sortBy('id')->values(),
+            'urgentesLista' => $abertas->filter(fn ($o) => in_array($o->prioridade, SolicitacaoServico::PRIORIDADES_ALTAS, true) || $o->maquina_parada || $o->risco_integridade)->sortBy('id')->values(),
         ];
     }
 
@@ -120,7 +120,7 @@ final class PainelManutencao
                 'mantenedor' => $m,
                 'total' => $dele->count(),
                 'porStatus' => collect(OrdemServico::STATUS_ABERTOS)->mapWithKeys(fn ($s) => [$s => $dele->where('status', $s)->count()]),
-                'urgentes' => $dele->where('prioridade', 'urgente')->count(),
+                'urgentes' => $dele->whereIn('prioridade', SolicitacaoServico::PRIORIDADES_ALTAS)->count(),
                 'minutosMes' => (int) ($minutos[$m->id] ?? 0),
                 'rodando' => $rodando[$m->id] ?? null,
             ];

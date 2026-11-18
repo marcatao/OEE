@@ -38,7 +38,7 @@
       <div><span>OS abertas</span><strong>{{ $abertas->count() }}</strong><small>{{ $porStatus['em_execucao'] }} em execução · {{ $porStatus['aguardando_material'] }} aguard. material</small></div></a>
     <div class="kpi">
       <span class="kpi-icone {{ $maquinasParadas ? 'alerta' : '' }}">@include('layouts.partials.icone', ['nome' => 'maquina'])</span>
-      <div><span>Máquinas paradas</span><strong>{{ $maquinasParadas }}</strong><small>{{ $urgentes }} OS urgentes abertas</small></div></div>
+      <div><span>Máquinas paradas</span><strong>{{ $maquinasParadas }}</strong><small>{{ $urgentes }} OS de prioridade alta abertas</small></div></div>
     <div class="kpi">
       <span class="kpi-icone {{ $semResposta->isNotEmpty() ? 'alerta' : '' }}">@include('layouts.partials.icone', ['nome' => 'solicitacao'])</span>
       <div><span>Mensagens sem resposta</span><strong>{{ $semResposta->count() }}</strong><small>esperando a manutenção</small></div></div>
@@ -107,7 +107,7 @@
       @forelse ($pendentes->take(8) as $ss)
         <li><a href="{{ route('os.solicitacoes.show', $ss) }}"><strong>{{ $ss->numeroFormatado() }}</strong> {{ \Illuminate\Support\Str::limit($ss->titulo ?: $ss->descricao, 60) }}</a>
           <small class="suave">{{ $ss->solicitante?->nome }} · {{ $ss->areaExecutante?->nome }} · há {{ $idade($ss->criado_em) }}</small>
-          @if ($ss->prioridade === 'urgente' || $ss->maquina_parada)<span class="etiqueta os-rejeitada">{{ $ss->maquina_parada ? 'máquina parada' : 'urgente' }}</span>@endif
+          @if (in_array($ss->prioridade, \App\Models\Manutencao\SolicitacaoServico::PRIORIDADES_ALTAS, true) || $ss->maquina_parada)<span class="etiqueta os-rejeitada">{{ $ss->maquina_parada ? 'máquina parada' : 'prioridade alta' }}</span>@endif
           @if ($ss->risco_integridade)<span class="etiqueta os-risco">risco</span>@endif</li>
       @empty
         <li class="suave">Nenhuma solicitação esperando aprovação.</li>
@@ -124,13 +124,13 @@
       @endforelse
     </ul>
 
-    <h2>Urgentes e máquinas paradas <small class="suave">({{ $urgentesLista->count() }})</small></h2>
+    <h2>Prioridade alta, máquinas paradas e risco <small class="suave">({{ $urgentesLista->count() }})</small></h2>
     <ul class="painel-lista">
       @forelse ($urgentesLista->take(8) as $o)
         <li><a href="{{ route('os.ordens.show', $o) }}"><strong>{{ $o->numeroFormatado() }}</strong> {{ \Illuminate\Support\Str::limit($o->titulo ?: $o->descricao, 50) }}</a>
           <small class="suave">@if ($o->maquina){{ $o->maquina->codigo }} {{ $o->maquina->nome }} · @endif{{ $o->rotuloStatus() }} · aberta há {{ $idade($o->criado_em) }}</small></li>
       @empty
-        <li class="suave">Nenhuma OS urgente ou com máquina parada.</li>
+        <li class="suave">Nenhuma OS de prioridade alta, com máquina parada ou com risco.</li>
       @endforelse
     </ul>
 

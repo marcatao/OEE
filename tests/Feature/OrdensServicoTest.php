@@ -376,15 +376,15 @@ class OrdensServicoTest extends TestCase
         // O aprovador vê os campos editáveis no detalhe; "só salvar" mantém a SS pendente.
         $this->actingAs($adm)->get("/ordens-de-servico/solicitacoes/{$ss->id}")->assertOk()->assertSee('Revise a solicitação')->assertSee('name="titulo"', false);
         $campos = ['titulo' => 'Vazamento no cilindro principal', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
-            'maquina_id' => $this->injetora->id, 'prioridade' => 'urgente', 'descricao' => 'Vazamento forte de óleo'];
+            'maquina_id' => $this->injetora->id, 'prioridade' => 'alta', 'descricao' => 'Vazamento forte de óleo'];
         $this->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar", $campos + ['acao' => 'salvar'])->assertRedirect();
         $this->assertSame('pendente', $ss->fresh()->status);
-        $this->assertSame('urgente', $ss->fresh()->prioridade);
+        $this->assertSame('alta', $ss->fresh()->prioridade);
         // Aprovar com novas alterações: a OS nasce com os dados revisados.
         $this->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar", ['titulo' => 'Título final'] + $campos + ['acao' => 'aprovar', 'mantenedores' => [$m->id]])->assertRedirect();
         $os = OrdemServico::where('solicitacao_id', $ss->id)->firstOrFail();
         $this->assertSame('Título final', $os->titulo);
-        $this->assertSame('urgente', $os->prioridade);
+        $this->assertSame('alta', $os->prioridade);
         $this->assertTrue($ss->historico()->where('acao', 'alterada')->exists());
 
         // OS emitida: sem edição; só máquina parada, horas, mantenedores e mensagens enquanto aberta.
@@ -445,14 +445,14 @@ class OrdensServicoTest extends TestCase
             ->assertSee('<option value="manutencao"', false)->assertSee('<option value="tecnologia"', false)->assertDontSee('<option value="ferramentaria"', false);
         // Área de outra unidade é recusada.
         $this->post('/ordens-de-servico/solicitacoes', ['unidade' => 'tecnologia', 'titulo' => 'x', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
-            'prioridade' => 'media', 'descricao' => 'x', 'centro_custo' => '1001'])->assertSessionHasErrors('area_executante_id');
+            'prioridade' => 'baixa', 'descricao' => 'x', 'centro_custo' => '1001'])->assertSessionHasErrors('area_executante_id');
         // Unidade que a pessoa não solicita é recusada.
         $this->actingAs($soManutencao)->post('/ordens-de-servico/solicitacoes', ['unidade' => 'tecnologia', 'titulo' => 'x', 'tipo' => 'corretiva',
-            'area_executante_id' => $this->ti->id, 'prioridade' => 'media', 'descricao' => 'x', 'centro_custo' => '1001'])->assertSessionHasErrors('unidade');
+            'area_executante_id' => $this->ti->id, 'prioridade' => 'baixa', 'descricao' => 'x', 'centro_custo' => '1001'])->assertSessionHasErrors('unidade');
         $this->actingAs($ambos2);
         // Máquina de outra área é recusada; a de "Todas" vale para qualquer área.
         $this->post('/ordens-de-servico/solicitacoes', ['titulo' => 'x', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
-            'maquina_id' => $servidor->id, 'prioridade' => 'media', 'descricao' => 'x'])->assertSessionHasErrors('maquina_id');
+            'maquina_id' => $servidor->id, 'prioridade' => 'baixa', 'descricao' => 'x'])->assertSessionHasErrors('maquina_id');
         $this->abrirSs($ambos2, ['area_executante_id' => $this->ti->id, 'maquina_id' => $ambos->id]);
         // Quem só solicita para a Manutenção nem recebe as máquinas da Tecnologia.
         $this->actingAs($soManutencao)->get('/ordens-de-servico/solicitacoes/nova')->assertOk()->assertSee('INJ-01')->assertDontSee('SRV-01');
@@ -512,13 +512,13 @@ class OrdensServicoTest extends TestCase
         $adm = $this->usuario(['admin_producao'], 'adm-sem@empresa.com');
         $this->actingAs($adm)->get('/ordens-de-servico/solicitacoes/nova')->assertOk()->assertSee('Mecânica')->assertDontSee('Suporte de TI');
         $this->post('/ordens-de-servico/solicitacoes', ['titulo' => 'PC', 'tipo' => 'corretiva', 'area_executante_id' => $this->ti->id,
-            'prioridade' => 'media', 'descricao' => 'x', 'centro_custo' => '2002'])->assertSessionHasErrors('area_executante_id');
+            'prioridade' => 'baixa', 'descricao' => 'x', 'centro_custo' => '2002'])->assertSessionHasErrors('area_executante_id');
         $this->assertNotNull($this->abrirSs($adm)->id);
 
         $soManutencao = $this->usuario(['solicitante_manutencao'], 'sm@empresa.com');
         // Não é solicitante de Tecnologia: não abre para a área de TI.
         $this->actingAs($soManutencao)->post('/ordens-de-servico/solicitacoes', ['titulo' => 'PC', 'tipo' => 'corretiva', 'area_executante_id' => $this->ti->id,
-            'prioridade' => 'media', 'descricao' => 'x', 'centro_custo' => '2002'])->assertSessionHasErrors('area_executante_id');
+            'prioridade' => 'baixa', 'descricao' => 'x', 'centro_custo' => '2002'])->assertSessionHasErrors('area_executante_id');
         $this->get('/ordens-de-servico/solicitacoes/nova')->assertOk()->assertSee('Mecânica')->assertDontSee('Suporte de TI');
 
         // Máquina com CC: vale o da máquina, mesmo que venha outro.
@@ -567,7 +567,7 @@ class OrdensServicoTest extends TestCase
         $admin = $this->usuario(['admin_producao'], 'adm@empresa.com');
         $this->actingAs($admin)->post('/ordens-de-servico/preventivas', [
             'unidade' => 'manutencao', 'codigo' => 'prev-inj', 'descricao' => 'Lubrificação da injetora', 'maquina_id' => $this->injetora->id,
-            'area_executante_id' => $this->mecanica->id, 'prioridade' => 'media', 'periodicidade' => 'meses', 'meses' => range(1, 12),
+            'area_executante_id' => $this->mecanica->id, 'prioridade' => 'baixa', 'periodicidade' => 'meses', 'meses' => range(1, 12),
             'dia_mes' => 10, 'antecedencia_dias' => 7, 'ativo' => '1',
             'itens' => [['descricao' => 'Verificar nível de óleo'], ['descricao' => 'Lubrificar guias'], ['descricao' => '']],
         ])->assertRedirect('/ordens-de-servico/preventivas');
@@ -642,5 +642,22 @@ class OrdensServicoTest extends TestCase
         $hoje = now(config('oee.fuso_exibicao'))->format('Y-m-d');
         $this->get('/ordens-de-servico/ordens?de='.$hoje)->assertSee('Prensa travada')->assertDontSee('Servidor lento');
         $this->get('/ordens-de-servico/ordens?ate='.now(config('oee.fuso_exibicao'))->subDays(5)->format('Y-m-d'))->assertSee('Servidor lento')->assertDontSee('Prensa travada');
+    }
+
+    public function test_prioridades_so_alta_e_baixa_e_antigas_ainda_aparecem(): void
+    {
+        $sol = $this->usuario(['solicitante_manutencao'], 'sol@empresa.com');
+        $this->actingAs($sol)->get('/ordens-de-servico/solicitacoes/nova')->assertOk()
+            ->assertSee('<option value="alta"', false)->assertSee('<option value="baixa"', false)
+            ->assertDontSee('<option value="media"', false)->assertDontSee('<option value="urgente"', false);
+        $this->post('/ordens-de-servico/solicitacoes', ['unidade' => 'manutencao', 'titulo' => 'x', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'prioridade' => 'urgente', 'descricao' => 'x', 'centro_custo' => '1001'])->assertSessionHasErrors('prioridade');
+
+        // Gravada antes com a prioridade antiga: continua aparecendo.
+        $antiga = OrdemServico::create(['unidade' => 'manutencao', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'prioridade' => 'urgente', 'descricao' => 'Antiga', 'solicitante_id' => $sol->id, 'status' => 'aberta']);
+        $this->assertSame('Urgente (antiga)', $antiga->rotuloPrioridade());
+        $this->assertSame('alta', SolicitacaoServico::prioridadeAtual('urgente'));
+        $this->assertSame('baixa', SolicitacaoServico::prioridadeAtual('media'));
     }
 }

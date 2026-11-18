@@ -30,7 +30,7 @@ class PlanoPreventiva extends Model
     protected $fillable = ['unidade', 'codigo', 'descricao', 'maquina_id', 'area_executante_id', 'responsavel_id',
         'prioridade', 'periodicidade', 'meses', 'dia_mes', 'proxima_em', 'antecedencia_dias', 'duracao_prevista_min', 'ativo'];
 
-    protected $attributes = ['unidade' => 'manutencao', 'prioridade' => 'media', 'meses' => '111111111111',
+    protected $attributes = ['unidade' => 'manutencao', 'prioridade' => 'baixa', 'meses' => '111111111111',
         'dia_mes' => 1, 'antecedencia_dias' => 7, 'ativo' => true];
 
     protected function casts(): array

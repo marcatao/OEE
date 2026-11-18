@@ -50,7 +50,7 @@ class SolicitacaoController extends Controller
     public function create(Request $request): View
     {
         $this->exigirSolicitante($request);
-        $ss = new SolicitacaoServico(['tipo' => 'corretiva', 'prioridade' => 'media', 'maquina_parada' => false]);
+        $ss = new SolicitacaoServico(['tipo' => 'corretiva', 'prioridade' => 'baixa', 'maquina_parada' => false]);
         // Aberta a partir de uma parada do apontamento real (Timeline): já vem com a máquina e a OP.
         if ($request->filled('apontamento')) {
             $ap = ApontamentoEstado::with('maquina')->find($request->integer('apontamento'));

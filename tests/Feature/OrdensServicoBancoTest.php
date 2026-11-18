@@ -61,7 +61,7 @@ class OrdensServicoBancoTest extends TestCase
             'maquina_parada' => true, 'descricao' => 'Vazamento de óleo no cilindro',
         ])->fresh();
         $this->assertSame('pendente', $ss->status);
-        $this->assertSame('media', $ss->prioridade);
+        $this->assertSame('baixa', $ss->prioridade);
         $this->assertSame('SS '.str_pad((string) $ss->id, 6, '0', STR_PAD_LEFT), $ss->numeroFormatado());
         $this->assertTrue($ss->maquina->is($this->maquina));
         $this->assertSame($this->solicitante->id, $ss->criado_por_id);

@@ -48,7 +48,7 @@ class OrdemServico extends Model
         'aceite_por_id', 'aceite_em', 'aceite_observacao', 'cancelamento_motivo', 'ordem_producao_id',
         'apontamento_estado_id', 'total_minutos', 'risco_integridade', 'automatica', 'origem_iot'];
 
-    protected $attributes = ['prioridade' => 'media', 'maquina_parada' => false, 'status' => 'aberta', 'total_minutos' => 0];
+    protected $attributes = ['prioridade' => 'baixa', 'maquina_parada' => false, 'status' => 'aberta', 'total_minutos' => 0];
 
     protected function casts(): array
     {
@@ -101,7 +101,7 @@ class OrdemServico extends Model
 
     public function rotuloPrioridade(): string
     {
-        return self::PRIORIDADES[$this->prioridade] ?? (string) $this->prioridade;
+        return self::PRIORIDADES[$this->prioridade] ?? SolicitacaoServico::PRIORIDADES_ANTIGAS[$this->prioridade] ?? (string) $this->prioridade;
     }
 
     public function rotuloStatus(): string

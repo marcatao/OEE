@@ -116,7 +116,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Custo da OS (card na tela da OS): `App\Services\Manutencao\CustoOrdemServico`.
 - **Abertura de SS**: em etapas (unidade → área executante → máquina/CC → o que precisa → descrição); a unidade só
   lista as liberadas ao login (`SolicitacaoController::unidadesPermitidas`) e filtra áreas e máquinas; flags "máquina
-  parada" e **"oferece risco à integridade"** (`risco_integridade`, copiado para a OS). **SS automática**: legenda com
+  parada" e **"oferece risco à integridade"**; prioridade só **Alta | Baixa** (SS, OS e planos de preventiva;
+  `SolicitacaoServico::PRIORIDADES`; "urgente" e "média" antigas só aparecem com "(antiga)", plano antigo gera OS
+  pela `prioridadeAtual`; painéis contam `PRIORIDADES_ALTAS`) (`risco_integridade`, copiado para a OS). **SS automática**: legenda com
   "Abre SS" (`legendas.abre_ss_unidade` + `abre_ss_area_executante_id`) abre a SS ao ser apontada (portal, app ou IoT;
   evento `saved` de `ApontamentoEstado` → `App\Services\Manutencao\SsAutomatica`): título "OS automática — …", CC da
   máquina, solicitante = usuário técnico inativo "IoT (automático)" + `origem_iot` (dispositivo/canal); uma por

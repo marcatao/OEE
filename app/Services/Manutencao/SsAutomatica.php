@@ -53,7 +53,7 @@ final class SsAutomatica
                 'area_executante_id' => $area->id,
                 'centro_custo' => trim((string) $maquina->centro_custo) ?: null,
                 'centro_custo_solicitante' => mb_substr($origem, 0, 120),
-                'prioridade' => $legenda->tipo === 'parada' ? 'alta' : 'media',
+                'prioridade' => $legenda->tipo === 'parada' ? 'alta' : 'baixa',
                 'maquina_parada' => in_array($legenda->tipo, ['parada', 'planejada'], true),
                 'descricao' => mb_substr("Solicitação aberta automaticamente: a legenda {$legenda->codigo} — {$legenda->descricao} foi apontada "
                     ."na máquina {$maquina->codigo} — {$maquina->nome}".($quando !== '' ? " em {$quando}" : '').". Origem: {$origem}.", 0, 2000),
