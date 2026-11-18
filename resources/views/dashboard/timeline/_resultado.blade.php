@@ -93,10 +93,9 @@
               @endif
               @if ($sit && $sit['op'])
                 <span class="tl-op" title="OP {{ $sit['op']->numero }}{{ $sit['produto'] ? ' · '.$sit['produto']->codigo().' '.$sit['produto']->descricao() : '' }}">
-                  <strong>OP {{ $sit['op']->numero }}</strong>
-                  @if ($podeApontar)<button type="button" class="tl-trocar-op"
+                  <strong>OP {{ $sit['op']->numero }}@if ($podeApontar)<button type="button" class="tl-trocar-op"
                       data-trocar-op="{{ route('apontamentos.trocar-op', $maquina->id) }}" data-maquina="{{ $maquina->nome }}"
-                      data-op="{{ $sit['op']->numero }}">Trocar OP</button>@endif
+                      data-op="{{ $sit['op']->numero }}">Trocar OP</button>@endif</strong>
                   <small>{{ $sit['produto'] ? $sit['produto']->codigo().' · '.$sit['produto']->descricao() : rtrim($sit['op']->c2_produto) }}</small>
                   @foreach ($sit['moldes'] as $molde)
                     <small class="tl-molde" title="Molde {{ $molde['codigo'] }}{{ $molde['ferramenta'] ? ' · '.$molde['ferramenta']->h4_descri.' · '.$molde['ferramenta']->h4_qtdcavativas.' cavidades ativas de '.$molde['ferramenta']->h4_qtdcav : '' }}">
