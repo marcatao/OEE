@@ -76,16 +76,15 @@
 
 <div class="grade duas painel-grade">
   <section class="cartao">
-    <h2>OS abertas por mantenedor</h2>
-    @php($maior = max(1, $porMantenedor->max('total') ?? 1))
+    <h2>OS abertas por solicitante <small class="suave">5 que mais pediram</small></h2>
+    @php($maior = max(1, $porSolicitante->where('outras', false)->max('total') ?? 1, $porSolicitante->max('total') ?? 1))
     <div class="rolagem">
     <table class="tabela painel-mantenedores">
-      <thead><tr><th>Mantenedor</th><th>OS abertas</th><th class="num">Urg.</th><th class="num">Horas no período</th></tr></thead>
+      <thead><tr><th>Solicitante</th><th>OS abertas</th><th class="num">Horas apontadas</th></tr></thead>
       <tbody>
-      @forelse ($porMantenedor as $l)
-        <tr>
-          <td><span class="os-pessoa">@if ($l['mantenedor']->usuario)@include('partials.avatar', ['usuario' => $l['mantenedor']->usuario])@endif <span><a href="{{ route('os.ordens.index', ['responsavel' => $l['mantenedor']->id]) }}">{{ $l['mantenedor']->nomeExibicao() }}</a>
-            @if ($l['rodando'])<a class="painel-apontando" href="{{ route('os.ordens.show', $l['rodando']->ordem_servico_id) }}">● apontando agora na {{ $l['rodando']->ordemServico?->numeroFormatado() }}</a>@endif</span></span></td>
+      @forelse ($porSolicitante as $l)
+        <tr @class(['painel-outras' => $l['outras']])>
+          <td>@if ($l['solicitante'])<span class="os-pessoa">@include('partials.avatar', ['usuario' => $l['solicitante']]) <span>{{ $l['nome'] }}</span></span>@else<span class="suave">{{ $l['nome'] }}</span>@endif</td>
           <td>
             <div class="painel-barra" title="{{ $l['porStatus']['aberta'] }} abertas · {{ $l['porStatus']['em_execucao'] }} em execução · {{ $l['porStatus']['aguardando_material'] }} aguardando material">
               @foreach (OrdemServico::STATUS_ABERTOS as $st)
@@ -94,11 +93,10 @@
               <strong>{{ $l['total'] }}</strong>
             </div>
           </td>
-          <td class="num {{ $l['urgentes'] ? 'prioridade-urgente' : 'suave' }}">{{ $l['urgentes'] }}</td>
-          <td class="num">{{ HorasManutencao::hhmm($l['minutosMes']) }}</td>
+          <td class="num">{{ HorasManutencao::hhmm($l['minutos']) }}</td>
         </tr>
       @empty
-        <tr><td colspan="4" class="suave">Nenhum mantenedor cadastrado nesta área.</td></tr>
+        <tr><td colspan="3" class="suave">Nenhuma OS aberta.</td></tr>
       @endforelse
       </tbody>
     </table>

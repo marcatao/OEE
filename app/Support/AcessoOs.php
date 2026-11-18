@@ -197,17 +197,12 @@ final class AcessoOs
     }
 
     /**
-     * Áreas (unidades) do painel: as em que é administrador ou mantenedor; sem nenhuma, as dos
-     * perfis do usuário. @return list<string>
+     * Áreas (unidades) do painel: todas as unidades HABILITADAS no login (perfis de operador, solicitante, mantenedor ou
+     * administrador de cada uma). Sem perfil de unidade (acesso só por grupos): todas. @return list<string>
      */
     public static function unidadesPainel(Usuario $u): array
     {
-        $unidades = array_values(array_unique([...self::unidadesAdmin($u), ...self::unidadesMantenedor($u)]));
-        if ($unidades === []) {
-            $unidades = array_values(array_intersect(Unidades::areas(), $u->unidades())) ?: ['manutencao'];
-        }
-
-        return array_values(array_intersect(Unidades::areas(), $unidades));
+        return array_values(array_intersect(Unidades::areas(), self::unidadesHabilitadas($u)));
     }
 
     /**

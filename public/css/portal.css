@@ -1166,3 +1166,18 @@ a.tl-chamado.chamado-pendente { animation:tl-chamado-pisca 1.6s ease-in-out infi
 .grafico-tempos .g-meta { stroke:var(--texto); stroke-width:2; stroke-dasharray:4 3; }
 .grafico-tabela { margin-top:.5rem; }
 .grafico-tabela summary { cursor:pointer; color:var(--primaria); font-size:.9rem; }
+/* ---------- Painel de OS: cartões de indicadores mais compactos (ícone centrado no quadradinho) ---------- */
+.painel-kpis { grid-template-columns:repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap:.6rem; }
+.painel-kpis .kpi { flex-direction:row; align-items:center; gap:.6rem; padding:.65rem .7rem; border-radius:12px; box-shadow:none;
+  transition:border-color .15s, transform .15s; position:relative; overflow:hidden; }
+a.kpi:hover { border-color:var(--primaria); transform:translateY(-1px); }
+.painel-kpis .kpi > .kpi-icone { display:flex; align-items:center; justify-content:center; width:2.2rem; height:2.2rem; border-radius:10px; align-self:center; }
+.painel-kpis .kpi > .kpi-icone .icone { width:1.2rem; height:1.2rem; display:block; margin:0; }
+.painel-kpis .kpi > div { min-width:0; display:flex; flex-direction:column; }
+.painel-kpis .kpi > div > span { font-size:.74rem; font-weight:600; color:var(--suave); line-height:1.2; }
+.painel-kpis .kpi strong { font-size:1.4rem; line-height:1.15; }
+.painel-kpis .kpi small { font-size:.7rem; line-height:1.25; margin-top:.05rem; }
+/* Cartão com alerta: faixa à esquerda na cor do alerta. */
+.painel-kpis .kpi:has(.kpi-icone.alerta) { border-color:var(--alerta); }
+.painel-kpis .kpi:has(.kpi-icone.alerta)::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--alerta); }
+.painel-outras td { border-top:2px solid var(--borda-forte); font-weight:600; }

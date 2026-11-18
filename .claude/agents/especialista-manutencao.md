@@ -193,3 +193,6 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   × meta (resumo da unidade, por área acionada no período e, com mais de um mês, gráfico mês a mês — partial
   `manutencao/_tempos`, `PainelManutencao::indicadores`). Concluir a OS EXIGE a área executante que atendeu (a da OS,
   corrigível pela tela; `FluxoOrdemServico` recusa concluir sem área).
+- **Painel de OS**: abas = unidades HABILITADAS no login (`AcessoOs::unidadesPainel` = `unidadesHabilitadas`); box "OS
+  abertas por solicitante" (5 que mais pediram + linha "Outras" somando OS e horas apontadas); não há mais o box por
+  mantenedor.

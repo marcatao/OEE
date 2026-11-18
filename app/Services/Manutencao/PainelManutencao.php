@@ -44,7 +44,7 @@ final class PainelManutencao
 
         // OS abertas (carregadas uma vez: as contas por status, mantenedor e área saem daqui).
         $abertas = $os()->whereIn('status', OrdemServico::STATUS_ABERTOS)
-            ->with(['mantenedores.usuario', 'responsavel' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
+            ->with(['solicitante', 'mantenedores.usuario', 'responsavel' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
                 'maquina' => fn ($q) => $q->withoutGlobalScopes()])
             ->get();
         $concluidas = $os()->where('status', 'concluida')->with('solicitante')->orderBy('concluida_em')->get();
@@ -79,7 +79,7 @@ final class PainelManutencao
             'preventivasAtrasadas' => $abertas->filter(fn ($o) => $o->tipo === 'preventiva' && $o->prevista_para && $o->prevista_para->lt($hojeLocal))->values(),
             'aguardandoAvaliacao' => $concluidas,
             'semResposta' => $this->semResposta($abertas->merge($concluidas), $unidade),
-            'porMantenedor' => $this->porMantenedor($abertas, $unidade, $desde, $ateExclusivo),
+            'porSolicitante' => $this->porSolicitante($abertas),
             'porArea' => $abertas->groupBy(fn ($o) => $o->areaExecutante?->nome ?? '—')->map->count()->sortDesc(),
             'encerradas30' => $fechadas->count(),
             'tempoMedioMin' => $resumoTempos['atendimento'],
@@ -119,11 +119,6 @@ final class PainelManutencao
             ->values();
     }
 
-    /**
-     * OS abertas de cada mantenedor da área (atribuído ou responsável), por status, horas no mês e se está apontando agora.
-     *
-     * @return Collection<int, array<string, mixed>>
-     */
     /**
      * Tempos (minutos) das OS concluídas no período, pelo 1º apontamento de horas (o 1º mantenedor começou):
      * atendimento = abertura do chamado (SS; preventiva sem SS: emissão da OS) → 1º apontamento;
@@ -184,28 +179,33 @@ final class PainelManutencao
         ];
     }
 
-    private function porMantenedor(Collection $abertas, string $unidade, CarbonImmutable $desde, CarbonImmutable $ateExclusivo): Collection
+    /**
+     * OS abertas por SOLICITANTE: os 5 com mais OS (desempate pelas horas apontadas nelas) e, numa 6ª linha "Outras", a
+     * soma do resto. Horas = apontadas nessas OS (total_minutos).
+     *
+     * @return Collection<int, array{solicitante: ?Usuario, nome: string, total: int, porStatus: Collection, minutos: int, outras: bool}>
+     */
+    private function porSolicitante(Collection $abertas): Collection
     {
-        $mantenedores = Mantenedor::withoutGlobalScopes()->where('ativo', true)->with(['usuario', 'areas'])->orderBy('nome')->get()
-            ->filter(fn ($m) => $m->areas->isNotEmpty() ? $m->areas->contains(fn ($a) => in_array($a->unidade, [$unidade, 'ambos'], true))
-                : in_array($m->unidade, [$unidade, 'ambos'], true));
-        $ids = $mantenedores->pluck('id');
-        $minutos = ApontamentoHoras::whereIn('mantenedor_id', $ids)->whereNotNull('fim')->where('inicio', '>=', $desde)->where('inicio', '<', $ateExclusivo)
-            ->groupBy('mantenedor_id')->selectRaw('mantenedor_id, SUM(COALESCE(minutos_normais, 0) + COALESCE(minutos_extras, 0)) as total')
-            ->pluck('total', 'mantenedor_id');
-        $rodando = ApontamentoHoras::whereIn('mantenedor_id', $ids)->whereNull('fim')->with('ordemServico:id')->get()->keyBy('mantenedor_id');
+        $linha = fn (Collection $g, ?Usuario $quem, string $nome, bool $outras) => [
+            'solicitante' => $quem,
+            'nome' => $nome,
+            'total' => $g->count(),
+            'porStatus' => collect(OrdemServico::STATUS_ABERTOS)->mapWithKeys(fn ($s) => [$s => $g->where('status', $s)->count()]),
+            'minutos' => (int) $g->sum('total_minutos'),
+            'outras' => $outras,
+        ];
+        $grupos = $abertas->groupBy(fn ($o) => (int) $o->solicitante_id)
+            ->map(fn ($g) => $linha($g, $g->first()->solicitante, $g->first()->solicitante?->nome ?? 'Sem solicitante (preventiva)', false))
+            ->sortBy([['total', 'desc'], ['minutos', 'desc']])->values();
+        $top = $grupos->take(5);
+        $resto = $grupos->slice(5);
+        if ($resto->isNotEmpty()) {
+            $top->push(['solicitante' => null, 'nome' => 'Outras ('.$resto->count().' solicitantes)', 'total' => $resto->sum('total'),
+                'porStatus' => collect(OrdemServico::STATUS_ABERTOS)->mapWithKeys(fn ($s) => [$s => $resto->sum(fn ($l) => $l['porStatus'][$s])]),
+                'minutos' => $resto->sum('minutos'), 'outras' => true]);
+        }
 
-        return $mantenedores->map(function ($m) use ($abertas, $minutos, $rodando) {
-            $dele = $abertas->filter(fn ($o) => (int) $o->responsavel_id === $m->id || $o->mantenedores->contains('id', $m->id));
-
-            return [
-                'mantenedor' => $m,
-                'total' => $dele->count(),
-                'porStatus' => collect(OrdemServico::STATUS_ABERTOS)->mapWithKeys(fn ($s) => [$s => $dele->where('status', $s)->count()]),
-                'urgentes' => $dele->whereIn('prioridade', SolicitacaoServico::PRIORIDADES_ALTAS)->count(),
-                'minutosMes' => (int) ($minutos[$m->id] ?? 0),
-                'rodando' => $rodando[$m->id] ?? null,
-            ];
-        })->sortByDesc('total')->values();
+        return $top;
     }
 }
