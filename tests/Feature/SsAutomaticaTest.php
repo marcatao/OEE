@@ -12,6 +12,7 @@ use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
 use App\Models\Planta;
 use App\Models\Usuario;
+use App\Services\Manutencao\ChamadoDaParada;
 use App\Services\Manutencao\SsAutomatica;
 use App\Support\AcessoOs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -123,7 +124,7 @@ class SsAutomaticaTest extends TestCase
 
         // Timeline: máquina parada mostra a SS no lugar da meta.
         $this->maquina->forceFill(['situacao' => 'parada', 'situacao_desde' => now()->subMinutes(5), 'ativo' => true])->save();
-        $this->assertSame($ss->numeroFormatado(), \App\Services\Manutencao\ChamadoDaParada::da($this->maquina->fresh())['numero']);
+        $this->assertSame($ss->numeroFormatado(), ChamadoDaParada::da($this->maquina->fresh())['numero']);
 
         // A OS é avaliada pelo próprio operador (solicitante), não pelo administrador.
         $this->actingAs($lider)->post("/ordens-de-servico/solicitacoes/{$ss->id}/aprovar")->assertRedirect();

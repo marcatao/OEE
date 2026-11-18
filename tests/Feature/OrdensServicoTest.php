@@ -660,4 +660,26 @@ class OrdensServicoTest extends TestCase
         $this->assertSame('alta', SolicitacaoServico::prioridadeAtual('urgente'));
         $this->assertSame('baixa', SolicitacaoServico::prioridadeAtual('media'));
     }
+
+    public function test_horas_por_setor_separadas_por_unidade(): void
+    {
+        $base = ['tipo' => 'corretiva', 'prioridade' => 'media', 'status' => 'aberta'];
+        $manut = OrdemServico::create($base + ['unidade' => 'manutencao', 'area_executante_id' => $this->mecanica->id, 'descricao' => 'x', 'titulo' => 'Prensa', 'centro_custo' => '110101']);
+        $ti = OrdemServico::create($base + ['unidade' => 'tecnologia', 'area_executante_id' => $this->ti->id, 'descricao' => 'y', 'titulo' => 'Servidor', 'centro_custo' => '220202']);
+        $inicio = now()->startOfMonth()->addDays(2)->setTime(12, 0);
+        $mant = ['manutencao' => Mantenedor::create(['nome' => 'Joao', 'unidade' => 'manutencao']),
+            'tecnologia' => Mantenedor::create(['nome' => 'Rafa', 'unidade' => 'tecnologia'])];
+        foreach ([[$manut, 90], [$ti, 45]] as [$os, $min]) {
+            ApontamentoHoras::create(['ordem_servico_id' => $os->id, 'mantenedor_id' => $mant[$os->unidade]->id, 'inicio' => $inicio, 'fim' => $inicio->copy()->addMinutes($min),
+                'minutos_normais' => $min, 'minutos_extras' => 0]);
+        }
+
+        $adm = $this->usuario(['admin_producao', 'admin_tecnologia'], 'adm@empresa.com');
+        $this->actingAs($adm)->get('/ordens-de-servico/relatorios/setores?mes='.now()->format('Y-m'))->assertOk()
+            ->assertSee('Resumo por unidade')->assertSee('id="unidade-manutencao"', false)->assertSee('id="unidade-tecnologia"', false)
+            ->assertSeeInOrder(['Subtotal Manutenção', '1:30', 'Subtotal Tecnologia', '0:45']);
+        // Só Tecnologia: não vê a seção da Manutenção.
+        $this->actingAs($this->usuario(['admin_tecnologia'], 'rafa@empresa.com'))->get('/ordens-de-servico/relatorios/setores?mes='.now()->format('Y-m'))
+            ->assertOk()->assertSee('id="unidade-tecnologia"', false)->assertDontSee('id="unidade-manutencao"', false);
+    }
 }

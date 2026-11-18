@@ -14,6 +14,7 @@ use App\Models\Planta;
 use App\Models\RoteiroOperacao;
 use App\Models\Usuario;
 use App\Services\Aplicativo\LoginAplicativo;
+use App\Services\Manutencao\FluxoOrdemServico;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Concerns\CalendarioDeTeste;
@@ -142,7 +143,7 @@ class AplicativoMaquinasTest extends TestCase
         $this->assertSame('parada', $this->maquina->fresh()->situacao);
         $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()
             ->assertJsonPath('maquina.chamado.numero', $ss->numeroFormatado())->assertJsonPath('maquina.chamado.rotulo', 'Aguardando análise');
-        $os = app(\App\Services\Manutencao\FluxoOrdemServico::class)->aprovar($ss, $ss->solicitante, []);
+        $os = app(FluxoOrdemServico::class)->aprovar($ss, $ss->solicitante, []);
         $lista = collect($this->api('GET', 'maquinas')->assertOk()->json('maquinas'))->firstWhere('id', $this->maquina->id);
         $this->assertSame([$os->numeroFormatado(), 'os'], [$lista['chamado']['numero'], $lista['chamado']['tipo']]);
 
