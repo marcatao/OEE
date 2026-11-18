@@ -186,3 +186,6 @@ sempre o `CLAUDE.md` da raiz (migrações só acrescentam, unidade nos cadastros
   mesma máquina e área; a OS automática é avaliada pelo administrador da unidade (não pelo app).
 - **Prioridade da SS/OS/preventiva: só Alta ou Baixa.** As antigas (urgente, média) continuam gravadas e aparecem como
   "(antiga)"; plano de preventiva antigo gera OS com urgente→alta e média→baixa; o painel conta alta + urgente antiga.
+- **Painel de OS**: abas das unidades do login (Manutenção, Tecnologia, Ferramentaria) e período De/Até (padrão: mês
+  atual). Tempo médio de ATENDIMENTO = abertura do chamado (SS) → 1º apontamento de horas; de REPARO = 1º apontamento →
+  conclusão (OS concluídas no período, sem apontamento ficam fora). Encerradas/avaliações pela data da avaliação.

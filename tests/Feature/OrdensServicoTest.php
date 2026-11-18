@@ -16,6 +16,7 @@ use App\Models\Maquina;
 use App\Models\Planta;
 use App\Models\Usuario;
 use App\Services\Manutencao\GeradorPreventivas;
+use App\Services\Manutencao\PainelManutencao;
 use App\Support\AcessoOs;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -681,5 +682,33 @@ class OrdensServicoTest extends TestCase
         // Só Tecnologia: não vê a seção da Manutenção.
         $this->actingAs($this->usuario(['admin_tecnologia'], 'rafa@empresa.com'))->get('/ordens-de-servico/relatorios/setores?mes='.now()->format('Y-m'))
             ->assertOk()->assertSee('id="unidade-tecnologia"', false)->assertDontSee('id="unidade-manutencao"', false);
+    }
+
+    public function test_painel_tempos_de_atendimento_e_reparo_por_periodo_e_aba_ferramentaria(): void
+    {
+        $adm = $this->usuario(['admin_producao', 'admin_ferramentaria'], 'adm-pf@empresa.com');
+        $m = Mantenedor::create(['nome' => 'Mecânico']);
+        $hoje = now(config('oee.fuso_exibicao'))->startOfDay()->setTime(8, 0)->utc();
+        $ss = SolicitacaoServico::create(['unidade' => 'manutencao', 'solicitante_id' => $adm->id, 'titulo' => 't', 'tipo' => 'corretiva',
+            'area_executante_id' => $this->mecanica->id, 'prioridade' => 'alta', 'descricao' => 'x', 'status' => 'aprovada']);
+        $ss->forceFill(['criado_em' => $hoje])->saveQuietly();
+        $os = OrdemServico::create(['unidade' => 'manutencao', 'solicitacao_id' => $ss->id, 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'prioridade' => 'alta', 'descricao' => 'x', 'solicitante_id' => $adm->id, 'status' => 'concluida', 'concluida_em' => $hoje->copy()->addHours(3)]);
+        // Abertura 08:00 → 1º apontamento 08:30 (atendimento 30 min) → conclusão 11:00 (reparo 2 h 30 min).
+        ApontamentoHoras::create(['ordem_servico_id' => $os->id, 'mantenedor_id' => $m->id,
+            'inicio' => $hoje->copy()->addMinutes(30), 'fim' => $hoje->copy()->addHours(2), 'minutos_normais' => 90, 'minutos_extras' => 0]);
+        ApontamentoHoras::create(['ordem_servico_id' => $os->id, 'mantenedor_id' => $m->id,
+            'inicio' => $hoje->copy()->addHours(2), 'fim' => $hoje->copy()->addHours(3), 'minutos_normais' => 60, 'minutos_extras' => 0]);
+
+        $dados = app(PainelManutencao::class)->dados($adm, 'manutencao');
+        $this->assertEquals(30, $dados['tempoMedioMin']);
+        $this->assertEquals(150, $dados['tempoReparoMin']);
+        $this->assertSame(now(config('oee.fuso_exibicao'))->startOfMonth()->format('Y-m-d'), $dados['periodoDe']->format('Y-m-d')); // padrão: mês atual
+
+        $this->actingAs($adm)->get('/ordens-de-servico/painel?unidade=manutencao')->assertOk()
+            ->assertSee('Tempo médio de reparo')->assertSee('2 h 30 min')->assertSee('Ferramentaria')->assertSee('name="de"', false);
+        // Período sem a OS: sem tempos.
+        $this->get('/ordens-de-servico/painel?unidade=manutencao&de=2020-01-01&ate=2020-01-31')->assertOk()->assertDontSee('2 h 30 min');
+        $this->get('/ordens-de-servico/painel?unidade=ferramentaria')->assertOk()->assertSee('Painel — Ferramentaria');
     }
 }

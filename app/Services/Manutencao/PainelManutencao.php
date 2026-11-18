@@ -20,15 +20,19 @@ use Illuminate\Support\Facades\DB;
  */
 final class PainelManutencao
 {
-    public const DIAS = 30;
-
-    /** @return array<string, mixed> */
-    public function dados(Usuario $u, string $unidade): array
+    /**
+     * Período dos números (De/Até, dias locais; padrão: o mês atual até hoje): OS encerradas e avaliações (pela data da
+     * avaliação), tempos de atendimento e de reparo (OS concluídas no período) e horas apontadas. O resto é "agora".
+     *
+     * @return array<string, mixed>
+     */
+    public function dados(Usuario $u, string $unidade, ?CarbonImmutable $deLocal = null, ?CarbonImmutable $ateLocal = null): array
     {
-        $agora = CarbonImmutable::now();
         $hojeLocal = CarbonImmutable::now(HorasManutencao::fuso())->startOfDay();
-        $desde = $agora->subDays(self::DIAS);
-        $inicioMes = CarbonImmutable::now(HorasManutencao::fuso())->startOfMonth()->utc();
+        $deLocal = ($deLocal ?? $hojeLocal->startOfMonth())->startOfDay();
+        $ateLocal = ($ateLocal ?? $hojeLocal)->startOfDay();
+        $desde = $deLocal->utc();
+        $ateExclusivo = $ateLocal->addDay()->utc();
 
         $os = fn () => AcessoOs::filtrar(OrdemServico::query(), $u)->where('ordens_servico.unidade', $unidade);
         $ss = fn () => AcessoOs::filtrar(SolicitacaoServico::query(), $u)->where('solicitacoes_servico.unidade', $unidade);
@@ -45,11 +49,13 @@ final class PainelManutencao
         $concluidas = $os()->where('status', 'concluida')->with('solicitante')->orderBy('concluida_em')->get();
 
         // Encerradas/avaliadas nos últimos 30 dias: tempo médio de atendimento (emissão da OS → conclusão) e avaliações.
-        $fechadas = $os()->where('status', 'encerrada')->where('aceite_em', '>=', $desde)->get(['id', 'criado_em', 'concluida_em', 'avaliacao', 'maquina_parada']);
-        $tempos = $fechadas->filter(fn ($o) => $o->concluida_em)->map(fn ($o) => max(0, $o->concluida_em->getTimestamp() - $o->criado_em->getTimestamp()) / 60);
+        $fechadas = $os()->where('status', 'encerrada')->where('aceite_em', '>=', $desde)->where('aceite_em', '<', $ateExclusivo)
+            ->get(['id', 'avaliacao']);
         $avaliacoes = collect(OrdemServico::AVALIACOES)->map(fn ($r, $k) => $fechadas->where('avaliacao', $k)->count());
+        [$atendimento, $reparo] = $this->tempos($os()->whereIn('status', ['concluida', 'encerrada'])
+            ->where('concluida_em', '>=', $desde)->where('concluida_em', '<', $ateExclusivo));
 
-        $minutosMes = (int) ApontamentoHoras::whereNotNull('fim')->where('inicio', '>=', $inicioMes)
+        $minutosMes = (int) ApontamentoHoras::whereNotNull('fim')->where('inicio', '>=', $desde)->where('inicio', '<', $ateExclusivo)
             ->whereIn('ordem_servico_id', $os()->select('ordens_servico.id'))
             ->sum(DB::raw('COALESCE(minutos_normais, 0) + COALESCE(minutos_extras, 0)'));
 
@@ -63,10 +69,13 @@ final class PainelManutencao
             'preventivasAtrasadas' => $abertas->filter(fn ($o) => $o->tipo === 'preventiva' && $o->prevista_para && $o->prevista_para->lt($hojeLocal))->values(),
             'aguardandoAvaliacao' => $concluidas,
             'semResposta' => $this->semResposta($abertas->merge($concluidas), $unidade),
-            'porMantenedor' => $this->porMantenedor($abertas, $unidade, $inicioMes),
+            'porMantenedor' => $this->porMantenedor($abertas, $unidade, $desde, $ateExclusivo),
             'porArea' => $abertas->groupBy(fn ($o) => $o->areaExecutante?->nome ?? '—')->map->count()->sortDesc(),
             'encerradas30' => $fechadas->count(),
-            'tempoMedioMin' => $tempos->isNotEmpty() ? $tempos->avg() : null,
+            'tempoMedioMin' => $atendimento,
+            'tempoReparoMin' => $reparo,
+            'periodoDe' => $deLocal,
+            'periodoAte' => $ateLocal,
             'avaliacoes' => $avaliacoes,
             'minutosMes' => $minutosMes,
             'urgentesLista' => $abertas->filter(fn ($o) => in_array($o->prioridade, SolicitacaoServico::PRIORIDADES_ALTAS, true) || $o->maquina_parada || $o->risco_integridade)->sortBy('id')->values(),
@@ -102,13 +111,45 @@ final class PainelManutencao
      *
      * @return Collection<int, array<string, mixed>>
      */
-    private function porMantenedor(Collection $abertas, string $unidade, CarbonImmutable $inicioMes): Collection
+    /**
+     * Tempos médios (minutos) das OS concluídas no período, pelo 1º apontamento de horas (o 1º mantenedor começou):
+     * atendimento = abertura do chamado (SS; preventiva sem SS: emissão da OS) → 1º apontamento;
+     * reparo = 1º apontamento → conclusão. OS sem apontamento ficam fora. @return array{0: ?float, 1: ?float}
+     */
+    private function tempos($consulta): array
+    {
+        $ordens = $consulta->with('solicitacao:id,criado_em')->get(['id', 'solicitacao_id', 'criado_em', 'concluida_em']);
+        if ($ordens->isEmpty()) {
+            return [null, null];
+        }
+        $primeiros = ApontamentoHoras::whereIn('ordem_servico_id', $ordens->pluck('id'))->groupBy('ordem_servico_id')
+            ->selectRaw('ordem_servico_id, MIN(inicio) as primeiro')->pluck('primeiro', 'ordem_servico_id');
+        $atendimento = collect();
+        $reparo = collect();
+        foreach ($ordens as $o) {
+            if (! isset($primeiros[$o->id])) {
+                continue;
+            }
+            $primeiro = CarbonImmutable::parse($primeiros[$o->id], 'UTC');
+            $abertura = $o->solicitacao?->criado_em ?? $o->criado_em;
+            if ($abertura) {
+                $atendimento->push(max(0, $primeiro->getTimestamp() - $abertura->getTimestamp()) / 60);
+            }
+            if ($o->concluida_em) {
+                $reparo->push(max(0, $o->concluida_em->getTimestamp() - $primeiro->getTimestamp()) / 60);
+            }
+        }
+
+        return [$atendimento->isNotEmpty() ? $atendimento->avg() : null, $reparo->isNotEmpty() ? $reparo->avg() : null];
+    }
+
+    private function porMantenedor(Collection $abertas, string $unidade, CarbonImmutable $desde, CarbonImmutable $ateExclusivo): Collection
     {
         $mantenedores = Mantenedor::withoutGlobalScopes()->where('ativo', true)->with(['usuario', 'areas'])->orderBy('nome')->get()
             ->filter(fn ($m) => $m->areas->isNotEmpty() ? $m->areas->contains(fn ($a) => in_array($a->unidade, [$unidade, 'ambos'], true))
                 : in_array($m->unidade, [$unidade, 'ambos'], true));
         $ids = $mantenedores->pluck('id');
-        $minutos = ApontamentoHoras::whereIn('mantenedor_id', $ids)->whereNotNull('fim')->where('inicio', '>=', $inicioMes)
+        $minutos = ApontamentoHoras::whereIn('mantenedor_id', $ids)->whereNotNull('fim')->where('inicio', '>=', $desde)->where('inicio', '<', $ateExclusivo)
             ->groupBy('mantenedor_id')->selectRaw('mantenedor_id, SUM(COALESCE(minutos_normais, 0) + COALESCE(minutos_extras, 0)) as total')
             ->pluck('total', 'mantenedor_id');
         $rodando = ApontamentoHoras::whereIn('mantenedor_id', $ids)->whereNull('fim')->with('ordemServico:id')->get()->keyBy('mantenedor_id');

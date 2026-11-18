@@ -9,6 +9,9 @@
 @section('conteudo')
 @php($nomeArea = config('oee.unidades')[$unidade] ?? $unidade)
 @php($idade = fn ($data) => $data ? OrdemServicoController::duracao($data, now()) : '—')
+@php($periodo = ['de' => $periodoDe->format('Y-m-d'), 'ate' => $periodoAte->format('Y-m-d')])
+@php($rotuloPeriodo = $periodoDe->format('d/m/Y').' a '.$periodoAte->format('d/m/Y'))
+@php($tempo = fn ($min) => $min !== null ? OrdemServicoController::duracao(now()->subMinutes((int) round($min)), now()) : '—')
 <section class="cartao">
   <p class="trilha">Ordens de serviço</p>
   <div class="titulo-com-acao">
@@ -17,7 +20,7 @@
       <div class="painel-areas">
         <nav class="painel-abas" aria-label="Área">
           @foreach ($unidades as $un)
-            <a href="{{ route('os.painel', ['unidade' => $un]) }}" @class(['ativo' => $un === $unidade])>{{ config('oee.unidades')[$un] ?? $un }}@if ($un === $padraoGravado) <small>(padrão)</small>@endif</a>
+            <a href="{{ route('os.painel', ['unidade' => $un] + $periodo) }}" @class(['ativo' => $un === $unidade])>{{ config('oee.unidades')[$un] ?? $un }}@if ($un === $padraoGravado) <small>(padrão)</small>@endif</a>
           @endforeach
         </nav>
         @if ($unidade !== $padraoGravado)
@@ -27,7 +30,14 @@
       </div>
     @endif
   </div>
-  <p class="suave">Situação agora das solicitações e ordens de serviço de {{ $nomeArea }} que você acompanha. Números dos últimos {{ \App\Services\Manutencao\PainelManutencao::DIAS }} dias onde indicado.</p>
+  <p class="suave">Situação agora das solicitações e ordens de serviço de {{ $nomeArea }} que você acompanha. Os números de baixo são do período escolhido.</p>
+  <form method="get" class="filtros painel-periodo">
+    <input type="hidden" name="unidade" value="{{ $unidade }}">
+    <label>De <input type="date" name="de" value="{{ $periodo['de'] }}"></label>
+    <label>Até <input type="date" name="ate" value="{{ $periodo['ate'] }}"></label>
+    <button class="botao secundario" type="submit">Aplicar</button>
+    <a href="{{ route('os.painel', ['unidade' => $unidade]) }}">Mês atual</a>
+  </form>
 
   <div class="kpis painel-kpis">
     <a class="kpi" href="{{ route('os.solicitacoes.index', ['status' => 'pendente']) }}">
@@ -51,10 +61,11 @@
   </div>
 
   <div class="painel-30">
-    <div><span>OS encerradas ({{ \App\Services\Manutencao\PainelManutencao::DIAS }} dias)</span><strong>{{ $encerradas30 }}</strong></div>
-    <div><span>Tempo médio de atendimento</span><strong>{{ $tempoMedioMin !== null ? OrdemServicoController::duracao(now()->subMinutes((int) $tempoMedioMin), now()) : '—' }}</strong><small>da emissão da OS à conclusão</small></div>
-    <div><span>Horas apontadas no mês</span><strong>{{ HorasManutencao::hhmm($minutosMes) }}</strong></div>
-    <div><span>Avaliações ({{ \App\Services\Manutencao\PainelManutencao::DIAS }} dias)</span>
+    <div><span>OS encerradas</span><strong>{{ $encerradas30 }}</strong><small>{{ $rotuloPeriodo }}</small></div>
+    <div><span>Tempo médio de atendimento</span><strong>{{ $tempo($tempoMedioMin) }}</strong><small>da abertura do chamado ao 1º apontamento de horas</small></div>
+    <div><span>Tempo médio de reparo</span><strong>{{ $tempo($tempoReparoMin) }}</strong><small>do 1º apontamento de horas à conclusão da OS</small></div>
+    <div><span>Horas apontadas</span><strong>{{ HorasManutencao::hhmm($minutosMes) }}</strong><small>{{ $rotuloPeriodo }}</small></div>
+    <div><span>Avaliações</span>
       <strong class="painel-avaliacoes">
         @foreach (OrdemServico::AVALIACOES as $k => $r)<span class="avaliacao-{{ $k }}">{{ $r }} {{ $avaliacoes[$k] }}</span>@endforeach
       </strong></div>
@@ -67,7 +78,7 @@
     @php($maior = max(1, $porMantenedor->max('total') ?? 1))
     <div class="rolagem">
     <table class="tabela painel-mantenedores">
-      <thead><tr><th>Mantenedor</th><th>OS abertas</th><th class="num">Urg.</th><th class="num">Horas/mês</th></tr></thead>
+      <thead><tr><th>Mantenedor</th><th>OS abertas</th><th class="num">Urg.</th><th class="num">Horas no período</th></tr></thead>
       <tbody>
       @forelse ($porMantenedor as $l)
         <tr>
