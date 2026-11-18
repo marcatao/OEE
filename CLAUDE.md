@@ -72,7 +72,10 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   OP fechada (ou excluída) no Protheus sai da máquina (`SituacaoMaquina::desvincularOpsFechadas`: a cada lote da
   sincronização das OPs e ao abrir a Timeline; os apontamentos ficam com a OP). Na Timeline, apontamento cuja legenda
   exige OP e está sem pisca "INFORMAR OP": abre a escolha (só OPs abertas) e grava no apontamento e na máquina
-  (rota `apontamentos.informar-op`, JSON; `SituacaoMaquina::informarOp`).
+  (rota `apontamentos.informar-op`, JSON; `SituacaoMaquina::informarOp`). "Trocar OP" (texto ao lado da OP na
+  Timeline e botão no app; rota `apontamentos.trocar-op`, JSON): escolhe a OP aberta e o modo — `atual` (o apontamento
+  em andamento inteiro passa para a OP nova) ou `novo` (encerra agora com a OP anterior e começa outro na mesma
+  legenda) — regra única em `App\Services\TrocaOpMaquina`.
 - Horário do apontamento real (`App\Services\HorarioApontamento`): campos Dia + horário inicial/final (com segundos);
   um apontamento não passa de um dia (máx. 23:59:59). Se a máquina já tem apontamento no dia, o novo começa
   OBRIGATORIAMENTE 1 segundo depois do fim do último (campo travado; rota `apontamentos.proximo-inicio`); o primeiro do

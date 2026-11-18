@@ -120,6 +120,35 @@
     </dialog>
   @endif
 
+  @if ($u->pode('apontamentos'))
+    {{-- "Trocar OP" da máquina: 1) escolhe a OP (só abertas); 2) escolhe se troca no apontamento atual ou num novo. --}}
+    <dialog id="tl-dialogo-troca" class="dialogo">
+      <form method="dialog" id="tl-form-troca">
+        <h2>Trocar ordem de produção</h2>
+        <p class="suave" data-troca-maquina></p>
+        <div data-passo="1">
+          @include('partials.campo-op', ['op' => null, 'nome' => 'ordem_producao_troca', 'rotulo' => 'Nova ordem de produção',
+            'ajuda' => 'Só ordens abertas (não fechadas no Protheus). Digite o número da OP ou o produto.'])
+          <div class="acoes">
+            <button class="botao" type="button" data-troca-continuar>Confirmar OP</button>
+            <button class="botao secundario" type="button" data-troca-cancelar>Cancelar</button>
+          </div>
+        </div>
+        <div data-passo="2" hidden>
+          <p>OP <strong data-troca-nova></strong>. Como lançar?</p>
+          <div class="tl-troca-modos">
+            <button class="botao secundario" type="button" data-troca-modo="atual">Trocar no apontamento atual
+              <small>Todo o apontamento em andamento passa para a OP nova.</small></button>
+            <button class="botao" type="button" data-troca-modo="novo">Novo apontamento a partir de agora
+              <small>Encerra o apontamento atual (com a OP anterior até agora) e começa outro na mesma legenda com a OP nova.</small></button>
+          </div>
+          <button class="botao secundario pequeno" type="button" data-troca-voltar>Voltar</button>
+        </div>
+        <p class="erro" data-troca-erro hidden></p>
+      </form>
+    </dialog>
+  @endif
+
   @if ($legendas->isNotEmpty())
     <div class="tl-resumo" style="background:none">
       <span class="suave">Legendas:</span>
@@ -256,6 +285,44 @@
           dialogo.close(); atualizar();
         })
         .catch(function () { erroOp.textContent = 'Não foi possível gravar. Tente de novo.'; erroOp.hidden = false; });
+    });
+  }
+
+  // "Trocar OP" (ao lado do número da OP): escolhe a OP, confirma e escolhe o modo; ao gravar, atualiza a timeline.
+  var dTroca = document.getElementById('tl-dialogo-troca');
+  if (dTroca) {
+    var fTroca = document.getElementById('tl-form-troca'), selTroca = fTroca.querySelector('select'), erroTroca = fTroca.querySelector('[data-troca-erro]');
+    var urlTroca = null;
+    function passo(n) { fTroca.querySelectorAll('[data-passo]').forEach(function (p) { p.hidden = p.dataset.passo !== String(n); }); }
+    function erro(t) { erroTroca.textContent = t; erroTroca.hidden = !t; }
+    resultado.addEventListener('click', function (e) {
+      var link = e.target.closest('[data-trocar-op]');
+      if (!link) return;
+      urlTroca = link.dataset.trocarOp;
+      fTroca.querySelector('[data-troca-maquina]').textContent = link.dataset.maquina + (link.dataset.op ? ' · OP atual ' + link.dataset.op : ' · sem OP');
+      selTroca.value = ''; selTroca.dispatchEvent(new Event('change'));
+      erro(''); passo(1);
+      dTroca.showModal();
+    });
+    fTroca.querySelector('[data-troca-cancelar]').addEventListener('click', function () { dTroca.close(); });
+    fTroca.querySelector('[data-troca-voltar]').addEventListener('click', function () { erro(''); passo(1); });
+    fTroca.querySelector('[data-troca-continuar]').addEventListener('click', function () {
+      if (!selTroca.value) { erro('Escolha a ordem de produção.'); return; }
+      erro('');
+      fTroca.querySelector('[data-troca-nova]').textContent = selTroca.value;
+      passo(2);
+    });
+    fTroca.querySelectorAll('[data-troca-modo]').forEach(function (botao) {
+      botao.addEventListener('click', function () {
+        fetch(urlTroca, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: JSON.stringify({ ordem_producao: selTroca.value, modo: botao.dataset.trocaModo }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) { erro((res.j.errors && (res.j.errors.ordem_producao || res.j.errors.modo)) ? (res.j.errors.ordem_producao || res.j.errors.modo)[0] : (res.j.message || 'Não foi possível trocar.')); return; }
+            dTroca.close(); atualizar();
+          })
+          .catch(function () { erro('Não foi possível trocar. Tente de novo.'); });
+      });
     });
   }
 

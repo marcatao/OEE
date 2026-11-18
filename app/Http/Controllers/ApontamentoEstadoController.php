@@ -11,6 +11,7 @@ use App\Services\CustoOrdemProducao;
 use App\Services\HorarioApontamento;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
+use App\Services\TrocaOpMaquina;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -292,5 +293,26 @@ class ApontamentoEstadoController extends Controller
         }
 
         return response()->json(['ok' => true, 'mensagem' => "OP {$op->numero} informada no apontamento."]);
+    }
+
+    /**
+     * Timeline › "Trocar OP": a máquina passa para a OP escolhida (só OPs abertas) e o apontamento em andamento segue o
+     * modo — "atual" (o apontamento inteiro passa para a OP nova) ou "novo" (encerra agora com a OP anterior e começa
+     * outro na mesma legenda com a OP nova). Regra em App\Services\TrocaOpMaquina (a mesma do aplicativo). JSON.
+     */
+    public function trocarOp(Request $request, int $maquina, TrocaOpMaquina $troca): JsonResponse
+    {
+        $dados = $request->validate([
+            'ordem_producao' => ['required', 'string', 'max:20'],
+            'modo' => ['required', Rule::in([TrocaOpMaquina::ATUAL, TrocaOpMaquina::NOVO])],
+        ], ['ordem_producao.required' => 'Escolha a ordem de produção.', 'modo.required' => 'Escolha como trocar a OP.']);
+        $registro = Maquina::findOrFail($maquina); // máquina de outra unidade: 404
+        try {
+            $op = $troca->trocar($registro, $dados['ordem_producao'], $dados['modo'], 'portal');
+        } catch (ValidationException $e) {
+            throw ValidationException::withMessages(['ordem_producao' => $e->validator->errors()->first()]);
+        }
+
+        return response()->json(['ok' => true, 'mensagem' => "{$registro->nome}: OP {$op->numero}."]);
     }
 }

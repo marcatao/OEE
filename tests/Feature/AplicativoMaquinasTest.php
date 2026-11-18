@@ -191,6 +191,16 @@ class AplicativoMaquinasTest extends TestCase
         $this->assertSame($this->op2->id, $this->maquina->fresh()->ordem_producao_id);
     }
 
+    public function test_trocar_op_no_app_com_modo_atual_troca_o_apontamento_inteiro(): void
+    {
+        $ap = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id,
+            'ordem_producao_id' => $this->op1->id, 'inicio' => now()->subHour()]);
+
+        $this->api('POST', "maquinas/{$this->maquina->id}/op", ['numero' => $this->op2->numero, 'modo' => 'atual'])->assertOk();
+        $this->assertSame(1, ApontamentoEstado::count());
+        $this->assertSame($this->op2->id, $ap->fresh()->ordem_producao_id);
+    }
+
     public function test_trocar_op_preenche_o_apontamento_aberto_sem_op(): void
     {
         $ap = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id, 'inicio' => now()->subHour()]);

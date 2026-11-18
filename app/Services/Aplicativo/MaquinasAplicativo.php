@@ -15,11 +15,11 @@ use App\Services\HorarioApontamento;
 use App\Services\Manutencao\ChamadoDaParada;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
+use App\Services\TrocaOpMaquina;
 use App\Support\JornadaSemanal;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -150,51 +150,10 @@ class MaquinasAplicativo
         $this->status->atualizar($apontamento->ordemProducao);
     }
 
-    /**
-     * Troca a OP da máquina (produção mudou). Regras:
-     * - a máquina passa a ter a OP (o próximo apontamento do IoT já vem com ela);
-     * - o apontamento em aberto SEM OP recebe a OP;
-     * - o apontamento em aberto com OUTRA OP é encerrado 1 s antes de agora e um novo, com a mesma legenda e a OP
-     *   nova, começa agora (encadeamento de HorarioApontamento).
-     */
-    public function trocarOp(Maquina $maquina, string $numero): OrdemProducao
+    /** Troca a OP da máquina: regra única em App\Services\TrocaOpMaquina (a mesma da Timeline do portal). */
+    public function trocarOp(Maquina $maquina, string $numero, string $modo = TrocaOpMaquina::AUTOMATICO): OrdemProducao
     {
-        $op = OrdemProducao::apontaveis()->where('numero', trim($numero))->orderBy('status')->first();
-        if (! $op) {
-            throw ValidationException::withMessages(['numero' => "Ordem de produção {$numero} não encontrada ou fechada no Protheus."]);
-        }
-        $afetadas = [$op->id, $maquina->ordem_producao_id];
-
-        DB::transaction(function () use ($maquina, $op, &$afetadas) {
-            $aberto = ApontamentoEstado::where('maquina_id', $maquina->id)->whereNull('fim')
-                ->orderByDesc('inicio')->orderByDesc('id')->first();
-            // (int): no SQL Server os ids chegam como texto.
-            $maisRecente = (int) ApontamentoEstado::where('maquina_id', $maquina->id)->orderByDesc('inicio')->orderByDesc('id')->value('id');
-
-            if ($aberto && (int) $aberto->id === $maisRecente && $aberto->ordem_producao_id === null) {
-                $aberto->update(['ordem_producao_id' => $op->id]);
-                $this->situacao->aplicar($aberto);
-            } elseif ($aberto && (int) $aberto->id === $maisRecente && (int) $aberto->ordem_producao_id !== (int) $op->id) {
-                $agora = CarbonImmutable::now()->startOfSecond();
-                if ($agora->subSecond()->lessThanOrEqualTo($aberto->inicio)) {
-                    $aberto->update(['ordem_producao_id' => $op->id]); // começou agora: só troca a OP
-                    $this->situacao->aplicar($aberto);
-                } else {
-                    $afetadas[] = $aberto->ordem_producao_id;
-                    $aberto->update(['fim' => HorarioApontamento::fimAutomatico($aberto, $agora)]);
-                    $novo = ApontamentoEstado::create(['maquina_id' => $maquina->id, 'legenda_id' => $aberto->legenda_id,
-                        'ordem_producao_id' => $op->id, 'inicio' => $agora, 'observacao' => 'Troca de OP pelo aplicativo']);
-                    $this->situacao->aplicar($novo);
-                }
-            }
-            $maquina->update(['ordem_producao_id' => $op->id]);
-        });
-
-        foreach (array_unique(array_filter($afetadas)) as $id) {
-            $this->status->atualizar(OrdemProducao::find($id));
-        }
-
-        return $op;
+        return app(TrocaOpMaquina::class)->trocar($maquina, $numero, $modo, 'aplicativo');
     }
 
     /** Cavidades ativas do molde: de 0 até a quantidade de cavidades do Protheus (H4_QTDCAV). */

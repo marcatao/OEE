@@ -1,5 +1,12 @@
 # Versões do aplicativo
 
+## 0.9.0 (build 14)
+- **Trocar OP** (tela da máquina): depois de escolher e confirmar a OP, o app pergunta como lançar —
+  **"Trocar no apontamento atual"** (todo o apontamento em andamento passa para a OP nova) ou **"Novo apontamento a
+  partir de agora"** (encerra o atual com a OP anterior até agora e começa outro na mesma legenda com a OP nova).
+  Máquina sem OP (janela obrigatória) grava direto no apontamento atual. Mesma regra da Timeline do portal
+  (`App\Services\TrocaOpMaquina`).
+
 ## 0.8.1 (build 13)
 - Correção (portal): **Recusar** não funcionava no servidor — usava `insertOrIgnore`, que o SQL Server não tem (erro
   no portal). Agora confere e grava; o teste falha se voltar a usar "insert or ignore".

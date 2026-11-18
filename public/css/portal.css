@@ -322,6 +322,13 @@ a.kpi:hover { border-color:var(--primaria); }
 .tl-op small { font-size:.7rem; color:var(--suave); max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .tl-op .tl-molde { color:var(--texto); }
 .tl-op .tl-molde b { font-weight:700; }
+/* "Trocar OP" ao lado do número da OP (texto clicável). */
+.tl-trocar-op { background:none; border:0; padding:0; margin-left:.35rem; font:inherit; font-size:.7rem; font-weight:600;
+  color:var(--primaria); text-decoration:underline; cursor:pointer; }
+.tl-trocar-op:hover { color:var(--primaria-escura); }
+.tl-troca-modos { display:grid; gap:.6rem; margin:.8rem 0; }
+.tl-troca-modos button { text-align:left; display:block; width:100%; }
+.tl-troca-modos small { display:block; font-weight:400; opacity:.85; }
 /* Cartão da meta de produção (em breve) */
 .tl-meta { display:flex; flex-direction:column; justify-content:center; align-items:center; align-self:stretch; gap:.05rem; padding:.3rem .4rem;
   border-radius:8px; border:1px dashed var(--borda-forte); background:var(--fundo); min-width:0; line-height:1.2; text-align:center; }

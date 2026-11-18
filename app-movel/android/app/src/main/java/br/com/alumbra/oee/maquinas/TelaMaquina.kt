@@ -243,7 +243,7 @@ fun TelaMaquina(
                 opAtual = d.op?.resumo?.numero,
                 ocupado = ocupado,
                 erro = erroAcao,
-                aoConfirmar = { numero -> executar({ repositorio.trocarOp(d.id, numero) }) { trocarOp = false } },
+                aoConfirmar = { numero, modo -> executar({ repositorio.trocarOp(d.id, numero, modo) }) { trocarOp = false } },
                 aoFechar = { trocarOp = false },
             )
             molde != null -> DialogoCavidades(molde!!, ocupado, erroAcao, { n ->

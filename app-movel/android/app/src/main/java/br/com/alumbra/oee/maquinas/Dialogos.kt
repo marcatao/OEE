@@ -199,10 +199,12 @@ fun DialogoOp(
     opAtual: String?,
     ocupado: Boolean,
     erro: String?,
-    aoConfirmar: (String) -> Unit,
+    aoConfirmar: (numero: String, modo: String) -> Unit,
     aoFechar: () -> Unit,
 ) {
     val contexto = LocalContext.current
+    // Troca (não obrigatória): depois de escolher a OP, pergunta se troca no apontamento atual ou num novo.
+    var escolherModo by remember { mutableStateOf<String?>(null) }
     var busca by remember { mutableStateOf("") }
     var ops by remember { mutableStateOf<List<OpResumo>?>(null) }
     var erroBusca by remember { mutableStateOf<String?>(null) }
@@ -297,14 +299,46 @@ fun DialogoOp(
             }
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (erro != null) Aviso(erro, Situacao.ERRO)
-                BotaoPrincipal(
-                    texto = escolhida?.let { "Usar a OP $it" } ?: "Escolha uma OP",
-                    aoTocar = { escolhida?.let(aoConfirmar) },
-                    habilitado = escolhida != null,
-                    carregando = ocupado,
-                )
-                if (!obrigatorio) {
-                    TextButton(onClick = aoFechar, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Cancelar") }
+                val numero = escolherModo
+                if (numero != null) {
+                    Text("OP $numero. Como lançar?", style = MaterialTheme.typography.titleMedium)
+                    OutlinedButton(
+                        onClick = { aoConfirmar(numero, "atual") },
+                        enabled = !ocupado,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        Column(Modifier.padding(vertical = 6.dp)) {
+                            Text("Trocar no apontamento atual", style = MaterialTheme.typography.titleMedium)
+                            Text("Todo o apontamento em andamento passa para a OP nova.", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    androidx.compose.material3.Button(
+                        onClick = { aoConfirmar(numero, "novo") },
+                        enabled = !ocupado,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        Column(Modifier.padding(vertical = 6.dp)) {
+                            Text("Novo apontamento a partir de agora", style = MaterialTheme.typography.titleMedium)
+                            Text("Encerra o atual (com a OP anterior até agora) e começa outro na mesma legenda.",
+                                style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    TextButton(onClick = { escolherModo = null }, enabled = !ocupado, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                        Text("Voltar")
+                    }
+                } else {
+                    BotaoPrincipal(
+                        texto = escolhida?.let { "Confirmar a OP $it" } ?: "Escolha uma OP",
+                        // Obrigatória (máquina sem OP): grava no apontamento atual. Troca: pergunta o modo.
+                        aoTocar = { escolhida?.let { if (obrigatorio) aoConfirmar(it, "atual") else escolherModo = it } },
+                        habilitado = escolhida != null,
+                        carregando = ocupado,
+                    )
+                    if (!obrigatorio) {
+                        TextButton(onClick = aoFechar, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Cancelar") }
+                    }
                 }
             }
         }

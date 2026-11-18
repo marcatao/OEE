@@ -14,8 +14,9 @@ class RepositorioMaquinas(private val token: () -> String?) {
     suspend fun informarMotivo(apontamentoId: Int, legendaId: Int): DetalheMaquina =
         detalheDe(ApiPortal.post("apontamentos/$apontamentoId/motivo", token(), JSONObject().put("legenda_id", legendaId)))
 
-    suspend fun trocarOp(maquinaId: Int, numero: String): DetalheMaquina =
-        detalheDe(ApiPortal.post("maquinas/$maquinaId/op", token(), JSONObject().put("numero", numero)))
+    /** [modo]: "atual" (o apontamento em andamento inteiro passa para a OP nova) ou "novo" (encerra agora e começa outro). */
+    suspend fun trocarOp(maquinaId: Int, numero: String, modo: String): DetalheMaquina =
+        detalheDe(ApiPortal.post("maquinas/$maquinaId/op", token(), JSONObject().put("numero", numero).put("modo", modo)))
 
     suspend fun alterarCavidades(ferramentaId: Int, maquinaId: Int, cavidades: Int): DetalheMaquina =
         detalheDe(

@@ -40,9 +40,10 @@ class MaquinasAplicativoController extends Controller
 
     public function op(Request $request, int $maquina): JsonResponse
     {
-        $dados = $request->validate(['numero' => ['required', 'string', 'max:20']], ['numero.required' => 'Informe a ordem de produção.']);
+        $dados = $request->validate(['numero' => ['required', 'string', 'max:20'], 'modo' => ['nullable', 'string', 'in:atual,novo,automatico']],
+            ['numero.required' => 'Informe a ordem de produção.']);
         $registro = $this->maquinas->conferirMaquina($maquina);
-        $this->maquinas->trocarOp($registro, $dados['numero']);
+        $this->maquinas->trocarOp($registro, $dados['numero'], $dados['modo'] ?? 'automatico');
 
         return response()->json($this->maquinas->detalhe($registro));
     }
