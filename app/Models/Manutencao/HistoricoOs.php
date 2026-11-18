@@ -44,4 +44,40 @@ class HistoricoOs extends Model
     {
         return $this->belongsTo(Usuario::class, 'usuario_id');
     }
+
+    /** Nome legível de cada ação. */
+    public const ACOES = [
+        'aberta' => 'SS aberta', 'alterada' => 'Dados alterados', 'aprovada' => 'SS aprovada — OS emitida', 'rejeitada' => 'SS rejeitada',
+        'cancelada' => 'SS cancelada', 'gerada_preventiva' => 'OS preventiva gerada', 'distribuida' => 'Mantenedores definidos',
+        'iniciar' => 'Início do atendimento', 'aguardar_material' => 'Aguardando material', 'retomar' => 'Atendimento retomado',
+        'concluir' => 'Serviço concluído', 'reabrir' => 'OS reaberta', 'cancelar' => 'OS cancelada',
+        'avaliada' => 'Avaliada pelo solicitante', 'avaliada_ruim' => 'Avaliada como Ruim — OS reaberta',
+        'aceite' => 'Aceite do solicitante', 'servico_recusado' => 'Serviço recusado pelo solicitante',
+        'maquina_parada' => 'Máquina parada / liberada', 'horas_lancadas' => 'Horas lançadas', 'horas_excluidas' => 'Horas excluídas',
+        'material_requisitado' => 'Material requisitado', 'assinatura' => 'Assinatura no aplicativo',
+    ];
+
+    /** Ações que marcam as etapas da SS/OS (destacadas). */
+    public const MARCOS = ['aberta', 'aprovada', 'iniciar', 'concluir', 'avaliada', 'avaliada_ruim', 'gerada_preventiva'];
+
+    public function rotuloAcao(): string
+    {
+        return self::ACOES[$this->acao] ?? (str_starts_with($this->acao, 'material_')
+            ? 'Material: '.str_replace('_', ' ', substr($this->acao, 9)) : ucfirst(str_replace('_', ' ', $this->acao)));
+    }
+
+    /** "aberta → em execucao" quando a situação mudou; senão "". */
+    public function mudancaStatus(): string
+    {
+        if (! $this->status_novo || $this->status_novo === $this->status_anterior) {
+            return '';
+        }
+
+        return ($this->status_anterior ? str_replace('_', ' ', $this->status_anterior).' → ' : '').str_replace('_', ' ', $this->status_novo);
+    }
+
+    public function ehMarco(): bool
+    {
+        return in_array($this->acao, self::MARCOS, true);
+    }
 }

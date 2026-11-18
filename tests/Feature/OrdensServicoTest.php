@@ -147,12 +147,14 @@ class OrdensServicoTest extends TestCase
         $this->assertSame('encerrada', $os->fresh()->status);
         $this->assertSame('excelente', $os->fresh()->avaliacao);
         $this->assertSame($operador->id, $os->fresh()->aceite_por_id);
-        // Histórico mostra a abertura da SS e as avaliações, do mais recente para o mais antigo; linha do tempo completa.
+        // Histórico mostra a abertura da SS e as avaliações; linha do tempo completa.
         $pagina = $this->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()->assertSee('Avaliação: Excelente')->getContent();
-        $historico = substr($pagina, strpos($pagina, '<h2>Histórico</h2>'));
-        $this->assertTrue(strpos($historico, 'Avaliada pelo solicitante') < strpos($historico, 'Avaliada como Ruim'));
-        $this->assertTrue(strpos($historico, 'Avaliada como Ruim') < strpos($historico, 'SS aprovada'));
-        $this->assertTrue(strpos($historico, 'SS aprovada') < strpos($historico, 'SS aberta'));
+        // Agora junto das interações, em balões e em ordem cronológica (do mais antigo para o mais novo).
+        $historico = substr($pagina, strpos($pagina, '<h2>Interações e histórico</h2>'));
+        $this->assertStringContainsString('chat-evento', $historico);
+        $this->assertTrue(strpos($historico, 'SS aberta') < strpos($historico, 'SS aprovada'));
+        $this->assertTrue(strpos($historico, 'SS aprovada') < strpos($historico, 'Avaliada como Ruim'));
+        $this->assertTrue(strpos($historico, 'Avaliada como Ruim') < strpos($historico, 'Avaliada pelo solicitante'));
         foreach (['SS aberta', 'Aprovada', 'Em atendimento', 'Concluída', 'Avaliada'] as $marco) {
             $this->assertStringContainsString($marco, $pagina);
         }

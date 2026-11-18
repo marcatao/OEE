@@ -16,6 +16,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -143,7 +144,8 @@ class OrdemServicoController extends Controller
             'avaliada' => $os->status === 'encerrada' && $os->avaliacao !== null,
             'assinatura' => $os->status === 'encerrada' ? $os->assinaturaDaAvaliacao() : null,
             'editavel' => $os->estaAberta(),
-            'interacoes' => $os->interacoes()->with(['usuario', 'anexos'])->orderBy('id')->get(),
+            // Interações (mensagens e anexos) e histórico juntos, em ordem cronológica, como uma conversa só.
+            'conversa' => $this->conversa($os->interacoes()->with(['usuario', 'anexos'])->orderBy('id')->get(), $historico),
             'limiteAnexoKb' => InteracaoController::limiteKb(),
         ]);
     }
@@ -249,6 +251,18 @@ class OrdemServicoController extends Controller
      *
      * @return list<array{rotulo: string, quando: ?CarbonInterface, quem: ?string, detalhe: ?string}>
      */
+    /**
+     * Mensagens e eventos do histórico numa lista só, do mais antigo para o mais novo (no mesmo instante, o evento
+     * vem antes da mensagem). @return Collection<int, array{tipo: string, item: mixed}>
+     */
+    private function conversa(Collection $interacoes, Collection $historico): Collection
+    {
+        return $interacoes->map(fn ($m) => ['tipo' => 'mensagem', 'item' => $m])
+            ->concat($historico->map(fn ($h) => ['tipo' => 'evento', 'item' => $h]))
+            ->sortBy(fn ($l) => [$l['item']->criado_em?->getTimestamp() ?? 0, $l['tipo'] === 'evento' ? 0 : 1, $l['item']->id])
+            ->values();
+    }
+
     private function marcos(OrdemServico $os, $historico): array
     {
         $cronologico = $historico->sortBy(fn ($h) => [$h->criado_em?->getTimestamp(), $h->id])->values();

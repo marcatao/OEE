@@ -197,85 +197,6 @@
   </div>
 </section>
 
-{{-- Interações: conversa de todos os envolvidos, com anexos --}}
-<section class="cartao" id="interacoes">
-  <h2>Interações</h2>
-  <p class="suave">Conversa entre o solicitante, a manutenção e todos que acompanham esta OS. Anexe documentos, prints (cole com Ctrl+V) ou links.</p>
-  <div class="chat">
-    @forelse ($interacoes as $msg)
-      <article @class(['chat-msg', 'minha' => $msg->usuario_id === auth()->id()])>
-        @if ($msg->usuario)@include('partials.avatar', ['usuario' => $msg->usuario])@endif
-        <div class="chat-balao">
-          <header><strong>{{ $msg->usuario?->nome }}</strong> <small class="suave">@dataHora($msg->criado_em)</small></header>
-          @if ($msg->texto)<div class="chat-texto">{!! $msg->textoHtml() !!}</div>@endif
-          @if ($msg->anexos->isNotEmpty())
-            <div class="chat-anexos">
-              @foreach ($msg->anexos as $an)
-                @if ($an->ehImagem())
-                  <a href="{{ route('os.interacoes.anexo', $an) }}" target="_blank" class="chat-imagem" title="{{ $an->nome }}"><img src="{{ route('os.interacoes.anexo', $an) }}" alt="{{ $an->nome }}" loading="lazy"></a>
-                @else
-                  <a href="{{ route('os.interacoes.anexo', $an) }}" target="_blank" class="chat-arquivo">@include('layouts.partials.icone', ['nome' => 'apontamento']) <span>{{ $an->nome }}<small class="suave">{{ $an->tamanhoLegivel() }}</small></span></a>
-                @endif
-              @endforeach
-            </div>
-          @endif
-        </div>
-      </article>
-    @empty
-      <p class="suave chat-vazio">Nenhuma interação ainda. Escreva a primeira mensagem.</p>
-    @endforelse
-  </div>
-
-  @if ($editavel)
-  <form method="post" action="{{ route('os.interacoes.store', $os) }}" enctype="multipart/form-data" class="chat-form" id="chat-form">
-    @csrf
-    <textarea name="texto" rows="2" maxlength="4000" placeholder="Escreva uma mensagem… (links viram clicáveis; cole prints com Ctrl+V)" id="chat-texto">{{ old('texto') }}</textarea>
-    <div class="chat-form-rodape">
-      <label class="botao secundario pequeno chat-anexar">@include('layouts.partials.icone', ['nome' => 'mais']) Anexar
-        <input type="file" name="anexos[]" multiple id="chat-arquivos" hidden
-               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z,.dwg,.dxf,.mp4,.mov"></label>
-      <span class="suave chat-limite">até {{ \App\Http\Controllers\Manutencao\InteracaoController::MAX_ARQUIVOS }} arquivos de {{ number_format($limiteAnexoKb / 1024, 1, ',', '.') }} MB</span>
-      <span id="chat-selecionados" class="chat-selecionados"></span>
-      <button class="botao" type="submit">Enviar</button>
-    </div>
-  </form>
-  <script>
-    (function () {
-      var arquivos = document.getElementById('chat-arquivos'), lista = document.getElementById('chat-selecionados');
-      var texto = document.getElementById('chat-texto'), limite = {{ $limiteAnexoKb }} * 1024;
-      function mostrar() {
-        lista.textContent = '';
-        Array.prototype.forEach.call(arquivos.files, function (f) {
-          var chip = document.createElement('span');
-          chip.className = 'escolha-chip' + (f.size > limite ? ' grande' : '');
-          chip.textContent = f.name + (f.size > limite ? ' (grande demais)' : '');
-          lista.appendChild(chip);
-        });
-      }
-      arquivos.addEventListener('change', mostrar);
-      // Colar print (Ctrl+V) na caixa de mensagem: entra como anexo.
-      texto.addEventListener('paste', function (e) {
-        var imagens = Array.prototype.filter.call((e.clipboardData || {}).files || [], function (f) { return f.type.indexOf('image/') === 0; });
-        if (!imagens.length) return;
-        e.preventDefault();
-        var dt = new DataTransfer();
-        Array.prototype.forEach.call(arquivos.files, function (f) { dt.items.add(f); });
-        imagens.forEach(function (f, i) {
-          var nome = 'print-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + (i ? '-' + i : '') + '.png';
-          dt.items.add(new File([f], nome, { type: f.type }));
-        });
-        arquivos.files = dt.files;
-        mostrar();
-      });
-      // Ctrl+Enter envia.
-      texto.addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) document.getElementById('chat-form').requestSubmit(); });
-      var chat = document.querySelector('.chat'); if (chat) chat.scrollTop = chat.scrollHeight;
-    })();
-  </script>
-  @else
-    <p class="aviso">Esta OS está {{ mb_strtolower($os->rotuloStatus()) }}: a conversa fica só para leitura. Para escrever, ela precisa ser reaberta.</p>
-  @endif
-</section>
 
 <section class="cartao">
   <div class="titulo-com-acao">
@@ -466,8 +387,99 @@
 </section>
 @endif
 
-<section class="cartao">
-  <h2>Histórico</h2>
-  @include('manutencao._historico', ['historico' => $historico])
+{{-- Interações e histórico: a conversa de todos os envolvidos (com anexos) e os eventos da SS/OS, em ordem cronológica --}}
+<section class="cartao" id="interacoes">
+  <h2>Interações e histórico</h2>
+  <p class="suave">Conversa entre o solicitante, a manutenção e todos que acompanham esta OS, junto com tudo o que aconteceu com ela, em ordem.
+    Anexe documentos, prints (cole com Ctrl+V) ou links.</p>
+  <div class="chat">
+    @forelse ($conversa as $linha)
+      @if ($linha['tipo'] === 'mensagem')
+        @php($msg = $linha['item'])
+        <article @class(['chat-msg', 'minha' => $msg->usuario_id === auth()->id()])>
+          @if ($msg->usuario)@include('partials.avatar', ['usuario' => $msg->usuario])@endif
+          <div class="chat-balao">
+            <header><strong>{{ $msg->usuario?->nome }}</strong> <small class="suave">@dataHora($msg->criado_em)</small></header>
+            @if ($msg->texto)<div class="chat-texto">{!! $msg->textoHtml() !!}</div>@endif
+            @if ($msg->anexos->isNotEmpty())
+              <div class="chat-anexos">
+                @foreach ($msg->anexos as $an)
+                  @if ($an->ehImagem())
+                    <a href="{{ route('os.interacoes.anexo', $an) }}" target="_blank" class="chat-imagem" title="{{ $an->nome }}"><img src="{{ route('os.interacoes.anexo', $an) }}" alt="{{ $an->nome }}" loading="lazy"></a>
+                  @else
+                    <a href="{{ route('os.interacoes.anexo', $an) }}" target="_blank" class="chat-arquivo">@include('layouts.partials.icone', ['nome' => 'apontamento']) <span>{{ $an->nome }}<small class="suave">{{ $an->tamanhoLegivel() }}</small></span></a>
+                  @endif
+                @endforeach
+              </div>
+            @endif
+          </div>
+        </article>
+      @else
+        {{-- Evento do histórico: mesmo balão, com a etiqueta "Histórico" e a mudança de situação. --}}
+        @php($h = $linha['item'])
+        <article @class(['chat-msg', 'chat-evento', 'minha' => $h->usuario_id !== null && $h->usuario_id === auth()->id(), 'marco' => $h->ehMarco()])>
+          @if ($h->usuario)@include('partials.avatar', ['usuario' => $h->usuario])@else<span class="chat-sistema" title="Sistema">@include('layouts.partials.icone', ['nome' => 'cronometro'])</span>@endif
+          <div class="chat-balao">
+            <header><strong>{{ $h->usuario?->nome ?? 'Sistema' }}</strong> <small class="suave">@dataHora($h->criado_em)</small></header>
+            <div class="chat-texto"><span class="chat-etiqueta">Histórico</span> <strong>{{ $h->rotuloAcao() }}</strong>
+              @if ($h->mudancaStatus() !== '')<small class="suave chat-status">{{ $h->mudancaStatus() }}</small>@endif</div>
+            @if ($h->observacao)<div class="chat-texto os-texto">{{ $h->observacao }}</div>@endif
+          </div>
+        </article>
+      @endif
+    @empty
+      <p class="suave chat-vazio">Nenhuma interação ainda. Escreva a primeira mensagem.</p>
+    @endforelse
+  </div>
+
+  @if ($editavel)
+  <form method="post" action="{{ route('os.interacoes.store', $os) }}" enctype="multipart/form-data" class="chat-form" id="chat-form">
+    @csrf
+    <textarea name="texto" rows="2" maxlength="4000" placeholder="Escreva uma mensagem… (links viram clicáveis; cole prints com Ctrl+V)" id="chat-texto">{{ old('texto') }}</textarea>
+    <div class="chat-form-rodape">
+      <label class="botao secundario pequeno chat-anexar">@include('layouts.partials.icone', ['nome' => 'mais']) Anexar
+        <input type="file" name="anexos[]" multiple id="chat-arquivos" hidden
+               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z,.dwg,.dxf,.mp4,.mov"></label>
+      <span class="suave chat-limite">até {{ \App\Http\Controllers\Manutencao\InteracaoController::MAX_ARQUIVOS }} arquivos de {{ number_format($limiteAnexoKb / 1024, 1, ',', '.') }} MB</span>
+      <span id="chat-selecionados" class="chat-selecionados"></span>
+      <button class="botao" type="submit">Enviar</button>
+    </div>
+  </form>
+  <script>
+    (function () {
+      var arquivos = document.getElementById('chat-arquivos'), lista = document.getElementById('chat-selecionados');
+      var texto = document.getElementById('chat-texto'), limite = {{ $limiteAnexoKb }} * 1024;
+      function mostrar() {
+        lista.textContent = '';
+        Array.prototype.forEach.call(arquivos.files, function (f) {
+          var chip = document.createElement('span');
+          chip.className = 'escolha-chip' + (f.size > limite ? ' grande' : '');
+          chip.textContent = f.name + (f.size > limite ? ' (grande demais)' : '');
+          lista.appendChild(chip);
+        });
+      }
+      arquivos.addEventListener('change', mostrar);
+      // Colar print (Ctrl+V) na caixa de mensagem: entra como anexo.
+      texto.addEventListener('paste', function (e) {
+        var imagens = Array.prototype.filter.call((e.clipboardData || {}).files || [], function (f) { return f.type.indexOf('image/') === 0; });
+        if (!imagens.length) return;
+        e.preventDefault();
+        var dt = new DataTransfer();
+        Array.prototype.forEach.call(arquivos.files, function (f) { dt.items.add(f); });
+        imagens.forEach(function (f, i) {
+          var nome = 'print-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + (i ? '-' + i : '') + '.png';
+          dt.items.add(new File([f], nome, { type: f.type }));
+        });
+        arquivos.files = dt.files;
+        mostrar();
+      });
+      // Ctrl+Enter envia.
+      texto.addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) document.getElementById('chat-form').requestSubmit(); });
+      var chat = document.querySelector('.chat'); if (chat) chat.scrollTop = chat.scrollHeight;
+    })();
+  </script>
+  @else
+    <p class="aviso">Esta OS está {{ mb_strtolower($os->rotuloStatus()) }}: a conversa fica só para leitura. Para escrever, ela precisa ser reaberta.</p>
+  @endif
 </section>
 @endsection

@@ -1085,3 +1085,14 @@ a.pm-cartao:hover { border-color:var(--primaria); border-top-color:var(--estado)
 .os-assinatura figcaption { text-align:center; font-size:.85rem; }
 .os-assinatura figcaption small { display:block; }
 .assinatura-img { max-height:4.5rem; max-width:100%; }
+/* ---------- Interações e histórico juntos (eventos do histórico em balões) ---------- */
+.chat-evento .chat-balao { background:var(--cartao); border-style:dashed; border-color:var(--borda-forte); }
+.chat-evento.minha .chat-balao { background:var(--cartao); border-color:var(--borda-forte); }
+.chat-evento.marco .chat-balao { border-style:solid; border-color:var(--primaria); }
+.chat-etiqueta { display:inline-block; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--suave);
+  border:1px solid var(--borda-forte); border-radius:999px; padding:0 .45rem; margin-right:.25rem; vertical-align:middle; }
+.chat-evento.marco .chat-etiqueta { color:var(--primaria); border-color:var(--primaria); }
+.chat-status { display:block; margin-top:.15rem; }
+.chat-sistema { width:2.125rem; height:2.125rem; border-radius:50%; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center;
+  background:var(--fundo); border:1px solid var(--borda-forte); color:var(--suave); }
+.chat-sistema .icone { width:1.1rem; height:1.1rem; }
