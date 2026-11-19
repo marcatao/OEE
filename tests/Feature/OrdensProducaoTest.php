@@ -376,25 +376,31 @@ class OrdensProducaoTest extends TestCase
         $this->cenarioDeCusto();
         $op = OrdemProducao::where('numero', '50986001001')->sole();
 
-        // Consumos = baixas 150 + 80 + (10 × 0,90 pelo custo médio) + nota 86 − devolução 15 = 310;
-        // produzido 100 → 3,10 por peça; meta 2,00 por peça → +55%.
+        // Consumos líquidos = baixas 150 + 80 + (10 × 0,90 pelo custo médio) + nota 86 − devolução 15 = 310 (3,10 por peça).
+        // Custo Protheus = valor da produção 215 ÷ 100 = 2,15. Custo simulado (OEE) = baixas 239 rateadas nas produções
+        // pelas peças = 239 ÷ 100 = 2,39 por peça; meta 2,00 → divergência (simulado × meta) = +19,5%.
         $resumo = app(CustoOrdemProducao::class)->resumos([$op])[$op->id];
         $this->assertEqualsWithDelta(310, $resumo->custoLiquido(), 0.001);
         $this->assertEqualsWithDelta(3.10, $resumo->custoUnitario(), 0.0001);
-        $this->assertEqualsWithDelta(0.55, $resumo->divergencia(), 0.0001);
+        $this->assertEqualsWithDelta(2.15, $resumo->custoProtheus(), 0.0001);
+        $this->assertEqualsWithDelta(2.39, $resumo->custoSimulado(), 0.0001);
+        $this->assertEqualsWithDelta(95.6, $resumo->rateioDaProducao(40), 0.0001);   // produção de 40 das 100 peças = 40% das baixas
+        $this->assertEqualsWithDelta(0.195, $resumo->divergencia(), 0.0001);
         $this->assertEqualsWithDelta(40, $resumo->notaQtd, 0.001);
         $this->assertSame([1, 0], [$resumo->pelaMedia, $resumo->semCusto]);
         $this->assertEqualsWithDelta(0.9, DB::table('movimentos_producao')->where('r_e_c_n_o_', 9)->value('custo_medio'), 0.0001);
 
         $this->actingAs($this->usuario(['ordens_producao']));
         $this->get('/producao/ordens-de-producao?busca=50986001001')->assertOk()
-            ->assertSee('Custo unit. meta')->assertSee('R$ 3,1000')->assertSee('R$ 2,0000')->assertSee('+55,0%')->assertSee('div-acima', false)
+            ->assertSee('Custo unit. meta')->assertSee('Custo simulado (OEE)')->assertSee('R$ 2,3900')->assertSee('R$ 2,0000')->assertSee('+19,5%')->assertSee('div-acima', false)
             ->assertSee(route('ordens-producao.show', $op), false);
 
         $this->get(route('ordens-producao.show', $op))->assertOk()
             ->assertSee('Kardex da OP')->assertSee('Consumo por componente')->assertSee('RESINA PET')
             ->assertSee('Baixa automática (empenho)')->assertSee('Nota fiscal')->assertSee('000123')
-            ->assertSee('R$ 310,00')->assertSee('+55,0%')->assertSee('custo médio')
+            ->assertSee('R$ 310,00')->assertSee('+19,5%')->assertSee('custo médio')
+            ->assertSeeInOrder(['Custo Protheus', 'R$ 2,1500', 'Custo meta (mês passado)', 'R$ 2,0000', 'Custo simulado (OEE)', 'R$ 2,3900'])
+            ->assertSee('R$ 239,00')                                                // baixas rateadas na produção (kardex)
             ->assertDontSee('R$ 999,00');                                          // estornado e excluído fora
         $this->get('/producao/ordens-de-producao/999999')->assertNotFound();
 

@@ -56,7 +56,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `C2_DATRF` preenchido; vazio = aberta/andamento/parada). Toda sincronização atualiza qualquer campo da OP que mudou
   no Protheus e recalcula o status de TODAS as OPs, por lote (`StatusOrdemProducao::atualizarLote`, autorizado pelo
   usuário); recalcule também ao gravar/excluir apontamentos com OP. A tabela antiga `produtos` (Sistema OEE) não é a do Protheus.
-- `empenhos_op` é cópia da SD4 (`ImportadorEmpenhos`, por R_E_C_N_O_, lida inteira: o saldo D4_QUANT muda; tela
+- `empenhos_op` é cópia da SD4 (procedure `sp_sincronizar_empenhos_op`; PHP: `ImportadorEmpenhos`, por R_E_C_N_O_, lida inteira: o saldo D4_QUANT muda; tela
   Produção › Empenhos OP, permissão `empenhos_op`). A tela da OP é em ABAS (componente `[data-abas]` de
   `componentes.js`, aba no endereço `#aba-x`): OP (dados + custo), Apontamentos reais, Kardex, Empenhos, Estrutura,
   Roteiro e Ferramenta (cavidades ativas editáveis pelos administradores, volta para a OP), pelos relacionamentos do Protheus em `App\Services\EngenhariaOrdemProducao` (D4_OP = número da OP;
@@ -95,8 +95,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   são cópias por R_E_C_N_O_; as telas só usam os não excluídos e, na SD3, não estornados (`D3_ESTORNO = 'S'`). O
   `tipo` vem do D3_CF (PR produção, RE baixa/consumo, DE devolução; legendas em `config/protheus.php`); SD2 = "Nota
   fiscal". O objetivo é o custo de **1 peça**. Valor do movimento = D3_CUSTO1 / D2_CUSTO1 quando > 0; senão quantidade ×
-  custo médio de estoque (`custo_medio`, B2_CM1 da SB2, gravado a cada sincronização; a SB2 NÃO é copiada). Custo unit.
-  atual = (baixas + notas SD2 − devoluções) ÷ produzido na OP; `ordens_producao.custo_meta` = custo unitário do
+  custo médio de estoque (`custo_medio`, B2_CM1 da SB2, gravado a cada sincronização; a SB2 NÃO é copiada). Custo
+  Protheus = valor das produções (PR) ÷ produzido; custo SIMULADO (OEE) = baixas (RE) da OP rateadas nas produções pela
+  quantidade de peças (por peça: baixas ÷ produzido; `ResumoCustoOp::custoSimulado`/`rateioDaProducao`, coluna no
+  kardex); DIVERGÊNCIA = (simulado − meta) ÷ meta; consumos líquidos (baixas + notas SD2 − devoluções) ÷ produzido
+  ficam só de referência; `ordens_producao.custo_meta` = custo unitário do
   fechamento mais recente do produto na SB9, gravado a cada sincronização das OPs (a SB9 NÃO é copiada).
   A tela "Apontamento real" é a antiga "Apontamentos" (permissão `apontamentos`, a chave não muda); "Apontamentos OP" é a
   tela dos movimentos do Protheus (permissão `apontamentos_producao`).
@@ -119,7 +122,14 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   intervalo inteiro: 01:00 = 24x, 23:59 = 1x ao dia). O comando `protheus:sincronizar-agendadas` roda a cada minuto
   (agendador do Laravel, em segundo plano); no servidor, a tarefa do Windows de `scripts/windows/instalar-agendador.ps1`
   roda `schedule:run` a cada minuto, e a tela mostra se o agendador está vivo (cache `agendador.sinal`).
-  SD3/SD2 são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
+  `movimentos_producao` (Apontamentos OP) usa `dbo.sp_sincronizar_movimentos_producao`, SEM parâmetros: lê a
+  `SD3010` do servidor vinculado `[ALUMBRAPRD].[CMT8F4_145045_PR_PD]` por OPENQUERY, só com OP (`D3_ORDEM`) e
+  `D3_EMISSAO` > último fechamento (`MAX(B9_DATA)` da `SB9010` não excluída), MERGE pelo R_E_C_N_O_, custo médio da
+  `SB2010`, e APAGA do portal os excluídos no Protheus e os do período aberto que sumiram (pedido do usuário).
+  `empenhos_op` usa `dbo.sp_sincronizar_empenhos_op`, SEM parâmetros: a `SD4010` INTEIRA do mesmo servidor vinculado
+  (só com `D4_OP`), sem o corte da SB9, MERGE pelo R_E_C_N_O_, apagando os excluídos e os que sumiram (para com erro
+  se a leitura vier vazia e o portal tiver empenhos).
+  SD2 (e a SD3 pelo PHP) são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
 - **Pedidos e solicitações de compra** (Ordens de serviço): o administrador da unidade gera um pedido de compra (SC7,
   MATA120) ou uma solicitação de compra (SC1, MATA110) — `pedidos_compra.tipo` = pedido | solicitacao, `ZP1_TIPO` = PC |

@@ -38,10 +38,13 @@ do Brasil, explique os números em linguagem de chão de fábrica e sempre mostr
   (o Protheus só valoriza no recálculo do custo médio/fechamento), **quantidade × custo médio de estoque** do item
   (`B2_CM1` da SB2, mesma filial e armazém; sem o armazém, a média ponderada dos armazéns da filial), gravado em
   `custo_medio` a cada sincronização. Mostre sempre qual das duas valorizações foi usada.
-- **Custo unitário atual da OP** = (consumos SD3 + notas SD2 − devoluções) ÷ quantidade produzida (PR) na OP.
+- **Custo Protheus (por peça)** = valor das produções (PR, D3_CUSTO1) ÷ quantidade produzida.
+- **Custo simulado (OEE)** = as baixas/consumos (RE) da OP rateadas em cada produção (PR) pela quantidade de peças;
+  por peça = baixas ÷ produzido (`ResumoCustoOp::custoSimulado`, `rateioDaProducao`; coluna no kardex).
+- Consumos líquidos (consumos SD3 + notas SD2 − devoluções) ÷ produzido ficam como referência (`custoUnitario`).
 - **Custo meta (unitário)** = custo do **fechamento mais recente** do produto na SB9 (maior `B9_DATA`, filial da OP ou em
   branco; vários armazéns: soma de `B9_VINI1` ÷ soma de `B9_QINI`; sem saldo, `B9_CM1`), em `ordens_producao.custo_meta`.
-- **Divergência** = (unitário atual − meta) ÷ meta. Tolerância neutra em `oee.custo_tolerancia` (±5%).
+- **Divergência** = (custo simulado − meta) ÷ meta. Tolerância neutra em `oee.custo_tolerancia` (±5%).
 
 ## Regras ao mexer em custos
 

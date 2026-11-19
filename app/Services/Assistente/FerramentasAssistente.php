@@ -143,7 +143,7 @@ class FerramentasAssistente
                 'metodo' => 'ordensProducao', 'rotulo' => 'Consultando as ordens de produção',
                 'permissoes' => ['ordens_producao'],
                 'descricao' => 'Ordens de produção (cópia da SC2 do Protheus): número, produto e descrição, quantidade, produzido, '
-                    .'previsão, status (aberta, andamento, parada, fechada). Com incluir_custo, custo unitário atual × custo '
+                    .'previsão, status (aberta, andamento, parada, fechada). Com incluir_custo, custo Protheus, custo simulado (OEE: baixas rateadas nas produções) × custo '
                     .'meta (SB9) e divergência. Devolve também o total por status do filtro.',
                 'esquema' => $objeto([
                     'numero' => ['type' => 'string', 'description' => 'Número da OP (ou o começo dele).'],
@@ -159,7 +159,7 @@ class FerramentasAssistente
             'detalhe_op' => [
                 'metodo' => 'detalheOp', 'rotulo' => 'Abrindo a ordem de produção',
                 'permissoes' => ['ordens_producao'],
-                'descricao' => 'Detalhe de UMA OP: dados, custo (produção, baixas, devoluções, notas, custo unitário atual × '
+                'descricao' => 'Detalhe de UMA OP: dados, custo (produção, baixas, devoluções, notas, custo Protheus, custo simulado OEE × '
                     .'meta), componentes que mais custaram, máquinas que estão com a OP e minutos apontados por legenda.',
                 'esquema' => ['type' => 'object', 'properties' => ['numero' => ['type' => 'string', 'description' => 'Número da OP.']],
                     'required' => ['numero'], 'additionalProperties' => false],
@@ -617,7 +617,9 @@ class FerramentasAssistente
         $div = $r->divergencia();
 
         return [
-            'custo_unitario_atual' => $r->custoUnitario() !== null ? round($r->custoUnitario(), 4) : null,
+            'custo_unitario_protheus' => $r->custoProtheus() !== null ? round($r->custoProtheus(), 4) : null,
+            'custo_unitario_simulado_oee' => $r->custoSimulado() !== null ? round($r->custoSimulado(), 4) : null,
+            'custo_unitario_consumos_liquidos' => $r->custoUnitario() !== null ? round($r->custoUnitario(), 4) : null,
             'custo_meta_unitario' => $r->meta !== null ? round($r->meta, 4) : null,
             'divergencia_pct' => $div !== null ? round($div * 100, 1) : null,
             'custo_liquido_total' => round($r->custoLiquido(), 2),

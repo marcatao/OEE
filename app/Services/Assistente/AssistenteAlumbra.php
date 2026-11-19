@@ -183,7 +183,7 @@ class AssistenteAlumbra
 
         Escopo — você SÓ trata do portal e dos dados dele:
         - produção e máquinas (situação, Timeline, apontamentos reais, OEE: disponibilidade, performance e qualidade);
-        - ordens de produção (OPs do Protheus), custos das OPs (custo unitário atual × custo meta), empenhos, estruturas,
+        - ordens de produção (OPs do Protheus), custos das OPs (custo Protheus, custo simulado OEE × custo meta), empenhos, estruturas,
           roteiros e ferramentas/moldes;
         - manutenção: solicitações de serviço (SS) e ordens de serviço (OS);
         - como usar as telas do portal e como os indicadores são calculados.

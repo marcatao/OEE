@@ -262,7 +262,7 @@ class AssistenteTest extends TestCase
         $this->assertSame('INTERRUPTOR PARALELO', $ops['ops'][0]['descricao']);
         $this->assertSame(25.0, $ops['ops'][0]['produzido_pct']);
         $this->assertSame('30/11/2026', $ops['ops'][0]['previsao_fim']);
-        $this->assertArrayHasKey('custo_unitario_atual', $ops['ops'][0]);
+        $this->assertArrayHasKey('custo_unitario_simulado_oee', $ops['ops'][0]);
 
         $detalhe = $ferramentas->executar($adm, 'detalhe_op', ['numero' => '06267801001']);
         $this->assertSame('Andamento', $detalhe['op']['status']);

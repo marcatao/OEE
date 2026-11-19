@@ -135,6 +135,10 @@ class CustoOrdemProducao
             $linhas[] = $m;
         }
         usort($componentes, fn ($a, $b) => $b['valor'] <=> $a['valor']);
+        // Custo simulado (OEE): as baixas da OP rateadas em cada produção pela quantidade de peças.
+        foreach ($linhas as $m) {
+            $m->custo_simulado = $m->tipo === 'producao' ? $resumo->rateioDaProducao((float) $m->quantidade) : null;
+        }
 
         $codigos = array_unique([rtrim($op->c2_produto), ...array_map(fn ($m) => rtrim($m->produto), $linhas)]);
 

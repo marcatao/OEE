@@ -41,7 +41,7 @@
   <div class="rolagem">
   <table class="tabela">
     <thead><tr><th>OP</th><th>Status</th><th>Produto</th><th class="num">Quantidade</th><th class="num">Produzido</th><th class="num">Perda</th>
-      <th class="num">Custo unit. atual</th><th class="num">Custo unit. meta</th><th class="num">Divergência</th>
+      <th class="num" title="Baixas da OP rateadas nas produções pelas peças">Custo simulado (OEE)</th><th class="num">Custo unit. meta</th><th class="num" title="Simulado × meta">Divergência</th>
       <th>Emissão</th><th>Previsão</th><th>Encerrada em</th><th class="num">Apontamentos</th></tr></thead>
     <tbody>
     @forelse ($ordens as $op)
@@ -54,7 +54,7 @@
         <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_quje) }}
           @if ($op->c2_quant > 0)<br><small class="suave">{{ number_format(min($op->c2_quje / $op->c2_quant, 9.99) * 100, 0, ',', '.') }}%</small>@endif</td>
         <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_perda) }}</td>
-        <td class="num">{{ Formato::moeda($custos[$op->id]->custoUnitario(), 4) }} <small class="suave">/{{ $op->c2_um ?: 'un' }}</small>
+        <td class="num">{{ Formato::moeda($custos[$op->id]->custoSimulado(), 4) }} <small class="suave">/{{ $op->c2_um ?: 'un' }}</small>
           @if ($custos[$op->id]->pelaMedia > 0)<br><small class="suave" title="Consumos que o Protheus ainda não valorizou: usado o custo médio de estoque (SB2)">{{ $custos[$op->id]->pelaMedia }} pelo custo médio</small>@endif
           @if ($custos[$op->id]->semCusto > 0)<br><small class="texto-alerta">{{ $custos[$op->id]->semCusto }} sem custo</small>@endif</td>
         <td class="num">{{ Formato::moeda($op->custo_meta, 4) }} <small class="suave">/{{ $op->c2_um ?: 'un' }}</small></td>
