@@ -86,7 +86,7 @@ class EstruturasRoteirosFerramentasTest extends TestCase
     public function test_sincronizacao_nao_sobrepoe_as_cavidades_ativas(): void
     {
         $this->sincronizar('ferramentas');
-        Ferramenta::query()->update(['h4_qtdcavativas' => 6, 'unidade' => 'ambos']);
+        Ferramenta::query()->update(['h4_qtdcavativas' => 6, 'unidade' => 'ambos', 'disponivel' => false]);
 
         // No Protheus muda a descrição e as cavidades: o portal atualiza os campos h4_*, mas não as ativas nem a unidade.
         DB::connection('protheus')->table('SH4')->update(['H4_DESCRI' => 'MOLDE NOVO', 'H4_QTDCAV' => 4]);
@@ -143,5 +143,27 @@ class EstruturasRoteirosFerramentasTest extends TestCase
         $this->actingAs($u)->get('/producao/ferramentas')->assertOk()->assertDontSee('>Editar<', false);
         $this->get("/producao/ferramentas/{$f->id}/editar")->assertForbidden();
         $this->put("/producao/ferramentas/{$f->id}", ['h4_qtdcavativas' => 1])->assertForbidden();
+    }
+
+    public function test_ferramenta_disponivel_editavel_e_filtro_de_disponiveis(): void
+    {
+        $this->sincronizar('ferramentas');
+        $f = Ferramenta::sole();
+        $this->assertTrue($f->disponivel);                                       // nasce disponível
+
+        $this->actingAs($this->usuario(['admin_producao'], 'adm@empresa.com'));
+        $this->get('/producao/ferramentas?disponivel=0')->assertOk()->assertDontSee($f->h4_descri)->assertSee('Indisponíveis (0)');
+        $this->put("/producao/ferramentas/{$f->id}", ['h4_qtdcavativas' => 8, 'disponivel' => '0'])->assertRedirect('/producao/ferramentas');
+        $this->assertFalse($f->fresh()->disponivel);
+        $this->get('/producao/ferramentas?disponivel=0')->assertSee($f->h4_descri)->assertSee('Indisponíveis (1)');
+        $this->get('/producao/ferramentas?disponivel=1')->assertDontSee($f->h4_descri);
+
+        // Sem o campo (aba Ferramenta da OP só manda as cavidades): continua como está.
+        $this->put("/producao/ferramentas/{$f->id}", ['h4_qtdcavativas' => 7])->assertRedirect();
+        $this->assertFalse($f->fresh()->disponivel);
+        // A sincronização não muda a disponibilidade.
+        DB::connection('protheus')->table('SH4')->update(['H4_DESCRI' => 'MOLDE RENOVADO']);
+        $this->sincronizar('ferramentas');
+        $this->assertSame(['MOLDE RENOVADO', false], [$f->fresh()->h4_descri, $f->fresh()->disponivel]);
     }
 }

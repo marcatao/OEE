@@ -15,19 +15,27 @@
 
   <form method="get" class="filtros">
     <label>Buscar <input name="busca" value="{{ $busca }}" placeholder="Código ou descrição da ferramenta"></label>
+    <label>Disponibilidade
+      <select name="disponivel" onchange="this.form.submit()">
+        <option value="" @selected($disponivel === '')>Todas ({{ ($totaisDisponivel[1] ?? 0) + ($totaisDisponivel[0] ?? 0) }})</option>
+        <option value="1" @selected($disponivel === '1')>Disponíveis ({{ $totaisDisponivel[1] ?? 0 }})</option>
+        <option value="0" @selected($disponivel === '0')>Indisponíveis ({{ $totaisDisponivel[0] ?? 0 }})</option>
+      </select>
+    </label>
     <button class="botao secundario" type="submit">Filtrar</button>
-    @if ($busca !== '')<a href="{{ route('ferramentas.index') }}">Limpar</a>@endif
+    @if ($busca !== '' || $disponivel !== '')<a href="{{ route('ferramentas.index') }}">Limpar</a>@endif
   </form>
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Código</th><th>Unidade</th><th>Descrição</th><th class="num">Cavidades</th><th class="num">Cavidades ativas</th>
+    <thead><tr><th>Código</th><th>Unidade</th><th>Disponível</th><th>Descrição</th><th class="num">Cavidades</th><th class="num">Cavidades ativas</th>
       <th class="num">Quantidade</th><th class="num">Vida útil</th><th class="num">Operações</th><th></th></tr></thead>
     <tbody>
     @forelse ($ferramentas as $f)
       <tr>
         <td><code>{{ $f->h4_codigo }}</code>@if (trim($f->h4_filial) !== '')<br><small class="suave">filial {{ $f->h4_filial }}</small>@endif</td>
         <td><span class="etiqueta unidade-{{ $f->unidade }}">{{ $f->rotuloUnidade() }}</span></td>
+        <td>@if ($f->disponivel)<span class="etiqueta situacao-online">Disponível</span>@else<span class="etiqueta situacao-sem_sinal">Indisponível</span>@endif</td>
         <td class="quebra">{{ $f->h4_descri }}</td>
         <td class="num">{{ Formato::inteiro($f->h4_qtdcav) }}</td>
         <td class="num"><strong @class(['texto-alerta' => $f->cavidadesAcima()])>{{ Formato::inteiro($f->h4_qtdcavativas) }}</strong>
@@ -39,7 +47,7 @@
         <td>@if (auth()->user()->ehAdmin())<a class="botao pequeno" href="{{ route('ferramentas.edit', $f) }}">Editar</a>@endif</td>
       </tr>
     @empty
-      <tr><td colspan="9" class="suave">Nenhuma ferramenta encontrada. As ferramentas vêm do Protheus: sincronize em Segurança › Banco de dados.</td></tr>
+      <tr><td colspan="10" class="suave">Nenhuma ferramenta encontrada. As ferramentas vêm do Protheus: sincronize em Segurança › Banco de dados.</td></tr>
     @endforelse
     </tbody>
   </table>

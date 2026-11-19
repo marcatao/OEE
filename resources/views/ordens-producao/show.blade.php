@@ -311,7 +311,8 @@
         @foreach ($roteiro['ferramentas_codigos'] as $cod)
           @php $f = $roteiro['ferramentas'][$cod] ?? null; @endphp
           <article class="ferr-cartao">
-            <header><code>{{ $cod }}</code> <strong>{{ $f?->h4_descri ?? 'não encontrada na SH4 (ou de outra unidade)' }}</strong></header>
+            <header><code>{{ $cod }}</code> <strong>{{ $f?->h4_descri ?? 'não encontrada na SH4 (ou de outra unidade)' }}</strong>
+              @if ($f && ! $f->disponivel)<span class="etiqueta situacao-sem_sinal">Indisponível</span>@endif</header>
             @if ($f)
               <dl class="op-ficha compacta">
                 <div><dt>Cavidades (Protheus)</dt><dd>{{ $f->h4_qtdcav }}</dd></div>

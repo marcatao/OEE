@@ -6,7 +6,8 @@ namespace App\Services\Protheus;
  * Ferramentas do Protheus: SH4 em "ferramentas" (tabela MISTA). Chave: H4_FILIAL + H4_CODIGO.
  * Os campos h4_* vêm do Protheus a cada sincronização. São do portal, e a sincronização nunca mexe neles:
  * - h4_qtdcavativas (cavidades ativas): nasce igual à quantidade de cavidades (H4_QTDCAV) e depois só muda no portal;
- * - unidade (manutenção, tecnologia, ferramentaria ou ambos = todas).
+ * - unidade (manutenção, tecnologia, ferramentaria ou ambos = todas);
+ * - disponivel (a ferramenta/molde está disponível para uso; nasce disponível).
  * O campo de cavidades no Protheus é configurável (config protheus.sh4_campo_cavidades, padrão H4_QTDCAV).
  */
 class ImportadorFerramentas extends ImportadorEspelho
@@ -62,6 +63,6 @@ class ImportadorFerramentas extends ImportadorEspelho
     /** Ferramenta nova: cavidades ativas = cavidades do Protheus; unidade padrão (manutenção). */
     protected function completarNova(array $linha): array
     {
-        return $linha + ['h4_qtdcavativas' => $linha['h4_qtdcav'], 'unidade' => 'manutencao', 'criado_em' => now()];
+        return $linha + ['h4_qtdcavativas' => $linha['h4_qtdcav'], 'unidade' => 'manutencao', 'disponivel' => true, 'criado_em' => now()];
     }
 }

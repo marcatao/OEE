@@ -14,17 +14,21 @@ use Illuminate\View\View;
 
 /**
  * Produção > Ferramentas: SH4 do Protheus (tabela mista). Consulta para quem tem a permissão "ferramentas"; os
- * administradores editam só o que é do portal: cavidades ativas (até a quantidade de cavidades do Protheus) e unidade.
+ * administradores editam só o que é do portal: cavidades ativas (até a quantidade de cavidades do Protheus), unidade e
+ * se está disponível. A lista filtra por disponíveis / indisponíveis.
  */
 class FerramentaController extends Controller
 {
     public function index(Request $request): View
     {
         $busca = trim((string) $request->query('busca'));
+        // Disponibilidade: '' = todas, '1' = só disponíveis, '0' = só indisponíveis.
+        $disponivel = in_array($request->query('disponivel'), ['0', '1'], true) ? $request->query('disponivel') : '';
 
         $ferramentas = Ferramenta::validas()
             ->when($busca !== '', fn ($q) => $q->where(fn ($w) => $w->where('h4_codigo', 'like', "%{$busca}%")
                 ->orWhere('h4_descri', 'like', "%{$busca}%")))
+            ->when($disponivel !== '', fn ($q) => $q->where('disponivel', $disponivel === '1'))
             ->orderBy('h4_codigo')
             ->paginate(50)->withQueryString();
 
@@ -35,6 +39,9 @@ class FerramentaController extends Controller
                 ->groupBy('g2_ferram')->select('g2_ferram', DB::raw('count(*) as qtd'))->pluck('qtd', 'g2_ferram')
                 ->mapWithKeys(fn ($qtd, $cod) => [rtrim($cod) => $qtd]),
             'busca' => $busca,
+            'disponivel' => $disponivel,
+            'totaisDisponivel' => Ferramenta::validas()->select('disponivel', DB::raw('count(*) as qtd'))->groupBy('disponivel')->pluck('qtd', 'disponivel')
+                ->mapWithKeys(fn ($qtd, $d) => [(int) (bool) $d => (int) $qtd]),
             'ultimaSincronizacao' => Sincronizacao::where('chave', 'ferramentas')->where('situacao', 'sucesso')->latest('iniciado_em')->value('iniciado_em'),
         ]);
     }
@@ -56,6 +63,7 @@ class FerramentaController extends Controller
         $dados = $request->validate([
             'unidade' => Unidades::regras($request->user(), $ferramenta->unidade),
             'h4_qtdcavativas' => ['required', 'integer', 'min:0', 'max:'.max(0, (int) $ferramenta->h4_qtdcav)],
+            'disponivel' => ['sometimes', 'boolean'], // a aba Ferramenta da OP só manda as cavidades
         ], [
             'h4_qtdcavativas.max' => 'As cavidades ativas não podem passar da quantidade de cavidades da ferramenta ('.$ferramenta->h4_qtdcav.').',
             'h4_qtdcavativas.*' => 'Informe as cavidades ativas (número inteiro, a partir de 0).',

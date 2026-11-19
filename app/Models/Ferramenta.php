@@ -19,11 +19,11 @@ class Ferramenta extends Model
     protected $table = 'ferramentas';
 
     /** Só os campos do portal podem ser gravados pela tela. */
-    protected $fillable = ['h4_qtdcavativas', 'unidade'];
+    protected $fillable = ['h4_qtdcavativas', 'unidade', 'disponivel'];
 
     protected function casts(): array
     {
-        return ['h4_quant' => 'float', 'h4_vidauti' => 'float', 'h4_qtdcav' => 'integer', 'h4_qtdcavativas' => 'integer',
+        return ['h4_quant' => 'float', 'h4_vidauti' => 'float', 'h4_qtdcav' => 'integer', 'h4_qtdcavativas' => 'integer', 'disponivel' => 'boolean',
             'r_e_c_n_o_' => 'integer', 'sincronizado_em' => 'datetime'];
     }
 

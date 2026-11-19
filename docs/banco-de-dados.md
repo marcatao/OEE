@@ -220,6 +220,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        bit disponivel
     }
     filtros_usuarios {
         bigint id PK
@@ -1062,7 +1063,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`estruturas_produto`](#estruturas_produto) | Protheus | `id` | 15 | 0 |
 | [`failed_jobs`](#failed_jobs) | Infra | `id` | 7 | 0 |
 | [`faltas_produto`](#faltas_produto) | Protheus | `id` | 20 | 0 |
-| [`ferramentas`](#ferramentas) | Mista | `id` | 17 | 2 |
+| [`ferramentas`](#ferramentas) | Mista | `id` | 18 | 2 |
 | [`filtros_usuarios`](#filtros_usuarios) | Sistema | `id` | 8 | 1 |
 | [`grupo_permissoes`](#grupo_permissoes) | Sistema | `grupo_id, permissao` | 2 | 1 |
 | [`grupo_usuario`](#grupo_usuario) | Sistema | `grupo_id, usuario_id` | 2 | 2 |
@@ -1459,6 +1460,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `disponivel` | `bit` | não | `'1'` |  |
 
 **Índices:** `ferramentas_h4_filial_h4_codigo_unique` único (h4_filial, h4_codigo) · `ferramentas_h4_codigo_index` (h4_codigo) · `ferramentas_unidade_index` (unidade)
 

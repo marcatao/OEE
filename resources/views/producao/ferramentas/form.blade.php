@@ -33,6 +33,12 @@
       </label>
       @include('partials.campo-unidade', ['registro' => $ferramenta])
     </div>
+    <fieldset class="opcoes-linha">
+      <legend>Disponibilidade</legend>
+      <label class="opcao"><input type="radio" name="disponivel" value="1" @checked((int) old('disponivel', (int) $ferramenta->disponivel) === 1)> <span>Disponível</span></label>
+      <label class="opcao"><input type="radio" name="disponivel" value="0" @checked((int) old('disponivel', (int) $ferramenta->disponivel) === 0)> <span>Indisponível</span></label>
+      <small class="suave">Campo do portal: a sincronização com o Protheus não muda.</small>
+    </fieldset>
     <div class="acoes">
       <button class="botao" type="submit">Salvar</button>
       <a class="botao secundario" href="{{ route('ferramentas.index') }}">Cancelar</a>
