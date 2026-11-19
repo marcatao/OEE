@@ -46,13 +46,22 @@
     <div><dt>Servidor</dt><dd><code>{{ $conexaoProtheus['Servidor'] ?? '-' }}</code></dd></div>
     <div><dt>Banco</dt><dd><code>{{ $conexaoProtheus['Banco'] ?? '-' }}</code></dd></div>
     <div><dt>Usuário</dt><dd><code>{{ $conexaoProtheus['Usuário'] ?? '-' }}</code></dd></div>
+    <div><dt>Agendador do Laravel (serviço)</dt>
+      <dd>@if ($sinalAgendador && $sinalAgendador->gt(now()->subMinutes(3)))
+          <span class="etiqueta sinc-sucesso">Rodando</span> <small class="suave">último sinal @dataHora($sinalAgendador)</small>
+        @elseif ($sinalAgendador)
+          <span class="etiqueta sinc-erro">Parado</span> <small class="suave">último sinal @dataHora($sinalAgendador) — a periodicidade não roda</small>
+        @else
+          <span class="etiqueta sinc-erro">Nunca rodou</span> <small class="suave">instale com <code>scripts\windows\instalar-agendador.ps1</code> (README)</small>
+        @endif</dd></div>
     <div><dt>Sincronização automática</dt>
-      <dd>@if ($agenda)<code>{{ $agenda }}</code> (agendador do Laravel)@else desligada (só pelo botão ou comando)@endif</dd></div>
+      <dd>pela coluna <strong>Periodicidade</strong> de cada tabela (precisa do agendador do Laravel rodando no servidor)
+        @if ($agenda)<br><small>e todas as tabelas em <code>{{ $agenda }}</code> (PROTHEUS_SINCRONIZAR_CRON do .env)</small>@endif</dd></div>
   </dl>
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Tabela do portal</th><th>Origem no Protheus</th><th>Sincronização</th><th>Última sincronização</th><th>Resultado</th><th></th></tr></thead>
+    <thead><tr><th>Tabela do portal</th><th>Origem no Protheus</th><th>Sincronização</th><th>Periodicidade</th><th>Última sincronização</th><th>Resultado</th><th></th></tr></thead>
     <tbody>
     @foreach ($sincronizacoes as $chave => $item)
       @php($u = $ultimas[$chave] ?? null)
@@ -67,6 +76,33 @@
           @else
             <span class="etiqueta">PHP</span>
             @if (($item['via'] ?? 'php') === 'procedure')<br><small class="suave">procedure só no SQL Server</small>@endif
+          @endif
+        </td>
+        <td class="sinc-agenda">
+          @php($ag = $agendas[$chave] ?? null)
+          @if ($ag)
+            @if ($ag->ativo)
+              <span class="etiqueta sinc-sucesso">A cada {{ $ag->intervaloTexto() }}</span>
+              <br><small>{{ $servicoAgendas::descrever($ag) }}</small>
+              <br><small class="suave">próxima: @dataHora($servicoAgendas->proximoHorario($ag))</small>
+            @else
+              <span class="suave">Desligada</span>
+            @endif
+            <details class="sinc-agenda-editar">
+              <summary class="botao secundario pequeno">Alterar</summary>
+              <form method="post" action="{{ route('admin.banco.agenda', $chave) }}">
+                @csrf @method('put')
+                <label class="opcao"><input type="checkbox" name="ativo" value="1" @checked($ag->ativo)> <span>Sincronizar automaticamente</span></label>
+                <label>A cada <small class="suave">(HH:MM, de 00:05 a 24:00)</small>
+                  <input name="intervalo" value="{{ $ag->intervaloTexto() }}" required pattern="\d{1,2}:[0-5]\d" placeholder="01:00" inputmode="numeric" size="6"></label>
+                <label>A partir das <small class="suave">(cada dia recomeça aqui)</small>
+                  <input type="time" name="inicio" value="{{ $ag->inicio }}" required></label>
+                <button class="botao pequeno" type="submit">Salvar</button>
+                <small class="suave">Ex.: a cada 01:00 a partir das 00:00 = 24x ao dia; a cada 23:59 = 1x ao dia.</small>
+              </form>
+            </details>
+          @else
+            <span class="suave">rode php artisan migrate</span>
           @endif
         </td>
         <td>@if ($u)@dataHora($u->iniciado_em)@else <span class="suave">nunca</span>@endif</td>

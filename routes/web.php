@@ -242,6 +242,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('perfil:admin_tecnologia')->prefix('admin')->name('admin.')->group(function () {
         Route::get('banco', BancoController::class)->name('banco');
         Route::post('banco/sincronizar', [BancoController::class, 'sincronizar'])->name('banco.sincronizar');
+        // Periodicidade da sincronização de cada tabela (agendador do Laravel).
+        Route::put('banco/agendas/{chave}', [BancoController::class, 'salvarAgenda'])->name('banco.agenda');
         // Botão da tela: sincroniza em etapas curtas (JSON), sem estourar o tempo limite do IIS.
         Route::post('banco/sincronizar/etapa', [BancoController::class, 'etapa'])->name('banco.sincronizar.etapa');
     });

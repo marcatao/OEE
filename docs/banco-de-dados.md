@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **58** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **59** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -15,6 +15,18 @@ diagrama para ele ficar legível. Linha tracejada = ligação por código, sem c
 
 ```mermaid
 erDiagram
+    agendas_sincronizacao {
+        bigint id PK
+        nvarchar(40) chave UK
+        bit ativo
+        int intervalo_minutos
+        nchar(5) inicio
+        datetime ultimo_horario
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     apontamentos {
         bigint id PK
         bigint maquina_id FK
@@ -1033,6 +1045,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 | Tabela | Origem | Chave primária | Colunas | Ligações (FK) |
 |---|---|---|---|---|
+| [`agendas_sincronizacao`](#agendas_sincronizacao) | Sistema | `id` | 10 | 2 |
 | [`apontamentos`](#apontamentos) | Sistema | `id` | 13 | 5 |
 | [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 15 | 6 |
 | [`assistente_conversas`](#assistente_conversas) | Sistema | `id` | 6 | 1 |
@@ -1097,6 +1110,25 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
 | [`usuarios`](#usuarios) | Sistema | `id` | 24 | 0 |
+
+### agendas_sincronizacao
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `chave` | `nvarchar(40)` | não |  |  |
+| `ativo` | `bit` | não | `'0'` |  |
+| `intervalo_minutos` | `int` | não | `'60'` |  |
+| `inicio` | `nchar(5)` | não | `'00:00'` |  |
+| `ultimo_horario` | `datetime` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `agendas_sincronizacao_chave_unique` único (chave)
 
 ### apontamentos
 

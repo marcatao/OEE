@@ -114,6 +114,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   rodar direto no banco. Texto em `database/procedures/*.sql` (começa com `ALTER PROCEDURE`; instalação por
   `App\Support\ProceduresBanco`). Mudou a lógica das OPs? Mude nos DOIS (o SQLite dos testes usa o PHP). Mudou um
   `.sql`? Crie uma migração que chame `ProceduresBanco::instalar()` (ou rode `php artisan banco:procedures`).
+  **Periodicidade** por tabela (coluna da tela Banco de dados; `agendas_sincronizacao`, `App\Services\Protheus\
+  AgendaSincronizacoes`): "a cada HH:MM a partir das HH:MM" (cada dia recomeça no início; roda enquanto couber um
+  intervalo inteiro: 01:00 = 24x, 23:59 = 1x ao dia). O comando `protheus:sincronizar-agendadas` roda a cada minuto
+  (agendador do Laravel, em segundo plano); no servidor, a tarefa do Windows de `scripts/windows/instalar-agendador.ps1`
+  roda `schedule:run` a cada minuto, e a tela mostra se o agendador está vivo (cache `agendador.sinal`).
   SD3/SD2 são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
 - **Pedidos e solicitações de compra** (Ordens de serviço): o administrador da unidade gera um pedido de compra (SC7,

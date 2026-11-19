@@ -335,18 +335,31 @@ php artisan protheus:sincronizar maquinas        # só as máquinas (SHB)
 
 ### Sincronização automática com o Protheus
 
-1. No `.env`, defina quando sincronizar (formato cron) e rode `php artisan config:clear`:
+1. Em **Segurança › Banco de dados**, coluna **Periodicidade**, clique em **Alterar** em cada tabela: marque
+   "Sincronizar automaticamente", **a cada** (HH:MM, de 00:05 a 24:00) e **a partir das** (HH:MM). Cada dia recomeça
+   no "a partir das" e a tabela roda nele e a cada intervalo, enquanto couber um intervalo inteiro até o recomeço:
+   - a cada `01:00` a partir das `00:00` = 24x ao dia (00:00, 01:00 … 23:00);
+   - a cada `23:59` (ou `24:00`) a partir das `00:00` = 1x ao dia, às 00:00;
+   - a cada `07:00` a partir das `06:00` = 06:00, 13:00 e 20:00.
 
-   ```
-   PROTHEUS_SINCRONIZAR_CRON="0 * * * *"     # de hora em hora (ex.: "*/30 * * * *" = a cada 30 min)
+   Se o servidor ficar parado, ao voltar cada tabela roda uma vez só (não repete os horários perdidos).
+2. Deixe o **agendador do Laravel** rodando no servidor como tarefa do Windows (a cada 1 minuto, com ou sem usuário
+   logado, e volta sozinho quando o servidor reinicia). No **PowerShell como Administrador**, na pasta do portal:
+
+   ```powershell
+   cd C:\OEE
+   powershell -ExecutionPolicy Bypass -File .\scripts\windows\instalar-agendador.ps1
    ```
 
-2. Deixe o **agendador do Laravel** rodando no servidor. No Windows, escolha um:
-   - **Agendador de Tarefas**: crie uma tarefa que roda **a cada 1 minuto**, mesmo sem usuário logado:
-     programa `C:\caminho\do\php.exe`, argumentos `artisan schedule:run`, iniciar em `C:\OEE`.
-   - **Serviço do Windows** com o [NSSM](https://nssm.cc): `nssm install OEE-Agendador C:\caminho\do\php.exe artisan schedule:work`
-     e, em *Startup directory*, `C:\OEE`.
-3. Confira com `php artisan schedule:list` e acompanhe pelo histórico na tela Banco de dados (disparo "Automática").
+   O script confere o PHP (`C:\OEE\php8.3\php.exe`) e o banco (`php artisan banco:testar`) e cria a tarefa
+   **"OEE Alumbra - Agendador"** (conta SYSTEM; para outra conta: `-Usuario "DOMINIO\conta" -Senha "..."`; para
+   remover: `-Remover`). Precisa do Windows Server 2016 ou mais novo (repetição "para sempre" da tarefa).
+3. Em 1 ou 2 minutos, a tela Banco de dados mostra **Agendador do Laravel (serviço): Rodando**. Confira também com
+   `php artisan schedule:list` e acompanhe o histórico na tela (disparo "Automática").
+
+O agendador também gera as OS preventivas (todo dia às 05:10) e lê os pedidos de compra na tabela muro.
+A variável antiga `PROTHEUS_SINCRONIZAR_CRON` do `.env` (todas as tabelas de uma vez) ainda funciona; com a
+periodicidade por tabela, deixe-a vazia para não sincronizar em dobro.
 
 Para acrescentar outra tabela do Protheus no futuro: crie um importador em `app/Services` que implemente
 `App\Services\Protheus\ImportadorProtheus` e registre em `config/protheus.php`.

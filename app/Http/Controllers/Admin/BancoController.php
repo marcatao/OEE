@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AgendaSincronizacao;
 use App\Models\Sincronizacao;
 use App\Services\InfoBanco;
+use App\Services\Protheus\AgendaSincronizacoes;
 use App\Services\Protheus\SincronizadorProtheus;
 use App\Support\Cronometro;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -20,7 +24,7 @@ use Illuminate\View\View;
  */
 class BancoController extends Controller
 {
-    public function __invoke(InfoBanco $banco, SincronizadorProtheus $sincronizador): View
+    public function __invoke(InfoBanco $banco, SincronizadorProtheus $sincronizador, AgendaSincronizacoes $agendas): View
     {
         [$ok, $mensagem] = $banco->testar();
         $temHistorico = $ok && Schema::hasTable('sincronizacoes');
@@ -35,10 +39,49 @@ class BancoController extends Controller
             'sincronizacoes' => $sincronizador->itens(),
             'vias' => collect($sincronizador->itens())->keys()->mapWithKeys(fn ($c) => [$c => $sincronizador->via($c)])->all(),
             'ultimas' => $temHistorico ? $sincronizador->ultimas() : [],
+            'agendas' => $ok && Schema::hasTable('agendas_sincronizacao') ? $agendas->todas() : collect(),
+            'servicoAgendas' => $agendas,
+            // Último sinal do agendador do Laravel (gravado a cada minuto pelo serviço no servidor).
+            'sinalAgendador' => rescue(fn () => ($s = Cache::get('agendador.sinal')) ? Carbon::parse($s) : null, report: false),
             'historico' => $temHistorico ? Sincronizacao::with('usuario')->latest('iniciado_em')->latest('id')->limit(10)->get() : collect(),
             'agenda' => config('protheus.agenda'),
             'php' => self::infoPhp(),
         ]);
+    }
+
+    /**
+     * Periodicidade da sincronização de uma tabela: ligada/desligada, "a cada HH:MM" (5 min a 24 h) e "a partir das HH:MM".
+     */
+    public function salvarAgenda(Request $request, SincronizadorProtheus $sincronizador, string $chave): RedirectResponse
+    {
+        abort_unless(array_key_exists($chave, $sincronizador->itens()), 404);
+        $dados = $request->validate([
+            'ativo' => ['nullable', 'boolean'],
+            'intervalo' => ['required', 'regex:/^\d{1,2}:[0-5]\d$/'],
+            'inicio' => ['required', 'date_format:H:i'],
+        ], [
+            'intervalo.required' => 'Informe de quanto em quanto tempo sincronizar (HH:MM).',
+            'intervalo.regex' => 'O intervalo vai no formato HH:MM (ex.: 01:00 ou 23:59).',
+            'inicio.*' => 'Informe o horário de início (HH:MM).',
+        ]);
+        [$h, $m] = array_map('intval', explode(':', $dados['intervalo']));
+        $minutos = $h * 60 + $m;
+        if ($minutos < AgendaSincronizacoes::MINIMO_MINUTOS || $minutos > AgendaSincronizacoes::MAXIMO_MINUTOS) {
+            return back()->withErrors(['intervalo' => 'O intervalo vai de 00:05 a 24:00.'])->withInput();
+        }
+
+        $agenda = AgendaSincronizacao::firstOrNew(['chave' => $chave]);
+        // Mudou a agenda: o horário atual não dispara de novo (começa a valer do próximo horário).
+        $agenda->fill(['ativo' => ! empty($dados['ativo']), 'intervalo_minutos' => $minutos, 'inicio' => $dados['inicio']]);
+        if ($agenda->isDirty() || ! $agenda->exists) {
+            $agenda->ultimo_horario = app(AgendaSincronizacoes::class)->ultimoHorario($agenda)?->utc();
+        }
+        $agenda->save();
+        $nome = $sincronizador->itens()[$chave]['descricao'];
+
+        return redirect()->route('admin.banco')->with('ok', $agenda->ativo
+            ? "{$nome}: sincronização automática ".AgendaSincronizacoes::descrever($agenda).'.'
+            : "{$nome}: sincronização automática desligada.");
     }
 
     /** Botão "Sincronizar com o Protheus": todas as tabelas, ou só a escolhida. */

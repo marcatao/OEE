@@ -7,10 +7,12 @@ use App\Services\Compras\PedidoCompraMuro;
 use App\Services\InfoBanco;
 use App\Services\Manutencao\GeradorPreventivas;
 use App\Services\MaquinasSemIot;
+use App\Services\Protheus\AgendaSincronizacoes;
 use App\Services\Protheus\SincronizadorProtheus;
 use App\Services\SituacaoMaquina;
 use App\Support\ProceduresBanco;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
@@ -115,6 +117,30 @@ Artisan::command('protheus:sincronizar {tabela? : Só esta tabela (ex.: centros_
 Artisan::command('protheus:centros-custo', function () use ($sincronizarProtheus) {
     return $sincronizarProtheus($this, 'centros_custo', 'comando');
 })->purpose('Atalho de "protheus:sincronizar centros_custo"');
+
+// Periodicidade por tabela (Segurança › Banco de dados, coluna "Periodicidade"): a cada minuto o agendador confere quais
+// tabelas estão na hora e sincroniza uma de cada vez. Precisa do agendador do Laravel rodando no servidor (README,
+// "Sincronização automática com o Protheus").
+Artisan::command('protheus:sincronizar-agendadas', function (AgendaSincronizacoes $agendas) use ($sincronizarProtheus) {
+    $devidas = $agendas->devidas();
+    if (! $devidas) {
+        $this->line('Nenhuma tabela na hora de sincronizar.');
+
+        return 0;
+    }
+    $falhou = false;
+    foreach ($devidas as $chave) {
+        $falhou = $sincronizarProtheus($this, $chave, 'agendado') !== 0 || $falhou;
+    }
+
+    return $falhou ? 1 : 0;
+})->purpose('Sincroniza as tabelas do Protheus que estão na hora, pela periodicidade da tela Banco de dados');
+// Em segundo plano (o schedule:run volta na hora e os outros agendamentos seguem); trava de no máximo 3 h: se o
+// processo morrer, a próxima rodada não fica presa por um dia inteiro.
+Schedule::command('protheus:sincronizar-agendadas')->everyMinute()->withoutOverlapping(180)->runInBackground();
+
+// Sinal de vida do agendador: a tela Banco de dados mostra se o serviço está rodando no servidor.
+Schedule::call(fn () => Cache::forever('agendador.sinal', now()->toIso8601String()))->everyMinute()->name('sinal-do-agendador');
 
 // Sincronização automática: liga com PROTHEUS_SINCRONIZAR_CRON no .env e o agendador do Laravel rodando
 // ("php artisan schedule:work" como serviço, ou "php artisan schedule:run" a cada minuto no Agendador de Tarefas).

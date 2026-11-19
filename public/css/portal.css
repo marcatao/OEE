@@ -1229,3 +1229,12 @@ a.kpi:hover { border-color:var(--primaria); transform:translateY(-1px); }
 .grafico-tempos .g-atendidas { fill:var(--falta-atendidas); }
 .leg-faltantes { background:var(--falta-faltantes); }
 .leg-atendidas { background:var(--falta-atendidas); }
+
+/* ---------- Banco de dados › periodicidade da sincronização ---------- */
+.sinc-agenda { min-width:12rem; }
+.sinc-agenda-editar { margin-top:.35rem; }
+.sinc-agenda-editar > summary { list-style:none; display:inline-flex; }
+.sinc-agenda-editar > summary::-webkit-details-marker { display:none; }
+.sinc-agenda-editar form { display:flex; flex-direction:column; gap:.5rem; margin-top:.5rem; padding:.75rem; border:1px solid var(--borda); border-radius:8px; background:var(--fundo); min-width:15rem; }
+.sinc-agenda-editar label { display:flex; flex-direction:column; gap:.2rem; font-size:.85rem; }
+.sinc-agenda-editar label.opcao { flex-direction:row; align-items:center; }
