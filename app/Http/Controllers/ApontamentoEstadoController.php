@@ -75,11 +75,14 @@ class ApontamentoEstadoController extends Controller
 
     public function edit(Request $request, ApontamentoEstado $apontamento): View
     {
+        $this->conferirMaquina($apontamento);
+
         return $this->formulario($apontamento, $request->query('voltar') === 'timeline' ? 'timeline' : 'lista');
     }
 
     public function update(Request $request, ApontamentoEstado $apontamento): RedirectResponse
     {
+        $this->conferirMaquina($apontamento);
         $this->salvar($request, $apontamento);
 
         return $this->voltar($request, $apontamento, 'Apontamento atualizado.');
@@ -87,9 +90,10 @@ class ApontamentoEstadoController extends Controller
 
     public function destroy(Request $request, ApontamentoEstado $apontamento, StatusOrdemProducao $status, SituacaoMaquina $situacao): RedirectResponse
     {
+        $this->conferirMaquina($apontamento);
         $op = $apontamento->ordemProducao;
-        $eraOMaisRecente = ApontamentoEstado::where('maquina_id', $apontamento->maquina_id)
-            ->orderByDesc('inicio')->orderByDesc('id')->value('id') === $apontamento->id;
+        $eraOMaisRecente = (int) ApontamentoEstado::where('maquina_id', $apontamento->maquina_id)
+            ->orderByDesc('inicio')->orderByDesc('id')->value('id') === (int) $apontamento->id; // (int): SQL Server devolve texto
         $apontamento->delete();
         $status->atualizar($op);
         if ($eraOMaisRecente) {
@@ -104,6 +108,7 @@ class ApontamentoEstadoController extends Controller
     {
         $dados = $request->validate(['maquina_id' => ['required', 'integer'], 'dia' => ['required', 'date_format:Y-m-d'],
             'apontamento' => ['nullable', 'integer']]);
+        abort_unless(Maquina::whereKey((int) $dados['maquina_id'])->exists(), 404); // máquina de outra unidade
         $editando = isset($dados['apontamento']) ? ApontamentoEstado::find($dados['apontamento']) : null;
 
         return response()->json($regra->proximoInicio((int) $dados['maquina_id'], $dados['dia'], $editando));
@@ -152,8 +157,17 @@ class ApontamentoEstadoController extends Controller
 
         $hora = 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/';
         $dados = $request->validate([
-            'maquina_id' => ['required', 'integer', Rule::exists('maquinas', 'id')],
-            'legenda_id' => ['required', 'integer', Rule::exists('legendas', 'id')],
+            // Só máquinas e legendas que o usuário enxerga (unidades dos perfis dele); a legenda atual do apontamento vale.
+            'maquina_id' => ['required', 'integer', function ($campo, $valor, $falhar) {
+                if (! Maquina::whereKey((int) $valor)->exists()) {
+                    $falhar('Máquina não encontrada.');
+                }
+            }],
+            'legenda_id' => ['required', 'integer', function ($campo, $valor, $falhar) use ($apontamento) {
+                if ((int) $valor !== (int) $apontamento->legenda_id && ! Legenda::whereKey((int) $valor)->exists()) {
+                    $falhar('Legenda não encontrada.');
+                }
+            }],
             'dia' => ['required', 'date_format:Y-m-d'],
             'hora_inicio' => ['required', $hora],
             'hora_fim' => ['nullable', $hora],
@@ -193,7 +207,7 @@ class ApontamentoEstadoController extends Controller
 
         // Ordem de produção: digitada ou escolhida pelo número (C2_NUM + C2_ITEM + C2_SEQUEN).
         $numeroOp = trim((string) ($dados['ordem_producao'] ?? ''));
-        $legenda = Legenda::find($dados['legenda_id']);
+        $legenda = Legenda::withoutGlobalScopes()->find($dados['legenda_id']);
         if ($numeroOp === '' && $legenda?->exige_op) {
             throw ValidationException::withMessages(['ordem_producao' => "A legenda {$legenda->codigo} — {$legenda->descricao} exige a ordem de produção."]);
         }
@@ -203,7 +217,7 @@ class ApontamentoEstadoController extends Controller
             if (! $op) {
                 throw ValidationException::withMessages(['ordem_producao' => "Ordem de produção {$numeroOp} não encontrada (sincronize com o Protheus em Banco de dados)."]);
             }
-            if ($op->status === 'fechada' && $op->id !== $apontamento->ordem_producao_id) {
+            if ($op->status === 'fechada' && (int) $op->id !== (int) $apontamento->ordem_producao_id) {
                 throw ValidationException::withMessages(['ordem_producao' => "A ordem de produção {$numeroOp} está fechada no Protheus."]);
             }
         }
@@ -216,8 +230,9 @@ class ApontamentoEstadoController extends Controller
                 $aberto = ApontamentoEstado::with('legenda')->where('maquina_id', $dados['maquina_id'])
                     ->whereNull('fim')->where('inicio', '<', $inicio)->latest('inicio')->first();
                 if ($aberto) {
-                    // Encerra 1 segundo antes do novo, sem passar do dia dele (23:59:59).
-                    $aberto->update(['fim' => HorarioApontamento::fimAutomatico($aberto, $inicio)]);
+                    // Encerra 1 segundo antes do novo, sem passar do dia dele (23:59:59); os dias seguintes ganham
+                    // continuações (a madrugada não fica sem apontamento).
+                    HorarioApontamento::encerrarAberto($aberto, $inicio);
                     $encerrado = $aberto->legenda?->codigo;
                     $afetadas[] = $aberto->ordem_producao_id;
                 }
@@ -330,5 +345,11 @@ class ApontamentoEstadoController extends Controller
 
         // SS automática da legenda escolhida: a tela mostra se abriu ou por que não abriu.
         return response()->json(['ok' => true, 'mensagem' => SsAutomatica::mensagem($apontamento->id)]);
+    }
+
+    /** Apontamento de máquina que o usuário não enxerga (outra unidade): 404, como se não existisse. */
+    private function conferirMaquina(ApontamentoEstado $apontamento): void
+    {
+        abort_unless(Maquina::whereKey($apontamento->maquina_id)->exists(), 404);
     }
 }

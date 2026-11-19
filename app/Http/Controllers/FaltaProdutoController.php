@@ -78,7 +78,7 @@ class FaltaProdutoController extends Controller
     /** Exclui um filtro salvo do próprio usuário. */
     public function excluirFiltro(Request $request, FiltroUsuario $filtro): RedirectResponse
     {
-        abort_unless($filtro->usuario_id === $request->user()->id && $filtro->tela === FiltroFaltaProdutos::TELA, 404);
+        abort_unless((int) $filtro->usuario_id === (int) $request->user()->id && $filtro->tela === FiltroFaltaProdutos::TELA, 404);
         $nome = $filtro->nome;
         $filtro->delete();
 

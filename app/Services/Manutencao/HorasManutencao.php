@@ -2,6 +2,7 @@
 
 namespace App\Services\Manutencao;
 
+use App\Models\CalendarioDia;
 use App\Support\JornadaSemanal;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -13,6 +14,7 @@ use Carbon\CarbonInterface;
  * - minutosDisponiveis(): horas que o colaborador fica na fábrica no período (jornada − intervalo, nos dias de trabalho),
  *   base do aproveitamento "apontado ÷ disponível" (meta > 90%).
  * Jornada que termina antes de começar (ex.: 22:00–06:00) vai até o dia seguinte. Dias: ISO 1 = segunda … 7 = domingo.
+ * Com calendário (Administração › Calendários): feriado, ponte e folga não têm jornada; compensação tem.
  */
 final class HorasManutencao
 {
@@ -23,6 +25,8 @@ final class HorasManutencao
         public readonly string $diasSemana = '12345',
         /** Horário por dia da semana (dia ISO => [início, fim]); sem ele, jornadaInicio/jornadaFim nos diasSemana. */
         public readonly array $horarios = [],
+        /** Exceções do calendário do mantenedor: 'Y-m-d' => true (compensação/útil) | false (feriado, ponte, folga). */
+        public readonly array $excecoes = [],
     ) {}
 
     /** Jornada de um mantenedor (jornada_inicio, jornada_fim, intervalo_min, dias_semana e o horário de cada dia). */
@@ -34,7 +38,19 @@ final class HorasManutencao
             (int) ($mantenedor->intervalo_min ?? 60),
             (string) ($mantenedor->dias_semana ?? '12345'),
             JornadaSemanal::de($mantenedor),
+            self::excecoesDoCalendario($mantenedor->calendario_id ?? null),
         );
+    }
+
+    /** Feriados, pontes, folgas (false) e compensações (true) do calendário, por data. @return array<string, bool> */
+    public static function excecoesDoCalendario(?int $calendarioId): array
+    {
+        if (! $calendarioId) {
+            return [];
+        }
+
+        return CalendarioDia::where('calendario_id', $calendarioId)->get()
+            ->mapWithKeys(fn ($d) => [$d->data->format('Y-m-d') => $d->util()])->all();
     }
 
     public static function fuso(): string
@@ -111,6 +127,18 @@ final class HorasManutencao
     /** @return array{0: ?CarbonImmutable, 1: ?CarbonImmutable} */
     private function janela(CarbonImmutable $dia, bool $qualquerDia = false): array
     {
+        // Calendário do mantenedor: feriado/ponte/folga não tem jornada (tudo é extra); compensação tem, mesmo no fim de semana.
+        $excecao = $qualquerDia ? null : ($this->excecoes[$dia->format('Y-m-d')] ?? null);
+        if ($excecao === false) {
+            return [null, null];
+        }
+        if ($excecao === true && ! isset($this->horarios[$dia->isoWeekday()]) && ! str_contains($this->diasSemana, (string) $dia->isoWeekday())) {
+            [$hIni, $hFim] = $this->horarios ? array_values($this->horarios)[0] : [$this->jornadaInicio, $this->jornadaFim];
+            $ini = $dia->setTimeFromTimeString($hIni);
+            $fim = $dia->setTimeFromTimeString($hFim);
+
+            return [$ini, $fim <= $ini ? $fim->addDay() : $fim];
+        }
         if ($this->horarios) {
             if (! isset($this->horarios[$dia->isoWeekday()])) {
                 return [null, null];

@@ -13,6 +13,7 @@ use App\Services\Compras\PedidoCompraMuro;
 use App\Support\AcessoOs;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -129,6 +130,39 @@ class PedidoCompraController extends Controller
     }
 
     private function gerar(Request $request, Usuario $u, array $cabecalho, array $itens, string $destino): RedirectResponse
+    {
+        // Duplo clique: dois envios do mesmo formulário ao mesmo tempo esperam um pelo outro (trava por origem), e o
+        // segundo é recusado se já existe um pedido ATIVO igual (mesma origem, tipo e itens) — ver pedidoIgualAtivo().
+        $trava = Cache::lock('pedido-compra-'.($cabecalho['ordem_servico_id'] ?? 'x').'-'.($cabecalho['solicitacao_material_id'] ?? 'x'), 30);
+        if (! $trava->block(15)) {
+            throw ValidationException::withMessages(['pedido' => 'Outro envio deste pedido está em andamento: confira a lista de pedidos.']);
+        }
+        try {
+            if ($igual = $this->pedidoIgualAtivo($cabecalho, $itens)) {
+                throw ValidationException::withMessages(['pedido' => 'Este pedido já foi enviado ('.$this->nome($igual).', ainda ativo): não foi gerado de novo.']);
+            }
+
+            return $this->gravarNoMuro($u, $cabecalho, $itens, $destino);
+        } finally {
+            $trava->release();
+        }
+    }
+
+    /** Pedido não cancelado/reprovado da mesma origem, mesmo tipo e exatamente os mesmos produtos e quantidades. */
+    private function pedidoIgualAtivo(array $cabecalho, array $itens): ?PedidoCompra
+    {
+        $chave = fn ($lista) => collect($lista)->map(fn ($i) => trim((string) $i['produto_codigo']).'|'.round((float) $i['quantidade'], 4))->sort()->values()->all();
+        $novos = $chave($itens);
+
+        return PedidoCompra::with('itens')->whereNotIn('status', ['cancelado', 'reprovado'])
+            ->when(isset($cabecalho['ordem_servico_id']), fn ($q) => $q->where('ordem_servico_id', $cabecalho['ordem_servico_id']))
+            ->when(isset($cabecalho['solicitacao_material_id']), fn ($q) => $q->where('solicitacao_material_id', $cabecalho['solicitacao_material_id']))
+            ->when(isset($cabecalho['tipo']), fn ($q) => $q->where('tipo', $cabecalho['tipo']))
+            ->where('criado_em', '>=', now()->subMinutes(10))
+            ->get()->first(fn ($p) => $chave($p->itens->map(fn ($i) => ['produto_codigo' => $i->produto_codigo, 'quantidade' => $i->quantidade])) === $novos);
+    }
+
+    private function gravarNoMuro(Usuario $u, array $cabecalho, array $itens, string $destino): RedirectResponse
     {
         try {
             $pedido = $this->muro->gerar($cabecalho, $itens, $u);

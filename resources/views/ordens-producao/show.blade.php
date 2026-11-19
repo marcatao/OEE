@@ -72,7 +72,8 @@
       <h3>Resumo de custo</h3>
       <div class="custo-resumo">
         <div><span>Custo Protheus</span><strong>{{ Formato::moeda($custoProtheus, 4) }} <small>/{{ $op->c2_um ?: 'un' }}</small></strong>
-          <small>{{ $custoProtheus === null ? 'sem produção apontada' : 'valor das produções (PR) ÷ produzido' }}</small></div>
+          <small>{{ $custoProtheus === null ? 'sem produção apontada' : 'valor das produções (PR) ÷ produzido' }}</small>
+          @if ($resumo->producaoSemCusto > 0)<small class="texto-alerta">{{ $resumo->producaoSemCusto }} {{ $resumo->producaoSemCusto === 1 ? 'produção ainda sem custo' : 'produções ainda sem custo' }} no Protheus</small>@endif</div>
         <div><span>Custo meta (mês passado)</span><strong>{{ Formato::moeda($resumo->meta, 4) }} <small>/{{ $op->c2_um ?: 'un' }}</small></strong>
           <small>fechamento mais recente do produto (SB9)</small></div>
         <div class="destaque"><span>Custo simulado (OEE)</span><strong>{{ Formato::moeda($unitario, 4) }} <small>/{{ $op->c2_um ?: 'un' }}</small></strong>
@@ -175,7 +176,7 @@
             <td class="num kx-entrada">@if (in_array($m->tipo, ['producao', 'devolucao'], true)){{ Formato::quantidade((float) $m->quantidade) }} <small>{{ $m->um }}</small>@endif</td>
             <td class="num kx-saida">@if (in_array($m->tipo, ['consumo', 'nota_fiscal'], true)){{ Formato::quantidade((float) $m->quantidade) }} <small>{{ $m->um }}</small>@endif</td>
             <td class="num">{{ Formato::moeda((float) $m->custo) }}</td>
-            <td>@if ($m->tipo === 'producao')<span class="suave">—</span>@elseif ($m->valorizacao === 'protheus')<small>Protheus</small>@elseif ($m->valorizacao === 'medio')<small title="{{ Formato::quantidade((float) $m->quantidade) }} × {{ Formato::moeda((float) $m->custo_medio, 4) }}">custo médio</small>@else<small class="texto-alerta">sem custo</small>@endif</td>
+            <td>@if ($m->tipo === 'producao')@if ($m->valorizacao === 'sem')<small class="texto-alerta">sem custo ainda</small>@else<small>Protheus</small>@endif @elseif ($m->valorizacao === 'protheus')<small>Protheus</small>@elseif ($m->valorizacao === 'medio')<small title="{{ Formato::quantidade((float) $m->quantidade) }} × {{ Formato::moeda((float) $m->custo_medio, 4) }}">custo médio</small>@else<small class="texto-alerta">sem custo</small>@endif</td>
             <td class="num">{{ Formato::quantidade($m->produzido_acumulado) }}</td>
             <td class="num">{{ Formato::moeda($m->custo_acumulado) }}</td>
             <td class="num">{{ Formato::moeda($m->unitario_acumulado, 4) }}</td>
@@ -230,8 +231,10 @@
 
     <div class="abas-painel" role="tabpanel" data-painel="estrutura" hidden>
       <h3>Estrutura atual do produto</h3>
-      <p class="suave">Componentes de <code>{{ $op->c2_produto }}</code> na estrutura do Protheus (SG1) vigente {{ trim($op->c2_revisao) !== '' ? 'hoje, na revisão '.trim($op->c2_revisao).' da OP' : 'hoje' }} (1º nível). Necessidade da OP = quantidade por peça ×
-        {{ Formato::quantidade($op->c2_quant) }} (quantidade da OP; componente de quantidade fixa não multiplica). Empenhado: o que está na SD4 para o componente.</p>
+      <p class="suave">Componentes de <code>{{ $op->c2_produto }}</code> na estrutura do Protheus (SG1) vigente {{ trim($op->c2_revisao) !== '' ? 'hoje, na revisão '.trim($op->c2_revisao).' da OP' : 'hoje' }} (1º nível). Por peça = quantidade da estrutura ÷ quantidade base do
+        produto (B1_QB). Necessidade da OP = por peça × {{ Formato::quantidade($op->c2_quant) }} (quantidade da OP), acrescida da perda %
+        como na explosão do Protheus (÷ (1 − perda)); componente de quantidade fixa não multiplica. Empenhado: o que está na SD4 para o
+        componente (pela sequência TRT).</p>
       <div class="rolagem">
       <table class="tabela">
         <thead><tr><th>Seq. (TRT)</th><th>Componente</th><th class="num">Qtd. por peça</th><th class="num">Perda %</th><th class="num">Necessidade da OP</th>
@@ -245,7 +248,8 @@
             <td class="quebra"><code>{{ $g->g1_comp }}</code> <small>{{ $pg?->descricao() ?? 'produto não sincronizado' }}</small>
               @if ($g->tem_estrutura)<br><small class="suave">tem estrutura própria (intermediário)
                 @if (auth()->user()->pode('estruturas')) · <a href="{{ route('estruturas.index', ['produto' => rtrim($g->g1_comp)]) }}">ver</a>@endif</small>@endif</td>
-            <td class="num">{{ Formato::quantidade($g->g1_quant) }} <small class="suave">{{ $pg?->b1_um }}</small>@if (strtoupper(trim($g->g1_fixvar)) === 'F')<br><small class="suave">fixa</small>@endif</td>
+            <td class="num">{{ Formato::quantidade($g->por_peca) }} <small class="suave">{{ $pg?->b1_um }}</small>@if ($g->base != 1)<br><small class="suave">{{ Formato::quantidade($g->g1_quant) }} p/ base {{ Formato::quantidade($g->base) }}</small>@endif
+              @if (strtoupper(trim($g->g1_fixvar)) === 'F')<br><small class="suave">fixa</small>@endif</td>
             <td class="num">{{ $g->g1_perda > 0 ? Formato::quantidade($g->g1_perda) : '-' }}</td>
             <td class="num">{{ Formato::quantidade($g->necessidade) }}</td>
             <td class="num">{{ $g->empenhado === null ? '—' : Formato::quantidade($g->empenhado) }}</td>
@@ -283,7 +287,7 @@
             <tr>
               <td class="quebra"><code>{{ $o->g2_operac }}</code> {{ $o->g2_descri }}</td>
               <td class="quebra">@if (trim($o->g2_ctrab) !== '')<code>{{ $o->g2_ctrab }}</code>
-                @if ($m = $roteiro['maquinas'][rtrim($o->g2_ctrab)] ?? null)<br><small>{{ $m->nome }}{{ $m->ordem_producao_id === $op->id ? ' · com esta OP' : '' }}</small>@endif @else - @endif</td>
+                @if ($m = $roteiro['maquinas'][rtrim($o->g2_ctrab)] ?? null)<br><small>{{ $m->nome }}{{ (int) $m->ordem_producao_id === (int) $op->id ? ' · com esta OP' : '' }}</small>@endif @else - @endif</td>
               <td>{{ $o->g2_recurso ?: '-' }}</td>
               <td class="quebra">@if (trim($o->g2_ferram) !== '')<code>{{ $o->g2_ferram }}</code>
                 @if ($f = $roteiro['ferramentas'][rtrim($o->g2_ferram)] ?? null)<br><small>{{ $f->h4_descri }} · {{ $f->h4_qtdcavativas }}/{{ $f->h4_qtdcav }} cavidades</small>

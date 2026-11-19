@@ -39,6 +39,9 @@ class ResumoCustoOp
     /** Consumos sem custo nem no Protheus nem no estoque (entram com zero). */
     public int $semCusto = 0;
 
+    /** Produções (PR) que o Protheus ainda não valorizou: o custo Protheus fica incompleto. */
+    public int $producaoSemCusto = 0;
+
     public function __construct(public ?float $meta = null) {}
 
     public function somar(string $tipo, float $quantidade, float $valor, int $linhas = 1): void

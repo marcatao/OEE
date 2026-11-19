@@ -6,9 +6,11 @@
  * periodicidade). Instalada pelas migrações (só SQL Server); depois de mudar este arquivo, crie uma migração que chame
  * ProceduresBanco::instalar() ou rode "php artisan banco:procedures".
  *
- * Só o período ABERTO do estoque: lê da SD3010 apenas os movimentos com D3_EMISSAO maior que o último fechamento
- * (MAX(B9_DATA) da SB9010 não excluída) — o que já fechou não muda mais no Protheus. O filtro roda no servidor do
- * Protheus (OPENQUERY), então só essas linhas vêm pela rede.
+ * Período aberto + o último mês FECHADO: lê da SD3010 os movimentos com D3_EMISSAO maior que o PENÚLTIMO fechamento
+ * (a data da SB9010 não excluída antes da mais recente). Assim o recálculo do custo médio (MATA330) e a virada
+ * (MATA280) do mês que acabou de fechar ainda chegam ao portal; o que fechou antes disso não muda mais. O filtro roda
+ * no servidor do Protheus (OPENQUERY), então só essas linhas vêm pela rede. Leitura vazia com movimentos do período
+ * no portal = erro (nada é apagado).
  * - só linhas com OP (D3_ORDEM preenchido, o campo de config protheus.sd3_campo_op);
  * - MERGE pelo R_E_C_N_O_: inclui as novas e altera só as que mudaram;
  * - APAGA do portal os movimentos excluídos no Protheus (D_E_L_E_T_ = '*'), os já marcados como excluídos por
@@ -38,8 +40,11 @@ BEGIN
     -- 1) Último fechamento do estoque (SB9010 não excluída). Tudo por SQL dinâmico: a procedure instala mesmo onde o
     --    servidor vinculado não existe (ex.: outro ambiente).
     CREATE TABLE #fechamento (ultimo varchar(8) NULL);
-    SET @sql = N'INSERT INTO #fechamento (ultimo) SELECT ULTIMO FROM OPENQUERY(ALUMBRAPRD, '
-        + N'''SELECT MAX(B9_DATA) AS ULTIMO FROM CMT8F4_145045_PR_PD.dbo.SB9010 WHERE D_E_L_E_T_ = '''''''' '')';
+    --    Penúltimo fechamento: o mês que acabou de fechar ainda é relido (custo recalculado e virada).
+    SET @remota = N'SELECT MAX(B9_DATA) AS ULTIMO FROM CMT8F4_145045_PR_PD.dbo.SB9010 WHERE D_E_L_E_T_ = '' '' '
+        + N'AND B9_DATA < (SELECT MAX(B9_DATA) FROM CMT8F4_145045_PR_PD.dbo.SB9010 WHERE D_E_L_E_T_ = '' '')';
+    SET @sql = N'INSERT INTO #fechamento (ultimo) SELECT ULTIMO FROM OPENQUERY(ALUMBRAPRD, '''
+        + REPLACE(@remota, N'''', N'''''') + N''')';
     EXEC sp_executesql @sql;
     SET @fechamento = (SELECT RTRIM(ultimo) FROM #fechamento);
     IF @fechamento IS NULL OR @fechamento NOT LIKE '[1-2][0-9][0-9][0-9][0-1][0-9][0-3][0-9]'
@@ -83,6 +88,13 @@ BEGIN
     EXEC sp_executesql @sql;
 
     SELECT @lidos = COUNT(*), @ultimo = MAX(r_e_c_n_o_) FROM #sd3;
+
+    -- Leitura vazia com movimentos do período no portal: algo errado no servidor vinculado; não apaga nada.
+    IF @lidos = 0 AND EXISTS (SELECT 1 FROM dbo.movimentos_producao WHERE d3_emissao > @fechamento)
+    BEGIN
+        RAISERROR(N'A leitura da SD3010 no ALUMBRAPRD não trouxe nenhum movimento do período, mas o portal tem: nada foi apagado. Confira o acesso ao servidor vinculado.', 16, 1);
+        RETURN;
+    END;
 
     -- 3) Custo médio de estoque do item (SB2010), para valorizar o movimento que o Protheus ainda não valorizou.
     CREATE TABLE #sb2 (

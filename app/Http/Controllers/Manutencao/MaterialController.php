@@ -76,6 +76,9 @@ class MaterialController extends Controller
         $m = MaterialOs::findOrFail($material);
         $os = AcessoOs::filtrar(OrdemServico::query(), $request->user())->findOrFail($m->ordem_servico_id);
         AcessoOs::exigirAberta($os);
+        // Status e custo do material: só o almoxarifado ou quem aprova OS da área (ver a OS não basta).
+        abort_unless($request->user()->pode('os_almoxarifado') || AcessoOs::podeAprovar($request->user(), $os), 403,
+            'Só o almoxarifado ou quem aprova OS desta área altera o material.');
         $dados = $request->validate([
             'status' => ['required', Rule::in(array_keys(MaterialOs::STATUS))],
             'solicitacao_compra' => ['nullable', 'string', 'max:30'],

@@ -33,18 +33,19 @@ class CustoOrdemProducao
      */
     public function movimentos(): Builder
     {
-        $valor = fn (string $custo, string $quant) => DB::raw("CASE WHEN {$custo} > 0 THEN {$custo} ELSE {$quant} * COALESCE(custo_medio, 0) END as custo");
-        $origem = fn (string $custo) => DB::raw("CASE WHEN {$custo} > 0 THEN 'protheus' WHEN custo_medio > 0 THEN 'medio' ELSE 'sem' END as valorizacao");
+        // Produção (PR) vale SÓ o custo gravado pelo Protheus ("custo Protheus"): sem ele, zero e "sem" (nada de custo médio).
+        $valor = fn (string $custo, string $quant, string $prod) => DB::raw("CASE WHEN {$custo} > 0 THEN {$custo} WHEN {$prod} THEN 0 ELSE {$quant} * COALESCE(custo_medio, 0) END as custo");
+        $origem = fn (string $custo, string $prod) => DB::raw("CASE WHEN {$custo} > 0 THEN 'protheus' WHEN {$prod} THEN 'sem' WHEN custo_medio > 0 THEN 'medio' ELSE 'sem' END as valorizacao");
         $sd3 = DB::table('movimentos_producao')->where('d_e_l_e_t_', '<>', '*')->where('d3_estorno', '<>', 'S')->select([
             DB::raw("'SD3' as origem"), 'id', 'd3_filial as filial', 'op', 'op_numero', 'd3_emissao as emissao', 'd3_cf as cf', 'tipo',
-            'd3_cod as produto', 'd3_um as um', 'd3_quant as quantidade', $valor('d3_custo1', 'd3_quant'), 'd3_custo1 as custo_protheus',
-            'custo_medio', $origem('d3_custo1'), 'd3_doc as documento', DB::raw("'' as serie"), 'd3_local as armazem',
+            'd3_cod as produto', 'd3_um as um', 'd3_quant as quantidade', $valor('d3_custo1', 'd3_quant', "tipo = 'producao'"), 'd3_custo1 as custo_protheus',
+            'custo_medio', $origem('d3_custo1', "tipo = 'producao'"), 'd3_doc as documento', DB::raw("'' as serie"), 'd3_local as armazem',
             'd3_numseq as sequencia', 'r_e_c_n_o_',
         ]);
         $sd2 = DB::table('notas_fiscais_op')->where('d_e_l_e_t_', '<>', '*')->select([
             DB::raw("'SD2' as origem"), 'id', 'd2_filial as filial', 'op', 'op_numero', 'd2_emissao as emissao', DB::raw("'NF' as cf"),
-            DB::raw("'nota_fiscal' as tipo"), 'd2_cod as produto', 'd2_um as um', 'd2_quant as quantidade', $valor('d2_custo1', 'd2_quant'),
-            'd2_custo1 as custo_protheus', 'custo_medio', $origem('d2_custo1'), 'd2_doc as documento', 'd2_serie as serie',
+            DB::raw("'nota_fiscal' as tipo"), 'd2_cod as produto', 'd2_um as um', 'd2_quant as quantidade', $valor('d2_custo1', 'd2_quant', '1 = 0'),
+            'd2_custo1 as custo_protheus', 'custo_medio', $origem('d2_custo1', '1 = 0'), 'd2_doc as documento', 'd2_serie as serie',
             'd2_local as armazem', 'd2_item as sequencia', 'r_e_c_n_o_',
         ]);
 
@@ -85,6 +86,8 @@ class CustoOrdemProducao
                     if ($l->tipo !== 'producao') {
                         $resumos[$op->id]->pelaMedia += (int) $l->pelo_medio;
                         $resumos[$op->id]->semCusto += (int) $l->sem_custo;
+                    } else {
+                        $resumos[$op->id]->producaoSemCusto += (int) $l->sem_custo;
                     }
                 }
             }
@@ -113,6 +116,8 @@ class CustoOrdemProducao
             if ($m->tipo !== 'producao') {
                 $resumo->pelaMedia += $m->valorizacao === 'medio' ? 1 : 0;
                 $resumo->semCusto += $m->valorizacao === 'sem' ? 1 : 0;
+            } else {
+                $resumo->producaoSemCusto += $m->valorizacao === 'sem' ? 1 : 0;
             }
             // Consumos da OP: baixas (SD3) e notas com OP (SD2) somam; devoluções abatem.
             $sinal = match ($m->tipo) {

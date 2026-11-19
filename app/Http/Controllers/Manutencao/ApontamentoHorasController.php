@@ -12,7 +12,6 @@ use App\Support\AcessoOs;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -103,6 +102,10 @@ class ApontamentoHorasController extends Controller
     {
         $ap = $this->buscar($request, $apontamento);
         $dados = $this->validar($request);
+        // Quem não aprova OS da área só corrige o próprio apontamento (não troca o mantenedor).
+        if (! AcessoOs::podeAprovar($request->user(), $ap->ordemServico)) {
+            $dados['mantenedor_id'] = $ap->mantenedor_id;
+        }
         $ap->mantenedor_id = $dados['mantenedor_id'];
         $ap->unsetRelation('mantenedor');
         $this->gravar($ap, $dados);
@@ -126,7 +129,12 @@ class ApontamentoHorasController extends Controller
     private function validar(Request $request): array
     {
         $dados = $request->validate([
-            'mantenedor_id' => ['required', 'integer', Rule::exists('os_mantenedores', 'id')],
+            // Só mantenedores que o usuário enxerga (unidade).
+            'mantenedor_id' => ['required', 'integer', function ($campo, $valor, $falhar) {
+                if (! Mantenedor::whereKey((int) $valor)->exists()) {
+                    $falhar('Mantenedor não encontrado.');
+                }
+            }],
             'inicio' => ['required', 'date'],
             'fim' => ['required', 'date'],
             'descricao' => ['nullable', 'string', 'max:1000'],
@@ -140,6 +148,13 @@ class ApontamentoHorasController extends Controller
         }
         if ($dados['inicio']->diffInHours($dados['fim']) > 24) {
             throw ValidationException::withMessages(['fim' => 'Um apontamento não pode passar de 24 horas. Lance em partes.']);
+        }
+        // Minutos à mão (normal × extra): a soma tem de bater com a duração (fim − início), para não inflar as extras.
+        if (isset($dados['minutos_normais'], $dados['minutos_extras'])) {
+            $duracao = (int) round(($dados['fim']->getTimestamp() - $dados['inicio']->getTimestamp()) / 60);
+            if (abs((int) $dados['minutos_normais'] + (int) $dados['minutos_extras'] - $duracao) > 1) {
+                throw ValidationException::withMessages(['minutos_extras' => "Normais + extras precisam somar a duração do apontamento ({$duracao} min)."]);
+            }
         }
 
         return $dados;
@@ -184,7 +199,7 @@ class ApontamentoHorasController extends Controller
         AcessoOs::exigirAberta($os); // corrigir, encerrar ou excluir apontamento só com a OS aberta
         $u = $request->user();
         $meu = AcessoOs::mantenedorDo($u);
-        abort_unless(AcessoOs::podeAprovar($u, $os) || ($meu && $meu->id === $ap->mantenedor_id), 403, 'Você só pode mexer nos seus apontamentos.');
+        abort_unless(AcessoOs::podeAprovar($u, $os) || ($meu && (int) $meu->id === (int) $ap->mantenedor_id), 403, 'Você só pode mexer nos seus apontamentos.');
 
         return $ap;
     }

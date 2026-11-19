@@ -43,7 +43,7 @@ class OrdemProducaoController extends Controller
             // Descrição só dos produtos desta página.
             'produtos' => ProdutoProtheus::whereIn('b1_cod', $ordens->pluck('c2_produto')->unique()->values())
                 ->get()->keyBy(fn ($p) => $p->codigo()),
-            // Custo atual (baixas − devoluções ÷ produzido) e divergência com o custo meta, só das OPs desta página.
+            // Custo simulado (baixas ÷ produzido) e divergência com o custo meta, só das OPs desta página.
             'custos' => $custo->resumos($ordens->getCollection()),
             'ultimaSincronizacao' => Sincronizacao::where('chave', 'ordens_producao')->where('situacao', 'sucesso')
                 ->latest('iniciado_em')->value('iniciado_em'),

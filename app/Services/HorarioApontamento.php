@@ -74,4 +74,34 @@ class HorarioApontamento
 
         return CarbonImmutable::parse($umSegundoAntes->lessThan($fimDoDia) ? $umSegundoAntes : $fimDoDia);
     }
+
+    /**
+     * Encerra o apontamento em aberto quando outro começa: 1 s antes do novo, sem passar do dia dele (23:59:59). Se o
+     * novo é de outro dia, a madrugada não se perde: para cada dia seguinte é criada uma CONTINUAÇÃO com a mesma
+     * legenda, OP e chamado (00:00:00 até 23:59:59 ou até 1 s antes do novo). As continuações não disparam a SS
+     * automática nem mudam a situação da máquina (são o mesmo estado).
+     *
+     * @return list<ApontamentoEstado> continuações criadas
+     */
+    public static function encerrarAberto(ApontamentoEstado $aberto, CarbonInterface $inicioNovo): array
+    {
+        $aberto->update(['fim' => self::fimAutomatico($aberto, $inicioNovo)]);
+        $limite = CarbonImmutable::parse($inicioNovo)->subSecond();
+        $continuacoes = [];
+        $dia = CarbonImmutable::parse($aberto->inicio)->setTimezone(self::fuso())->startOfDay()->addDay();
+        while ($dia->utc()->lessThanOrEqualTo($limite)) {
+            $fimDoDia = $dia->endOfDay()->startOfSecond()->utc();
+            $c = new ApontamentoEstado([
+                'maquina_id' => $aberto->maquina_id, 'legenda_id' => $aberto->legenda_id, 'ordem_producao_id' => $aberto->ordem_producao_id,
+                'inicio' => $dia->utc(), 'fim' => $limite->lessThan($fimDoDia) ? $limite : $fimDoDia, 'referencia' => $aberto->referencia,
+                'observacao' => mb_substr('Continuação do apontamento de '.CarbonImmutable::parse($aberto->inicio)->setTimezone(self::fuso())->format('d/m H:i:s')
+                    .' (virada do dia)'.($aberto->observacao ? ' · '.$aberto->observacao : ''), 0, 500),
+            ]);
+            $c->forceFill(['criado_por_id' => auth()->id(), 'solicitacao_vinculada_id' => $aberto->solicitacao_vinculada_id])->saveQuietly();
+            $continuacoes[] = $c;
+            $dia = $dia->addDay();
+        }
+
+        return $continuacoes;
+    }
 }

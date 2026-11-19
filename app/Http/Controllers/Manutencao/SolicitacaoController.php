@@ -174,8 +174,10 @@ class SolicitacaoController extends Controller
     private function exigirEdicao(Request $request, SolicitacaoServico $ss): void
     {
         $u = $request->user();
-        abort_unless(AcessoOs::podeAprovar($u, $ss) || ($ss->solicitante_id === $u->id && $ss->status === 'pendente'), 403,
+        abort_unless(AcessoOs::podeAprovar($u, $ss) || ((int) $ss->solicitante_id === (int) $u->id && $ss->status === 'pendente'), 403,
             'Só quem aprova solicitações pode alterar uma SS que já foi analisada.');
+        // Aprovada (virou OS), rejeitada ou cancelada: a SS fica como foi analisada; mudanças vão na OS.
+        abort_unless($ss->status === 'pendente', 422, 'Esta SS já foi analisada: não pode mais ser alterada. Altere a OS gerada por ela.');
     }
 
     /** Aprovar/rejeitar: só quem atende a área executante da SS (ou o administrador da área). */
@@ -196,7 +198,7 @@ class SolicitacaoController extends Controller
     private function areasPermitidas(Request $request, SolicitacaoServico $ss)
     {
         $u = $request->user();
-        if ($ss->exists && $ss->solicitante_id !== $u->id && AcessoOs::podeAprovar($u, $ss)) {
+        if ($ss->exists && (int) $ss->solicitante_id !== (int) $u->id && AcessoOs::podeAprovar($u, $ss)) {
             return AcessoOs::areas();
         }
 
@@ -210,7 +212,7 @@ class SolicitacaoController extends Controller
     private function unidadesPermitidas(Request $request, SolicitacaoServico $ss): array
     {
         $u = $request->user();
-        if ($ss->exists && $ss->solicitante_id !== $u->id && AcessoOs::podeAprovar($u, $ss)) {
+        if ($ss->exists && (int) $ss->solicitante_id !== (int) $u->id && AcessoOs::podeAprovar($u, $ss)) {
             $dasAreas = AcessoOs::areas()->pluck('unidade')->all();
             $unidades = in_array('ambos', $dasAreas, true) ? Unidades::areas() : $dasAreas;
             $unidades = array_intersect($unidades, AcessoOs::unidadesHabilitadas($u));
@@ -305,7 +307,7 @@ class SolicitacaoController extends Controller
         }
         $dados['centro_custo'] = $cc;
         $dados['unidade'] = $unidade;
-        $ehAprovadorEditando = $ss->exists && $ss->solicitante_id !== $request->user()->id && AcessoOs::podeAprovar($request->user(), $ss);
+        $ehAprovadorEditando = $ss->exists && (int) $ss->solicitante_id !== (int) $request->user()->id && AcessoOs::podeAprovar($request->user(), $ss);
         if (! $ehAprovadorEditando && ! in_array($dados['unidade'], AcessoOs::unidadesSolicitante($request->user()), true)) {
             throw ValidationException::withMessages(['area_executante_id' => 'Você não é solicitante de '.(config('oee.unidades')[$dados['unidade']] ?? $dados['unidade']).'.']);
         }

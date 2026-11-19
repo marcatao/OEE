@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\ApontamentoEstado;
 use App\Models\EmpenhoOp;
+use App\Models\EstruturaProduto;
 use App\Models\Ferramenta;
 use App\Models\Legenda;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
+use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
 use App\Services\EngenhariaOrdemProducao;
 use App\Services\Protheus\ImportadorEmpenhos;
@@ -170,5 +172,17 @@ class EmpenhosEngenhariaOpTest extends TestCase
         $this->assertSame('erro', $r->situacao);
         $this->assertStringContainsString('A tabela SD4 não existe no banco do Protheus', $r->mensagem);
         $this->assertStringContainsString('PROTHEUS_TABELA_SD4', $r->mensagem);
+    }
+
+    public function test_estrutura_usa_a_quantidade_base_do_produto_e_a_perda(): void
+    {
+        // Estrutura cadastrada por 1000 peças do pai (B1_QB = 1000): 0,0025 por 1000 → 0,0000025 por peça.
+        ProdutoProtheus::where('b1_cod', 'PA001')->update(['b1_qb' => 1000]);
+        EstruturaProduto::where('g1_comp', 'MP001')->update(['g1_perda' => 20]);
+        $estrutura = app(EngenhariaOrdemProducao::class)->estrutura(OrdemProducao::sole());
+        $mp = $estrutura->firstWhere('g1_comp', 'MP001');
+        $this->assertEqualsWithDelta(0.0000025, $mp->por_peca, 1e-12);
+        // 1000 peças da OP: 0,0025 ÷ (1 − 20%) = 0,003125.
+        $this->assertEqualsWithDelta(0.003125, $mp->necessidade, 1e-9);
     }
 }

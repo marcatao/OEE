@@ -7,8 +7,10 @@ use App\Models\Linha;
 use App\Models\Manutencao\AnexoInteracaoOs;
 use App\Models\Manutencao\ApontamentoHoras;
 use App\Models\Manutencao\AreaExecutante;
+use App\Models\Manutencao\ChecklistOs;
 use App\Models\Manutencao\Ferramenta;
 use App\Models\Manutencao\Mantenedor;
+use App\Models\Manutencao\MaterialOs;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\PlanoPreventiva;
 use App\Models\Manutencao\SolicitacaoServico;
@@ -794,5 +796,43 @@ class OrdensServicoTest extends TestCase
         $this->post("/ordens-de-servico/ordens/{$aberta->id}/acao", ['acao' => 'concluir', 'area_executante_id' => $this->ti->id])->assertSessionHasErrors('area_executante_id');
         $this->post("/ordens-de-servico/ordens/{$aberta->id}/acao", ['acao' => 'concluir', 'area_executante_id' => $this->mecanica->id])->assertSessionHasNoErrors();
         $this->assertSame('concluida', $aberta->fresh()->status);
+    }
+
+    public function test_correcoes_da_auditoria_na_manutencao(): void
+    {
+        $adm = $this->usuario(['admin_producao', 'mantenedor_producao', 'solicitante_manutencao'], 'adm-aud@empresa.com');
+        $meu = Mantenedor::create(['nome' => 'Adm', 'usuario_id' => $adm->id, 'unidade' => 'manutencao']);
+        $meu->definirAreas([$this->mecanica->id]);
+        $solicitante = $this->usuario(['solicitante_manutencao'], 'sol-aud@empresa.com');
+        $nova = fn () => OrdemServico::create(['unidade' => 'manutencao', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'prioridade' => 'alta', 'descricao' => 'x', 'titulo' => 'Prensa', 'solicitante_id' => $solicitante->id, 'status' => 'aberta']);
+
+        // 1) Cancelar a OS com o cronômetro rodando encerra o apontamento (o mantenedor não fica preso).
+        $os = $nova();
+        $this->actingAs($adm)->post("/ordens-de-servico/ordens/{$os->id}/apontamentos/iniciar")->assertSessionHasNoErrors();
+        $this->post("/ordens-de-servico/ordens/{$os->id}/acao", ['acao' => 'cancelar', 'observacao' => 'Aberta por engano'])->assertSessionHasNoErrors();
+        $this->assertSame(0, ApontamentoHoras::whereNull('fim')->count());
+
+        // 2) Minutos à mão: normais + extras têm de somar a duração (não dá para inflar as extras).
+        $os2 = $nova();
+        $lanca = fn ($normais, $extras) => $this->post("/ordens-de-servico/ordens/{$os2->id}/apontamentos", ['mantenedor_id' => $meu->id,
+            'inicio' => '2026-11-05T08:00', 'fim' => '2026-11-05T09:00', 'minutos_normais' => $normais, 'minutos_extras' => $extras]);
+        $lanca(0, 5000)->assertSessionHasErrors('minutos_extras');
+        $lanca(45, 15)->assertSessionHasNoErrors();
+        $this->assertSame(60, (int) $os2->fresh()->total_minutos);
+
+        // 3) Concluir exige o checklist respondido.
+        ChecklistOs::create(['ordem_servico_id' => $os2->id, 'ordem' => 1, 'descricao' => 'Verificar vazamento']);
+        $this->post("/ordens-de-servico/ordens/{$os2->id}/acao", ['acao' => 'concluir'])->assertSessionHasErrors('checklist');
+
+        // 4) Material: quem só enxerga a OS (o solicitante) não muda status nem custo.
+        $material = MaterialOs::create(['ordem_servico_id' => $os2->id, 'descricao' => 'Rolamento', 'quantidade' => 1, 'um' => 'UN', 'status' => 'requisitado']);
+        $this->actingAs($solicitante)->put("/ordens-de-servico/materiais/{$material->id}", ['status' => 'entregue', 'custo_unitario' => 0])->assertForbidden();
+        $this->assertSame('requisitado', $material->fresh()->status);
+
+        // 5) SS já aprovada não se edita mais.
+        $ss = SolicitacaoServico::create(['unidade' => 'manutencao', 'solicitante_id' => $solicitante->id, 'titulo' => 't', 'tipo' => 'corretiva',
+            'area_executante_id' => $this->mecanica->id, 'prioridade' => 'alta', 'descricao' => 'x', 'status' => 'aprovada']);
+        $this->actingAs($adm)->get("/ordens-de-servico/solicitacoes/{$ss->id}/editar")->assertStatus(422);
     }
 }

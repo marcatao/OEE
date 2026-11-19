@@ -27,7 +27,7 @@ class SituacaoMaquina
     {
         $maisRecente = ApontamentoEstado::where('maquina_id', $apontamento->maquina_id)
             ->orderByDesc('inicio')->orderByDesc('id')->value('id');
-        if ($maisRecente !== $apontamento->id) {
+        if ((int) $maisRecente !== (int) $apontamento->id) { // (int): no SQL Server os ids chegam como texto
             return;
         }
         $maquina = Maquina::withoutGlobalScopes()->find($apontamento->maquina_id);
@@ -74,7 +74,7 @@ class SituacaoMaquina
     {
         $maisRecente = ApontamentoEstado::where('maquina_id', $apontamento->maquina_id)
             ->orderByDesc('inicio')->orderByDesc('id')->value('id');
-        if ($maisRecente === $apontamento->id) {
+        if ((int) $maisRecente === (int) $apontamento->id) {
             $this->aplicar($apontamento);
 
             return;

@@ -54,7 +54,7 @@ class TrocaOpMaquina
                     $aberto->update(['ordem_producao_id' => $op->id]); // o apontamento inteiro passa para a OP nova
                     $this->situacao->aplicar($aberto);
                 } else {
-                    $aberto->update(['fim' => HorarioApontamento::fimAutomatico($aberto, $agora)]);
+                    HorarioApontamento::encerrarAberto($aberto, $agora); // com continuação nos dias seguintes
                     $novo = ApontamentoEstado::create(['maquina_id' => $maquina->id, 'legenda_id' => $aberto->legenda_id,
                         'ordem_producao_id' => $op->id, 'inicio' => $agora,
                         'observacao' => 'Troca de OP ('.($origem === 'aplicativo' ? 'aplicativo' : 'Timeline').')']);

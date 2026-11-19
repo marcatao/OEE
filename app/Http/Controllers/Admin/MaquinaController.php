@@ -246,7 +246,7 @@ class MaquinaController extends Controller
             if (! $op) {
                 throw ValidationException::withMessages(['ordem_producao' => "Ordem de produção {$numeroOp} não encontrada."]);
             }
-            if ($op->status === 'fechada' && $op->id !== $maquina->ordem_producao_id) {
+            if ($op->status === 'fechada' && (int) $op->id !== (int) $maquina->ordem_producao_id) {
                 throw ValidationException::withMessages(['ordem_producao' => "A ordem de produção {$numeroOp} está fechada no Protheus."]);
             }
         }

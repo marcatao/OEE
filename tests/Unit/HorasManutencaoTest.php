@@ -53,4 +53,17 @@ class HorasManutencaoTest extends TestCase
         $this->assertSame('1:30', HorasManutencao::hhmm(90));
         $this->assertSame('1,50', HorasManutencao::decimal(90));
     }
+
+    public function test_feriado_do_calendario_e_todo_extra_e_compensacao_tem_jornada(): void
+    {
+        // 2026-11-02 (segunda) é feriado; 2026-11-07 (sábado) é compensação.
+        $h = new HorasManutencao('07:00', '17:00', 60, '12345', [], ['2026-11-02' => false, '2026-11-07' => true]);
+        $fuso = HorasManutencao::fuso();
+        $this->assertSame(['normais' => 0, 'extras' => 120],
+            $h->dividir(CarbonImmutable::parse('2026-11-02 08:00', $fuso), CarbonImmutable::parse('2026-11-02 10:00', $fuso)));
+        $this->assertSame(['normais' => 120, 'extras' => 0],
+            $h->dividir(CarbonImmutable::parse('2026-11-07 08:00', $fuso), CarbonImmutable::parse('2026-11-07 10:00', $fuso)));
+        // Disponível na semana de 02 a 07/11: 4 dias úteis (03 a 06) + a compensação do sábado = 5 × 540 min.
+        $this->assertSame(5 * 540, $h->minutosDisponiveis(CarbonImmutable::parse('2026-11-02', $fuso), CarbonImmutable::parse('2026-11-07', $fuso)));
+    }
 }

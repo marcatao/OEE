@@ -90,7 +90,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Horário do apontamento real (`App\Services\HorarioApontamento`): campos Dia + horário inicial/final (com segundos);
   um apontamento não passa de um dia (máx. 23:59:59). Se a máquina já tem apontamento no dia, o novo começa
   OBRIGATORIAMENTE 1 segundo depois do fim do último (campo travado; rota `apontamentos.proximo-inicio`); o primeiro do
-  dia é livre. Em aberto é encerrado 1 s antes do novo, sem passar do dia dele.
+  dia é livre. Em aberto é encerrado 1 s antes do novo, sem passar do dia dele; se o novo é de outro dia, os dias seguintes
+  ganham CONTINUAÇÕES (mesma legenda/OP, `HorarioApontamento::encerrarAberto`, sem SS automática) — a madrugada não
+  some. Apontamento real só de máquina que o usuário enxerga (editar/excluir/próximo início: 404); a legenda do
+  apontamento e da situação da máquina é lida sem escopo de unidade (`withoutGlobalScopes` na relação).
+- **Ids no SQL Server chegam como TEXTO** (pdo_sqlsrv): compare chaves estrangeiras e `value('id')` sempre com
+  `(int)` dos dois lados — `===` entre texto e número dá falso só no servidor (os testes em SQLite não pegam).
 - Custo das OPs (`App\Services\CustoOrdemProducao`, com `ResumoCustoOp` e `TiposMovimento`): `movimentos_producao`
   (SD3 com OP, campo `protheus.sd3_campo_op` = D3_ORDEM) e `notas_fiscais_op` (SD2 com OP, `protheus.sd2_campo_op`)
   são cópias por R_E_C_N_O_; as telas só usam os não excluídos e, na SD3, não estornados (`D3_ESTORNO = 'S'`). O
@@ -125,13 +130,23 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   roda `schedule:run` a cada minuto, e a tela mostra se o agendador está vivo (cache `agendador.sinal`).
   `movimentos_producao` (Apontamentos OP) usa `dbo.sp_sincronizar_movimentos_producao`, SEM parâmetros: lê a
   `SD3010` do servidor vinculado `[ALUMBRAPRD].[CMT8F4_145045_PR_PD]` por OPENQUERY, só com OP (`D3_ORDEM`) e
-  `D3_EMISSAO` > último fechamento (`MAX(B9_DATA)` da `SB9010` não excluída), MERGE pelo R_E_C_N_O_, custo médio da
+  `D3_EMISSAO` > PENÚLTIMO fechamento da `SB9010` não excluída (relê o mês que acabou de fechar: recálculo do custo
+  e virada), leitura vazia com dados no portal = erro sem apagar, MERGE pelo R_E_C_N_O_, custo médio da
   `SB2010`, e APAGA do portal os excluídos no Protheus e os do período aberto que sumiram (pedido do usuário).
   `empenhos_op` usa `dbo.sp_sincronizar_empenhos_op`, SEM parâmetros: a `SD4010` INTEIRA do mesmo servidor vinculado
   (só com `D4_OP`), sem o corte da SB9, MERGE pelo R_E_C_N_O_, apagando os excluídos e os que sumiram (para com erro
   se a leitura vier vazia e o portal tiver empenhos).
   SD2 (e a SD3 pelo PHP) são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
+- **Regras de proteção da manutenção**: minutos normais + extras lançados à mão têm de somar a duração; cronômetro
+  esquecido conta no máximo `oee.cronometro_max_horas` (12 h); concluir ou cancelar a OS encerra os cronômetros abertos
+  (cada um com a sua descrição); concluir exige o checklist respondido; SS só se edita PENDENTE; material da OS só o
+  almoxarifado ou quem aprova muda; aprovar SS relê com `lockForUpdate` (corrida portal × app); pedido de compra igual
+  e ativo (mesma origem, tipo e itens, 10 min) não é gerado de novo. Horas extras e disponível seguem o calendário do
+  mantenedor (feriado = tudo extra; compensação = dia com jornada).
+- Estrutura da OP: por peça = G1_QUANT ÷ `produtos_protheus.b1_qb` (B1_QB, quantidade base; lido só se existir na SB1);
+  necessidade × C2_QUANT ÷ (1 − G1_PERDA%); empenho casa pelo TRT. Custo Protheus = só o D3_CUSTO1 das produções
+  (sem custo médio; `ResumoCustoOp::producaoSemCusto` avisa).
 - **Pedidos e solicitações de compra** (Ordens de serviço): o administrador da unidade gera um pedido de compra (SC7,
   MATA120) ou uma solicitação de compra (SC1, MATA110) — `pedidos_compra.tipo` = pedido | solicitacao, `ZP1_TIPO` = PC |
   SC — dos itens APROVADOS de uma solicitação de material ou direto numa OS aberta (CC de origem e de destino). Vai para o Protheus por TABELAS MURO
@@ -153,7 +168,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   máquina, solicitante = QUEM APONTOU (usuário logado no portal ou no app: criado_por/atualizado_por do apontamento);
   só apontamento do IoT sem usuário usa o usuário técnico inativo "IoT (automático)" + `origem_iot` (e aí a OS é avaliada
   pelo administrador da unidade); uma por apontamento e nenhuma nova com outra automática em aberto da mesma máquina e
-  área — nesse caso a SS/OS que já está em aberto fica VINCULADA ao apontamento (`apontamentos_estado.
+  área (trava por máquina+área) — nesse caso a SS/OS que já está em aberto fica VINCULADA ao apontamento (`apontamentos_estado.
   solicitacao_vinculada_id`) e a tela avisa o porquê (`SsAutomatica::mensagem`). Máquina PARADA com SS/OS da parada
   atual (a vinculada ao apontamento atual ou a aberta na parada): número e situação no lugar da meta (Timeline e app;
   `App\Services\Manutencao\ChamadoDaParada`, campo `chamado` da API).

@@ -195,7 +195,7 @@ class Maquina extends Model
     /** Legenda do apontamento que deu a situação atual (vazio = situação informada no cadastro). */
     public function situacaoLegenda(): BelongsTo
     {
-        return $this->belongsTo(Legenda::class, 'situacao_legenda_id');
+        return $this->belongsTo(Legenda::class, 'situacao_legenda_id')->withoutGlobalScopes(); // legenda de qualquer unidade
     }
 
     public function rotuloSituacao(): string

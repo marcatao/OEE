@@ -55,9 +55,10 @@ class ApontamentoEstado extends Model
         return $this->belongsTo(Maquina::class);
     }
 
+    /** Legenda do apontamento, de qualquer unidade (ex.: a 98 do IoT): quem vê a máquina vê o apontamento inteiro. */
     public function legenda(): BelongsTo
     {
-        return $this->belongsTo(Legenda::class);
+        return $this->belongsTo(Legenda::class)->withoutGlobalScopes();
     }
 
     public function ordemProducao(): BelongsTo

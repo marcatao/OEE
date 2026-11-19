@@ -7,6 +7,7 @@ use App\Models\EstruturaProduto;
 use App\Models\Ferramenta;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
+use App\Models\ProdutoProtheus;
 use App\Models\RoteiroOperacao;
 use Illuminate\Support\Collection;
 
@@ -14,7 +15,8 @@ use Illuminate\Support\Collection;
  * Engenharia de uma OP, pelos relacionamentos do Protheus (só leitura, das cópias sincronizadas):
  * - Empenhos (SD4): D4_FILIAL = C2_FILIAL e D4_OP = C2_NUM + C2_ITEM + C2_SEQUEN (empenhos_op.op_numero = numero).
  * - Estrutura (SG1): G1_COD = C2_PRODUTO, vigente HOJE (G1_INI..G1_FIM) e, se a OP tem revisão (C2_REVISAO), da
- *   revisão (G1_REVINI..G1_REVFIM). Necessidade da OP = G1_QUANT × C2_QUANT (G1_FIXVAR = 'F': quantidade fixa).
+ *   revisão (G1_REVINI..G1_REVFIM). Necessidade da OP = G1_QUANT ÷ B1_QB (base) × C2_QUANT ÷ (1 − G1_PERDA%)
+ *   (G1_FIXVAR = 'F': quantidade fixa, sem multiplicar pela OP).
  *   O componente casa com o empenho por D4_COD = G1_COMP e D4_TRT = G1_TRT.
  * - Roteiro (SG2): G2_PRODUTO = C2_PRODUTO e G2_CODIGO = C2_ROTEIRO (em branco: o roteiro "01", ou o primeiro do produto).
  *   G2_CTRAB = máquina do portal (SHB) e G2_FERRAM = ferramenta/molde (SH4.H4_CODIGO).
@@ -57,10 +59,19 @@ class EngenhariaOrdemProducao
             ->whereIn('g1_cod', $linhas->pluck('g1_comp')->map(fn ($c) => rtrim($c))->unique()->values()->all())
             ->distinct()->pluck('g1_cod')->map(fn ($c) => rtrim($c))->flip();
 
+        // Quantidade base da estrutura do produto (B1_QB): G1_QUANT vale para "base" unidades do pai (vazio/0 = 1).
+        $base = (float) (ProdutoProtheus::where('b1_cod', rtrim((string) $op->c2_produto))->value('b1_qb') ?: 1);
+        $porComponente = $linhas->groupBy(fn ($l) => rtrim($l->g1_comp))->map->count();
+
         foreach ($linhas as $l) {
-            $l->necessidade = strtoupper(trim((string) $l->g1_fixvar)) === 'F' ? $l->g1_quant : $l->g1_quant * (float) $op->c2_quant;
+            // Como a explosão do Protheus: por peça = G1_QUANT ÷ base; com perda, ÷ (1 − perda%); fixa não multiplica.
+            $perda = (float) $l->g1_perda > 0 && (float) $l->g1_perda < 100 ? 100 / (100 - (float) $l->g1_perda) : 1.0;
+            $l->base = $base;
+            $l->por_peca = $l->g1_quant / $base;
+            $l->necessidade = (strtoupper(trim((string) $l->g1_fixvar)) === 'F' ? $l->g1_quant : $l->por_peca * (float) $op->c2_quant) * $perda;
+            // Empenho pela sequência (TRT); componente que aparece uma vez só na estrutura aceita qualquer TRT.
             $doComponente = $empenhos->filter(fn ($e) => rtrim($e->d4_cod) === rtrim($l->g1_comp)
-                && (trim($e->d4_trt) === '' || trim($l->g1_trt) === '' || trim($e->d4_trt) === trim($l->g1_trt)));
+                && (trim($e->d4_trt) === trim($l->g1_trt) || ($porComponente[rtrim($l->g1_comp)] ?? 0) === 1));
             $l->empenhado = $doComponente->isEmpty() ? null : $doComponente->sum('d4_qtdeori');
             $l->saldo_empenho = $doComponente->isEmpty() ? null : $doComponente->sum('d4_quant');
             $l->tem_estrutura = isset($comEstrutura[rtrim($l->g1_comp)]);

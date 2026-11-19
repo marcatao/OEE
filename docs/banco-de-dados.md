@@ -746,6 +746,7 @@ erDiagram
         nchar(1) d_e_l_e_t_
         int r_e_c_n_o_
         datetime sincronizado_em
+        float(53) b1_qb
     }
     registros_login {
         bigint id PK
@@ -1101,7 +1102,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`pedidos_compra_itens`](#pedidos_compra_itens) | Sistema | `id` | 17 | 4 |
 | [`plantas`](#plantas) | Sistema | `id` | 9 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
-| [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 11 | 0 |
+| [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 12 | 0 |
 | [`registros_login`](#registros_login) | Sistema | `id` | 8 | 1 |
 | [`roteiros_operacao`](#roteiros_operacao) | Protheus | `id` | 17 | 0 |
 | [`sessions`](#sessions) | Infra | `id` | 6 | 0 |
@@ -2307,6 +2308,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
 | `r_e_c_n_o_` | `int` | sim |  |  |
 | `sincronizado_em` | `datetime` | sim |  |  |
+| `b1_qb` | `float(53)` | sim |  |  |
 
 **Índices:** `produtos_protheus_b1_filial_b1_cod_unique` único (b1_filial, b1_cod) · `produtos_protheus_b1_cod_index` (b1_cod)
 

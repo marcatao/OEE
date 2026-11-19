@@ -19,6 +19,9 @@ use Throwable;
  */
 class SincronizadorProtheus
 {
+    /** Tempo máximo (s) de uma procedure de sincronização; antes disso ela não é dada como travada. */
+    public const TEMPO_PROCEDURE = 300;
+
     /** @return array<string, array{descricao: string, tabela_origem: string, tabela_destino: string, importador: class-string, modo: string}> */
     public function itens(): array
     {
@@ -47,7 +50,7 @@ class SincronizadorProtheus
     protected function executarProcedure(string $procedure): ?object
     {
         // A tabela inteira vai numa chamada só: pede ao PHP mais tempo que o de uma etapa (se o servidor deixar).
-        @set_time_limit(300);
+        @set_time_limit(self::TEMPO_PROCEDURE);
 
         return DB::select("EXEC {$procedure}")[0] ?? null;
     }
@@ -146,8 +149,10 @@ class SincronizadorProtheus
             // Outra etapa desta execução está rodando. Se ela não dá sinal de vida há mais de 75 s, o processo morreu
             // (ex.: o IIS cortou a requisição): assume a execução e continua do último lote gravado.
             $registro->refresh();
-            $parada = $registro->sinal_em === null
-                || $registro->sinal_em->lt(now()->subSeconds(max(75, (int) config('protheus.segundos_por_etapa', 25) + 50)));
+            $espera = $this->via($registro->chave) === 'procedure'
+                ? self::TEMPO_PROCEDURE + 60 // a procedure não dá sinal enquanto roda
+                : max(75, (int) config('protheus.segundos_por_etapa', 25) + 50);
+            $parada = $registro->sinal_em === null || $registro->sinal_em->lt(now()->subSeconds($espera));
             if ($registro->situacao !== 'executando' || ! $parada) {
                 return $registro;
             }
@@ -311,16 +316,24 @@ class SincronizadorProtheus
      */
     public function encerrarInterrompidas(): int
     {
-        $limite = now()->subSeconds(max(30, (int) config('protheus.sem_sinal', 180)));
+        // Pela procedure não há sinal de vida durante a execução (ela roda de uma vez, até TEMPO_PROCEDURE segundos):
+        // só é dada como interrompida depois desse tempo, para não disparar outra igual em paralelo.
+        $porProcedure = array_values(array_filter(array_keys($this->itens()), fn ($c) => $this->via($c) === 'procedure'));
+        $total = 0;
+        foreach ([[false, max(30, (int) config('protheus.sem_sinal', 180))], [true, max((int) config('protheus.sem_sinal', 180), self::TEMPO_PROCEDURE + 60)]] as [$procedure, $segundos]) {
+            $limite = now()->subSeconds($segundos);
+            $total += Sincronizacao::where('situacao', 'executando')
+                ->when($procedure, fn ($q) => $q->whereIn('chave', $porProcedure ?: ['']), fn ($q) => $q->whereNotIn('chave', $porProcedure ?: ['']))
+                ->where(fn ($q) => $q->where('sinal_em', '<', $limite)
+                    ->orWhere(fn ($w) => $w->whereNull('sinal_em')->where('iniciado_em', '<', $limite)))
+                ->update([
+                    'situacao' => 'erro',
+                    'terminado_em' => now(),
+                    'mensagem' => 'Interrompida: o processo parou antes de terminar (falta de memória, tempo esgotado ou servidor reiniciado). Rode de novo.',
+                ]);
+        }
 
-        return Sincronizacao::where('situacao', 'executando')
-            ->where(fn ($q) => $q->where('sinal_em', '<', $limite)
-                ->orWhere(fn ($w) => $w->whereNull('sinal_em')->where('iniciado_em', '<', $limite)))
-            ->update([
-                'situacao' => 'erro',
-                'terminado_em' => now(),
-                'mensagem' => 'Interrompida: o processo parou antes de terminar (falta de memória, tempo esgotado ou servidor reiniciado). Rode de novo.',
-            ]);
+        return $total;
     }
 
     /** Última execução de cada tabela sincronizada. @return array<string, Sincronizacao|null> */

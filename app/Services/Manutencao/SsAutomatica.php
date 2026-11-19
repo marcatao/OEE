@@ -10,6 +10,7 @@ use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
 use App\Models\Usuario;
 use App\Providers\AppServiceProvider;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -58,6 +59,18 @@ final class SsAutomatica
         if (! $maquina) {
             return null;
         }
+        // Dois apontamentos da mesma máquina ao mesmo tempo (ex.: IoT e operador): um de cada vez, para não abrir duas SS.
+        $trava = Cache::lock("ss-automatica-{$maquina->id}-{$area->id}", 30);
+        $trava->block(10);
+        try {
+            return $this->abrirOuVincular($ap, $legenda, $area, $maquina, $nao);
+        } finally {
+            $trava->release();
+        }
+    }
+
+    private function abrirOuVincular(ApontamentoEstado $ap, Legenda $legenda, $area, Maquina $maquina, string $nao): ?SolicitacaoServico
+    {
         if ($existente = SolicitacaoServico::withoutGlobalScopes()->where('apontamento_estado_id', $ap->id)->first()) {
             self::registrar($ap->id, $nao.'este apontamento já abriu a SS '.$existente->numeroFormatado().'.');
 

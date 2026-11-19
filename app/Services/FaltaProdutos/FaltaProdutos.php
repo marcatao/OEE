@@ -101,7 +101,9 @@ class FaltaProdutos
     {
         $resultado = [];
         foreach (array_chunk(array_values(array_filter(array_map('strval', $produtos), fn ($p) => $p !== '')), 1000) as $bloco) {
+            // OPs que ainda têm o que produzir: não fechadas, firmes (prevista não conta) e com saldo (produzido < quantidade).
             $ops = OrdemProducao::whereIn('c2_produto', $bloco)->where('d_e_l_e_t_', '<>', '*')->where('status', '<>', 'fechada')
+                ->where('c2_tpop', '<>', 'P')->whereColumn('c2_quje', '<', 'c2_quant')
                 ->orderBy('c2_datprf')->orderBy('numero')
                 ->get(['id', 'numero', 'c2_produto', 'c2_quant', 'c2_quje', 'c2_datprf', 'status']);
             $ids = $ops->pluck('id')->all();

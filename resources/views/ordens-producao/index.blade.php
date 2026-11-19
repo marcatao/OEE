@@ -13,10 +13,10 @@
     @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizadas. @endif @include('partials.proxima-sincronizacao', ['chave' => 'ordens_producao'])
     O <strong>status</strong> é calculado pelo portal: <em>fechada</em> (com data de encerramento, C2_DATRF, no Protheus), <em>parada</em> (suspensa no
     Protheus ou com apontamento de parada em aberto), <em>andamento</em> (com produção ou apontamentos) ou <em>aberta</em>.
-    <strong>Custo unit. atual</strong> = custo de <strong>1 peça</strong> nesta OP: consumos da OP (baixas da SD3 + notas com OP da SD2 −
-    devoluções) ÷ quantidade produzida na própria OP. Cada consumo vale o custo do Protheus (D3_CUSTO1 / D2_CUSTO1) ou, enquanto ele
-    estiver zerado, quantidade × custo médio de estoque (SB2). <strong>Custo unit. meta</strong> = custo de 1 peça no fechamento mais recente
-    do produto (SB9). Clique na OP para ver o kardex.</p>
+    <strong>Produzido</strong> = soma das produções (PR) da OP. <strong>Custo simulado (OEE)</strong> = custo de <strong>1 peça</strong>: as
+    baixas/consumos (RE) da OP repartidas entre as produções pela quantidade de peças (baixas ÷ produzido). Cada baixa vale o custo do
+    Protheus (D3_CUSTO1) ou, enquanto ele estiver zerado, quantidade × custo médio de estoque (SB2). <strong>Custo unit. meta</strong> = custo
+    de 1 peça no fechamento mais recente do produto (SB9). <strong>Divergência</strong> = simulado × meta. Clique na OP para ver o kardex.</p>
 
   <div class="op-totais">
     @foreach (OrdemProducao::STATUS as $chave => $rotulo)

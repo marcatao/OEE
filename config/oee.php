@@ -75,6 +75,9 @@ return [
     // abaixo, em verde.
     'custo_tolerancia' => (float) env('OEE_CUSTO_TOLERANCIA', 0.05),
 
+    // Cronômetro de horas da manutenção esquecido rodando: ao encerrar, conta no máximo estas horas (o resto, à mão).
+    'cronometro_max_horas' => (int) env('OEE_CRONOMETRO_MAX_HORAS', 12),
+
     // Canais de cada dispositivo IoT. Os dados das máquinas virão da tabela MQTT.dbo.IOT001 (integração futura):
     // cada máquina usa dispositivo + canal, e um mesmo dispositivo + canal não pode estar em duas máquinas.
     'iot_canais' => ['chd1_value', 'chd2_value', 'chd3_value', 'chd4_value', 'chd5_value', 'chd6_value'],

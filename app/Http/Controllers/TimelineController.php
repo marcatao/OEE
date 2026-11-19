@@ -38,8 +38,11 @@ class TimelineController extends Controller
         }
         $filtro = $escolhido ? FiltroTimeline::doSalvo($escolhido->filtros) : FiltroTimeline::daRequisicao($request);
 
-        // OP fechada (ou excluída) no Protheus sai da máquina antes de mostrar a situação.
-        app(SituacaoMaquina::class)->desvincularOpsFechadas();
+        // OP fechada (ou excluída) no Protheus sai da máquina antes de mostrar a situação: ao abrir a tela (a
+        // sincronização das OPs também faz); a atualização automática a cada minuto (?parcial=1) não repete.
+        if (! $request->boolean('parcial')) {
+            app(SituacaoMaquina::class)->desvincularOpsFechadas();
+        }
 
         $dados = $this->resultado($filtro, $timeline);
         if ($request->boolean('parcial')) {
@@ -88,7 +91,7 @@ class TimelineController extends Controller
     /** Exclui um filtro salvo do próprio usuário (ação dele na tela). */
     public function excluirFiltro(Request $request, FiltroUsuario $filtro): RedirectResponse
     {
-        abort_unless($filtro->usuario_id === $request->user()->id && $filtro->tela === FiltroTimeline::TELA, 404);
+        abort_unless((int) $filtro->usuario_id === (int) $request->user()->id && $filtro->tela === FiltroTimeline::TELA, 404);
         $nome = $filtro->nome;
         $filtro->delete();
 

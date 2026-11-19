@@ -66,6 +66,12 @@ final class FluxoOrdemServico
         }
 
         return DB::transaction(function () use ($ss, $usuario, $mantenedorIds, $obs) {
+            // Corrida (aprovar no portal × assumir no app ao mesmo tempo): relê a SS travada; quem chegar depois recebe
+            // a mensagem em vez de erro de chave duplicada.
+            $status = SolicitacaoServico::withoutGlobalScopes()->whereKey($ss->id)->lockForUpdate()->value('status');
+            if ($status !== 'pendente' || OrdemServico::withoutGlobalScopes()->where('solicitacao_id', $ss->id)->exists()) {
+                throw ValidationException::withMessages(['status' => 'Esta solicitação acabou de ser analisada por outra pessoa.']);
+            }
             $ss->forceFill(['status' => 'aprovada', 'analisado_por_id' => $usuario->id, 'analisado_em' => now()])->save();
             $os = OrdemServico::create([
                 'unidade' => $ss->unidade,
@@ -142,6 +148,10 @@ final class FluxoOrdemServico
         if ($acao === 'cancelar' && trim((string) $obs) === '') {
             throw ValidationException::withMessages(['observacao' => 'Informe o motivo do cancelamento.']);
         }
+        // Concluir só com o checklist (preventiva) todo respondido.
+        if ($acao === 'concluir' && ($faltam = $os->checklist()->whereNull('resposta')->count()) > 0) {
+            throw ValidationException::withMessages(['checklist' => "Responda os {$faltam} itens do checklist antes de concluir a OS."]);
+        }
 
         DB::transaction(function () use ($os, $acao, $para, $usuario, $obs) {
             $anterior = $os->status;
@@ -149,11 +159,14 @@ final class FluxoOrdemServico
             if ($para === 'em_execucao' && $os->iniciada_em === null) {
                 $dados['iniciada_em'] = now();
             }
-            if ($acao === 'concluir') {
-                // Encerra os apontamentos ainda rodando e conclui com a data/hora do último apontamento.
+            if (in_array($acao, ['concluir', 'cancelar'], true)) {
+                // Encerra os cronômetros ainda rodando (de todos os mantenedores), cada um com a descrição dele;
+                // cancelar também encerra, senão o mantenedor ficaria preso a um apontamento aberto numa OS fechada.
                 foreach ($os->apontamentos()->whereNull('fim')->get() as $ap) {
-                    $this->encerrarApontamento($ap, $obs);
+                    $this->encerrarApontamento($ap, $ap->descricao ?: ($acao === 'cancelar' ? 'Encerrado no cancelamento da OS.' : 'Encerrado na conclusão da OS.'));
                 }
+            }
+            if ($acao === 'concluir') {
                 $ultimo = $os->apontamentos()->max('fim');
                 $dados['concluida_em'] = $ultimo ?? now();
                 if ($obs !== null && trim($obs) !== '' && trim((string) $os->solucao) === '') {
@@ -221,12 +234,20 @@ final class FluxoOrdemServico
         });
     }
 
-    /** Encerra o apontamento (agora), separa normal × extra pela jornada e grava a descrição do serviço. */
+    /**
+     * Encerra o apontamento (agora), separa normal × extra pela jornada e grava a descrição do serviço. Cronômetro
+     * esquecido: no máximo config('oee.cronometro_max_horas') horas (padrão 12) — o resto precisa ser lançado à mão.
+     */
     public function encerrarApontamento(ApontamentoHoras $ap, ?string $descricao = null): void
     {
         $fim = now()->startOfMinute();
         if ($fim < $ap->inicio) {
             $fim = $ap->inicio;
+        }
+        $maximo = max(1, (int) config('oee.cronometro_max_horas', 12));
+        if ($ap->inicio->copy()->addHours($maximo)->lt($fim)) {
+            $fim = $ap->inicio->copy()->addHours($maximo);
+            $descricao = trim(($descricao ?? $ap->descricao ?? '').' [cronômetro encerrado no limite de '.$maximo.' h: lance o restante à mão, se houver]');
         }
         $this->gravarApontamento($ap, $ap->inicio, $fim, $descricao ?? $ap->descricao);
     }

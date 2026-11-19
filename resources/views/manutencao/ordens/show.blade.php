@@ -242,7 +242,7 @@
         <td class="num">{{ $ap->fim ? HorasManutencao::hhmm($ap->minutos_normais) : HorasManutencao::hhmm($ap->minutosTotais()) }}</td>
         <td class="num">{{ $ap->fim ? HorasManutencao::hhmm($ap->minutos_extras) : '' }}</td>
         <td class="os-texto">
-          @if ($ap->fim === null && ($podeAprovar || $meuMantenedor?->id === $ap->mantenedor_id))
+          @if ($ap->fim === null && ($podeAprovar || ($meuMantenedor && (int) $meuMantenedor->id === (int) $ap->mantenedor_id)))
             <form method="post" action="{{ route('os.apontamentos.encerrar', $ap) }}" class="os-acoes" style="margin:0">
               @csrf
               <input name="descricao" maxlength="1000" required placeholder="O que foi feito" value="{{ $ap->descricao }}">
@@ -255,7 +255,7 @@
         </td>
         <td>{{ $ap->criadoPor?->nome }}</td>
         <td>
-          @if ($editavel && $ap->fim && ($podeAprovar || $meuMantenedor?->id === $ap->mantenedor_id))
+          @if ($editavel && $ap->fim && ($podeAprovar || ($meuMantenedor && (int) $meuMantenedor->id === (int) $ap->mantenedor_id)))
             <details><summary class="botao pequeno secundario">Corrigir</summary>
               <form method="post" action="{{ route('os.apontamentos.update', $ap) }}" class="formulario-vertical">
                 @csrf @method('put')
@@ -420,7 +420,7 @@
     @forelse ($conversa as $linha)
       @if ($linha['tipo'] === 'mensagem')
         @php($msg = $linha['item'])
-        <article @class(['chat-msg', 'minha' => $msg->usuario_id === auth()->id()])>
+        <article @class(['chat-msg', 'minha' => (int) $msg->usuario_id === (int) auth()->id()])>
           @if ($msg->usuario)@include('partials.avatar', ['usuario' => $msg->usuario])@endif
           <div class="chat-balao">
             <header><strong>{{ $msg->usuario?->nome }}</strong> <small class="suave">@dataHora($msg->criado_em)</small></header>
@@ -441,7 +441,7 @@
       @else
         {{-- Evento do histórico: mesmo balão, com a etiqueta "Histórico" e a mudança de situação. --}}
         @php($h = $linha['item'])
-        <article @class(['chat-msg', 'chat-evento', 'minha' => $h->usuario_id !== null && $h->usuario_id === auth()->id(), 'marco' => $h->ehMarco()])>
+        <article @class(['chat-msg', 'chat-evento', 'minha' => $h->usuario_id !== null && (int) $h->usuario_id === (int) auth()->id(), 'marco' => $h->ehMarco()])>
           @if ($h->usuario)@include('partials.avatar', ['usuario' => $h->usuario])@else<span class="chat-sistema" title="Sistema">@include('layouts.partials.icone', ['nome' => 'cronometro'])</span>@endif
           <div class="chat-balao">
             <header><strong>{{ $h->usuario?->nome ?? 'Sistema' }}</strong> <small class="suave">@dataHora($h->criado_em)</small></header>

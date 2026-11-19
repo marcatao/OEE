@@ -10,7 +10,7 @@
     <div class="os-cabecalho">
       <span class="etiqueta os-{{ $ss->status }}">{{ $ss->rotuloStatus() }}</span>
       @if ($ss->ordemServico)<a class="botao" href="{{ route('os.ordens.show', $ss->ordemServico) }}">Abrir {{ $ss->ordemServico->numeroFormatado() }}</a>@endif
-      @if (! $revisar && $ss->solicitante_id === auth()->id() && $ss->status === 'pendente')
+      @if (! $revisar && (int) $ss->solicitante_id === (int) auth()->id() && $ss->status === 'pendente')
         <a class="botao secundario" href="{{ route('os.solicitacoes.edit', $ss) }}">Editar</a>
       @endif
     </div>
