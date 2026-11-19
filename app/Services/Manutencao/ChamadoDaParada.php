@@ -2,13 +2,16 @@
 
 namespace App\Services\Manutencao;
 
+use App\Models\ApontamentoEstado;
 use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
 
 /**
  * SS/OS aberta pelo apontamento de uma legenda que "abre SS" (SsAutomatica) para a máquina que está PARADA agora:
  * a da parada atual (aberta desde que a máquina parou). Aprovada, mostra a OS. Vai no lugar da meta na Timeline e no
- * aplicativo, para o operador acompanhar o desfecho. Máquina produzindo (ou sem SS da parada) = null.
+ * aplicativo, para o operador acompanhar o desfecho. Se a parada não abriu SS porque já havia uma automática em aberto da
+ * máquina e área, vale a SS vinculada ao apontamento (apontamentos_estado.solicitacao_vinculada_id). Máquina produzindo
+ * (ou sem SS da parada) = null.
  */
 final class ChamadoDaParada
 {
@@ -18,9 +21,13 @@ final class ChamadoDaParada
         if ($maquina->situacao !== 'parada') {
             return null;
         }
-        $ss = SolicitacaoServico::where('maquina_id', $maquina->id)->where('automatica', true)
-            ->when($maquina->situacao_desde, fn ($q) => $q->where('criado_em', '>=', $maquina->situacao_desde->copy()->subMinute()))
-            ->with('ordemServico')->orderByDesc('id')->first();
+        // 1º) SS vinculada ao apontamento atual (já havia uma em aberto da máquina quando ela parou); 2º) a aberta na parada.
+        $vinculada = ApontamentoEstado::where('maquina_id', $maquina->id)->orderByDesc('inicio')->orderByDesc('id')
+            ->value('solicitacao_vinculada_id');
+        $ss = ($vinculada ? SolicitacaoServico::with('ordemServico')->find($vinculada) : null)
+            ?? SolicitacaoServico::where('maquina_id', $maquina->id)->where('automatica', true)
+                ->when($maquina->situacao_desde, fn ($q) => $q->where('criado_em', '>=', $maquina->situacao_desde->copy()->subMinute()))
+                ->with('ordemServico')->orderByDesc('id')->first();
         if (! $ss) {
             return null;
         }

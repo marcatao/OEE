@@ -14,13 +14,15 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   ferramentaria`, `admin_producao|tecnologia|ferramentaria`; mapas `oee.admins_area` e `oee.mantenedores_area`; cada
   perfil com unidades e permissões de página) + **grupos** (somam páginas, `grupo_permissoes`, catálogo em
   `config('oee.permissoes')`). Usuário sem linhas em `usuario_perfis` segue a coluna antiga `perfil` (admin = todos os
-  perfis, operador = operador). Administrador de Tecnologia pode tudo e é o único na aba **Segurança** (usuários,
-  grupos, acessos, banco: `perfil:admin_tecnologia`); cadastros = `perfil:admin_producao,admin_tecnologia,
+  perfis, operador = operador). Administrador de Tecnologia abre todas as PÁGINAS e é o único na aba **Segurança**
+  (usuários, grupos, acessos, banco: `perfil:admin_tecnologia`), mas DADOS só da Tecnologia: ninguém vê unidade que
+  não está habilitada nos perfis dele (cadastros, filtros, listas, SS/OS, app; `AcessoOs::unidadesHabilitadas` =
+  unidades dos perfis + as em que é Solicitante; `AcessoOs::filtrar` nunca passa delas); cadastros = `perfil:admin_producao,admin_tecnologia,
   admin_ferramentaria`. Use `Usuario::pode()`, `ehAdmin()`, `podeSeguranca()`, `temPerfil()`, `areasAdministradas()` e
   `App\Support\Unidades::areas()` (nunca escreva a lista de áreas fixa no código).
 - Todo cadastro tem **unidade** (`manutencao` | `tecnologia` | `ferramentaria` | `ambos` = "Todas", trait
-  `App\Models\Concerns\TemUnidade`): escopo global mostra ao usuário logado só as unidades dele + "ambos" (Admin de
-  Tecnologia vê tudo; sem usuário logado, sem filtro). No formulário use `@include('partials.campo-unidade')` e
+  `App\Models\Concerns\TemUnidade`): escopo global mostra ao usuário logado só as unidades dele + "ambos" (quem tem
+  perfis das três unidades vê tudo; sem usuário logado, sem filtro). No formulário use `@include('partials.campo-unidade')` e
   `App\Support\Unidades::regras()` (cada área só para o administrador dela; "Todas" para quem administra mais de uma).
   Cadastro novo de qualquer tipo deve ganhar a coluna `unidade` (padrão `manutencao`) e o trait.
 - Banco principal: **SQL Server** (`DB_CONNECTION=sqlsrv`, configurado no `.env`). Testes rodam em SQLite em memória:
@@ -60,6 +62,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Roteiro e Ferramenta (cavidades ativas editáveis pelos administradores, volta para a OP), pelos relacionamentos do Protheus em `App\Services\EngenhariaOrdemProducao` (D4_OP = número da OP;
   SG1 por C2_PRODUTO vigente hoje e C2_REVISAO; SG2 por C2_PRODUTO + C2_ROTEIRO, em branco = "01"; G2_CTRAB = máquina;
   G2_FERRAM = SH4; SG1/SG2/SH4 na filial da OP ou em branco). `ordens_producao.c2_roteiro|c2_revisao` vêm da SC2.
+- **Falta de produtos** (Produção › Falta de produtos, permissão `falta_produtos`): `faltas_produto` é cópia da ZB5
+  (tabela customizada, só campos REAIS; `ZB5_DESCPR`/`ZB5_NOME` são virtuais), por `dbo.sp_sincronizar_faltas_produto`
+  (MERGE da `Compras.dbo.ZB5` inteira pelo R_E_C_N_O_; PHP: `ImportadorFaltasProduto`); `solicitado_em`/`atendido_em` =
+  data + hora do Protheus (Brasília) em UTC. Legendas `FaltaProduto::STATUS` (P pendente, A parcial, C concluída,
+  D cancelada). `App\Services\FaltaProdutos\FaltaProdutos` cruza com a produção: em produção (apontamento real em
+  aberto "produzindo" com OP do produto) > direcionada (OP atual de máquina) > com OP > sem OP. Filtro
+  `FiltroFaltaProdutos` (padrão: P + A, sem limite de data; salvos em `filtros_usuarios`, tela `falta_produtos`).
 - `estruturas_produto` (SG1) e `roteiros_operacao` (SG2) são cópias (só consulta). `ferramentas` (SH4) é **mista**:
   campos `h4_*` vêm do Protheus a cada sincronização; `h4_qtdcavativas` (nasce = `h4_qtdcav`, nunca maior, editável
   pelos administradores) e `unidade` são do portal e a sincronização NÃO os sobrepõe (`ImportadorFerramentas`).
@@ -70,7 +79,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   OP fechada (ou excluída) no Protheus sai da máquina (`SituacaoMaquina::desvincularOpsFechadas`: a cada lote da
   sincronização das OPs e ao abrir a Timeline; os apontamentos ficam com a OP). Na Timeline, apontamento cuja legenda
   exige OP e está sem pisca "INFORMAR OP": abre a escolha (só OPs abertas) e grava no apontamento e na máquina
-  (rota `apontamentos.informar-op`, JSON; `SituacaoMaquina::informarOp`).
+  (rota `apontamentos.informar-op`, JSON; `SituacaoMaquina::informarOp`). "Trocar OP" (texto ao lado da OP na
+  Timeline e botão no app; rota `apontamentos.trocar-op`, JSON): escolhe a OP aberta e o modo — `atual` (o apontamento
+  em andamento inteiro passa para a OP nova) ou `novo` (encerra agora com a OP anterior e começa outro na mesma
+  legenda) — regra única em `App\Services\TrocaOpMaquina`. Parada sem motivo (legenda 98 do IoT): aviso no topo da
+  Timeline no mesmo formato do de OP, 2 por vez (as mais antigas primeiro), e bloco piscando "INFORMAR MOTIVO"; troca a
+  legenda só daquele apontamento por uma do tipo parada (rota `apontamentos.informar-motivo`, JSON) — regra única em
+  `App\Services\MotivoParada` (a mesma do app).
 - Horário do apontamento real (`App\Services\HorarioApontamento`): campos Dia + horário inicial/final (com segundos);
   um apontamento não passa de um dia (máx. 23:59:59). Se a máquina já tem apontamento no dia, o novo começa
   OBRIGATORIAMENTE 1 segundo depois do fim do último (campo travado; rota `apontamentos.proximo-inicio`); o primeiro do
@@ -99,6 +114,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   rodar direto no banco. Texto em `database/procedures/*.sql` (começa com `ALTER PROCEDURE`; instalação por
   `App\Support\ProceduresBanco`). Mudou a lógica das OPs? Mude nos DOIS (o SQLite dos testes usa o PHP). Mudou um
   `.sql`? Crie uma migração que chame `ProceduresBanco::instalar()` (ou rode `php artisan banco:procedures`).
+  **Periodicidade** por tabela (coluna da tela Banco de dados; `agendas_sincronizacao`, `App\Services\Protheus\
+  AgendaSincronizacoes`): "a cada HH:MM a partir das HH:MM" (cada dia recomeça no início; roda enquanto couber um
+  intervalo inteiro: 01:00 = 24x, 23:59 = 1x ao dia). O comando `protheus:sincronizar-agendadas` roda a cada minuto
+  (agendador do Laravel, em segundo plano); no servidor, a tarefa do Windows de `scripts/windows/instalar-agendador.ps1`
+  roda `schedule:run` a cada minuto, e a tela mostra se o agendador está vivo (cache `agendador.sinal`).
   SD3/SD2 são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
 - **Pedidos e solicitações de compra** (Ordens de serviço): o administrador da unidade gera um pedido de compra (SC7,
@@ -112,10 +132,24 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   local `compras.fuso_muro`); cópia no portal em `pedidos_compra` + `pedidos_compra_itens`. Mudou a muro? Mude os dois
   `.tlpp`, o LEIAME e `Tests\Concerns\TabelaMuroDeCompras`.
   Custo da OS (card na tela da OS): `App\Services\Manutencao\CustoOrdemServico`.
+- **Abertura de SS**: em etapas (unidade → área executante → máquina/CC → o que precisa → descrição); a unidade só
+  lista as liberadas ao login (`SolicitacaoController::unidadesPermitidas`) e filtra áreas e máquinas; flags "máquina
+  parada" e **"oferece risco à integridade"**; prioridade só **Alta | Baixa** (SS, OS e planos de preventiva;
+  `SolicitacaoServico::PRIORIDADES`; "urgente" e "média" antigas só aparecem com "(antiga)", plano antigo gera OS
+  pela `prioridadeAtual`; painéis contam `PRIORIDADES_ALTAS`) (`risco_integridade`, copiado para a OS). **SS automática**: legenda com
+  "Abre SS" (`legendas.abre_ss_unidade` + `abre_ss_area_executante_id`) abre a SS ao ser apontada (portal, app ou IoT;
+  evento `saved` de `ApontamentoEstado` → `App\Services\Manutencao\SsAutomatica`): título "OS automática — …", CC da
+  máquina, solicitante = QUEM APONTOU (usuário logado no portal ou no app: criado_por/atualizado_por do apontamento);
+  só apontamento do IoT sem usuário usa o usuário técnico inativo "IoT (automático)" + `origem_iot` (e aí a OS é avaliada
+  pelo administrador da unidade); uma por apontamento e nenhuma nova com outra automática em aberto da mesma máquina e
+  área — nesse caso a SS/OS que já está em aberto fica VINCULADA ao apontamento (`apontamentos_estado.
+  solicitacao_vinculada_id`) e a tela avisa o porquê (`SsAutomatica::mensagem`). Máquina PARADA com SS/OS da parada
+  atual (a vinculada ao apontamento atual ou a aberta na parada): número e situação no lugar da meta (Timeline e app;
+  `App\Services\Manutencao\ChamadoDaParada`, campo `chamado` da API).
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
   Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
   área de resultado é trocada sem recarregar a página (`?parcial=1`). Os filtros podem ser escondidos (botão +
-  linha de resumo; escolha lembrada no navegador) e se recolhem sozinhos após 3 minutos sem mexer na tela. A Timeline
+  linha de resumo; na Timeline SEMPRE começam escondidos) e se recolhem sozinhos após 3 minutos sem mexer na tela. A Timeline
   só mostra máquinas ATIVAS e com IoT cadastrado (dispositivo + canal, `Maquina::comIot()`; nos testes,
   `Tests\Concerns\IotDeTeste`). Novos
   relatórios seguem o mesmo padrão.
@@ -154,10 +188,18 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   MESMOS serviços, permissões e escopo de unidade das telas; conflito = vale a alteração mais recente pelo horário.
   A cada mudança no app: suba `codigo` (e ajuste `nome`) em `app-movel/android/versao.properties`, registre em
   `app-movel/VERSOES.md` e gere o APK. A chave em `app-movel/android/keystore/` fica no repositório com autorização do
-  usuário (só assina o APK) e nunca deve ser trocada. Plano e regras em `app-movel/README.md`. Função Máquinas
+  usuário (só assina o APK) e nunca deve ser trocada. Plano e regras em `app-movel/README.md`. Acesso no app (e na
+  API): Máquinas SÓ com o perfil `operador`; Ordens de serviço SÓ com um perfil de `oee.mantenedores_area`. Alertas com
+  o app fechado: só SS para mantenedores; os das máquinas só com a tela daquela máquina aberta. Função Máquinas
   (operador): `App\Services\Aplicativo\MaquinasAplicativo` — máquinas ativas com IoT ativo, apontamento com legenda
   `oee.app.legenda_sem_motivo` (98, do IoT) obriga escolher um motivo do tipo parada (troca a legenda só dele), máquina
   sem OP obriga escolher a OP, troca de OP divide o apontamento em aberto, cavidades ativas editáveis pelo operador.
+  Função Ordens de serviço (mantenedor): `App\Services\Aplicativo\OrdensServicoAplicativo` sobre `AcessoOs` e
+  `FluxoOrdemServico` — "assumir" SS = aprovar com o mantenedor como principal (só o primeiro leva), apontamento de
+  horas com a tela travada no cronômetro, avaliação do solicitante no celular do mantenedor com assinatura
+  (`os_assinaturas`, PNG base64). Alerta de SS: a cada toque o app consulta `/api/app/os/alerta` (para quando outro
+  assume); "Recusar" grava em `os_recusas_aplicativo` (só aquela SS para de tocar para ele) e no histórico
+  (`nao_aceita`, "SS não aceita por …").
 
 ## Git
 

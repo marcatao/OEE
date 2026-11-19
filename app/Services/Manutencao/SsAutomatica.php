@@ -64,7 +64,10 @@ final class SsAutomatica
             return null;
         }
         if ($emAberto = $this->jaEmAberto($maquina->id, $area->id)) {
-            self::registrar($ap->id, $nao."já existe {$emAberto} automática em aberto desta máquina para {$area->nome} (uma por vez).");
+            // Não abre outra: vincula a SS que já está em aberto a esta parada (a Timeline e o app mostram o chamado).
+            $ap->forceFill(['solicitacao_vinculada_id' => $emAberto['ss_id']])->saveQuietly();
+            self::registrar($ap->id, $nao."já existe {$emAberto['texto']} automática em aberto desta máquina para {$area->nome} (uma por vez)"
+                .($emAberto['ss_id'] ? ' — vinculada a esta parada.' : '.'));
 
             return null;
         }
@@ -116,18 +119,22 @@ final class SsAutomatica
         return Usuario::firstOrCreate(['entra_oid' => self::ENTRA_OID_IOT], ['nome' => 'IoT (automático)', 'ativo' => false]);
     }
 
-    /** SS automática pendente ou OS automática aberta da máquina e área: "a SS 000123" / "a OS 000045"; null = nenhuma. */
-    private function jaEmAberto(int $maquinaId, int $areaId): ?string
+    /**
+     * SS automática pendente ou OS automática aberta da máquina e área.
+     *
+     * @return array{texto: string, ss_id: ?int}|null texto "a SS 000123" / "a OS 000045" e a SS (da OS, se for OS)
+     */
+    private function jaEmAberto(int $maquinaId, int $areaId): ?array
     {
         $ss = SolicitacaoServico::withoutGlobalScopes()->where('automatica', true)->where('status', 'pendente')
-            ->where('maquina_id', $maquinaId)->where('area_executante_id', $areaId)->first();
+            ->where('maquina_id', $maquinaId)->where('area_executante_id', $areaId)->orderByDesc('id')->first();
         if ($ss) {
-            return 'a SS '.$ss->numeroFormatado();
+            return ['texto' => 'a SS '.$ss->numeroFormatado(), 'ss_id' => $ss->id];
         }
         $os = OrdemServico::withoutGlobalScopes()->where('automatica', true)->whereIn('status', OrdemServico::STATUS_ABERTOS)
-            ->where('maquina_id', $maquinaId)->where('area_executante_id', $areaId)->first();
+            ->where('maquina_id', $maquinaId)->where('area_executante_id', $areaId)->orderByDesc('id')->first();
 
-        return $os ? 'a OS '.$os->numeroFormatado() : null;
+        return $os ? ['texto' => 'a OS '.$os->numeroFormatado(), 'ss_id' => $os->solicitacao_id] : null;
     }
 
     /** "IoT GW01 / chd1_value": do apontamento (Integrador MQTT) ou, sem isso, o 1º canal IoT da máquina. */

@@ -58,6 +58,7 @@ erDiagram
         smallint ciclo_medio
         bigint iot_dispositivo_id FK
         nvarchar(20) iot_canal
+        bigint solicitacao_vinculada_id FK
     }
     assistente_conversas {
         bigint id PK
@@ -911,6 +912,7 @@ erDiagram
     legendas ||--o{ apontamentos_estado : "legenda_id"
     ordens_producao |o--o{ apontamentos_estado : "ordem_producao_id"
     dispositivos_iot |o--o{ apontamentos_estado : "iot_dispositivo_id"
+    solicitacoes_servico |o--o{ apontamentos_estado : "solicitacao_vinculada_id"
     usuarios ||--o{ assistente_conversas : "usuario_id"
     assistente_conversas ||--o{ assistente_perguntas : "conversa_id"
     usuarios ||--o{ assistente_perguntas : "usuario_id"
@@ -1047,7 +1049,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 |---|---|---|---|---|
 | [`agendas_sincronizacao`](#agendas_sincronizacao) | Sistema | `id` | 10 | 2 |
 | [`apontamentos`](#apontamentos) | Sistema | `id` | 13 | 5 |
-| [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 15 | 6 |
+| [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 16 | 7 |
 | [`assistente_conversas`](#assistente_conversas) | Sistema | `id` | 6 | 1 |
 | [`assistente_perguntas`](#assistente_perguntas) | Sistema | `id` | 16 | 2 |
 | [`cache`](#cache) | Infra | `key` | 3 | 0 |
@@ -1175,6 +1177,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `ciclo_medio` | `smallint` | sim |  |  |
 | `iot_dispositivo_id` | `bigint` | sim |  | FK → `dispositivos_iot.id` |
 | `iot_canal` | `nvarchar(20)` | sim |  |  |
+| `solicitacao_vinculada_id` | `bigint` | sim |  | FK → `solicitacoes_servico.id` |
 
 **Índices:** `apontamentos_estado_maquina_id_inicio_index` (maquina_id, inicio) · `apontamentos_estado_ordem_producao_id_index` (ordem_producao_id)
 

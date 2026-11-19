@@ -177,7 +177,13 @@ class SsAutomaticaTest extends TestCase
         $ap2 = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $semMotivo->id, 'inicio' => now()->subMinute()]);
         $this->postJson("/producao/apontamentos/{$ap2->id}/informar-motivo", ['legenda_id' => $this->quebra->id])->assertOk()
             ->assertJsonPath('mensagem', 'SS automática da legenda 10 NÃO aberta: já existe a SS '.SolicitacaoServico::sole()->numeroFormatado()
-                .' automática em aberto desta máquina para Mecânica (uma por vez).');
+                .' automática em aberto desta máquina para Mecânica (uma por vez) — vinculada a esta parada.');
         $this->assertSame(1, SolicitacaoServico::count());
+
+        // A SS que já existia fica vinculada a esta parada e aparece no lugar da meta.
+        $ss = SolicitacaoServico::sole();
+        $this->assertSame($ss->id, $ap2->fresh()->solicitacao_vinculada_id);
+        $this->maquina->forceFill(['situacao' => 'parada', 'situacao_desde' => now(), 'ativo' => true])->save(); // parou depois da SS
+        $this->assertSame($ss->numeroFormatado(), ChamadoDaParada::da($this->maquina->fresh())['numero']);
     }
 }

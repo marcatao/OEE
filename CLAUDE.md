@@ -142,7 +142,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   máquina, solicitante = QUEM APONTOU (usuário logado no portal ou no app: criado_por/atualizado_por do apontamento);
   só apontamento do IoT sem usuário usa o usuário técnico inativo "IoT (automático)" + `origem_iot` (e aí a OS é avaliada
   pelo administrador da unidade); uma por apontamento e nenhuma nova com outra automática em aberto da mesma máquina e
-  área. Máquina PARADA com SS/OS da parada atual: número e situação no lugar da meta (Timeline e app;
+  área — nesse caso a SS/OS que já está em aberto fica VINCULADA ao apontamento (`apontamentos_estado.
+  solicitacao_vinculada_id`) e a tela avisa o porquê (`SsAutomatica::mensagem`). Máquina PARADA com SS/OS da parada
+  atual (a vinculada ao apontamento atual ou a aberta na parada): número e situação no lugar da meta (Timeline e app;
   `App\Services\Manutencao\ChamadoDaParada`, campo `chamado` da API).
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na
   Timeline: `App\Services\Filtros\FiltroTimeline` (De/Até padrão hoje 01:00–23:59; plantas, linhas e máquinas) e a
