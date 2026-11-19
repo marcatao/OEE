@@ -139,12 +139,12 @@
             </div>
             @if ($sit && $sit['estado'] !== 'sem')
               <div class="tl-estado estado-{{ $sit['estado'] }}" title="Situação no cadastro da máquina{{ $sit['legenda'] ? ' (pela legenda '.$sit['legenda']->codigo.' · '.$sit['legenda']->descricao.')' : ' (informada no cadastro)' }}">
-                <span class="tl-estado-titulo"><i class="tl-pulso" aria-hidden="true"></i>{{ $sit['rotulo'] }}</span>
+                <span class="tl-estado-titulo" title="{{ $sit['rotulo'] }}"><i class="tl-pulso" aria-hidden="true"></i><span class="tl-estado-texto">{{ $sit['rotulo'] }}</span></span>
                 <small>{{ $sit['legenda'] ? $sit['legenda']->codigo.' · '.$sit['legenda']->descricao : 'informada no cadastro' }}</small>
                 <small title="Início da situação atual · ciclo médio do apontamento atual (segundos por peça)">{{ ($sit['desde'] ? 'às '.$sit['desde']->copy()->setTimezone($fuso)->format($sit['desde']->copy()->setTimezone($fuso)->isSameDay(now($fuso)) ? 'H:i' : 'd/m H:i').' · ' : '').'cl: '.($sit['cicloMedio'] !== null ? $sit['cicloMedio'].' s' : '—') }}</small>
               </div>
             @else
-              <div class="tl-estado estado-sem"><span class="tl-estado-titulo"><i class="tl-pulso" aria-hidden="true"></i>Sem informação</span></div>
+              <div class="tl-estado estado-sem"><span class="tl-estado-titulo" title="Sem informação"><i class="tl-pulso" aria-hidden="true"></i><span class="tl-estado-texto">Sem informação</span></span></div>
             @endif
             @if ($sit && ! empty($sit['chamado']))
               {{-- Máquina parada com SS/OS aberta pela legenda: número e situação no lugar da meta. --}}

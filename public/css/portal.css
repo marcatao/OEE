@@ -344,7 +344,9 @@ a.kpi:hover { border-color:var(--primaria); }
 .tl-estado { --estado:var(--suave); --estado-suave:var(--fundo); display:flex; flex-direction:column; justify-content:center; align-self:stretch; gap:.05rem; padding:.3rem .5rem;
   border-radius:8px; border:1px solid var(--estado); border-left-width:4px; background:var(--estado-suave); min-width:0; line-height:1.2; }
 .tl-estado small { font-size:.66rem; color:var(--suave); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.tl-estado-titulo { display:flex; align-items:center; gap:.35rem; font-weight:700; font-size:.72rem; color:var(--estado); text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+.tl-estado-titulo { display:flex; align-items:center; gap:.35rem; font-weight:700; font-size:.72rem; color:var(--estado); text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; min-width:0; }
+/* Texto longo (ex.: "Parada planejada") não sai do cartão: corta com reticências; o nome inteiro fica na dica */
+.tl-estado-texto { min-width:0; overflow:hidden; text-overflow:ellipsis; }
 .tl-pulso { width:.5rem; height:.5rem; border-radius:50%; background:var(--estado); flex-shrink:0; box-shadow:0 0 0 0 var(--estado); }
 .estado-produzindo { --estado:var(--ok); --estado-suave:var(--ok-suave); }
 .estado-parada { --estado:var(--erro); --estado-suave:var(--erro-suave); }
