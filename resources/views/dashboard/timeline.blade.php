@@ -96,6 +96,7 @@
 
   <p class="tl-avisos">
     <span id="tl-carregando" class="suave" hidden>Atualizando…</span>
+    <span id="tl-mensagem" class="aviso" hidden></span>
     <span id="tl-falha" class="erro" hidden>Não foi possível atualizar. Tentando de novo em instantes.</span>
   </p>
 
@@ -331,6 +332,9 @@
         .then(function (res) {
           if (!res.ok) { erroMotivo.textContent = (res.j.errors && res.j.errors.legenda_id) ? res.j.errors.legenda_id[0] : (res.j.message || 'Não foi possível gravar.'); erroMotivo.hidden = false; return; }
           dMotivo.close(); atualizar();
+          // SS automática da legenda escolhida: abriu ou por que não abriu.
+          var msg = document.getElementById('tl-mensagem');
+          if (res.j.mensagem) { msg.textContent = res.j.mensagem; msg.className = 'aviso ' + (res.j.mensagem.indexOf('NÃO') >= 0 ? 'alerta' : 'ok'); msg.hidden = false; }
         })
         .catch(function () { erroMotivo.textContent = 'Não foi possível gravar. Tente de novo.'; erroMotivo.hidden = false; });
     });

@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 /**
  * Apontamento de estado da máquina (timeline): de "inicio" até "fim" a máquina ficou na legenda informada.
@@ -39,6 +40,7 @@ class ApontamentoEstado extends Model
                 app(SsAutomatica::class)->aoApontar($ap);
             } catch (\Throwable $e) {
                 report($e);
+                SsAutomatica::registrar($ap->id, 'SS automática NÃO aberta por um erro ao gravar: '.Str::limit($e->getMessage(), 200));
             }
         });
     }

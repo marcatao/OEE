@@ -25,17 +25,47 @@ final class SsAutomatica
 {
     public const ENTRA_OID_IOT = 'sistema:iot';
 
+    /** Resultado da última tentativa por apontamento (nesta requisição), para a tela avisar o que aconteceu. */
+    private static array $resultados = [];
+
     public function __construct(private readonly FluxoOrdemServico $fluxo) {}
+
+    /** Mensagem para a tela sobre a SS automática deste apontamento (aberta ou por que não abriu); null = nada a dizer. */
+    public static function mensagem(?int $apontamentoId): ?string
+    {
+        return $apontamentoId !== null ? (self::$resultados[$apontamentoId] ?? null) : null;
+    }
+
+    public static function registrar(int $apontamentoId, string $mensagem): void
+    {
+        self::$resultados[$apontamentoId] = $mensagem;
+    }
 
     public function aoApontar(ApontamentoEstado $ap): ?SolicitacaoServico
     {
         $legenda = Legenda::withoutGlobalScopes()->find($ap->legenda_id);
-        $area = $legenda?->abreSsArea;
+        if (! $legenda || ! $legenda->abreSs()) {
+            return null; // legenda sem "Abre SS": nada a fazer nem a avisar
+        }
+        $area = $legenda->abreSsArea;
         $maquina = Maquina::withoutGlobalScopes()->find($ap->maquina_id);
-        if (! $legenda || ! $legenda->abreSs() || ! $area || ! $maquina) {
+        $nao = "SS automática da legenda {$legenda->codigo} NÃO aberta: ";
+        if (! $area || ! $area->ativo) {
+            self::registrar($ap->id, $nao.'a área executante escolhida na legenda não existe mais ou está inativa (Produção › Legendas).');
+
             return null;
         }
-        if (SolicitacaoServico::where('apontamento_estado_id', $ap->id)->exists() || $this->jaEmAberto($maquina->id, $area->id)) {
+        if (! $maquina) {
+            return null;
+        }
+        if ($existente = SolicitacaoServico::withoutGlobalScopes()->where('apontamento_estado_id', $ap->id)->first()) {
+            self::registrar($ap->id, $nao.'este apontamento já abriu a SS '.$existente->numeroFormatado().'.');
+
+            return null;
+        }
+        if ($emAberto = $this->jaEmAberto($maquina->id, $area->id)) {
+            self::registrar($ap->id, $nao."já existe {$emAberto} automática em aberto desta máquina para {$area->nome} (uma por vez).");
+
             return null;
         }
 
@@ -68,6 +98,7 @@ final class SsAutomatica
                 'origem_iot' => $porIot ? mb_substr($origem, 0, 120) : null,
             ]);
             $this->fluxo->registrar(null, $ss, 'aberta', null, 'pendente', "SS automática pela legenda {$legenda->codigo} ({$origem}).", $solicitante);
+            self::registrar($ap->id, 'SS automática '.$ss->numeroFormatado()." aberta para {$area->nome}.");
 
             return $ss;
         });
@@ -85,12 +116,18 @@ final class SsAutomatica
         return Usuario::firstOrCreate(['entra_oid' => self::ENTRA_OID_IOT], ['nome' => 'IoT (automático)', 'ativo' => false]);
     }
 
-    private function jaEmAberto(int $maquinaId, int $areaId): bool
+    /** SS automática pendente ou OS automática aberta da máquina e área: "a SS 000123" / "a OS 000045"; null = nenhuma. */
+    private function jaEmAberto(int $maquinaId, int $areaId): ?string
     {
-        return SolicitacaoServico::where('automatica', true)->where('status', 'pendente')
-            ->where('maquina_id', $maquinaId)->where('area_executante_id', $areaId)->exists()
-            || OrdemServico::where('automatica', true)->whereIn('status', OrdemServico::STATUS_ABERTOS)
-                ->where('maquina_id', $maquinaId)->where('area_executante_id', $areaId)->exists();
+        $ss = SolicitacaoServico::withoutGlobalScopes()->where('automatica', true)->where('status', 'pendente')
+            ->where('maquina_id', $maquinaId)->where('area_executante_id', $areaId)->first();
+        if ($ss) {
+            return 'a SS '.$ss->numeroFormatado();
+        }
+        $os = OrdemServico::withoutGlobalScopes()->where('automatica', true)->whereIn('status', OrdemServico::STATUS_ABERTOS)
+            ->where('maquina_id', $maquinaId)->where('area_executante_id', $areaId)->first();
+
+        return $os ? 'a OS '.$os->numeroFormatado() : null;
     }
 
     /** "IoT GW01 / chd1_value": do apontamento (Integrador MQTT) ou, sem isso, o 1º canal IoT da máquina. */

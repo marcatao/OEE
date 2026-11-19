@@ -159,4 +159,25 @@ class SsAutomaticaTest extends TestCase
         $this->assertTrue($os->risco_integridade);
         $this->get("/ordens-de-servico/ordens/{$os->id}")->assertSee('Risco à integridade');
     }
+
+    public function test_informar_motivo_na_timeline_abre_a_ss_da_legenda(): void
+    {
+        $this->quebra->forceFill(['abre_ss_unidade' => 'manutencao', 'abre_ss_area_executante_id' => $this->mecanica->id])->save();
+        $semMotivo = Legenda::create(['codigo' => '98', 'descricao' => 'Parada sem motivo', 'tipo' => 'parada', 'cor' => '#ff0000']);
+        $ap = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $semMotivo->id, 'inicio' => now()->subMinutes(5),
+            'observacao' => ApontamentoEstado::MARCA_IOT.' IoT']);
+        $this->assertSame(0, SolicitacaoServico::count());
+
+        $operador = $this->usuario(['operador', 'solicitante_manutencao', 'admin_producao'], 'operador@empresa.com');
+        $this->actingAs($operador)->postJson("/producao/apontamentos/{$ap->id}/informar-motivo", ['legenda_id' => $this->quebra->id])
+            ->assertOk()->assertJsonPath('mensagem', 'SS automática '.SolicitacaoServico::sole()->numeroFormatado().' aberta para Mecânica.');
+        $this->assertSame(1, SolicitacaoServico::count());
+
+        // Outra parada sem motivo na mesma máquina: com a SS automática ainda pendente, não abre outra e a tela diz por quê.
+        $ap2 = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $semMotivo->id, 'inicio' => now()->subMinute()]);
+        $this->postJson("/producao/apontamentos/{$ap2->id}/informar-motivo", ['legenda_id' => $this->quebra->id])->assertOk()
+            ->assertJsonPath('mensagem', 'SS automática da legenda 10 NÃO aberta: já existe a SS '.SolicitacaoServico::sole()->numeroFormatado()
+                .' automática em aberto desta máquina para Mecânica (uma por vez).');
+        $this->assertSame(1, SolicitacaoServico::count());
+    }
 }

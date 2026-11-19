@@ -9,6 +9,7 @@ use App\Models\OrdemProducao;
 use App\Providers\AppServiceProvider;
 use App\Services\CustoOrdemProducao;
 use App\Services\HorarioApontamento;
+use App\Services\Manutencao\SsAutomatica;
 use App\Services\MotivoParada;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
@@ -267,10 +268,10 @@ class ApontamentoEstadoController extends Controller
         if ($request->input('voltar') === 'timeline') {
             $dia = $apontamento->inicio?->copy()->setTimezone(config('oee.fuso_exibicao'))->format('Y-m-d');
 
-            return redirect()->route('timeline', array_filter(['data' => $dia]))->with('ok', $mensagem);
+            return redirect()->route('timeline', array_filter(['data' => $dia]))->with('ok', $mensagem)->with('ss_automatica', SsAutomatica::mensagem($apontamento->id));
         }
 
-        return redirect()->route('apontamentos.index')->with('ok', $mensagem);
+        return redirect()->route('apontamentos.index')->with('ok', $mensagem)->with('ss_automatica', SsAutomatica::mensagem($apontamento->id));
     }
 
     /**
@@ -327,6 +328,7 @@ class ApontamentoEstadoController extends Controller
         abort_unless(Maquina::whereKey($apontamento->maquina_id)->exists(), 404); // máquina de outra unidade
         $motivo->informar($apontamento->load('legenda', 'ordemProducao'), (int) $dados['legenda_id']);
 
-        return response()->json(['ok' => true]);
+        // SS automática da legenda escolhida: a tela mostra se abriu ou por que não abriu.
+        return response()->json(['ok' => true, 'mensagem' => SsAutomatica::mensagem($apontamento->id)]);
     }
 }
