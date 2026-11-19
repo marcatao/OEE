@@ -401,6 +401,7 @@ class OrdensProducaoTest extends TestCase
             ->assertSee('R$ 310,00')->assertSee('+19,5%')->assertSee('custo médio')
             ->assertSeeInOrder(['Custo Protheus', 'R$ 2,1500', 'Custo meta (mês passado)', 'R$ 2,0000', 'Custo simulado (OEE)', 'R$ 2,3900'])
             ->assertSee('R$ 239,00')                                                // baixas rateadas na produção (kardex)
+            ->assertSeeInOrder(['Produzido (apontamentos PR)', '100 UN', 'na OP do Protheus (C2_QUJE): 120'])  // soma das PR, não o C2_QUJE
             ->assertDontSee('R$ 999,00');                                          // estornado e excluído fora
         $this->get('/producao/ordens-de-producao/999999')->assertNotFound();
 

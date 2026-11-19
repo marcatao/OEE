@@ -51,8 +51,9 @@
         <td><span class="etiqueta op-{{ $op->status }}">{{ $op->rotuloStatus() }}</span>@if ($op->c2_tpop === 'P')<br><small class="suave">prevista</small>@endif</td>
         <td class="quebra"><code>{{ $op->c2_produto }}</code><br><small>{{ $produto?->descricao() ?? 'produto não sincronizado' }}</small></td>
         <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_quant) }} <small class="suave">{{ $op->c2_um ?: $produto?->b1_um }}</small></td>
-        <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_quje) }}
-          @if ($op->c2_quant > 0)<br><small class="suave">{{ number_format(min($op->c2_quje / $op->c2_quant, 9.99) * 100, 0, ',', '.') }}%</small>@endif</td>
+        @php($produzidoPr = $custos[$op->id]->producaoQtd)
+        <td class="num" title="Soma dos apontamentos de produção (PR); C2_QUJE no Protheus: {{ \App\Support\Formato::quantidade((float) $op->c2_quje) }}">{{ \App\Support\Formato::quantidade($produzidoPr) }}
+          @if ($op->c2_quant > 0)<br><small class="suave">{{ number_format(min($produzidoPr / $op->c2_quant, 9.99) * 100, 0, ',', '.') }}%</small>@endif</td>
         <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_perda) }}</td>
         <td class="num">{{ Formato::moeda($custos[$op->id]->custoSimulado(), 4) }} <small class="suave">/{{ $op->c2_um ?: 'un' }}</small>
           @if ($custos[$op->id]->pelaMedia > 0)<br><small class="suave" title="Consumos que o Protheus ainda não valorizou: usado o custo médio de estoque (SB2)">{{ $custos[$op->id]->pelaMedia }} pelo custo médio</small>@endif

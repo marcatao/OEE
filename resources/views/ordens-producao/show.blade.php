@@ -52,8 +52,10 @@
     <div class="abas-painel" role="tabpanel" data-painel="op">
       <dl class="op-ficha">
         <div><dt>Quantidade</dt><dd>{{ Formato::quantidade($op->c2_quant) }} {{ $op->c2_um }}</dd></div>
-        <div><dt>Produzido no Protheus</dt><dd>{{ Formato::quantidade($op->c2_quje) }} {{ $op->c2_um }}
-          @if ($op->c2_quant > 0)<small>{{ Formato::pct($op->c2_quje / $op->c2_quant) }}</small>@endif</dd></div>
+        {{-- Produzido = soma dos apontamentos de produção (PR) do kardex; o C2_QUJE da OP fica só de referência. --}}
+        <div title="Soma dos apontamentos de produção (PR) da OP no kardex"><dt>Produzido (apontamentos PR)</dt><dd>{{ Formato::quantidade($resumo->producaoQtd) }} {{ $op->c2_um }}
+          @if ($op->c2_quant > 0)<small>{{ Formato::pct($resumo->producaoQtd / $op->c2_quant) }}</small>@endif
+          @if (abs((float) $op->c2_quje - $resumo->producaoQtd) > 0.0001)<small>na OP do Protheus (C2_QUJE): {{ Formato::quantidade($op->c2_quje) }}</small>@endif</dd></div>
         <div><dt>Perda</dt><dd>{{ Formato::quantidade($op->c2_perda) }}</dd></div>
         <div><dt>Emissão</dt><dd>{{ OrdemProducao::data($op->c2_emissao) ?: '-' }}</dd></div>
         <div><dt>Previsão</dt><dd>{{ OrdemProducao::data($op->c2_datpri) ?: '-' }} a {{ OrdemProducao::data($op->c2_datprf) ?: '-' }}</dd></div>
