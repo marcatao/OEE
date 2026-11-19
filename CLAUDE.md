@@ -119,7 +119,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   intervalo inteiro: 01:00 = 24x, 23:59 = 1x ao dia). O comando `protheus:sincronizar-agendadas` roda a cada minuto
   (agendador do Laravel, em segundo plano); no servidor, a tarefa do Windows de `scripts/windows/instalar-agendador.ps1`
   roda `schedule:run` a cada minuto, e a tela mostra se o agendador está vivo (cache `agendador.sinal`).
-  SD3/SD2 são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
+  `movimentos_producao` (Apontamentos OP) usa `dbo.sp_sincronizar_movimentos_producao`, SEM parâmetros: lê a
+  `SD3010` do servidor vinculado `[ALUMBRAPRD].[CMT8F4_145045_PR_PD]` por OPENQUERY, só com OP (`D3_ORDEM`) e
+  `D3_EMISSAO` > último fechamento (`MAX(B9_DATA)` da `SB9010` não excluída), MERGE pelo R_E_C_N_O_, custo médio da
+  `SB2010`, e APAGA do portal os excluídos no Protheus e os do período aberto que sumiram (pedido do usuário).
+  SD2 (e a SD3 pelo PHP) são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
 - **Pedidos e solicitações de compra** (Ordens de serviço): o administrador da unidade gera um pedido de compra (SC7,
   MATA120) ou uma solicitação de compra (SC1, MATA110) — `pedidos_compra.tipo` = pedido | solicitacao, `ZP1_TIPO` = PC |

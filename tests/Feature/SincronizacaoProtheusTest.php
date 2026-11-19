@@ -236,6 +236,23 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertSame('php', $falso->via('produtos'));
     }
 
+    public function test_apontamentos_op_vao_pela_procedure_da_sd3010_no_periodo_aberto(): void
+    {
+        $this->assertSame('procedure', config('protheus.sincronizacoes.movimentos_producao.via'));
+        $this->assertSame('php', app(SincronizadorProtheus::class)->via('movimentos_producao')); // SQLite: pelo PHP
+        $this->assertSame('dbo.sp_sincronizar_movimentos_producao', config('protheus.sincronizacoes.movimentos_producao.procedure'));
+
+        $sql = file_get_contents(database_path('procedures/sp_sincronizar_movimentos_producao.sql'));
+        $this->assertMatchesRegularExpression('/ALTER PROCEDURE dbo\.sp_sincronizar_movimentos_producao\s+AS\s+BEGIN/', $sql);
+        // Origem no servidor vinculado; só o período aberto (depois do último fechamento da SB9); MERGE; apaga excluídos.
+        $this->assertStringContainsString('OPENQUERY(ALUMBRAPRD', $sql);
+        $this->assertStringContainsString('CMT8F4_145045_PR_PD.dbo.SD3010', $sql);
+        $this->assertStringContainsString('SELECT MAX(B9_DATA) AS ULTIMO FROM CMT8F4_145045_PR_PD.dbo.SB9010', $sql);
+        $this->assertStringContainsString("WHERE D3_EMISSAO > ''' + @fechamento", $sql);
+        $this->assertStringContainsString('MERGE dbo.movimentos_producao', $sql);
+        $this->assertStringContainsString("WHERE s.d_e_l_e_t_ = '*'", $sql);
+    }
+
     public function test_ordens_de_producao_vao_pela_procedure_so_no_sql_server(): void
     {
         $sincronizador = app(SincronizadorProtheus::class);

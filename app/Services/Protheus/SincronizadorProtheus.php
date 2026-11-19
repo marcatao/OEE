@@ -52,9 +52,13 @@ class SincronizadorProtheus
         return DB::select("EXEC {$procedure}")[0] ?? null;
     }
 
-    /** "Compras.CTT": banco e tabela de origem no Protheus. */
+    /** "Compras.CTT": banco e tabela de origem no Protheus (pela procedure, a que ela lê, se informada). */
     public function origem(string $chave): string
     {
+        if ($this->via($chave) === 'procedure' && ! empty($this->item($chave)['origem_procedure'])) {
+            return (string) $this->item($chave)['origem_procedure'];
+        }
+
         return config('database.connections.protheus.database').'.'.$this->item($chave)['tabela_origem'];
     }
 
@@ -114,8 +118,10 @@ class SincronizadorProtheus
         try {
             $tabela = $this->tabelaOrigem($item);
             $importador = app($item['importador']);
-            // Leitura incremental (SD3, SD2): começa no primeiro R_E_C_N_O_ que precisa ser relido.
-            $primeiro = $importador instanceof ImportadorEspelho ? $importador->primeiroRecno($tabela, $completa) : null;
+            // Leitura incremental (SD3, SD2): começa no primeiro R_E_C_N_O_ que precisa ser relido. Pela procedure, ela
+            // mesma escolhe o que ler.
+            $primeiro = $importador instanceof ImportadorEspelho && $this->via($chave) !== 'procedure'
+                ? $importador->primeiroRecno($tabela, $completa) : null;
             if ($primeiro !== null) {
                 $registro->update(['ultimo_recno' => $primeiro - 1]);
             }

@@ -114,7 +114,12 @@ return [
             'tabela_destino' => 'movimentos_producao',
             'importador' => ImportadorMovimentosProducao::class,
             'modo' => 'espelho',
-            'via' => 'php',
+            // Pela procedure: lê a SD3010 do servidor vinculado ALUMBRAPRD (banco CMT8F4_145045_PR_PD) só no período
+            // aberto do estoque (D3_EMISSAO > último B9_DATA da SB9010), com MERGE, e APAGA os excluídos no Protheus.
+            // "php" = pelo importador (testes em SQLite), lendo tabela_origem na conexão protheus.
+            'via' => env('PROTHEUS_VIA_SD3') ?: 'procedure',
+            'procedure' => 'dbo.sp_sincronizar_movimentos_producao',
+            'origem_procedure' => '[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SD3010]',
         ],
         // Itens de nota fiscal de saída (SD2) que citam uma OP.
         'notas_fiscais_op' => [

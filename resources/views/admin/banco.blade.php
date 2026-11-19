@@ -69,7 +69,8 @@
         <td><strong>{{ $item['descricao'] }}</strong>
           @if (($item['modo'] ?? 'espelho') === 'mista')<span class="etiqueta origem-mista">Mista</span>@endif
           <br><code class="suave">{{ $item['tabela_destino'] }}</code></td>
-        <td><code>{{ $conexaoProtheus['Banco'] ?? '' }}.{{ $item['tabela_origem'] }}</code></td>
+        <td>@if (($vias[$chave] ?? 'php') === 'procedure' && ! empty($item['origem_procedure']))<code>{{ $item['origem_procedure'] }}</code>
+          @else<code>{{ $conexaoProtheus['Banco'] ?? '' }}.{{ $item['tabela_origem'] }}</code>@endif</td>
         <td>
           @if (($vias[$chave] ?? 'php') === 'procedure')
             <span class="etiqueta">Procedure</span><br><code class="suave">{{ $item['procedure'] }}</code>
