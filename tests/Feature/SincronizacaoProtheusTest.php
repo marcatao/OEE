@@ -253,6 +253,21 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertStringContainsString("WHERE s.d_e_l_e_t_ = '*'", $sql);
     }
 
+    public function test_empenhos_op_vao_pela_procedure_da_sd4010_inteira(): void
+    {
+        $this->assertSame('procedure', config('protheus.sincronizacoes.empenhos_op.via'));
+        $this->assertSame('php', app(SincronizadorProtheus::class)->via('empenhos_op')); // SQLite: pelo PHP
+        $this->assertSame('dbo.sp_sincronizar_empenhos_op', config('protheus.sincronizacoes.empenhos_op.procedure'));
+
+        $sql = file_get_contents(database_path('procedures/sp_sincronizar_empenhos_op.sql'));
+        $this->assertMatchesRegularExpression('/ALTER PROCEDURE dbo\.sp_sincronizar_empenhos_op\s+AS\s+BEGIN/', $sql);
+        $this->assertStringContainsString('OPENQUERY(ALUMBRAPRD', $sql);
+        $this->assertStringContainsString('CMT8F4_145045_PR_PD.dbo.SD4010 WHERE LEN(D4_OP) > 0', $sql);
+        $this->assertStringNotContainsString('SB9010', $sql); // sem o corte do fechamento do estoque
+        $this->assertStringContainsString('MERGE dbo.empenhos_op', $sql);
+        $this->assertStringContainsString("WHERE s.d_e_l_e_t_ = '*'", $sql);
+    }
+
     public function test_ordens_de_producao_vao_pela_procedure_so_no_sql_server(): void
     {
         $sincronizador = app(SincronizadorProtheus::class);

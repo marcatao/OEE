@@ -56,7 +56,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `C2_DATRF` preenchido; vazio = aberta/andamento/parada). Toda sincronização atualiza qualquer campo da OP que mudou
   no Protheus e recalcula o status de TODAS as OPs, por lote (`StatusOrdemProducao::atualizarLote`, autorizado pelo
   usuário); recalcule também ao gravar/excluir apontamentos com OP. A tabela antiga `produtos` (Sistema OEE) não é a do Protheus.
-- `empenhos_op` é cópia da SD4 (`ImportadorEmpenhos`, por R_E_C_N_O_, lida inteira: o saldo D4_QUANT muda; tela
+- `empenhos_op` é cópia da SD4 (procedure `sp_sincronizar_empenhos_op`; PHP: `ImportadorEmpenhos`, por R_E_C_N_O_, lida inteira: o saldo D4_QUANT muda; tela
   Produção › Empenhos OP, permissão `empenhos_op`). A tela da OP é em ABAS (componente `[data-abas]` de
   `componentes.js`, aba no endereço `#aba-x`): OP (dados + custo), Apontamentos reais, Kardex, Empenhos, Estrutura,
   Roteiro e Ferramenta (cavidades ativas editáveis pelos administradores, volta para a OP), pelos relacionamentos do Protheus em `App\Services\EngenhariaOrdemProducao` (D4_OP = número da OP;
@@ -123,6 +123,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `SD3010` do servidor vinculado `[ALUMBRAPRD].[CMT8F4_145045_PR_PD]` por OPENQUERY, só com OP (`D3_ORDEM`) e
   `D3_EMISSAO` > último fechamento (`MAX(B9_DATA)` da `SB9010` não excluída), MERGE pelo R_E_C_N_O_, custo médio da
   `SB2010`, e APAGA do portal os excluídos no Protheus e os do período aberto que sumiram (pedido do usuário).
+  `empenhos_op` usa `dbo.sp_sincronizar_empenhos_op`, SEM parâmetros: a `SD4010` INTEIRA do mesmo servidor vinculado
+  (só com `D4_OP`), sem o corte da SB9, MERGE pelo R_E_C_N_O_, apagando os excluídos e os que sumiram (para com erro
+  se a leitura vier vazia e o portal tiver empenhos).
   SD2 (e a SD3 pelo PHP) são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
 - **Pedidos e solicitações de compra** (Ordens de serviço): o administrador da unidade gera um pedido de compra (SC7,

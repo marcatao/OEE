@@ -94,7 +94,11 @@ return [
             'tabela_destino' => 'empenhos_op',
             'importador' => ImportadorEmpenhos::class,
             'modo' => 'espelho',
-            'via' => 'php',
+            // Pela procedure: lê a SD4010 INTEIRA do servidor vinculado ALUMBRAPRD (banco CMT8F4_145045_PR_PD), só com OP,
+            // com MERGE, e APAGA os excluídos no Protheus. "php" = pelo importador (testes em SQLite).
+            'via' => env('PROTHEUS_VIA_SD4') ?: 'procedure',
+            'procedure' => 'dbo.sp_sincronizar_empenhos_op',
+            'origem_procedure' => '[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SD4010]',
         ],
         // Falta de produtos (ZB5, tabela customizada): produtos que estão faltando ser produzidos (Produção › Falta de
         // produtos). Pela procedure (MERGE da ZB5 inteira, pelo R_E_C_N_O_); "php" = pelo importador.
