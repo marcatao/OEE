@@ -10,7 +10,7 @@
   <p class="trilha">Produção</p>
   <h1>Estruturas de produto</h1>
   <p class="suave">Lista de materiais do Protheus (tabela SG1), só para consulta: os componentes de cada produto e a quantidade por unidade.
-    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizadas. @endif
+    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizadas. @endif @include('partials.proxima-sincronizacao', ['chave' => 'estruturas'])
     Clique num componente marcado com <em>estrutura</em> para ver o nível seguinte.</p>
 
   <form method="get" class="filtros">

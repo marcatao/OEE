@@ -11,7 +11,7 @@
   <p class="suave">Ferramentas do Protheus (tabela SH4). Código, descrição, quantidade, vida útil e <strong>cavidades</strong> vêm do Protheus
     a cada sincronização. As <strong>cavidades ativas</strong> são do portal: começam iguais às cavidades e podem ser ajustadas aqui
     (nunca mais que as cavidades); a sincronização não muda esse valor.
-    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizadas. @endif</p>
+    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizadas. @endif @include('partials.proxima-sincronizacao', ['chave' => 'ferramentas'])</p>
 
   <form method="get" class="filtros">
     <label>Buscar <input name="busca" value="{{ $busca }}" placeholder="Código ou descrição da ferramenta"></label>

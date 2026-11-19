@@ -12,7 +12,7 @@
   <p class="suave">Movimentos do Protheus ligados a uma OP, só para consulta: produções e baixas/consumos da SD3 (sem os excluídos e
     os estornados) e itens de nota fiscal da SD2 que citam a OP. O valor é o custo do movimento (D3_CUSTO1 / D2_CUSTO1) ou, enquanto o
     Protheus não o valorizou, quantidade × custo médio de estoque (SB2).
-    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizados. @endif</p>
+    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizados. @endif @include('partials.proxima-sincronizacao', ['chave' => 'movimentos_producao'])</p>
 
   <div class="op-totais">
     @foreach ($tipos->tipos() as $chave => $rotulo)

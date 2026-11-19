@@ -10,7 +10,7 @@
   <h1>Roteiros de operação</h1>
   <p class="suave">Operações de fabricação de cada produto no Protheus (tabela SG2), só para consulta: centro de trabalho (máquina),
     recurso, ferramenta e tempos.
-    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizados. @endif</p>
+    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizados. @endif @include('partials.proxima-sincronizacao', ['chave' => 'roteiros'])</p>
 
   <form method="get" class="filtros">
     <label>Buscar <input name="busca" value="{{ $busca }}" placeholder="Produto, descrição, operação, centro de trabalho, recurso ou ferramenta"></label>

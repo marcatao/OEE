@@ -17,7 +17,7 @@
   </div>
   <p class="suave">Produtos que estão faltando ser produzidos (ZB5 do Protheus), com a situação da produção de cada um: OP aberta,
     máquina com a OP e apontamento real produzindo.
-    @if ($ultimaSincronizacao)<small>Sincronizado com o Protheus em @dataHora($ultimaSincronizacao).</small>@endif</p>
+    <small>@if ($ultimaSincronizacao)Sincronizado com o Protheus em @dataHora($ultimaSincronizacao). @endif @include('partials.proxima-sincronizacao', ['chave' => 'faltas_produto'])</small></p>
 
   <div class="falta-legendas" aria-label="Legendas">
     @foreach ($statusOpcoes as $s)

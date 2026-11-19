@@ -11,7 +11,7 @@
   <h1>Empenhos OP</h1>
   <p class="suave">Materiais reservados para cada ordem de produção no Protheus (tabela SD4), só para consulta. Empenhado = quantidade
     original; saldo = o que ainda falta baixar (cai conforme as baixas da OP).
-    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizados. @endif</p>
+    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizados. @endif @include('partials.proxima-sincronizacao', ['chave' => 'empenhos_op'])</p>
 
   <form method="get" class="filtros">
     <label>Buscar <input name="busca" value="{{ $busca }}" placeholder="OP, componente, descrição ou lote"></label>

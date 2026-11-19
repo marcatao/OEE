@@ -78,6 +78,14 @@ class AgendaSincronizacoes
         return $proximo;
     }
 
+    /** Próxima sincronização automática da tabela (agenda ligada); null = agenda desligada ou inexistente. */
+    public static function proximaDe(string $chave): ?CarbonImmutable
+    {
+        $agenda = AgendaSincronizacao::where('chave', $chave)->where('ativo', true)->first();
+
+        return $agenda ? app(self::class)->proximoHorario($agenda) : null;
+    }
+
     /** "24x ao dia: 00:00, 01:00, 02:00 … 23:00" / "1x ao dia, às 00:00". */
     public static function descrever(AgendaSincronizacao $agenda): string
     {

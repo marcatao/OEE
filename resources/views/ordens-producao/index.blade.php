@@ -10,7 +10,7 @@
   <p class="trilha">Produção</p>
   <h1>Ordens de produção</h1>
   <p class="suave">OPs do Protheus (tabela SC2), só para consulta.
-    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizadas. @endif
+    @if ($ultimaSincronizacao) Última sincronização: @dataHora($ultimaSincronizacao). @else Ainda não sincronizadas. @endif @include('partials.proxima-sincronizacao', ['chave' => 'ordens_producao'])
     O <strong>status</strong> é calculado pelo portal: <em>fechada</em> (com data de encerramento, C2_DATRF, no Protheus), <em>parada</em> (suspensa no
     Protheus ou com apontamento de parada em aberto), <em>andamento</em> (com produção ou apontamentos) ou <em>aberta</em>.
     <strong>Custo unit. atual</strong> = custo de <strong>1 peça</strong> nesta OP: consumos da OP (baixas da SD3 + notas com OP da SD2 −
