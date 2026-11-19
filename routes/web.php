@@ -18,6 +18,7 @@ use App\Http\Controllers\Cadastros\UsuarioController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpenhoOpController;
 use App\Http\Controllers\EstruturaProdutoController;
+use App\Http\Controllers\FaltaProdutoController;
 use App\Http\Controllers\FerramentaController;
 use App\Http\Controllers\Manutencao\ApontamentoHorasController;
 use App\Http\Controllers\Manutencao\CadastroManutencaoController;
@@ -88,6 +89,12 @@ Route::middleware('auth')->group(function () {
         ->middleware('permissao:apontamentos_producao')->name('apontamentos-producao.index');
     Route::get('producao/empenhos-op', [EmpenhoOpController::class, 'index'])
         ->middleware('permissao:empenhos_op')->name('empenhos-op.index');
+    // Falta de produtos (ZB5): lista cruzada com a produção, painéis e filtros salvos.
+    Route::middleware('permissao:falta_produtos')->prefix('producao/falta-de-produtos')->name('falta-produtos.')->group(function () {
+        Route::get('/', [FaltaProdutoController::class, 'index'])->name('index');
+        Route::post('filtros', [FaltaProdutoController::class, 'salvarFiltro'])->name('filtros.salvar');
+        Route::delete('filtros/{filtro}', [FaltaProdutoController::class, 'excluirFiltro'])->name('filtros.excluir');
+    });
     // Estruturas (SG1) e roteiros (SG2): consulta. Ferramentas (SH4): consulta; administradores editam cavidades ativas.
     Route::get('producao/estruturas', [EstruturaProdutoController::class, 'index'])
         ->middleware('permissao:estruturas')->name('estruturas.index');

@@ -62,6 +62,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Roteiro e Ferramenta (cavidades ativas editáveis pelos administradores, volta para a OP), pelos relacionamentos do Protheus em `App\Services\EngenhariaOrdemProducao` (D4_OP = número da OP;
   SG1 por C2_PRODUTO vigente hoje e C2_REVISAO; SG2 por C2_PRODUTO + C2_ROTEIRO, em branco = "01"; G2_CTRAB = máquina;
   G2_FERRAM = SH4; SG1/SG2/SH4 na filial da OP ou em branco). `ordens_producao.c2_roteiro|c2_revisao` vêm da SC2.
+- **Falta de produtos** (Produção › Falta de produtos, permissão `falta_produtos`): `faltas_produto` é cópia da ZB5
+  (tabela customizada, só campos REAIS; `ZB5_DESCPR`/`ZB5_NOME` são virtuais), por `dbo.sp_sincronizar_faltas_produto`
+  (MERGE da `Compras.dbo.ZB5` inteira pelo R_E_C_N_O_; PHP: `ImportadorFaltasProduto`); `solicitado_em`/`atendido_em` =
+  data + hora do Protheus (Brasília) em UTC. Legendas `FaltaProduto::STATUS` (P pendente, A parcial, C concluída,
+  D cancelada). `App\Services\FaltaProdutos\FaltaProdutos` cruza com a produção: em produção (apontamento real em
+  aberto "produzindo" com OP do produto) > direcionada (OP atual de máquina) > com OP > sem OP. Filtro
+  `FiltroFaltaProdutos` (padrão: P + A, sem limite de data; salvos em `filtros_usuarios`, tela `falta_produtos`).
 - `estruturas_produto` (SG1) e `roteiros_operacao` (SG2) são cópias (só consulta). `ferramentas` (SH4) é **mista**:
   campos `h4_*` vêm do Protheus a cada sincronização; `h4_qtdcavativas` (nasce = `h4_qtdcav`, nunca maior, editável
   pelos administradores) e `unidade` são do portal e a sincronização NÃO os sobrepõe (`ImportadorFerramentas`).

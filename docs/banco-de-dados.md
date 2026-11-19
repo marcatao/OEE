@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **57** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **58** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -165,6 +165,28 @@ erDiagram
         nvarchar(3) g1_revfim
         nchar(1) d_e_l_e_t_
         int r_e_c_n_o_
+        datetime sincronizado_em
+    }
+    faltas_produto {
+        bigint id PK
+        nvarchar(6) zb5_filial
+        nvarchar(10) zb5_doc
+        nvarchar(16) zb5_produt
+        float(53) zb5_qtdsol
+        float(53) zb5_qtdate
+        nvarchar(6) zb5_pedido
+        float(53) zb5_vlped
+        nvarchar(19) zb5_solici
+        nchar(8) zb5_dtsoli
+        nvarchar(8) zb5_horini
+        nchar(8) zb5_dtaten
+        nvarchar(8) zb5_horfim
+        nvarchar(19) zb5_atendi
+        nchar(1) zb5_status
+        datetime solicitado_em
+        datetime atendido_em
+        nchar(1) d_e_l_e_t_
+        int r_e_c_n_o_ UK
         datetime sincronizado_em
     }
     ferramentas {
@@ -1024,6 +1046,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`empenhos_op`](#empenhos_op) | Protheus | `id` | 15 | 0 |
 | [`estruturas_produto`](#estruturas_produto) | Protheus | `id` | 15 | 0 |
 | [`failed_jobs`](#failed_jobs) | Infra | `id` | 7 | 0 |
+| [`faltas_produto`](#faltas_produto) | Protheus | `id` | 20 | 0 |
 | [`ferramentas`](#ferramentas) | Mista | `id` | 17 | 2 |
 | [`filtros_usuarios`](#filtros_usuarios) | Sistema | `id` | 8 | 1 |
 | [`grupo_permissoes`](#grupo_permissoes) | Sistema | `grupo_id, permissao` | 2 | 1 |
@@ -1348,6 +1371,35 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `failed_at` | `datetime` | não | `CURRENT_TIMESTAMP` |  |
 
 **Índices:** `failed_jobs_uuid_unique` único (uuid) · `failed_jobs_connection_queue_failed_at_index` (connection, queue, failed_at)
+
+### faltas_produto
+
+**Origem:** Protheus — sincronizada de `Compras.ZB5` · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `zb5_filial` | `nvarchar(6)` | não | `''` |  |
+| `zb5_doc` | `nvarchar(10)` | não | `''` |  |
+| `zb5_produt` | `nvarchar(16)` | não | `''` |  |
+| `zb5_qtdsol` | `float(53)` | não | `'0'` |  |
+| `zb5_qtdate` | `float(53)` | não | `'0'` |  |
+| `zb5_pedido` | `nvarchar(6)` | não | `''` |  |
+| `zb5_vlped` | `float(53)` | não | `'0'` |  |
+| `zb5_solici` | `nvarchar(19)` | não | `''` |  |
+| `zb5_dtsoli` | `nchar(8)` | não | `''` |  |
+| `zb5_horini` | `nvarchar(8)` | não | `''` |  |
+| `zb5_dtaten` | `nchar(8)` | não | `''` |  |
+| `zb5_horfim` | `nvarchar(8)` | não | `''` |  |
+| `zb5_atendi` | `nvarchar(19)` | não | `''` |  |
+| `zb5_status` | `nchar(1)` | não | `'P'` |  |
+| `solicitado_em` | `datetime` | sim |  |  |
+| `atendido_em` | `datetime` | sim |  |  |
+| `d_e_l_e_t_` | `nchar(1)` | não | `' '` |  |
+| `r_e_c_n_o_` | `int` | não |  |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `faltas_produto_r_e_c_n_o__unique` único (r_e_c_n_o_) · `faltas_produto_zb5_produt_index` (zb5_produt) · `faltas_produto_zb5_status_solicitado_em_index` (zb5_status, solicitado_em) · `faltas_produto_atendido_em_index` (atendido_em)
 
 ### ferramentas
 

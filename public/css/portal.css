@@ -12,6 +12,8 @@
   --tl-texto-claro:#ffffff; --tl-texto-escuro:#1b2a21; --tl-vazio:#eef2ef; --tl-separador:rgba(255,255,255,.55); --tl-agora:#c62828;
   --grafico-1:#008650; --grafico-2:#1d5fa8; --grafico-3:#d97706; --grafico-4:#7c3aed; --grafico-5:#0f766e; --grafico-6:#be123c; /* séries dos gráficos do assistente */
   --tempo-atendimento:#008650; --tempo-reparo:#1d5fa8; /* gráfico de tempos do painel de OS (validado) */
+  --falta-verde:#067647; --falta-amarelo:#a15c07; --falta-vermelho:#b42318; --falta-preto:#1f2a24; /* legendas da ZB5 (falta de produtos) */
+  --falta-faltantes:#d97706; --falta-atendidas:#008650; /* gráfico faltantes × atendidas */
   --largura-menu:clamp(14.5rem, 13vw, 16.5rem); --largura-menu-recolhido:4.25rem; --altura-topo:3.75rem;
 }
 @media (prefers-color-scheme: dark) {
@@ -27,6 +29,8 @@
     --tl-vazio:#1c2721; --tl-separador:rgba(0,0,0,.35); --tl-agora:#ff6b6b;
     --grafico-1:#3fbf82; --grafico-2:#7cb2ee; --grafico-3:#fbbf24; --grafico-4:#b794f6; --grafico-5:#5fd4c4; --grafico-6:#fb7185;
     --tempo-atendimento:#2fa86f; --tempo-reparo:#5a95d6;
+    --falta-verde:#47cd89; --falta-amarelo:#fbbf24; --falta-vermelho:#f97066; --falta-preto:#c9d4cd;
+    --falta-faltantes:#fbbf24; --falta-atendidas:#3fbf82;
   }
 }
 
@@ -1191,3 +1195,37 @@ a.kpi:hover { border-color:var(--primaria); transform:translateY(-1px); }
 .painel-kpis .kpi:has(.kpi-icone.alerta) { border-color:var(--alerta); }
 .painel-kpis .kpi:has(.kpi-icone.alerta)::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--alerta); }
 .painel-outras td { border-top:2px solid var(--borda-forte); font-weight:600; }
+
+/* ---------- Produção › Falta de produtos ---------- */
+.falta-verde { color:var(--falta-verde); }
+.falta-amarelo { color:var(--falta-amarelo); }
+.falta-vermelho { color:var(--falta-vermelho); }
+.falta-preto { color:var(--falta-preto); }
+.falta-bola { display:inline-block; width:.7rem; height:.7rem; border-radius:50%; background:currentColor; flex-shrink:0; }
+.falta-status { display:inline-flex; align-items:center; gap:.4rem; font-weight:600; white-space:nowrap; }
+.falta-legendas { display:flex; flex-wrap:wrap; gap:.4rem 1.25rem; margin:.25rem 0 .75rem; font-size:.85rem; }
+.falta-legendas span { display:inline-flex; align-items:center; gap:.4rem; }
+.falta-cartoes { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 11.5rem), 1fr)); gap:.75rem; margin:.75rem 0 1rem; }
+.falta-cartoes .tempo-cartao strong { font-size:1.35rem; }
+.falta-cartoes a.tempo-cartao { color:inherit; text-decoration:none; }
+.falta-cartoes .falta-producao { align-self:flex-start; }
+.falta-cartoes a.tempo-cartao:hover { border-color:var(--primaria); }
+.falta-cartoes a.tempo-cartao.ativo { border-color:var(--primaria); background:var(--primaria-suave); }
+.falta-paineis { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap:1rem; align-items:start; }
+.falta-paineis > .cartao { margin-top:0; }
+.falta-barras { list-style:none; margin:0; padding:0; display:grid; gap:.45rem; }
+.falta-barras li { display:grid; grid-template-columns:minmax(6rem, 40%) 1fr auto; gap:.6rem; align-items:center; font-size:.88rem; }
+.falta-barras .trilha { height:.7rem; border-radius:999px; background:var(--trilha-medidor); overflow:hidden; }
+.falta-barras .trilha i { display:block; height:100%; border-radius:999px; background:var(--primaria); }
+.falta-barras .rotulo { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.falta-producao { display:inline-flex; align-items:center; gap:.35rem; font-size:.8rem; font-weight:600; padding:.05rem .55rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.falta-producao.em_producao { color:var(--ok); background:var(--ok-suave); }
+.falta-producao.direcionada { color:var(--protheus); background:var(--protheus-suave); }
+.falta-producao.com_op { color:var(--alerta); background:var(--alerta-suave); }
+.falta-producao.sem_op { color:var(--erro); background:var(--erro-suave); }
+.falta-producao.encerrada { color:var(--suave); }
+.falta-detalhe { font-size:.8rem; color:var(--suave); display:block; margin-top:.15rem; }
+.grafico-tempos .g-faltantes { fill:var(--falta-faltantes); }
+.grafico-tempos .g-atendidas { fill:var(--falta-atendidas); }
+.leg-faltantes { background:var(--falta-faltantes); }
+.leg-atendidas { background:var(--falta-atendidas); }

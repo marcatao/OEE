@@ -3,6 +3,7 @@
 use App\Services\ImportadorCentrosCusto;
 use App\Services\Protheus\ImportadorEmpenhos;
 use App\Services\Protheus\ImportadorEstruturas;
+use App\Services\Protheus\ImportadorFaltasProduto;
 use App\Services\Protheus\ImportadorFerramentas;
 use App\Services\Protheus\ImportadorMaquinas;
 use App\Services\Protheus\ImportadorMovimentosProducao;
@@ -94,6 +95,17 @@ return [
             'importador' => ImportadorEmpenhos::class,
             'modo' => 'espelho',
             'via' => 'php',
+        ],
+        // Falta de produtos (ZB5, tabela customizada): produtos que estão faltando ser produzidos (Produção › Falta de
+        // produtos). Pela procedure (MERGE da ZB5 inteira, pelo R_E_C_N_O_); "php" = pelo importador.
+        'faltas_produto' => [
+            'descricao' => 'Falta de produtos',
+            'tabela_origem' => 'ZB5', // a procedure lê sempre Compras.dbo.ZB5
+            'tabela_destino' => 'faltas_produto',
+            'importador' => ImportadorFaltasProduto::class,
+            'modo' => 'espelho',
+            'via' => env('PROTHEUS_VIA_ZB5') ?: 'procedure',
+            'procedure' => 'dbo.sp_sincronizar_faltas_produto',
         ],
         // Movimentos internos (SD3) que têm OP: produções e consumos (baixas) das ordens de produção.
         'movimentos_producao' => [
