@@ -141,12 +141,19 @@ class CustoOrdemProducao
         return ['linhas' => $linhas, 'resumo' => $resumo, 'componentes' => $componentes, 'produtos' => $this->produtos($codigos)];
     }
 
-    /** Descrição dos produtos (SB1) pelos códigos. @return Collection<string, ProdutoProtheus> */
+    /**
+     * Descrição dos produtos (SB1) pelos códigos. @return Collection<string, ProdutoProtheus>
+     *
+     * Cuidado: código só com números ("2733") vira chave INTEIRA no PHP, e merge() renumera chaves inteiras (0, 1, 2...)
+     * — o produto sumia da busca pelo código. Por isso cada um é guardado com put().
+     */
     public function produtos(iterable $codigos): Collection
     {
         $produtos = collect();
         foreach (collect($codigos)->map(fn ($c) => rtrim((string) $c))->filter()->unique()->chunk(1000) as $bloco) {
-            $produtos = $produtos->merge(ProdutoProtheus::whereIn('b1_cod', $bloco->values()->all())->get()->keyBy(fn ($p) => $p->codigo()));
+            foreach (ProdutoProtheus::whereIn('b1_cod', $bloco->values()->all())->get() as $p) {
+                $produtos->put($p->codigo(), $p);
+            }
         }
 
         return $produtos;

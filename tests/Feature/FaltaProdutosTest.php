@@ -10,7 +10,9 @@ use App\Models\Linha;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\Planta;
+use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
+use App\Services\CustoOrdemProducao;
 use App\Services\FaltaProdutos\FaltaProdutos;
 use App\Services\FaltaProdutos\FiltroFaltaProdutos;
 use App\Services\Protheus\ImportadorFaltasProduto;
@@ -168,6 +170,24 @@ class FaltaProdutosTest extends TestCase
         $this->get('/producao/falta-de-produtos')->assertOk()->assertSee('0000000005')->assertDontSee('0000000001');
         $this->delete('/producao/falta-de-produtos/filtros/'.FiltroUsuario::sole()->id)->assertRedirect();
         $this->assertSame(0, FiltroUsuario::count());
+    }
+
+    public function test_produto_com_codigo_so_de_numeros_mostra_a_descricao(): void
+    {
+        // Códigos só com números viram chave inteira no PHP: a busca pelo código tem de achar todos, em qualquer lote.
+        foreach (['2733' => 'PLUGUE 2P+T 20A', '85016' => 'INTER. BIPOLAR 25A', 'PA001' => 'TAMPA'] as $cod => $desc) {
+            ProdutoProtheus::create(['b1_filial' => '0101', 'b1_cod' => $cod, 'b1_desc' => $desc]);
+        }
+        $produtos = app(CustoOrdemProducao::class)->produtos(['2733', '85016   ', 'PA001', '9999']);
+        $this->assertSame('PLUGUE 2P+T 20A', $produtos['2733']->descricao());
+        $this->assertSame('INTER. BIPOLAR 25A', $produtos['85016']->descricao());
+        $this->assertSame('TAMPA', $produtos['PA001']->descricao());
+        $this->assertCount(3, $produtos);
+
+        DB::connection('protheus')->table('ZB5')->where('R_E_C_N_O_', 4)->update(['ZB5_PRODUT' => '85016          ']);
+        app(SincronizadorProtheus::class)->sincronizar('faltas_produto', 'comando');
+        $this->actingAs($this->admin())->get('/producao/falta-de-produtos')->assertOk()
+            ->assertSee('INTER. BIPOLAR 25A')->assertSee('TAMPA');
     }
 
     public function test_falta_de_produtos_vai_pela_procedure_no_sql_server(): void
