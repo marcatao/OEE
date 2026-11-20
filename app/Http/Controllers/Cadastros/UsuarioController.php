@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Cadastros;
 use App\Http\Controllers\Controller;
 use App\Models\Grupo;
 use App\Models\Usuario;
+use App\Services\ImportadorUsuariosEntra;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 /**
  * Segurança > Usuários. Os usuários são criados pelo primeiro login no Entra ID; aqui o Administrador de Tecnologia
@@ -30,6 +33,7 @@ class UsuarioController extends Controller
                 ->orWhere('departamento', 'like', "%{$busca}%")
                 ->orWhere('usuario_protheus', 'like', "%{$busca}%")
                 ->orWhere('id_protheus', 'like', "%{$busca}%")))
+            ->when(in_array($request->query('situacao'), ['ativo', 'bloqueado'], true), fn ($q) => $q->where('ativo', $request->query('situacao') === 'ativo'))
             ->when($perfil === 'sem_acesso', fn ($q) => $q->where('perfil', 'sem_acesso'))
             ->when(array_key_exists((string) $perfil, Usuario::perfisDisponiveis()), fn ($q) => $q->where(fn ($w) => $w
                 ->whereExists(fn ($e) => $e->from('usuario_perfis')->whereColumn('usuario_perfis.usuario_id', 'usuarios.id')->where('perfil', $perfil))
@@ -46,6 +50,20 @@ class UsuarioController extends Controller
             'perfis' => ['sem_acesso' => 'Sem acesso'] + array_map(fn ($p) => $p['rotulo'], Usuario::perfisDisponiveis()),
             'pendentes' => Usuario::where('perfil', 'sem_acesso')->where('ativo', true)->count(),
         ]);
+    }
+
+    /** Botão "Importar do Entra ID": cadastra as contas novas já bloqueadas (ImportadorUsuariosEntra). */
+    public function importarEntra(ImportadorUsuariosEntra $importador): RedirectResponse
+    {
+        try {
+            $r = $importador->importar();
+        } catch (Throwable $e) {
+            Log::warning('Importação de usuários do Entra ID falhou', ['erro' => $e->getMessage()]);
+
+            return back()->with('erro', 'Não foi possível importar do Entra ID: '.$e->getMessage());
+        }
+
+        return back()->with('ok', "Entra ID: {$r['criados']} conta(s) nova(s) cadastrada(s) bloqueada(s); {$r['existentes']} já existiam; {$r['ignorados']} ignorada(s) (convidados, desabilitadas ou sem e-mail).");
     }
 
     public function edit(Usuario $usuario): View

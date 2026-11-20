@@ -7,7 +7,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 
 - O **Entra ID só autentica** a entrada (`app/Services/EntraId.php`). O usuário é cadastrado no banco no primeiro
   login (`usuarios`, chave `entra_oid`, nunca o e-mail) e nasce **sem acesso** (sem perfil não vê nada: tela "Sem perfil cadastrado", `unidadesVisiveis()` = []); só os e-mails de `config('oee.admins')`
-  (padrão `marcato@alumbra.com.br`) nascem `admin`. Todo login vai para `registros_login`.
+  (padrão `marcato@alumbra.com.br`) nascem `admin`. Todo login vai para `registros_login`. Importação de todas as contas do Entra ID
+  (`App\Services\ImportadorUsuariosEntra`, botão em Segurança › Usuários e `usuarios:importar-entra` diário; permissão de
+  APLICATIVO `User.Read.All`): só membros habilitados, novos nascem INATIVOS (bloqueados) e sem perfil; nunca altera quem existe.
 - Três áreas (unidades): **Manutenção** (produção), **Tecnologia** e **Ferramentaria**. Acesso por **perfis** (vários
   por usuário, tabela `usuario_perfis`, definição em `config('oee.perfis_acesso')`: operador; solicitante, mantenedor e
   administrador de cada área — `solicitante_manutencao|tecnologia|ferramentaria`, `mantenedor_producao|tecnologia|
@@ -36,7 +38,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Telas em Blade com `layouts.portal` e o CSS de `public/css/portal.css`. Sem etapa de build com Node.
   Listas longas (centro de custo, máquina, usuário, mantenedor): use `<select data-busca>` (lista com busca) e, para
   marcar vários, o partial `partials.escolha-multipla` (abre/fecha, com busca) — ambos em `public/js/componentes.js`.
-- Toda rota interna fica no grupo `auth`. Página nova: registre a chave em `config/oee.php` (`permissoes`), proteja a
+- Toda rota interna fica no grupo `auth`. `tests/Feature/AcessoDiretoRotasTest.php` tenta TODAS as rotas sem a permissão (rota
+  só com login precisa estar justificada em `SO_LOGIN`). Página nova: registre a chave em `config/oee.php` (`permissoes`), proteja a
   rota com `->middleware('permissao:chave')` e inclua o link no menu lateral (`layouts/portal.blade.php`) dentro de
   `@if ($u->pode('chave'))`. Páginas só de admin usam `->middleware('perfil:admin')`.
 - **Dados existentes são intocáveis**: migrações NUNCA apagam nem alteram registros (nada de `DELETE`, `UPDATE`,

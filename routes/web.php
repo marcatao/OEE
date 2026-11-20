@@ -227,6 +227,7 @@ Route::middleware('auth')->group(function () {
     // As URLs antigas ("cadastros/logins" e "admin/banco") foram mantidas.
     Route::middleware('perfil:admin_tecnologia')->prefix('cadastros/logins')->name('cadastros.')->group(function () {
         Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios.index');
+        Route::post('usuarios/importar-entra', [UsuarioController::class, 'importarEntra'])->name('usuarios.importar-entra');
         Route::get('usuarios/{usuario}/editar', [UsuarioController::class, 'edit'])->name('usuarios.edit');
         Route::put('usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
 

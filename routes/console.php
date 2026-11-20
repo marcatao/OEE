@@ -4,6 +4,7 @@ use App\Models\ApontamentoEstado;
 use App\Models\Compras\PedidoCompra;
 use App\Models\Usuario;
 use App\Services\Compras\PedidoCompraMuro;
+use App\Services\ImportadorUsuariosEntra;
 use App\Services\InfoBanco;
 use App\Services\Manutencao\GeradorPreventivas;
 use App\Services\MaquinasSemIot;
@@ -160,6 +161,13 @@ Artisan::command('os:gerar-preventivas', function (GeradorPreventivas $gerador) 
     $this->info(count($criadas).' OS preventiva(s) gerada(s).');
 })->purpose('Gera as OS preventivas programadas nos planos de preventiva (PAMP)');
 Schedule::command('os:gerar-preventivas')->dailyAt('05:10')->withoutOverlapping();
+
+// Cadastra as contas novas do Entra ID já BLOQUEADAS (inativas, sem perfil); quem já existe não muda.
+Artisan::command('usuarios:importar-entra', function (ImportadorUsuariosEntra $importador) {
+    $r = $importador->importar();
+    $this->info("Entra ID: {$r['lidos']} contas lidas, {$r['criados']} cadastradas bloqueadas, {$r['existentes']} já existiam, {$r['ignorados']} ignoradas.");
+})->purpose('Cadastra todas as contas do Entra ID que ainda não estão no portal, bloqueadas até a liberação');
+Schedule::command('usuarios:importar-entra')->dailyAt('04:47')->withoutOverlapping()->runInBackground();
 
 // Preenche a situação (produzindo | parada) e a OP atual das máquinas pelo apontamento real mais recente de cada uma.
 // Opcional e só quando pedido: mexe em registros existentes (sem --confirmar só mostra).

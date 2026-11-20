@@ -102,6 +102,10 @@ das máquinas ficam no banco do portal.
 4. Anote o **ID do aplicativo (cliente)** e o **ID do diretório (locatário)**.
 5. Em **Certificados e segredos** > **Novo segredo do cliente**, copie o **Valor**.
 6. A permissão `User.Read` (Microsoft Graph, delegada) já vem por padrão.
+   Para o botão **Importar usuários do Entra ID** (Segurança › Usuários) e a importação diária
+   (`php artisan usuarios:importar-entra`, 04:47), adicione a permissão de **aplicativo** `User.Read.All`
+   (Microsoft Graph › Permissões de aplicativo) e clique em **Conceder consentimento do administrador**. As contas
+   novas chegam **inativas e sem perfil** (bloqueadas); quem já existe no portal não é alterado.
 7. Recomendado: em **Aplicativos empresariais** > `OEE Alumbra` > **Propriedades**, ative **Atribuição necessária** e
    atribua os usuários ou grupos que podem entrar.
 

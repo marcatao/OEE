@@ -7,7 +7,12 @@
   <p class="trilha">Segurança</p>
   <h1>Usuários</h1>
   <p>Os usuários são cadastrados automaticamente no primeiro login pelo Entra ID e nascem <strong>sem acesso</strong>.
-    Aqui você define o perfil, a situação e os grupos de cada um.</p>
+    Aqui você define o perfil, a situação e os grupos de cada um. Contas trazidas pelo botão abaixo (e todo dia às 04:47)
+    chegam <strong>inativas (bloqueadas)</strong>: para liberar, edite, marque <em>Ativo</em> e escolha os perfis.</p>
+  <form method="post" action="{{ route('cadastros.usuarios.importar-entra') }}" onsubmit="return confirm('Cadastrar, bloqueadas, todas as contas do Entra ID que ainda não estão no portal?')">
+    @csrf
+    <button class="botao secundario" type="submit">Importar usuários do Entra ID</button>
+  </form>
 
   @if ($pendentes)
     <p class="aviso alerta">{{ $pendentes }} {{ $pendentes == 1 ? 'usuário aguarda' : 'usuários aguardam' }} liberação.</p>
@@ -21,6 +26,13 @@
         @foreach ($perfis as $valor => $rotulo)
           <option value="{{ $valor }}" @selected(request('perfil') === $valor)>{{ $rotulo }}</option>
         @endforeach
+      </select>
+    </label>
+    <label>Situação
+      <select name="situacao">
+        <option value="">Todas</option>
+        <option value="ativo" @selected(request('situacao') === 'ativo')>Ativos</option>
+        <option value="bloqueado" @selected(request('situacao') === 'bloqueado')>Inativos (bloqueados)</option>
       </select>
     </label>
     <button class="botao" type="submit">Filtrar</button>

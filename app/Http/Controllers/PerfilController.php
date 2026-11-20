@@ -77,8 +77,10 @@ class PerfilController extends Controller
     }
 
     /** Foto de perfil (para qualquer usuário logado, ex.: listas de usuários). */
-    public function foto(Usuario $usuario): Response
+    public function foto(Request $request, Usuario $usuario): Response
     {
+        // Sem perfil cadastrado só vê a própria foto (o topo da página "Sem perfil cadastrado").
+        abort_unless((int) $request->user()->id === (int) $usuario->id || $request->user()->temAcesso(), 404);
         abort_unless($usuario->foto && Storage::disk('local')->exists($usuario->foto), 404);
 
         return Storage::disk('local')->response($usuario->foto, null, [
