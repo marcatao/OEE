@@ -68,7 +68,8 @@ class AutenticacaoController extends Controller
         }
 
         $tenant = Str::lower((string) config('services.azure.tenant'));
-        if ($identidade->oid === '' || (Str::isUuid($tenant) && Str::lower((string) $identidade->tenantId) !== $tenant)) {
+        // Fecha por padrão: sem locatário em GUID no .env (ex.: "common"), ninguém entra.
+        if ($identidade->oid === '' || ! Str::isUuid($tenant) || Str::lower((string) $identidade->tenantId) !== $tenant) {
             $registro->falha($identidade->email, 'token de outro locatário ou sem oid');
             abort(403, 'Sua conta não pertence à organização deste portal.');
         }

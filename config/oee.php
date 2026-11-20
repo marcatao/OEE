@@ -14,6 +14,7 @@ return [
     'app' => [
         'minutos_codigo' => 3,  // validade do código de uso único que o portal devolve ao app no login
         'dias_sem_uso' => 7,    // token sem uso por mais dias que isso deixa de valer (o app bloqueia antes: 48 h)
+        'dias_validade_token' => 30, // validade máxima do token desde o login (celular perdido não vale para sempre)
         'horas_offline' => 48,  // o app bloqueia se ficar mais que isso sem sincronizar com o portal
         // Tela da máquina (operador): legenda do apontamento "sem motivo" que o IoT grava e que o operador tem de
         // trocar por um motivo; tipos de legenda oferecidos como motivo; até quantos dias para trás a pendência vale.

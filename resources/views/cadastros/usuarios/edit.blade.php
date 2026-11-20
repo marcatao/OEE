@@ -87,6 +87,24 @@
     </div>
   </form>
 
+  <h2>Celulares com o aplicativo</h2>
+  @if ($celulares->isEmpty())
+    <p class="suave">Nenhum celular conectado.</p>
+  @else
+  <div class="rolagem">
+  <table class="tabela">
+    <thead><tr><th>Celular</th><th>Versão</th><th>Conectado em</th><th>Último uso</th><th></th></tr></thead>
+    <tbody>
+    @foreach ($celulares as $c)
+      <tr><td>{{ $c->dispositivo ?? '-' }}</td><td>{{ $c->versao_app ?? '-' }}</td><td>@dataHora($c->criado_em)</td><td>@dataHora($c->ultimo_uso_em)</td>
+        <td><form method="post" action="{{ route('cadastros.usuarios.revogar-celular', [$usuario, $c->id]) }}" onsubmit="return confirm('Desconectar este celular?')">@csrf
+          <button class="botao pequeno secundario" type="submit">Desconectar</button></form></td></tr>
+    @endforeach
+    </tbody>
+  </table>
+  </div>
+  @endif
+
   <h2>Últimos acessos</h2>
   <div class="rolagem">
   <table class="tabela">

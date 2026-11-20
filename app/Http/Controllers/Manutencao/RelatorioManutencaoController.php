@@ -107,7 +107,7 @@ class RelatorioManutencaoController extends Controller
                 foreach ($linhas as $a) {
                     $os = $a->ordemServico;
                     $total = (int) $a->minutos_normais + (int) $a->minutos_extras;
-                    fputcsv($saida, [
+                    fputcsv($saida, array_map(self::celulaSegura(...), [
                         $os->numeroFormatado(), $a->inicio->setTimezone($fuso)->format('d/m/Y'),
                         config('oee.unidades')[$os->unidade] ?? $os->unidade, $os->areaExecutante?->nome,
                         trim(($os->maquina?->codigo ?? '').' '.($os->maquina?->nome ?? '')), SolicitacaoServico::TIPOS[$os->tipo] ?? $os->tipo,
@@ -115,11 +115,17 @@ class RelatorioManutencaoController extends Controller
                         HorasManutencao::hhmm($a->minutos_normais), HorasManutencao::hhmm($a->minutos_extras), HorasManutencao::hhmm($total),
                         HorasManutencao::decimal($total), $a->mantenedor?->nome, $a->criadoPor?->nome, $os->centro_custo, $os->centro_custo_solicitante,
                         $a->descricao,
-                    ], ';');
+                    ]), ';');
                 }
             });
             fclose($saida);
         }, $arquivo, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** Texto digitado que começa com = + - @ viraria fórmula no Excel (CSV injection): vai com apóstrofo na frente. */
+    private static function celulaSegura(mixed $valor): mixed
+    {
+        return is_string($valor) && $valor !== '' && in_array($valor[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$valor : $valor;
     }
 
     private function data(?string $valor, CarbonImmutable $padrao): CarbonImmutable

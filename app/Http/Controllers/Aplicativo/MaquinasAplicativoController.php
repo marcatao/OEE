@@ -53,6 +53,8 @@ class MaquinasAplicativoController extends Controller
         $ferramenta = Ferramenta::findOrFail($ferramenta);
         $dados = $request->validate(['cavidades' => ['required', 'integer'], 'maquina_id' => ['required', 'integer']]);
         $maquina = $this->maquinas->conferirMaquina((int) $dados['maquina_id']);
+        // Só o molde da OP atual desta máquina (o que a tela do app mostra).
+        abort_unless(in_array((int) $ferramenta->id, $this->maquinas->moldesDaOpAtual($maquina), true), 403, 'Este molde não é da OP atual desta máquina.');
         $this->maquinas->alterarCavidades($ferramenta, (int) $dados['cavidades']);
 
         return response()->json($this->maquinas->detalhe($maquina));

@@ -143,7 +143,8 @@ return [
     |
     */
 
-    'path' => env('SESSION_PATH', '/'),
+    // Sem SESSION_PATH: a subpasta do APP_URL (ex.: /oee), para o cookie não ir a outros sites do mesmo servidor.
+    'path' => env('SESSION_PATH', rtrim((string) parse_url((string) env('APP_URL', ''), PHP_URL_PATH), '/') ?: '/'),
 
     /*
     |--------------------------------------------------------------------------
@@ -169,7 +170,8 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Sem SESSION_SECURE_COOKIE: seguro (só HTTPS) quando o APP_URL é https.
+    'secure' => env('SESSION_SECURE_COOKIE', str_starts_with((string) env('APP_URL', ''), 'https://')),
 
     /*
     |--------------------------------------------------------------------------

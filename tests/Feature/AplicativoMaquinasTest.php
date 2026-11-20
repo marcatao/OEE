@@ -228,6 +228,12 @@ class AplicativoMaquinasTest extends TestCase
         $this->api('POST', "ferramentas/{$molde->id}/cavidades", ['cavidades' => 6, 'maquina_id' => $this->maquina->id])
             ->assertOk()->assertJsonPath('op.moldes.0.cavidades_ativas', 6);
         $this->assertSame(6, $molde->fresh()->h4_qtdcavativas);
+
+        // Molde que não é da OP atual desta máquina: recusado.
+        $outro = Ferramenta::forceCreate(['h4_filial' => '', 'h4_codigo' => 'M999', 'h4_descri' => 'OUTRO', 'h4_qtdcav' => 4,
+            'h4_qtdcavativas' => 4, 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 2]);
+        $this->api('POST', "ferramentas/{$outro->id}/cavidades", ['cavidades' => 1, 'maquina_id' => $this->maquina->id])->assertForbidden();
+        $this->assertSame(4, $outro->fresh()->h4_qtdcavativas);
     }
 
     public function test_busca_de_ops_so_abertas(): void

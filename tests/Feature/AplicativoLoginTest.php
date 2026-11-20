@@ -8,6 +8,7 @@ use App\Services\Aplicativo\LoginAplicativo;
 use App\Services\EntraId;
 use App\Services\IdentidadeEntra;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Mockery\MockInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Tests\TestCase;
@@ -145,5 +146,25 @@ class AplicativoLoginTest extends TestCase
         $codigo = $login->criarCodigo($usuario, LoginAplicativo::desafioDe(self::VERIFICADOR));
 
         return $login->trocarCodigo($codigo, self::VERIFICADOR, null, null)['token'];
+    }
+
+    public function test_token_vence_em_30_dias_e_o_administrador_desconecta_o_celular(): void
+    {
+        $op = $this->operador();
+        $token = Str::random(64);
+        $registro = TokenAplicativo::create(['usuario_id' => $op->id, 'token_hash' => hash('sha256', $token), 'dispositivo' => 'Moto G', 'ultimo_uso_em' => now()]);
+        $this->getJson('/api/app/eu', ['Authorization' => "Bearer {$token}"])->assertOk();
+
+        $adm = Usuario::create(['entra_oid' => 'adm-ti', 'nome' => 'TI', 'email' => 'ti@alumbra.com.br', 'perfil' => 'admin']);
+        $this->actingAs($adm)->get("/cadastros/logins/usuarios/{$op->id}/editar")->assertOk()->assertSee('Moto G');
+        $this->post("/cadastros/logins/usuarios/{$op->id}/celulares/{$registro->id}/revogar")->assertSessionHas('ok');
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/app/eu', ['Authorization' => "Bearer {$token}"])->assertStatus(401);
+
+        // Usado todo dia, mas conectado há mais de 30 dias: vence.
+        $token2 = Str::random(64);
+        $velho = TokenAplicativo::create(['usuario_id' => $op->id, 'token_hash' => hash('sha256', $token2), 'ultimo_uso_em' => now()]);
+        $velho->forceFill(['criado_em' => now()->subDays(31)])->save();
+        $this->getJson('/api/app/eu', ['Authorization' => "Bearer {$token2}"])->assertStatus(401);
     }
 }

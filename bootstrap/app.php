@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AutenticaAplicativo;
+use App\Http\Middleware\CabecalhosSeguranca;
 use App\Http\Middleware\ExigePerfil;
 use App\Http\Middleware\ExigePermissao;
 use App\Http\Middleware\RaizDaSubpasta;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Antes do roteamento: ".../oee" (sem barra) vira ".../oee/" quando o portal está numa subpasta.
         $middleware->prepend(RaizDaSubpasta::class);
+        $middleware->append(CabecalhosSeguranca::class);
         $middleware->web(append: [UsuarioAtivo::class]);
         $middleware->alias([
             'perfil' => ExigePerfil::class,

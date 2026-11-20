@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Cadastros;
 
 use App\Http\Controllers\Controller;
+use App\Models\Aplicativo\TokenAplicativo;
 use App\Models\Grupo;
 use App\Models\Usuario;
 use App\Services\ImportadorUsuariosEntra;
@@ -66,6 +67,15 @@ class UsuarioController extends Controller
         return back()->with('ok', "Entra ID: {$r['criados']} conta(s) nova(s) cadastrada(s) bloqueada(s); {$r['existentes']} já existiam; {$r['ignorados']} ignorada(s) (convidados, desabilitadas ou sem e-mail).");
     }
 
+    /** Desconecta um celular do usuário (o app pede login de novo). */
+    public function revogarCelular(Usuario $usuario, int $token): RedirectResponse
+    {
+        TokenAplicativo::where('usuario_id', $usuario->id)->whereKey($token)->whereNull('revogado_em')->firstOrFail()
+            ->forceFill(['revogado_em' => now()])->save();
+
+        return back()->with('ok', 'Celular desconectado: o aplicativo vai pedir login de novo.');
+    }
+
     public function edit(Usuario $usuario): View
     {
         return view('cadastros.usuarios.edit', [
@@ -73,6 +83,10 @@ class UsuarioController extends Controller
             'perfis' => Usuario::perfisDisponiveis(),
             'grupos' => Grupo::orderBy('nome')->get(),
             'acessos' => $usuario->registrosLogin()->latest('data_hora')->limit(10)->get(),
+            // Celulares com o aplicativo conectado (token válido): o administrador pode desconectar (celular perdido).
+            'celulares' => TokenAplicativo::where('usuario_id', $usuario->id)->whereNull('revogado_em')
+                ->where('criado_em', '>=', now()->subDays((int) config('oee.app.dias_validade_token', 30)))
+                ->orderByDesc('ultimo_uso_em')->get(),
         ]);
     }
 

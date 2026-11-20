@@ -83,7 +83,8 @@ class ApontamentoHorasController extends Controller
         AcessoOs::exigirAberta($os);
         abort_unless(AcessoOs::podeAprovar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $this->validar($request);
-        $mantenedor = Mantenedor::withoutGlobalScopes()->findOrFail($dados['mantenedor_id']);
+        // Só mantenedor ATIVO e da unidade que o usuário enxerga.
+        $mantenedor = Mantenedor::where('ativo', true)->findOrFail($dados['mantenedor_id']);
         $ap = new ApontamentoHoras(['ordem_servico_id' => $os->id, 'mantenedor_id' => $mantenedor->id]);
         $ap->setRelation('mantenedor', $mantenedor);
         DB::transaction(function () use ($ap, $dados, $os, $request) {

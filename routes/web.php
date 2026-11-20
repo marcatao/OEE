@@ -40,7 +40,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PortalController::class, 'inicio'])->name('inicio');
 
-Route::controller(AutenticacaoController::class)->prefix('auth')->group(function () {
+// Limite por IP alto o bastante para a troca de turno (a fábrica sai por poucos IPs).
+Route::controller(AutenticacaoController::class)->prefix('auth')->middleware('throttle:120,1')->group(function () {
     Route::get('login', 'login')->name('login');
     Route::get('callback', 'callback')->name('auth.callback');
     Route::post('logout', 'logout')->name('logout')->middleware('auth');
@@ -116,8 +117,8 @@ Route::middleware('auth')->group(function () {
     // Pergunte para Alumbra (assistente de IA da página inicial; JSON, em etapas curtas)
     Route::middleware('permissao:assistente')->prefix('assistente')->name('assistente.')->controller(AssistenteController::class)->group(function () {
         Route::get('conversa', 'conversa')->name('conversa');
-        Route::post('perguntas', 'perguntar')->name('perguntar');
-        Route::post('perguntas/{pergunta}/etapa', 'etapa')->name('etapa');
+        Route::post('perguntas', 'perguntar')->middleware('throttle:10,1')->name('perguntar'); // custo da API da Claude
+        Route::post('perguntas/{pergunta}/etapa', 'etapa')->middleware('throttle:60,1')->name('etapa');
     });
     Route::match(['get', 'post'], 'calculadora', [PortalController::class, 'calculadora'])
         ->middleware('permissao:calculadora')->name('calculadora');
@@ -230,6 +231,7 @@ Route::middleware('auth')->group(function () {
         Route::post('usuarios/importar-entra', [UsuarioController::class, 'importarEntra'])->name('usuarios.importar-entra');
         Route::get('usuarios/{usuario}/editar', [UsuarioController::class, 'edit'])->name('usuarios.edit');
         Route::put('usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
+        Route::post('usuarios/{usuario}/celulares/{token}/revogar', [UsuarioController::class, 'revogarCelular'])->whereNumber('token')->name('usuarios.revogar-celular');
 
         Route::get('grupos', [GrupoController::class, 'index'])->name('grupos.index');
         Route::get('grupos/novo', [GrupoController::class, 'create'])->name('grupos.create');

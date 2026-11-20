@@ -60,8 +60,10 @@ class LoginAplicativo
         }
         $registro = TokenAplicativo::with('usuario')->where('token_hash', hash('sha256', $token))->first();
         $limite = now()->subDays((int) config('oee.app.dias_sem_uso', 7));
+        $validade = now()->subDays((int) config('oee.app.dias_validade_token', 30));
         if (! $registro || $registro->revogado_em || ! $registro->usuario?->temAcesso()
-            || ($registro->ultimo_uso_em && $registro->ultimo_uso_em->lt($limite))) {
+            || ($registro->ultimo_uso_em && $registro->ultimo_uso_em->lt($limite))
+            || ($registro->criado_em && $registro->criado_em->lt($validade))) {
             return null;
         }
         if (! $registro->ultimo_uso_em || $registro->ultimo_uso_em->lt(now()->subMinutes(5))) {

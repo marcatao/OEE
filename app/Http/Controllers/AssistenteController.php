@@ -46,11 +46,14 @@ class AssistenteController extends Controller
         if (! $this->assistente->configurado()) {
             return response()->json(['mensagem' => 'O assistente ainda não foi configurado (falta a chave da API da Claude).'], 503);
         }
-        if ($this->assistente->restantesHoje($usuario) === 0) {
+        // Conta e grava sob trava por usuário: perguntas em paralelo não passam do limite diário.
+        $pergunta = Cache::lock("assistente-pergunta-{$usuario->id}", 30)->block(10, function () use ($usuario, $dados) {
+            return $this->assistente->restantesHoje($usuario) === 0 ? null
+                : $this->assistente->perguntar($usuario, $dados['pergunta'], $dados['conversa_id'] ?? null);
+        });
+        if (! $pergunta) {
             return response()->json(['mensagem' => 'Você atingiu o limite de perguntas de hoje. Amanhã tem mais.'], 429);
         }
-
-        $pergunta = $this->assistente->perguntar($usuario, $dados['pergunta'], $dados['conversa_id'] ?? null);
 
         return response()->json([
             'pergunta_id' => $pergunta->id,

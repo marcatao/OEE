@@ -52,6 +52,21 @@ class LoginTest extends TestCase
         return $this->get('/auth/callback?code=c&state=s');
     }
 
+    public function test_locatario_que_nao_e_guid_recusa_todo_login(): void
+    {
+        config(['services.azure.tenant' => 'common']);
+        $this->entrar()->assertForbidden();
+        $this->assertSame(0, Usuario::count());
+    }
+
+    public function test_respostas_trazem_cabecalhos_de_seguranca(): void
+    {
+        $this->get('/')->assertOk()->assertHeader('X-Frame-Options', 'SAMEORIGIN')->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $this->assertStringContainsString("frame-ancestors 'self'", $this->get('/')->headers->get('Content-Security-Policy'));
+        $this->get('https://localhost/')->assertHeader('Strict-Transport-Security');
+    }
+
     public function test_inicio_publico_com_o_nome_do_portal(): void
     {
         $this->get('/')->assertOk()->assertSee('Entrar com Microsoft')->assertSee('OEE Alumbra');

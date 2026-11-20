@@ -148,6 +148,14 @@ class MaquinasAplicativo
         return app(TrocaOpMaquina::class)->trocar($maquina, $numero, $modo, 'aplicativo');
     }
 
+    /** @return list<int> ids dos moldes (SH4) da OP atual da máquina, como na tela do app. */
+    public function moldesDaOpAtual(Maquina $maquina): array
+    {
+        $op = $maquina->ordemProducao;
+
+        return $op ? array_map(fn ($m) => (int) $m['id'], $this->op($op, $maquina, collect())['moldes']) : [];
+    }
+
     /** Cavidades ativas do molde: de 0 até a quantidade de cavidades do Protheus (H4_QTDCAV). */
     public function alterarCavidades(Ferramenta $ferramenta, int $cavidades): void
     {

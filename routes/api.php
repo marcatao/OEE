@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('app')->name('api.app.')->group(function () {
     Route::post('token', [ApiAplicativoController::class, 'token'])->middleware('throttle:20,1')->name('token');
 
-    Route::middleware('aplicativo')->group(function () {
+    // Limite por usuário (depois do token): o app consulta a cada poucos segundos.
+    Route::middleware(['aplicativo', 'throttle:300,1'])->group(function () {
         Route::get('eu', [ApiAplicativoController::class, 'eu'])->name('eu');
         Route::post('sair', [ApiAplicativoController::class, 'sair'])->name('sair');
 
