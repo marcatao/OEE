@@ -6,6 +6,7 @@ use App\Models\Grupo;
 use App\Models\Planta;
 use App\Models\RegistroLogin;
 use App\Models\Usuario;
+use App\Support\AcessoOs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -75,10 +76,15 @@ class AdminTest extends TestCase
     {
         $this->actingAs($this->usuario('sem_acesso', 'novo@empresa.com'));
 
-        $this->get('/')->assertOk()->assertSee('aguardando liberação')->assertDontSee('Calculadora');
+        $this->get('/')->assertOk()->assertSee('Sem perfil cadastrado')->assertDontSee('Calculadora');
         $this->get('/calculadora')->assertRedirect('/aguardando-liberacao');
         $this->get('/cadastros/logins/usuarios')->assertRedirect('/aguardando-liberacao');
-        $this->get('/aguardando-liberacao')->assertOk();
+        $this->get('/aguardando-liberacao')->assertOk()->assertSee('Sem perfil cadastrado');
+
+        // Sem perfil não vê dado nenhum: nem os cadastros de "Todas" nem as unidades da manutenção.
+        $u = Usuario::where('email', 'novo@empresa.com')->sole();
+        $this->assertSame([], $u->unidadesVisiveis());
+        $this->assertSame([], AcessoOs::unidadesHabilitadas($u));
     }
 
     public function test_admin_libera_usuario_com_varios_perfis_e_coloca_em_grupos(): void

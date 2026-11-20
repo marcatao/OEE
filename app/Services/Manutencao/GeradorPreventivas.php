@@ -7,6 +7,7 @@ use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\PlanoPreventiva;
 use App\Models\Manutencao\SolicitacaoServico;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,8 +19,19 @@ final class GeradorPreventivas
 {
     public function __construct(private FluxoOrdemServico $fluxo) {}
 
-    /** @return list<OrdemServico> OS criadas */
+    /**
+     * Gera as OS preventivas devidas. Uma geração por vez (agendador × botão "Gerar agora"): a segunda espera a primeira
+     * terminar e só cria o que ainda faltar — a mesma OS (plano + data prevista) nunca sai duas vezes.
+     *
+     * @return list<OrdemServico> OS criadas
+     */
     public function gerar(?CarbonImmutable $hoje = null): array
+    {
+        return Cache::lock('os-gerar-preventivas', 600)->block(120, fn () => $this->gerarAgora($hoje));
+    }
+
+    /** @return list<OrdemServico> */
+    private function gerarAgora(?CarbonImmutable $hoje): array
     {
         $hoje ??= CarbonImmutable::now(HorasManutencao::fuso())->startOfDay();
         $criadas = [];
@@ -51,7 +63,8 @@ final class GeradorPreventivas
 
     private function criarOs(PlanoPreventiva $plano, CarbonImmutable $data): ?OrdemServico
     {
-        $existe = OrdemServico::where('plano_preventiva_id', $plano->id)->whereDate('prevista_para', $data->format('Y-m-d'))->exists();
+        // Sem escopo de unidade: pelo botão, o usuário logado não enxerga as OS de outras unidades (e geraria de novo).
+        $existe = OrdemServico::withoutGlobalScopes()->where('plano_preventiva_id', $plano->id)->whereDate('prevista_para', $data->format('Y-m-d'))->exists();
         if ($existe) {
             return null;
         }

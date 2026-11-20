@@ -23,6 +23,7 @@ use App\Support\AcessoOs;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CalendarioDeTeste;
@@ -585,6 +586,13 @@ class OrdensServicoTest extends TestCase
         $this->assertSame('2026-12-10', $plano->fresh()->proxima_em->format('Y-m-d'));
         // Rodar de novo no mesmo dia não duplica.
         $this->assertCount(0, $gerador->gerar(CarbonImmutable::parse('2026-11-05', config('oee.fuso_exibicao'))));
+        // Agendador rodando ao mesmo tempo que o botão: a segunda geração espera a trava e não duplica.
+        $trava = Cache::lock('os-gerar-preventivas', 600);
+        $this->assertTrue($trava->get());
+        $this->assertFalse(Cache::lock('os-gerar-preventivas', 600)->get()); // ocupada
+        $trava->release();
+        $this->post('/ordens-de-servico/preventivas/gerar')->assertRedirect();
+        $this->assertSame(1, OrdemServico::where('plano_preventiva_id', $plano->id)->whereDate('prevista_para', '2026-11-10')->count());
 
         $this->get('/ordens-de-servico/preventivas')->assertOk()->assertSee('PREV-INJ');
     }

@@ -1,5 +1,6 @@
 <div class="aviso">
-  <p><strong>Seu cadastro foi criado e está aguardando liberação.</strong></p>
-  <p>Você entrou com <strong>{{ auth()->user()->email }}</strong>. Um administrador do portal precisa liberar o seu
-    acesso e incluir você nos grupos certos. Depois disso, entre novamente.</p>
+  <p><strong>Sem perfil cadastrado.</strong> Seu cadastro foi criado, mas ainda não tem nenhum perfil de acesso: por isso você não
+    vê telas nem dados do portal.</p>
+  <p>Você entrou com <strong>{{ auth()->user()->email }}</strong>. Peça a um administrador do portal para cadastrar o seu perfil
+    (Segurança › Usuários). Depois disso, entre novamente.</p>
 </div>

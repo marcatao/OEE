@@ -6,7 +6,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 ## Regras do projeto
 
 - O **Entra ID só autentica** a entrada (`app/Services/EntraId.php`). O usuário é cadastrado no banco no primeiro
-  login (`usuarios`, chave `entra_oid`, nunca o e-mail) e nasce **sem acesso**; só os e-mails de `config('oee.admins')`
+  login (`usuarios`, chave `entra_oid`, nunca o e-mail) e nasce **sem acesso** (sem perfil não vê nada: tela "Sem perfil cadastrado", `unidadesVisiveis()` = []); só os e-mails de `config('oee.admins')`
   (padrão `marcato@alumbra.com.br`) nascem `admin`. Todo login vai para `registros_login`.
 - Três áreas (unidades): **Manutenção** (produção), **Tecnologia** e **Ferramentaria**. Acesso por **perfis** (vários
   por usuário, tabela `usuario_perfis`, definição em `config('oee.perfis_acesso')`: operador; solicitante, mantenedor e
@@ -157,6 +157,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `App\Services\Compras\PedidoCompraMuro` grava e lê de volta (status, número, aprovador, conclusão, valores; horário
   local `compras.fuso_muro`); cópia no portal em `pedidos_compra` + `pedidos_compra_itens`. Mudou a muro? Mude os dois
   `.tlpp`, o LEIAME e `Tests\Concerns\TabelaMuroDeCompras`.
+  Geração de preventivas (agendador × botão "Gerar agora") roda sob a trava `os-gerar-preventivas` e não duplica OS.
   Custo da OS (card na tela da OS): `App\Services\Manutencao\CustoOrdemServico`.
 - **Abertura de SS**: em etapas (unidade → área executante → máquina/CC → o que precisa → descrição); a unidade só
   lista as liberadas ao login (`SolicitacaoController::unidadesPermitidas`) e filtra áreas e máquinas; flags "máquina

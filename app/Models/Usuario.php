@@ -179,7 +179,11 @@ class Usuario extends Authenticatable
      */
     public function unidadesVisiveis(): ?array
     {
-        $unidades = $this->temAcesso() ? $this->unidades() : [];
+        // Sem perfil (ou inativo): não vê nada, nem os cadastros de "Todas".
+        if (! $this->temAcesso()) {
+            return [];
+        }
+        $unidades = $this->unidades();
 
         return array_diff(Unidades::areas(), $unidades) === [] ? null : [...$unidades, 'ambos'];
     }

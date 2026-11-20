@@ -57,15 +57,14 @@ final class AcessoOs
 
     /**
      * Unidades HABILITADAS para o usuário nas Ordens de serviço: as dos perfis dele (operador, mantenedor,
-     * administrador) e as em que é Solicitante. Sem nenhum perfil de unidade (acesso só por grupos): todas.
+     * administrador) e as em que é Solicitante. Sem nenhum perfil de unidade: nenhuma.
      *
      * @return list<string>
      */
     public static function unidadesHabilitadas(Usuario $u): array
     {
-        $dele = array_values(array_intersect(Unidades::areas(), [...$u->unidades(), ...self::unidadesSolicitante($u)]));
-
-        return $dele !== [] ? $dele : Unidades::areas();
+        // Sem perfil de unidade: nenhuma (quem não tem perfil não vê nada).
+        return array_values(array_intersect(Unidades::areas(), [...$u->unidades(), ...self::unidadesSolicitante($u)]));
     }
 
     /**
