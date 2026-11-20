@@ -40,6 +40,15 @@ class HorasManutencaoTest extends TestCase
         $this->assertSame(['normais' => 480, 'extras' => 120], $h->dividir($this->local('2026-11-11 21:00'), $this->local('2026-11-12 07:00')));
     }
 
+    public function test_almoco_trabalhado_e_hora_normal_e_sai_do_disponivel(): void
+    {
+        $h = new HorasManutencao('07:00', '17:00', 60, '12345');
+        // Trabalhou no horário do almoço (12:00–13:00, quarta): conta como normal, nunca como extra.
+        $this->assertSame(['normais' => 60, 'extras' => 0], $h->dividir($this->local('2026-11-11 12:00'), $this->local('2026-11-11 13:00')));
+        // Disponível do dia = jornada de 10 h − 60 min de intervalo.
+        $this->assertSame(540, $h->minutosDisponiveis(CarbonImmutable::parse('2026-11-11'), CarbonImmutable::parse('2026-11-11')));
+    }
+
     public function test_horas_disponiveis_no_periodo(): void
     {
         $h = new HorasManutencao('07:00', '17:00', 60, '12345');

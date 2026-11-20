@@ -142,7 +142,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   esquecido conta no máximo `oee.cronometro_max_horas` (12 h); concluir ou cancelar a OS encerra os cronômetros abertos
   (cada um com a sua descrição); concluir exige o checklist respondido; SS só se edita PENDENTE; material da OS só o
   almoxarifado ou quem aprova muda; aprovar SS relê com `lockForUpdate` (corrida portal × app); pedido de compra igual
-  e ativo (mesma origem, tipo e itens, 10 min) não é gerado de novo. Horas extras e disponível seguem o calendário do
+  e ativo (mesma origem, tipo e itens, 10 min) não é gerado de novo. Almoço (`intervalo_min` do mantenedor): trabalhado dentro da jornada
+  é hora NORMAL (nunca extra), mas sai das horas disponíveis. Horas extras e disponível seguem o calendário do
   mantenedor (feriado = tudo extra; compensação = dia com jornada).
 - Estrutura da OP: por peça = G1_QUANT ÷ `produtos_protheus.b1_qb` (B1_QB, quantidade base; lido só se existir na SB1);
   necessidade × C2_QUANT ÷ (1 − G1_PERDA%); empenho casa pelo TRT. Custo Protheus = só o D3_CUSTO1 das produções
