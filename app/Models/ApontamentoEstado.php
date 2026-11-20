@@ -71,6 +71,18 @@ class ApontamentoEstado extends Model
         return $resultado;
     }
 
+    /**
+     * SS desta parada para levar adiante (continuação da virada do dia, troca de OP): a vinculada ou a que este
+     * apontamento abriu. Assim a nova parte não abre outra SS e a Timeline/app seguem mostrando o chamado.
+     */
+    public function chamadoParaContinuar(): ?int
+    {
+        $id = $this->solicitacao_vinculada_id
+            ?? DB::table('solicitacoes_servico')->where('apontamento_estado_id', $this->id)->orderByDesc('id')->value('id');
+
+        return $id ? (int) $id : null;
+    }
+
     /** Marca que o Integrador MQTT põe no início da observação dos apontamentos automáticos. */
     public const MARCA_IOT = '[IoT]';
 

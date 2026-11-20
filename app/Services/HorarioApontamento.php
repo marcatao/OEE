@@ -88,6 +88,7 @@ class HorarioApontamento
         $aberto->update(['fim' => self::fimAutomatico($aberto, $inicioNovo)]);
         $limite = CarbonImmutable::parse($inicioNovo)->subSecond();
         $continuacoes = [];
+        $chamado = $aberto->chamadoParaContinuar();
         $dia = CarbonImmutable::parse($aberto->inicio)->setTimezone(self::fuso())->startOfDay()->addDay();
         while ($dia->utc()->lessThanOrEqualTo($limite)) {
             $fimDoDia = $dia->endOfDay()->startOfSecond()->utc();
@@ -97,7 +98,7 @@ class HorarioApontamento
                 'observacao' => mb_substr('Continuação do apontamento de '.CarbonImmutable::parse($aberto->inicio)->setTimezone(self::fuso())->format('d/m H:i:s')
                     .' (virada do dia)'.($aberto->observacao ? ' · '.$aberto->observacao : ''), 0, 500),
             ]);
-            $c->forceFill(['criado_por_id' => auth()->id(), 'solicitacao_vinculada_id' => $aberto->solicitacao_vinculada_id])->saveQuietly();
+            $c->forceFill(['criado_por_id' => auth()->id(), 'solicitacao_vinculada_id' => $chamado])->saveQuietly();
             $continuacoes[] = $c;
             $dia = $dia->addDay();
         }

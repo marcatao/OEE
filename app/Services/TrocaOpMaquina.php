@@ -55,9 +55,11 @@ class TrocaOpMaquina
                     $this->situacao->aplicar($aberto);
                 } else {
                     HorarioApontamento::encerrarAberto($aberto, $agora); // com continuação nos dias seguintes
-                    $novo = ApontamentoEstado::create(['maquina_id' => $maquina->id, 'legenda_id' => $aberto->legenda_id,
+                    // Mesma parada/legenda: sem disparar outra SS automática (leva o chamado do apontamento anterior).
+                    $novo = new ApontamentoEstado(['maquina_id' => $maquina->id, 'legenda_id' => $aberto->legenda_id,
                         'ordem_producao_id' => $op->id, 'inicio' => $agora,
                         'observacao' => 'Troca de OP ('.($origem === 'aplicativo' ? 'aplicativo' : 'Timeline').')']);
+                    $novo->forceFill(['criado_por_id' => auth()->id(), 'solicitacao_vinculada_id' => $aberto->chamadoParaContinuar()])->saveQuietly();
                     $this->situacao->aplicar($novo);
                 }
             }

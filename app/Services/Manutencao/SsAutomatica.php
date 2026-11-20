@@ -10,8 +10,10 @@ use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
 use App\Models\Usuario;
 use App\Providers\AppServiceProvider;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * SS automática: quando um apontamento real recebe uma legenda que "abre SS" (legendas.abre_ss_unidade +
@@ -61,7 +63,15 @@ final class SsAutomatica
         }
         // Dois apontamentos da mesma máquina ao mesmo tempo (ex.: IoT e operador): um de cada vez, para não abrir duas SS.
         $trava = Cache::lock("ss-automatica-{$maquina->id}-{$area->id}", 30);
-        $trava->block(10);
+        try {
+            $trava->block(20);
+        } catch (LockTimeoutException) {
+            // Não some em silêncio (apontamento do IoT não tem tela para avisar): fica no log para o administrador.
+            Log::error('SS automática não aberta: outra gravação da mesma máquina demorou demais', ['apontamento' => $ap->id, 'maquina' => $maquina->id]);
+            self::registrar($ap->id, $nao.'outra gravação desta máquina estava em andamento; aponte de novo a legenda.');
+
+            return null;
+        }
         try {
             return $this->abrirOuVincular($ap, $legenda, $area, $maquina, $nao);
         } finally {

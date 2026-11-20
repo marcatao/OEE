@@ -87,6 +87,18 @@ class AplicativoMaquinasTest extends TestCase
         $this->assertSame(1, $json[0]['sem_motivo']);
     }
 
+    public function test_turno_noturno_de_ontem_em_andamento_e_o_que_aparece(): void
+    {
+        $this->maquina->update(['jornada_inicio' => '22:00', 'jornada_fim' => '06:00']);
+        $this->travar('02:00'); // terça 17/11, 02:00: o turno de segunda 22:00 ainda está em andamento
+        $json = $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()->json();
+        $this->assertSame('Turno de 16/11 · 22:00 às 06:00', $json['periodo']['rotulo']);
+
+        $this->travar('23:00'); // terça 23:00: o turno de terça já começou
+        $json = $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()->json();
+        $this->assertSame('Turno de hoje, 17/11 · 22:00 às 06:00', $json['periodo']['rotulo']);
+    }
+
     public function test_detalhe_traz_apontamentos_pendencia_e_so_legendas_de_parada(): void
     {
         $this->travar('15:00');

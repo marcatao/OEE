@@ -67,7 +67,7 @@ class StatusOrdemProducao
             $emAberto = [];
             foreach (ApontamentoEstado::query()->join('legendas', 'legendas.id', '=', 'apontamentos_estado.legenda_id')
                 ->whereIn('apontamentos_estado.ordem_producao_id', $bloco)->whereNull('apontamentos_estado.fim')
-                ->orderBy('apontamentos_estado.inicio')
+                ->orderBy('apontamentos_estado.inicio')->orderBy('apontamentos_estado.id') // desempate igual ao da procedure
                 ->get(['apontamentos_estado.ordem_producao_id as op', 'legendas.tipo as tipo']) as $a) {
                 $emAberto[$a->op] = $a->tipo; // o último (mais recente) prevalece
             }

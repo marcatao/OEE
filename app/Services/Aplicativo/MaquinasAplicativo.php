@@ -123,7 +123,17 @@ class MaquinasAplicativo
     public function periodoDeHoje(Maquina $maquina): array
     {
         $hoje = CarbonImmutable::now(HorarioApontamento::fuso());
-        $jornada = JornadaSemanal::de($maquina)[$hoje->dayOfWeekIso] ?? null;
+        $jornadas = JornadaSemanal::de($maquina);
+        // Turno noturno de ontem ainda em andamento (ex.: seg 22:00–06:00, agora ter 02:00): é ele que vale.
+        $ontem = $hoje->subDay();
+        $jornadaOntem = $jornadas[$ontem->dayOfWeekIso] ?? null;
+        if ($jornadaOntem && $jornadaOntem[1] < $jornadaOntem[0] && $this->diasUteis->trabalha($maquina, $ontem->format('Y-m-d'))) {
+            [$de, $ate] = FiltroTimeline::periodoDoDia($ontem, $jornadaOntem[0], $jornadaOntem[1]);
+            if ($hoje->lessThan($ate->addMinute())) {
+                return [$de, $ate->addMinute(), 'Turno de '.$ontem->format('d/m').' · '.$jornadaOntem[0].' às '.$jornadaOntem[1]];
+            }
+        }
+        $jornada = $jornadas[$hoje->dayOfWeekIso] ?? null;
         if ($jornada && $this->diasUteis->trabalha($maquina, $hoje->format('Y-m-d'))) {
             [$de, $ate] = FiltroTimeline::periodoDoDia($hoje, $jornada[0], $jornada[1]);
 

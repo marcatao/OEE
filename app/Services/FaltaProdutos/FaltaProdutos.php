@@ -52,7 +52,8 @@ class FaltaProdutos
     public function montar(FiltroFaltaProdutos $filtro, int $pagina = 1, ?string $caminho = null): array
     {
         $faltas = $this->consulta($filtro)
-            ->whereIn('zb5_status', $filtro->statusEfetivos())
+            // Status em branco no Protheus é tratado como Pendente (FaltaProduto::status): entra junto com o P.
+            ->whereIn('zb5_status', in_array('P', $filtro->statusEfetivos(), true) ? [...$filtro->statusEfetivos(), '', ' '] : $filtro->statusEfetivos())
             ->orderByRaw('CASE WHEN solicitado_em IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('solicitado_em')->orderByDesc('r_e_c_n_o_')
             ->get();

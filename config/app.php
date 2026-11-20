@@ -67,6 +67,9 @@ return [
 
     'timezone' => 'UTC',
 
+    // Horários do agendador (routes/console.php: dailyAt, cron) no fuso LOCAL: "05:10" é 05:10 de Brasília.
+    'schedule_timezone' => env('FUSO_EXIBICAO', 'America/Sao_Paulo'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\ApontamentoEstado;
 use App\Models\Legenda;
+use App\Models\Manutencao\OrdemServico;
+use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Providers\AppServiceProvider;
@@ -90,6 +92,13 @@ class ApontamentoEstadoController extends Controller
     public function destroy(Request $request, ApontamentoEstado $apontamento, StatusOrdemProducao $status, SituacaoMaquina $situacao): RedirectResponse
     {
         $this->conferirMaquina($apontamento);
+        // Apontamento que abriu SS/OS automática fica: a SS guarda a origem (exclusão daria erro de chave estrangeira).
+        $ss = SolicitacaoServico::withoutGlobalScopes()->where('apontamento_estado_id', $apontamento->id)->first();
+        $temOs = OrdemServico::withoutGlobalScopes()->where('apontamento_estado_id', $apontamento->id)->exists();
+        if ($ss || $temOs) {
+            return back()->with('erro', 'Este apontamento abriu '.($ss ? 'a SS '.$ss->numeroFormatado() : 'uma OS').' automática e não pode ser excluído. '
+                .'Corrija o horário ou a legenda editando o apontamento.');
+        }
         $op = $apontamento->ordemProducao;
         $eraOMaisRecente = (int) ApontamentoEstado::where('maquina_id', $apontamento->maquina_id)
             ->orderByDesc('inicio')->orderByDesc('id')->value('id') === (int) $apontamento->id; // (int): SQL Server devolve texto

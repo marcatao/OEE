@@ -456,7 +456,9 @@ class FerramentasAssistente
         $hoje = now($this->fuso())->format('Ymd');
 
         if ($u->pode('estruturas')) {
+            // Só os componentes vigentes hoje (início e fim), como na tela da OP.
             $itens = DB::table('estruturas_produto')->where('d_e_l_e_t_', '<>', '*')->where('g1_cod', $produto)
+                ->where(fn ($q) => $q->whereNull('g1_ini')->orWhere('g1_ini', '')->orWhere('g1_ini', '<=', $hoje))
                 ->where(fn ($q) => $q->whereNull('g1_fim')->orWhere('g1_fim', '')->orWhere('g1_fim', '>=', $hoje))
                 ->orderBy('g1_comp')->limit($this->maxLinhas())->get();
             $nomes = $this->custos->produtos($itens->pluck('g1_comp'));

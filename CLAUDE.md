@@ -97,6 +97,17 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   ganham CONTINUAÇÕES (mesma legenda/OP, `HorarioApontamento::encerrarAberto`, sem SS automática) — a madrugada não
   some. Apontamento real só de máquina que o usuário enxerga (editar/excluir/próximo início: 404); a legenda do
   apontamento e da situação da máquina é lida sem escopo de unidade (`withoutGlobalScopes` na relação).
+- **Desempenho e segurança para produção** (auditoria antes da publicação): apontamentos por período SEMPRE com o
+  escopo `ApontamentoEstado::tocando($inicio, $fim)` (usa o índice; folga `DIAS_FOLGA_PERIODO`); o último apontamento de
+  várias máquinas com `ApontamentoEstado::ultimosPorMaquina` (nada de NOT EXISTS correlacionado); chamados das máquinas
+  com `ChamadoDaParada::dasMaquinas` (em lote). Listas de ids que podem passar de 2.100 (limite de parâmetros do SQL
+  Server): `whereIntegerInRaw` com `(int)` ou subconsulta, nunca `whereIn` com milhares de ids. Cabeçalhos de segurança no
+  middleware `CabecalhosSeguranca` (global); limites: `throttle` em `auth/*` (por IP), API do app (por usuário) e
+  assistente (+ trava por usuário no limite diário). Token do app vale `oee.app.dias_validade_token` (30) dias desde o
+  login; o administrador desconecta celulares em Segurança › Usuários. Locatário do Entra ID que não é GUID recusa todo
+  login. Exportação CSV escapa células que começam com = + - @. Agendador (`routes/console.php`) roda no fuso LOCAL
+  (`app.schedule_timezone`). Apontamento real que abriu SS/OS automática NÃO se exclui (aviso); troca de OP e
+  continuações levam o chamado (`chamadoParaContinuar`) sem abrir outra SS.
 - **Ids no SQL Server chegam como TEXTO** (pdo_sqlsrv): compare chaves estrangeiras e `value('id')` sempre com
   `(int)` dos dois lados — `===` entre texto e número dá falso só no servidor (os testes em SQLite não pegam).
 - Custo das OPs (`App\Services\CustoOrdemProducao`, com `ResumoCustoOp` e `TiposMovimento`): `movimentos_producao`
