@@ -43,8 +43,7 @@ class ApontamentoEstadoController extends Controller
                 ->when($request->integer('maquina_id'), fn ($q, $id) => $q->where('maquina_id', $id))
                 ->when($data, function ($q, $d) use ($fuso) {
                     $ini = CarbonImmutable::parse($d, $fuso)->startOfDay();
-                    $q->where('inicio', '<', $ini->addDay()->utc())
-                        ->where(fn ($w) => $w->whereNull('fim')->orWhere('fim', '>', $ini->utc()));
+                    $q->tocando($ini->utc(), $ini->addDay()->utc());
                 })
                 ->orderByDesc('inicio')->paginate(30)->withQueryString(),
         ]);

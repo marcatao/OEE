@@ -18,19 +18,60 @@ final class ChamadoDaParada
     /** @return array{tipo: string, id: int, numero: string, status: string, rotulo: string}|null */
     public static function da(Maquina $maquina): ?array
     {
-        if ($maquina->situacao !== 'parada') {
-            return null;
+        return self::dasMaquinas(collect([$maquina]))[(int) $maquina->id] ?? null;
+    }
+
+    /**
+     * O mesmo de da() para várias máquinas com poucas consultas (Timeline e lista do app atualizam a cada minuto).
+     *
+     * @param  iterable<Maquina>  $maquinas
+     * @return array<int, array{tipo: string, id: int, numero: string, status: string, rotulo: string}> só as que têm chamado
+     */
+    public static function dasMaquinas(iterable $maquinas): array
+    {
+        $paradas = collect($maquinas)->filter(fn (Maquina $m) => $m->situacao === 'parada')->keyBy(fn ($m) => (int) $m->id);
+        if ($paradas->isEmpty()) {
+            return [];
         }
         // 1º) SS vinculada ao apontamento atual (já havia uma em aberto da máquina quando ela parou); 2º) a aberta na parada.
-        $vinculada = ApontamentoEstado::where('maquina_id', $maquina->id)->orderByDesc('inicio')->orderByDesc('id')
-            ->value('solicitacao_vinculada_id');
-        $ss = ($vinculada ? SolicitacaoServico::with('ordemServico')->find($vinculada) : null)
-            ?? SolicitacaoServico::where('maquina_id', $maquina->id)->where('automatica', true)
-                ->when($maquina->situacao_desde, fn ($q) => $q->where('criado_em', '>=', $maquina->situacao_desde->copy()->subMinute()))
-                ->with('ordemServico')->orderByDesc('id')->first();
-        if (! $ss) {
-            return null;
+        $vinculadas = collect(ApontamentoEstado::ultimosPorMaquina($paradas->keys(), ['solicitacao_vinculada_id']))
+            ->map(fn ($u) => $u['solicitacao_vinculada_id'] ? (int) $u['solicitacao_vinculada_id'] : null)->filter();
+        $ssVinculadas = $vinculadas->isEmpty() ? collect()
+            : SolicitacaoServico::with('ordemServico')->whereIn('id', $vinculadas->values()->all())->get()->keyBy(fn ($s) => (int) $s->id);
+
+        $semVinculo = $paradas->reject(fn ($m, $id) => isset($ssVinculadas[$vinculadas[$id] ?? 0]));
+        $automaticas = collect();
+        if ($semVinculo->isNotEmpty()) {
+            // Com "desde": numa consulta, a partir da parada mais antiga (cada máquina confere a sua abaixo).
+            $comDesde = $semVinculo->filter(fn ($m) => $m->situacao_desde);
+            if ($comDesde->isNotEmpty()) {
+                $desde = $comDesde->map(fn ($m) => $m->situacao_desde)->min()->copy()->subMinute();
+                $automaticas = SolicitacaoServico::with('ordemServico')->whereIn('maquina_id', $comDesde->keys()->all())
+                    ->where('automatica', true)->where('criado_em', '>=', $desde)
+                    ->orderByDesc('id')->get()->groupBy(fn ($s) => (int) $s->maquina_id);
+            }
+            // Sem "desde" (cadastro antigo): só a última automática da máquina.
+            foreach ($semVinculo->reject(fn ($m) => $m->situacao_desde) as $id => $m) {
+                $ultima = SolicitacaoServico::with('ordemServico')->where('maquina_id', $id)->where('automatica', true)->orderByDesc('id')->first();
+                $automaticas[$id] = $ultima ? collect([$ultima]) : collect();
+            }
         }
+
+        $chamados = [];
+        foreach ($paradas as $id => $maquina) {
+            $ss = $ssVinculadas[$vinculadas[$id] ?? 0] ?? ($automaticas[$id] ?? collect())
+                ->first(fn ($s) => ! $maquina->situacao_desde || $s->criado_em->gte($maquina->situacao_desde->copy()->subMinute()));
+            if ($ss) {
+                $chamados[$id] = self::resumo($ss);
+            }
+        }
+
+        return $chamados;
+    }
+
+    /** @return array{tipo: string, id: int, numero: string, status: string, rotulo: string} */
+    private static function resumo(SolicitacaoServico $ss): array
+    {
         $os = $ss->ordemServico;
 
         return $os

@@ -51,6 +51,7 @@ class MaquinasAplicativo
         $pendentes = $this->pendentesSemMotivo()->whereIn('maquina_id', $maquinas->pluck('id'))
             ->selectRaw('maquina_id, count(*) as total')->groupBy('maquina_id')->pluck('total', 'maquina_id');
         $produtos = $this->custo->produtos($maquinas->pluck('ordemProducao')->filter()->pluck('c2_produto'));
+        $chamados = ChamadoDaParada::dasMaquinas($maquinas);
 
         return $maquinas->map(fn (Maquina $m) => [
             'id' => $m->id,
@@ -62,7 +63,7 @@ class MaquinasAplicativo
             'op' => $m->ordemProducao ? $this->resumoOp($m->ordemProducao, $produtos) : null,
             'sem_motivo' => (int) ($pendentes[$m->id] ?? 0),
             // Parada com SS/OS aberta pela legenda: número e situação, para o operador acompanhar.
-            'chamado' => ChamadoDaParada::da($m),
+            'chamado' => $chamados[(int) $m->id] ?? null,
         ])->values()->all();
     }
 
@@ -79,8 +80,7 @@ class MaquinasAplicativo
         $ate = $ateLocal->utc();
 
         $apontamentos = ApontamentoEstado::with(['legenda', 'ordemProducao'])->where('maquina_id', $maquina->id)
-            ->where('inicio', '<', $ate)
-            ->where(fn ($q) => $q->whereNull('fim')->orWhere('fim', '>', $de))
+            ->tocando($de, $ate)
             ->orderByDesc('inicio')->orderByDesc('id')->limit(300)->get();
         $pendentes = $this->pendentesSemMotivo()->with(['legenda', 'ordemProducao'])->where('maquina_id', $maquina->id)
             ->orderBy('inicio')->get();

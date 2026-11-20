@@ -33,7 +33,7 @@ class PlanoPreventivaController extends Controller
             ->orderByDesc('ativo')->orderBy('codigo')->get();
 
         // OS geradas no ano, por plano e mês (situação para o calendário).
-        $ordens = OrdemServico::whereIn('plano_preventiva_id', $planos->pluck('id'))
+        $ordens = OrdemServico::whereIntegerInRaw('plano_preventiva_id', $planos->pluck('id')->map(fn ($id) => (int) $id)->all())
             ->whereBetween('prevista_para', ["{$ano}-01-01", "{$ano}-12-31"])
             ->get(['id', 'plano_preventiva_id', 'prevista_para', 'status']);
         $calendario = [];

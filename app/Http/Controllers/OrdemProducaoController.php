@@ -80,9 +80,10 @@ class OrdemProducaoController extends Controller
             return response()->json([]);
         }
         $ops = OrdemProducao::apontaveis()
-            ->where(fn ($q) => $q->where('numero', 'like', "%{$termo}%")
-                ->orWhere('c2_produto', 'like', "%{$termo}%")
-                ->orWhereIn('c2_produto', ProdutoProtheus::where('b1_desc', 'like', "%{$termo}%")->select('b1_cod')))
+            // Número e código pelo COMEÇO (usa o índice; a busca roda a cada tecla); descrição em qualquer parte, com 3+ letras.
+            ->where(fn ($q) => $q->where('numero', 'like', "{$termo}%")
+                ->orWhere('c2_produto', 'like', "{$termo}%")
+                ->when(mb_strlen($termo) >= 3, fn ($d) => $d->orWhereIn('c2_produto', ProdutoProtheus::where('b1_desc', 'like', "%{$termo}%")->select('b1_cod'))))
             ->orderByRaw("CASE status WHEN 'andamento' THEN 0 WHEN 'parada' THEN 1 ELSE 2 END")
             ->orderByDesc('c2_emissao')->orderByDesc('numero')
             ->limit(30)->get();

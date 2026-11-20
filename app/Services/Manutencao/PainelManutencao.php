@@ -122,7 +122,7 @@ final class PainelManutencao
         if ($ordens->isEmpty()) {
             return collect();
         }
-        $ultimas = InteracaoOs::whereIn('id', InteracaoOs::query()->selectRaw('MAX(id)')->whereIn('ordem_servico_id', $ordens->pluck('id'))->groupBy('ordem_servico_id'))
+        $ultimas = InteracaoOs::whereIn('id', InteracaoOs::query()->selectRaw('MAX(id)')->whereIntegerInRaw('ordem_servico_id', $ordens->pluck('id')->map(fn ($id) => (int) $id)->all())->groupBy('ordem_servico_id'))
             ->with('usuario')->get();
         $equipe = Mantenedor::withoutGlobalScopes()->whereNotNull('usuario_id')->pluck('usuario_id')->map(fn ($i) => (int) $i)->all();
         $porId = $ordens->keyBy('id');
@@ -150,7 +150,7 @@ final class PainelManutencao
         if ($ordens->isEmpty()) {
             return collect();
         }
-        $primeiros = ApontamentoHoras::whereIn('ordem_servico_id', $ordens->pluck('id'))->groupBy('ordem_servico_id')
+        $primeiros = ApontamentoHoras::whereIntegerInRaw('ordem_servico_id', $ordens->pluck('id')->map(fn ($id) => (int) $id)->all()) // sem parâmetros: período longo passa de 2100 OS->groupBy('ordem_servico_id')
             ->selectRaw('ordem_servico_id, MIN(inicio) as primeiro')->pluck('primeiro', 'ordem_servico_id');
         $fuso = HorasManutencao::fuso();
         $linhas = collect();

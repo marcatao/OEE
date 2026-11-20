@@ -85,7 +85,7 @@ class EngenhariaOrdemProducao
      *
      * @return array{codigo: ?string, informado: bool, outros: list<string>, operacoes: Collection, maquinas: Collection, ferramentas: Collection}
      */
-    public function roteiro(OrdemProducao $op): array
+    public function roteiro(OrdemProducao $op, bool $comMaquinas = true): array
     {
         $todas = RoteiroOperacao::validas()->where('g2_produto', rtrim((string) $op->c2_produto))->whereIn('g2_filial', self::filiais($op))
             ->orderBy('g2_codigo')->orderBy('g2_operac')->get();
@@ -103,7 +103,7 @@ class EngenhariaOrdemProducao
             'outros' => $codigos->reject(fn ($c) => $c === (string) $codigo)->values()->all(),
             'operacoes' => $operacoes,
             // Só as que o usuário enxerga (unidade).
-            'maquinas' => $ctrab ? Maquina::whereIn('codigo', $ctrab)->get()->keyBy('codigo') : collect(),
+            'maquinas' => $ctrab && $comMaquinas ? Maquina::whereIn('codigo', $ctrab)->get()->keyBy('codigo') : collect(),
             'ferramentas' => $ferram ? Ferramenta::validas()->whereIn('h4_codigo', $ferram)->whereIn('h4_filial', self::filiais($op))->get()
                 ->keyBy(fn ($f) => $f->codigo()) : collect(),
             'ferramentas_codigos' => $ferram,

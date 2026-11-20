@@ -274,8 +274,7 @@ class FerramentasAssistente
             ->whereHas('maquina') // só das máquinas que o usuário vê (unidade)
             ->when($ids, fn ($q) => $q->whereIn('maquina_id', $ids))
             ->when(isset($e['tipo_legenda']), fn ($q) => $q->whereHas('legenda', fn ($l) => $l->where('tipo', $e['tipo_legenda'])))
-            ->where('inicio', '<', $fim)
-            ->where(fn ($q) => $q->whereNull('fim')->orWhere('fim', '>', $inicio))
+            ->tocando($inicio, $fim)
             ->orderBy('inicio')
             ->get();
 

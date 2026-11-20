@@ -106,16 +106,20 @@ class FaltaProdutos
                 ->where('c2_tpop', '<>', 'P')->whereColumn('c2_quje', '<', 'c2_quant')
                 ->orderBy('c2_datprf')->orderBy('numero')
                 ->get(['id', 'numero', 'c2_produto', 'c2_quant', 'c2_quje', 'c2_datprf', 'status']);
-            $ids = $ops->pluck('id')->all();
-            $maquinas = $ids ? Maquina::whereIn('ordem_producao_id', $ids)->orderBy('codigo')
-                ->get(['id', 'codigo', 'nome', 'situacao', 'ordem_producao_id']) : collect();
+            $ids = $ops->pluck('id')->map(fn ($id) => (int) $id)->flip();
+            // Máquinas com OP atual e apontamentos "produzindo" em aberto são poucos (no máximo um por máquina): lidos
+            // inteiros e filtrados aqui, sem "IN" com milhares de ids (o SQL Server aceita só 2100 parâmetros).
+            $maquinas = $ids->isEmpty() ? collect() : Maquina::whereNotNull('ordem_producao_id')->orderBy('codigo')
+                ->get(['id', 'codigo', 'nome', 'situacao', 'ordem_producao_id'])
+                ->filter(fn ($m) => isset($ids[(int) $m->ordem_producao_id]))->values();
             // Apontamento real em aberto, do tipo "produzindo", com uma dessas OPs (só máquinas que o usuário vê).
-            $produzindo = $ids ? ApontamentoEstado::query()
+            $produzindo = $ids->isEmpty() ? collect() : ApontamentoEstado::query()
                 ->join('legendas', 'legendas.id', '=', 'apontamentos_estado.legenda_id')
                 ->whereNull('apontamentos_estado.fim')->where('legendas.tipo', 'produzindo')
-                ->whereIn('apontamentos_estado.ordem_producao_id', $ids)
+                ->whereNotNull('apontamentos_estado.ordem_producao_id')
                 ->whereIn('apontamentos_estado.maquina_id', Maquina::query()->select('id'))
-                ->get(['apontamentos_estado.maquina_id', 'apontamentos_estado.ordem_producao_id']) : collect();
+                ->get(['apontamentos_estado.maquina_id', 'apontamentos_estado.ordem_producao_id'])
+                ->filter(fn ($a) => isset($ids[(int) $a->ordem_producao_id]))->values();
             $maquinasProduzindo = Maquina::whereIn('id', $produzindo->pluck('maquina_id')->unique()->all() ?: [0])
                 ->get(['id', 'codigo', 'nome'])->keyBy('id');
 

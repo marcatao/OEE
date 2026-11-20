@@ -1181,7 +1181,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `iot_canal` | `nvarchar(20)` | sim |  |  |
 | `solicitacao_vinculada_id` | `bigint` | sim |  | FK → `solicitacoes_servico.id` |
 
-**Índices:** `apontamentos_estado_maquina_id_inicio_index` (maquina_id, inicio) · `apontamentos_estado_ordem_producao_id_index` (ordem_producao_id)
+**Índices:** `apontamentos_estado_maquina_id_inicio_index` (maquina_id, inicio) · `apontamentos_estado_ordem_producao_id_index` (ordem_producao_id) · `ix_apontamentos_estado_inicio` (inicio) · `ix_apontamentos_estado_legenda_inicio` (legenda_id, inicio)
 
 **Regras (CHECK, só no SQL Server):** `ck_apontamentos_estado_periodo`: `fim IS NULL OR fim > inicio` · `ck_apontamentos_estado_ciclo_medio`: `ciclo_medio IS NULL OR (ciclo_medio >= 0 AND ciclo_medio <= 999)`
 

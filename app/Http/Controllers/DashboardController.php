@@ -49,7 +49,7 @@ class DashboardController extends Controller
             'panorama' => $panorama->montar(new Collection([$maquina]), $periodo->inicio, $periodo->fim),
             // Apontamentos reais (Timeline) que tocam o período, do mais recente para o mais antigo.
             'apontamentosReais' => ApontamentoEstado::with(['legenda', 'ordemProducao'])->where('maquina_id', $maquina->id)
-                ->where('inicio', '<', $periodo->fim)->where(fn ($q) => $q->whereNull('fim')->orWhere('fim', '>', $periodo->inicio))
+                ->tocando($periodo->inicio, $periodo->fim)
                 ->orderByDesc('inicio')->limit(50)->get(),
             'ind' => $indicadores->daMaquina($maquina->id, $periodo->inicio, $periodo->fim),
             'apontamentos' => Apontamento::where('maquina_id', $maquina->id)

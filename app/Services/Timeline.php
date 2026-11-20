@@ -39,6 +39,7 @@ class Timeline
         $engenharia = app(EngenhariaOrdemProducao::class);
         $roteiros = [];
         $ciclos = $this->ciclosAtuais($maquinas);
+        $chamados = ChamadoDaParada::dasMaquinas($maquinas);
         $situacoes = [];
         foreach ($maquinas as $m) {
             $legenda = $m->situacaoLegenda;
@@ -51,7 +52,7 @@ class Timeline
             };
             $op = $m->ordemProducao;
             if ($op) {
-                $roteiros[$op->id] ??= $engenharia->roteiro($op);
+                $roteiros[$op->id] ??= $engenharia->roteiro($op, comMaquinas: false);
             }
             $situacoes[$m->id] = [
                 'estado' => $estado,
@@ -63,7 +64,7 @@ class Timeline
                 'moldes' => $op ? self::moldesDaMaquina($roteiros[$op->id], (string) $m->codigo) : [],
                 // Ciclo médio (segundos por peça) do apontamento real mais recente da máquina; null = não informado.
                 // Máquina parada com SS/OS aberta pela legenda: número e situação (vai no lugar da meta).
-                'chamado' => ChamadoDaParada::da($m),
+                'chamado' => $chamados[(int) $m->id] ?? null,
                 'cicloMedio' => $ciclos[(int) $m->id] ?? null,
             ];
         }
@@ -78,17 +79,8 @@ class Timeline
      */
     private function ciclosAtuais(Collection $maquinas): array
     {
-        if ($maquinas->isEmpty()) {
-            return [];
-        }
-        $ultimos = ApontamentoEstado::query()->whereIn('maquina_id', $maquinas->modelKeys())
-            ->whereNotExists(fn ($q) => $q->from('apontamentos_estado as mais')
-                ->whereColumn('mais.maquina_id', 'apontamentos_estado.maquina_id')
-                ->where(fn ($w) => $w->whereColumn('mais.inicio', '>', 'apontamentos_estado.inicio')
-                    ->orWhere(fn ($e) => $e->whereColumn('mais.inicio', 'apontamentos_estado.inicio')->whereColumn('mais.id', '>', 'apontamentos_estado.id'))))
-            ->get(['maquina_id', 'ciclo_medio']);
-
-        return $ultimos->mapWithKeys(fn ($a) => [(int) $a->maquina_id => $a->ciclo_medio === null ? null : (int) $a->ciclo_medio])->all();
+        return collect(ApontamentoEstado::ultimosPorMaquina($maquinas->modelKeys(), ['ciclo_medio']))
+            ->map(fn ($u) => $u['ciclo_medio'] === null ? null : (int) $u['ciclo_medio'])->all();
     }
 
     /**
@@ -119,8 +111,7 @@ class Timeline
 
         $apontamentos = ApontamentoEstado::with(['legenda', 'ordemProducao'])
             ->whereIn('maquina_id', $maquinas->modelKeys())
-            ->where('inicio', '<', $fim)
-            ->where(fn ($q) => $q->whereNull('fim')->orWhere('fim', '>', $inicio))
+            ->tocando($inicio, $fim)
             ->orderBy('inicio')
             ->get()
             ->groupBy('maquina_id');

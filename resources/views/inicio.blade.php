@@ -93,12 +93,13 @@
       </div>
       @if ($opsAbertas !== null)
         @php
-          $opsAndamento = $opsAbertas->where('status', 'andamento')->count();
-          $opsParadas = $opsAbertas->where('status', 'parada')->count();
+          $opsAndamento = $contagemOps['andamento'] ?? 0;
+          $opsParadas = $contagemOps['parada'] ?? 0;
+          $opsTotal = $contagemOps->sum();
         @endphp
         <a class="kpi" href="{{ route('ordens-producao.index', ['status' => ['andamento']]) }}">
           <div @class(['kpi-icone', 'alerta' => $opsParadas > 0])>@include('layouts.partials.icone', ['nome' => 'ordem_producao'])</div>
-          <div><span>OPs em andamento</span><strong>{{ Formato::inteiro($opsAndamento) }}<small> / {{ Formato::inteiro($opsAbertas->count()) }} abertas</small></strong>
+          <div><span>OPs em andamento</span><strong>{{ Formato::inteiro($opsAndamento) }}<small> / {{ Formato::inteiro($opsTotal) }} abertas</small></strong>
             @if ($opsParadas > 0)<small>{{ $opsParadas }} {{ $opsParadas === 1 ? 'parada' : 'paradas' }}</small>@endif</div>
         </a>
       @endif
@@ -113,7 +114,7 @@
     @if ($opsAbertas !== null)
       <section class="cartao" style="margin-top:1.5rem">
         <div class="cartao-titulo">
-          <h3>Ordens de produção abertas <small class="suave">({{ Formato::inteiro($opsAbertas->count()) }})</small></h3>
+          <h3>Ordens de produção abertas <small class="suave">({{ Formato::inteiro($contagemOps->sum()) }}@if ($contagemOps->sum() > $opsAbertas->count()); mostrando as {{ $opsAbertas->count() }} primeiras @endif)</small></h3>
           <a href="{{ route('ordens-producao.index', ['status' => ['aberta', 'andamento', 'parada']]) }}">Ver na tela de OPs @include('layouts.partials.icone', ['nome' => 'seta'])</a>
         </div>
         @if ($opsAbertas->isEmpty())

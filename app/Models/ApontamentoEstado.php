@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -22,6 +23,53 @@ class ApontamentoEstado extends Model
 
     /** iot_dispositivo_id e iot_canal ficam FORA de propósito: só o Integrador MQTT grava a origem IoT. */
     protected $fillable = ['maquina_id', 'legenda_id', 'ordem_producao_id', 'inicio', 'fim', 'referencia', 'observacao'];
+
+    /**
+     * Folga (dias) para buscar por período: um apontamento ENCERRADO não passa de um dia (HorarioApontamento), então
+     * só os que começaram até essa folga antes do período podem tocá-lo; os EM ABERTO entram sempre. Assim a busca usa
+     * o índice (maquina_id, inicio) sem ler o histórico inteiro da máquina. A folga cobre registros antigos maiores.
+     */
+    public const DIAS_FOLGA_PERIODO = 7;
+
+    /** Apontamentos que tocam o período [inicio, fim) (encerrados que terminam depois do início ou em aberto). */
+    public function scopeTocando($query, CarbonInterface $inicio, CarbonInterface $fim)
+    {
+        $desde = CarbonImmutable::instance($inicio)->subDays(self::DIAS_FOLGA_PERIODO);
+
+        return $query->where('inicio', '<', $fim)
+            ->where(fn ($q) => $q->whereNull('fim')
+                ->orWhere(fn ($e) => $e->where('fim', '>', $inicio)->where('inicio', '>=', $desde)));
+    }
+
+    /**
+     * Colunas do apontamento MAIS RECENTE (por início, depois id) de cada máquina, numa consulta só: uma busca TOP 1
+     * pelo índice (maquina_id, inicio) por máquina, sem varrer o histórico.
+     *
+     * @param  iterable<int|string>  $maquinaIds
+     * @param  list<string>  $colunas
+     * @return array<int, array<string, mixed>> máquina => [coluna => valor]
+     */
+    public static function ultimosPorMaquina(iterable $maquinaIds, array $colunas): array
+    {
+        $ids = collect($maquinaIds)->map(fn ($id) => (int) $id)->unique()->values();
+        if ($ids->isEmpty()) {
+            return [];
+        }
+        $resultado = [];
+        foreach ($ids->chunk(1000) as $bloco) {
+            $consulta = DB::table('maquinas')->whereIn('id', $bloco->all())->select('id');
+            foreach ($colunas as $coluna) {
+                $consulta->selectSub(DB::table('apontamentos_estado')->select($coluna)
+                    ->whereColumn('apontamentos_estado.maquina_id', 'maquinas.id')
+                    ->orderByDesc('inicio')->orderByDesc('id')->limit(1), $coluna);
+            }
+            foreach ($consulta->get() as $linha) {
+                $resultado[(int) $linha->id] = collect($colunas)->mapWithKeys(fn ($c) => [$c => $linha->{$c}])->all();
+            }
+        }
+
+        return $resultado;
+    }
 
     /** Marca que o Integrador MQTT põe no início da observação dos apontamentos automáticos. */
     public const MARCA_IOT = '[IoT]';

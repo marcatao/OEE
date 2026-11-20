@@ -18,6 +18,8 @@ use InvalidArgumentException;
 
 class PortalController extends Controller
 {
+    private const OPS_NA_INICIAL = 30;
+
     public function inicio(Request $request, IndicadoresOee $indicadores): View
     {
         $usuario = $request->user();
@@ -28,20 +30,24 @@ class PortalController extends Controller
         $hoje = Periodo::de('hoje');
 
         // OPs abertas (não fechadas e não excluídas no Protheus): só para quem vê a tela de ordens de produção.
+        // Contagem por status no banco; a lista mostra só as primeiras (paradas, depois em andamento) — o resto na tela de OPs.
         $opsAbertas = null;
+        $contagemOps = collect();
         $produtosOps = collect();
         if ($usuario->pode('ordens_producao')) {
+            $contagemOps = OrdemProducao::apontaveis()->selectRaw('status, count(*) as total')->groupBy('status')
+                ->pluck('total', 'status')->map(fn ($t) => (int) $t);
             $opsAbertas = OrdemProducao::apontaveis()
                 ->orderByRaw("CASE status WHEN 'parada' THEN 0 WHEN 'andamento' THEN 1 ELSE 2 END")
-                ->orderBy('c2_datprf')->orderBy('numero')
+                ->orderBy('c2_datprf')->orderBy('numero')->limit(self::OPS_NA_INICIAL)
                 ->get(['id', 'numero', 'c2_filial', 'c2_produto', 'c2_um', 'c2_quant', 'c2_quje', 'c2_datpri', 'c2_datprf', 'status']);
-            // Descrição só dos produtos dessas OPs (subconsulta: sem limite de parâmetros no SQL Server).
-            $produtosOps = ProdutoProtheus::whereIn('b1_cod', OrdemProducao::apontaveis()->select('c2_produto'))
+            $produtosOps = ProdutoProtheus::whereIn('b1_cod', $opsAbertas->pluck('c2_produto')->unique()->values()->all() ?: [''])
                 ->get()->keyBy(fn ($p) => $p->codigo());
         }
 
         return view('inicio', [
             'opsAbertas' => $opsAbertas,
+            'contagemOps' => $contagemOps,
             'produtosOps' => $produtosOps,
             'hoje' => $usuario->pode('dashboard_maquina') ? $indicadores->geral($hoje->inicio, $hoje->fim) : null,
             'maquinasAtivas' => Maquina::where('ativo', true)->count(),
