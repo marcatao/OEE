@@ -3,6 +3,8 @@
 use App\Models\ApontamentoEstado;
 use App\Models\Compras\PedidoCompra;
 use App\Models\Usuario;
+use App\Services\Assistente\ClienteClaude;
+use App\Services\Assistente\DiagnosticoErro;
 use App\Services\Compras\PedidoCompraMuro;
 use App\Services\ImportadorUsuariosEntra;
 use App\Services\InfoBanco;
@@ -216,3 +218,29 @@ Artisan::command('compras:atualizar-pedidos', function (PedidoCompraMuro $muro) 
 if ($agendaCompras = config('compras.agenda')) {
     Schedule::command('compras:atualizar-pedidos')->cron($agendaCompras)->withoutOverlapping();
 }
+
+// Pergunte para Alumbra: confere a configuração e faz uma chamada mínima à Claude, mostrando o erro exato e como resolver.
+Artisan::command('assistente:testar', function (ClienteClaude $cliente) {
+    $chave = (string) config('assistente.chave');
+    $this->line(sprintf('%14s: %s', 'Chave', $chave === '' ? '(vazia)' : substr($chave, 0, 10).'…'.substr($chave, -4)));
+    foreach (['modelo', 'esforco', 'fallback', 'timeout', 'max_tokens'] as $c) {
+        $this->line(sprintf('%14s: %s', ucfirst($c), var_export(config("assistente.{$c}"), true)));
+    }
+    try {
+        $r = $cliente->enviar(['system' => [['type' => 'text', 'text' => 'Responda apenas: OK']],
+            'messages' => [['role' => 'user', 'content' => 'Teste de conexão do portal.']], 'tools' => []]);
+        $texto = trim(implode('', array_map(fn ($b) => ($b['type'] ?? '') === 'text' ? $b['text'] : '', $r['content'])));
+        $this->info("Claude respondeu ({$r['model']}): {$texto}");
+
+        return 0;
+    } catch (Throwable $e) {
+        $d = DiagnosticoErro::de($e);
+        $this->error($d->mensagem);
+        $this->line('Detalhe: '.$d->detalhe);
+        if ($d->dica) {
+            $this->warn('Como resolver: '.$d->dica);
+        }
+
+        return 1;
+    }
+})->purpose('Testa a configuração do assistente "Pergunte para Alumbra" com uma chamada mínima à Claude');

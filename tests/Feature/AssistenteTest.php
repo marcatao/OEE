@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use Anthropic\Core\Exceptions\BadRequestException;
+use Anthropic\Core\Exceptions\NotFoundException;
 use App\Models\Apontamento;
 use App\Models\ApontamentoEstado;
 use App\Models\Assistente\Conversa;
@@ -15,7 +17,10 @@ use App\Models\Planta;
 use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
 use App\Services\Assistente\ClienteClaude;
+use App\Services\Assistente\DiagnosticoErro;
 use App\Services\Assistente\FerramentasAssistente;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
 use Tests\TestCase;
@@ -174,6 +179,41 @@ class AssistenteTest extends TestCase
         $this->assertSame('Não foi possível responder agora. Tente de novo.', $r['mensagem']);
         $this->assertSame([], Conversa::sole()->historico());
         $this->assertSame('erro', Pergunta::sole()->situacao);
+    }
+
+    public function test_erro_mostra_causa_so_ao_admin_de_tecnologia(): void
+    {
+        $falha = new \Error('Class "Anthropic\\Client" not found');
+
+        $this->actingAs($this->usuario(['admin_producao'], 'adm@empresa.com'));
+        $this->claude->respostas = [$falha];
+        $r = $this->perguntar('Oi');
+        $this->assertSame('O assistente não está instalado no servidor.', $r['mensagem']);
+        $this->assertArrayNotHasKey('detalhe', $r);
+        $this->assertStringContainsString('composer install', Pergunta::sole()->erro);
+
+        $this->actingAs($this->usuario(['admin_tecnologia'], 'ti@empresa.com'));
+        $this->claude->respostas = [$falha];
+        $r = $this->perguntar('Oi');
+        $this->assertStringContainsString('Anthropic\\Client', $r['detalhe']);
+        $this->assertStringContainsString('composer install', $r['dica']);
+    }
+
+    public function test_diagnostico_dos_erros_da_api(): void
+    {
+        $api = fn (string $classe, int $status, string $msg) => new $classe(new Request('POST', 'https://api.anthropic.com/v1/messages'),
+            new Response($status, ['content-type' => 'application/json'], json_encode(['type' => 'error', 'error' => ['type' => 'x', 'message' => $msg]])));
+        $casos = [
+            [$api(NotFoundException::class, 404, 'model: claude-xyz'), 'ASSISTENTE_MODELO', 'HTTP 404 - model: claude-xyz'],
+            [$api(BadRequestException::class, 400, 'Your credit balance is too low'), 'Billing', 'credit balance'],
+            [$api(BadRequestException::class, 400, 'fallbacks: not supported for this model'), 'ASSISTENTE_FALLBACK=false', 'fallbacks'],
+            [new RuntimeException('cURL error 60: SSL certificate problem'), 'cacert.pem', 'SSL'],
+        ];
+        foreach ($casos as [$e, $dica, $detalhe]) {
+            $d = DiagnosticoErro::de($e);
+            $this->assertStringContainsString($dica, (string) $d->dica);
+            $this->assertStringContainsString($detalhe, $d->detalhe);
+        }
     }
 
     public function test_recusa_vira_resposta_padrao(): void

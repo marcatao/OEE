@@ -82,7 +82,7 @@
       })
       .then(function (j) {
         if (j.situacao === 'concluida') desenhar(resposta, j.resposta || '');
-        else erro(resposta, j.mensagem || 'Não foi possível responder.');
+        else erro(resposta, j.mensagem || 'Não foi possível responder.', j.detalhe, j.dica);
       })
       .catch(function (e) { erro(resposta, e.message); })
       .then(function () {
@@ -153,12 +153,21 @@
     };
   }
 
-  function erro(el, texto) {
+  function erro(el, texto, detalhe, dica) {
     el.innerHTML = '';
     var p = document.createElement('p');
     p.className = 'erro';
     p.textContent = texto;
     el.appendChild(p);
+    // Só o Administrador de Tecnologia recebe o detalhe técnico e a dica.
+    [detalhe, dica ? 'Como resolver: ' + dica : null].forEach(function (t) {
+      if (!t) return;
+      var s = document.createElement('p');
+      s.className = 'suave';
+      s.innerHTML = '<small></small>';
+      s.firstChild.textContent = t;
+      el.appendChild(s);
+    });
     rolar();
   }
 

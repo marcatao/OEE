@@ -2,7 +2,6 @@
 
 namespace App\Services\Assistente;
 
-use Anthropic\Core\Exceptions;
 use App\Models\Assistente\Conversa;
 use App\Models\Assistente\Pergunta;
 use App\Models\Usuario;
@@ -99,9 +98,15 @@ class AssistenteAlumbra
             $pergunta->situacao = 'respondendo';
             $resposta = $this->cliente->enviar($requisicao);
         } catch (Throwable $e) {
-            Log::warning('Assistente: falha ao chamar a Claude', ['pergunta' => $pergunta->id, 'erro' => $e->getMessage()]);
+            $d = DiagnosticoErro::de($e);
+            Log::warning('Assistente: falha ao chamar a Claude', ['pergunta' => $pergunta->id, 'erro' => $d->registro()]);
+            $resposta = $this->falhar($pergunta, $d->mensagem, $d->registro());
+            if ($usuario->podeSeguranca()) {
+                // Administrador de Tecnologia vê a causa técnica e a dica no próprio box.
+                $resposta += ['detalhe' => $d->detalhe, 'dica' => $d->dica];
+            }
 
-            return $this->falhar($pergunta, $this->mensagemErro($e));
+            return $resposta;
         }
 
         $this->somarUso($pergunta, $resposta);
@@ -328,29 +333,15 @@ class AssistenteAlumbra
     }
 
     /** Marca a pergunta com erro e devolve a conversa ao estado de antes dela (o histórico continua válido). */
-    private function falhar(Pergunta $pergunta, string $mensagem): array
+    private function falhar(Pergunta $pergunta, string $mensagem, ?string $registro = null): array
     {
         $conversa = $pergunta->conversa;
         $conversa->update(['mensagens' => array_slice($conversa->historico(), 0, $pergunta->posicao)]);
         $pergunta->situacao = 'erro';
-        $pergunta->erro = mb_substr($mensagem, 0, 1000);
+        $pergunta->erro = mb_substr($registro ?? $mensagem, 0, 1000);
         $pergunta->concluida_em = now();
         $pergunta->save();
 
         return ['situacao' => 'erro', 'mensagem' => $mensagem];
-    }
-
-    private function mensagemErro(Throwable $e): string
-    {
-        return match (true) {
-            $e instanceof Exceptions\RateLimitException => 'O assistente está com muitas perguntas agora. Tente de novo em instantes.',
-            $e instanceof Exceptions\OverloadedException, $e instanceof Exceptions\ServiceUnavailableException,
-            $e instanceof Exceptions\InternalServerException => 'O serviço da Claude está sobrecarregado. Tente de novo em instantes.',
-            $e instanceof Exceptions\AuthenticationException, $e instanceof Exceptions\PermissionDeniedException,
-            $e instanceof \RuntimeException && str_contains($e->getMessage(), 'ANTHROPIC_API_KEY') => 'O assistente não está autorizado na Anthropic (verifique a chave ANTHROPIC_API_KEY no .env).',
-            $e instanceof Exceptions\APITimeoutException, $e instanceof Exceptions\APIConnectionException => 'Não foi possível falar com a Claude (rede ou tempo esgotado). Tente de novo.',
-            $e instanceof Exceptions\BadRequestException => 'A Claude não aceitou a pergunta. Comece uma nova conversa e tente de novo.',
-            default => 'Não foi possível responder agora. Tente de novo.',
-        };
     }
 }
