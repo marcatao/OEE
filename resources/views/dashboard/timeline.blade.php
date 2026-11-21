@@ -110,7 +110,7 @@
       <form method="dialog" id="tl-form-op">
         <h2>Informar ordem de produção</h2>
         <p class="suave" data-op-descricao></p>
-        @include('partials.campo-op', ['op' => null, 'ajuda' => 'Só ordens abertas (não fechadas no Protheus). Digite o número da OP ou o produto.'])
+        @include('partials.campo-op', ['op' => null, 'ajuda' => 'Só ordens abertas (não fechadas no Protheus). Digite o número da OP, o SKU ou a descrição do produto.'])
         <p class="erro" data-op-erro hidden></p>
         <div class="acoes">
           <button class="botao" type="submit" value="gravar">Gravar OP</button>
@@ -148,7 +148,7 @@
         <p class="suave" data-troca-maquina></p>
         <div data-passo="1">
           @include('partials.campo-op', ['op' => null, 'nome' => 'ordem_producao_troca', 'rotulo' => 'Nova ordem de produção',
-            'ajuda' => 'Só ordens abertas (não fechadas no Protheus). Digite o número da OP ou o produto.'])
+            'ajuda' => 'Só ordens abertas (não fechadas no Protheus). Digite o número da OP, o SKU ou a descrição do produto.'])
           <div class="acoes">
             <button class="botao" type="button" data-troca-continuar>Confirmar OP</button>
             <button class="botao secundario" type="button" data-troca-cancelar>Cancelar</button>

@@ -108,6 +108,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   login. Exportação CSV escapa células que começam com = + - @. Agendador (`routes/console.php`) roda no fuso LOCAL
   (`app.schedule_timezone`). Apontamento real que abriu SS/OS automática NÃO se exclui (aviso); troca de OP e
   continuações levam o chamado (`chamadoParaContinuar`) sem abrir outra SS.
+- **Busca de OP** (todas: lista de OPs, campo de OP do apontamento/máquina/Timeline e app): escopo
+  `OrdemProducao::busca($termo)` — num campo só, cada palavra em qualquer parte do número, do SKU ou da descrição (SB1).
 - **Ids no SQL Server chegam como TEXTO** (pdo_sqlsrv): compare chaves estrangeiras e `value('id')` sempre com
   `(int)` dos dois lados — `===` entre texto e número dá falso só no servidor (os testes em SQLite não pegam).
 - Custo das OPs (`App\Services\CustoOrdemProducao`, com `ResumoCustoOp` e `TiposMovimento`): `movimentos_producao`

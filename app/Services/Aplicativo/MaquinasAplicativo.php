@@ -176,12 +176,12 @@ class MaquinasAplicativo
         $ferramenta->update(['h4_qtdcavativas' => $cavidades]);
     }
 
-    /** OPs abertas para escolher (busca pelo número ou pelo produto). */
+    /** OPs abertas para escolher (busca pelo número da OP, SKU ou descrição do produto). */
     public function buscarOps(string $busca): array
     {
         $busca = trim($busca);
         $ops = OrdemProducao::apontaveis()
-            ->when($busca !== '', fn ($q) => $q->where(fn ($w) => $w->where('numero', 'like', $busca.'%')->orWhere('c2_produto', 'like', $busca.'%')))
+            ->busca($busca) // número da OP, SKU ou descrição do produto (igual ao portal)
             ->orderByDesc('numero')->limit(30)->get();
         $produtos = $this->custo->produtos($ops->pluck('c2_produto'));
 

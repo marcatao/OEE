@@ -50,6 +50,24 @@ class OrdemProducao extends Model
         return $q->where('status', '<>', 'fechada')->where('d_e_l_e_t_', '<>', '*');
     }
 
+    /**
+     * Busca de OP num campo só (TODAS as buscas de OP do portal, do app e da Timeline): cada palavra digitada tem de
+     * aparecer no número da OP, no código (SKU) do produto ou na descrição do produto (SB1), em qualquer parte.
+     * Ex.: "06323" acha pelo número; "PA0910" pelo SKU; "interruptor paralelo" pela descrição.
+     */
+    public function scopeBusca(Builder $q, ?string $termo): Builder
+    {
+        $palavras = array_slice(array_values(array_filter(preg_split('/\s+/', trim((string) $termo)) ?: [], fn ($p) => $p !== '')), 0, 5);
+        foreach ($palavras as $palavra) {
+            $like = '%'.str_replace(['\\', '%', '_', '['], ['\\\\', '\\%', '\\_', '\\['], $palavra).'%';
+            $q->where(fn ($w) => $w->whereRaw("numero LIKE ? ESCAPE '\\'", [$like])
+                ->orWhereRaw("c2_produto LIKE ? ESCAPE '\\'", [$like])
+                ->orWhereIn('c2_produto', ProdutoProtheus::query()->select('b1_cod')->whereRaw("b1_desc LIKE ? ESCAPE '\\'", [$like])));
+        }
+
+        return $q;
+    }
+
     /** Texto da OP nas listas com busca: "06267801001 · PA0910755 INTERRUPTOR PARALELO · Andamento". */
     public function textoBusca(?ProdutoProtheus $produto = null): string
     {

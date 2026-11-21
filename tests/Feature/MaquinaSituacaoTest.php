@@ -142,6 +142,14 @@ class MaquinaSituacaoTest extends TestCase
         $this->getJson('/producao/ordens-de-producao/busca?q=interruptor')->assertJsonCount(1)->assertJsonPath('0.valor', '06267801001');
         $this->getJson('/producao/ordens-de-producao/busca?q=PA00')->assertJsonCount(1);  // a 062679 (fechada) não vem
         $this->getJson('/producao/ordens-de-producao/busca?q=0')->assertExactJson([]);   // mínimo 2 letras
+        // Qualquer parte do número, do SKU ou da descrição, e várias palavras juntas (cada uma em qualquer campo).
+        $this->getJson('/producao/ordens-de-producao/busca?q=7801')->assertJsonCount(1)->assertJsonPath('0.valor', '06267801001');
+        $this->getJson('/producao/ordens-de-producao/busca?q=A001')->assertJsonCount(1);
+        $this->getJson('/producao/ordens-de-producao/busca?q=paralelo interr')->assertJsonCount(1);
+        $this->getJson('/producao/ordens-de-producao/busca?q=PA001 paralelo')->assertJsonCount(1);
+        $this->getJson('/producao/ordens-de-producao/busca?q=paralelo tomada')->assertExactJson([]);
+        $this->getJson('/producao/ordens-de-producao/busca?q=50%25')->assertExactJson([]); // % é texto, não curinga
+        $this->get('/producao/ordens-de-producao?busca=interruptor')->assertOk()->assertSee('06267801001');
 
         // Quem não aponta nem administra não usa a busca.
         $u = Usuario::create(['entra_oid' => 'oid-m', 'nome' => 'M', 'email' => 'm@empresa.com', 'perfil' => 'operador']);

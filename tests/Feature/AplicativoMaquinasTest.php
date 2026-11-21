@@ -11,6 +11,7 @@ use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\Planta;
+use App\Models\ProdutoProtheus;
 use App\Models\RoteiroOperacao;
 use App\Models\Usuario;
 use App\Services\Aplicativo\LoginAplicativo;
@@ -255,6 +256,11 @@ class AplicativoMaquinasTest extends TestCase
 
         $numeros = array_column($this->api('GET', 'ops?busca=000')->assertOk()->json('ops'), 'numero');
         $this->assertEqualsCanonicalizing([$this->op1->numero, $this->op2->numero], $numeros);
+        // Mesma busca do portal: meio do número, SKU ou descrição do produto.
+        ProdutoProtheus::forceCreate(['b1_filial' => '', 'b1_cod' => 'PA2', 'b1_desc' => 'TAMPA REDONDA', 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 9]);
+        $this->assertSame([$this->op2->numero], array_column($this->api('GET', 'ops?busca=20001')->json('ops'), 'numero'));
+        $this->assertSame([$this->op2->numero], array_column($this->api('GET', 'ops?busca=redonda')->json('ops'), 'numero'));
+        $this->assertSame([$this->op1->numero], array_column($this->api('GET', 'ops?busca=PA1')->json('ops'), 'numero'));
     }
 
     public function test_maquinas_no_app_so_para_o_perfil_operador(): void

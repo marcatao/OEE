@@ -26,9 +26,7 @@ class OrdemProducaoController extends Controller
 
         $ordens = OrdemProducao::withCount('apontamentos')
             ->where('d_e_l_e_t_', '<>', '*')
-            ->when($busca !== '', fn ($q) => $q->where(fn ($w) => $w->where('numero', 'like', "%{$busca}%")
-                ->orWhere('c2_produto', 'like', "%{$busca}%")
-                ->orWhereIn('c2_produto', ProdutoProtheus::where('b1_desc', 'like', "%{$busca}%")->select('b1_cod'))))
+            ->busca($busca) // número da OP, SKU ou descrição do produto
             ->when($status, fn ($q) => $q->whereIn('status', $status))
             ->orderByRaw("CASE status WHEN 'parada' THEN 0 WHEN 'andamento' THEN 1 WHEN 'aberta' THEN 2 ELSE 3 END")
             ->orderByDesc('c2_emissao')->orderByDesc('numero')
@@ -80,10 +78,7 @@ class OrdemProducaoController extends Controller
             return response()->json([]);
         }
         $ops = OrdemProducao::apontaveis()
-            // Número e código pelo COMEÇO (usa o índice; a busca roda a cada tecla); descrição em qualquer parte, com 3+ letras.
-            ->where(fn ($q) => $q->where('numero', 'like', "{$termo}%")
-                ->orWhere('c2_produto', 'like', "{$termo}%")
-                ->when(mb_strlen($termo) >= 3, fn ($d) => $d->orWhereIn('c2_produto', ProdutoProtheus::where('b1_desc', 'like', "%{$termo}%")->select('b1_cod'))))
+            ->busca($termo) // número da OP, SKU ou descrição do produto
             ->orderByRaw("CASE status WHEN 'andamento' THEN 0 WHEN 'parada' THEN 1 ELSE 2 END")
             ->orderByDesc('c2_emissao')->orderByDesc('numero')
             ->limit(30)->get();
