@@ -3,6 +3,7 @@
 use App\Http\Controllers\Aplicativo\ApiAplicativoController;
 use App\Http\Controllers\Aplicativo\MaquinasAplicativoController;
 use App\Http\Controllers\Aplicativo\OrdensServicoAplicativoController as OsApp;
+use App\Http\Controllers\IntegradorIotController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -55,3 +56,8 @@ Route::prefix('app')->name('api.app.')->group(function () {
         });
     });
 });
+
+// Integrador MQTT (marcatao/MQTT): depois de gravar os apontamentos reais do IoT no banco, pede ao portal a SS
+// automática dos apontamentos novos ou com a legenda trocada. Token em IOT_TOKEN (middleware "integrador").
+Route::post('iot/apontamentos/processar', [IntegradorIotController::class, 'processar'])
+    ->middleware(['integrador', 'throttle:120,1'])->name('api.iot.processar');

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AutenticaAplicativo;
+use App\Http\Middleware\AutenticaIntegradorIot;
 use App\Http\Middleware\CabecalhosSeguranca;
 use App\Http\Middleware\ExigePerfil;
 use App\Http\Middleware\ExigePermissao;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'perfil' => ExigePerfil::class,
             'permissao' => ExigePermissao::class,
             'aplicativo' => AutenticaAplicativo::class,
+            'integrador' => AutenticaIntegradorIot::class,
         ]);
         $middleware->redirectGuestsTo(fn () => route('login'));
         // Proxies confiáveis (TRUSTED_PROXIES no .env) ficam em config/trustedproxy.php: aqui o .env ainda não foi lido.

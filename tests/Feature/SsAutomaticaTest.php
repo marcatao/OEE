@@ -16,6 +16,7 @@ use App\Services\Manutencao\ChamadoDaParada;
 use App\Services\Manutencao\SsAutomatica;
 use App\Support\AcessoOs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
 
@@ -52,6 +53,33 @@ class SsAutomaticaTest extends TestCase
         $u->definirPerfis($perfis);
 
         return $u->fresh();
+    }
+
+    public function test_integrador_mqtt_grava_direto_no_banco_e_pede_a_ss_ao_portal(): void
+    {
+        $this->quebra->forceFill(['abre_ss_unidade' => 'manutencao', 'abre_ss_area_executante_id' => $this->mecanica->id])->save();
+        // O integrador faz INSERT direto (sem os eventos do portal): nenhuma SS ainda.
+        $id = DB::table('apontamentos_estado')->insertGetId(['maquina_id' => $this->maquina->id,
+            'legenda_id' => $this->quebra->id, 'inicio' => now()->subHour(), 'observacao' => '[IoT] teste', 'criado_em' => now(), 'atualizado_em' => now()]);
+        $this->assertSame(0, SolicitacaoServico::count());
+
+        $url = '/api/iot/apontamentos/processar';
+        config(['oee.iot.token' => '']);
+        $this->postJson($url, ['apontamentos' => [$id]])->assertStatus(503);       // sem token no portal: desligada
+        config(['oee.iot.token' => 'segredo-do-integrador']);
+        $this->postJson($url, ['apontamentos' => [$id]])->assertUnauthorized();
+        $this->postJson($url, ['apontamentos' => [$id]], ['Authorization' => 'Bearer errado'])->assertUnauthorized();
+
+        $cab = ['Authorization' => 'Bearer segredo-do-integrador'];
+        $this->postJson($url, ['apontamentos' => [$id, 999999]], $cab)->assertOk()
+            ->assertJsonPath('processados', 1)->assertJsonPath('nao_encontrados', [999999]);
+        $ss = SolicitacaoServico::sole();
+        $this->assertSame([(int) $id, SsAutomatica::usuarioIot()->id], [(int) $ss->apontamento_estado_id, (int) $ss->solicitante_id]);
+
+        // Mandar de novo (próximo ciclo) não abre outra.
+        $this->postJson($url, ['apontamentos' => [$id]], $cab)->assertOk();
+        $this->assertSame(1, SolicitacaoServico::count());
+        $this->postJson($url, ['apontamentos' => ['x']], $cab)->assertUnprocessable();
     }
 
     public function test_cadastro_da_legenda_com_abre_ss(): void

@@ -11,6 +11,14 @@ return [
     // E-mails que NASCEM administradores no primeiro login. Todos os outros nascem "sem acesso" e um
     // administrador libera pelo menu Administração > Logins > Usuários.
     // Aplicativo Android (app-movel/): login pelo portal e API /api/app.
+    // Integrador MQTT (repositório marcatao/MQTT): depois de gravar os apontamentos reais direto no banco, ele chama
+    // POST /api/iot/apontamentos/processar com este token (Authorization: Bearer) para o portal abrir a SS automática.
+    // Vazio = rota desligada. Gere com: php -r "echo bin2hex(random_bytes(32));" e ponha o MESMO valor no integrador.
+    'iot' => [
+        'token' => env('IOT_TOKEN', ''),
+        'max_apontamentos' => 500, // por chamada
+    ],
+
     'app' => [
         'minutos_codigo' => 3,  // validade do código de uso único que o portal devolve ao app no login
         'dias_sem_uso' => 7,    // token sem uso por mais dias que isso deixa de valer (o app bloqueia antes: 48 h)
