@@ -694,6 +694,33 @@ class OrdensServicoTest extends TestCase
             ->assertOk()->assertSee('id="unidade-tecnologia"', false)->assertDontSee('id="unidade-manutencao"', false);
     }
 
+    public function test_apenas_solicitante_ve_os_seus_e_os_do_seu_centro_de_custo_na_sua_unidade(): void
+    {
+        $ana = $this->usuario(['solicitante_manutencao'], 'ana-sol@empresa.com', '1001 - Injeção');
+        $bia = $this->usuario(['solicitante_manutencao'], 'bia-sol@empresa.com'); // sem centro de custo
+        $outro = $this->usuario(['solicitante_manutencao', 'solicitante_tecnologia'], 'outro-sol@empresa.com');
+        $ss = fn (Usuario $quem, string $un, string $cc, string $titulo) => SolicitacaoServico::create(['unidade' => $un, 'solicitante_id' => $quem->id,
+            'titulo' => $titulo, 'tipo' => 'corretiva', 'area_executante_id' => $un === 'tecnologia' ? $this->ti->id : $this->mecanica->id,
+            'prioridade' => 'baixa', 'descricao' => 'x', 'status' => 'pendente', 'centro_custo' => $cc]);
+        $daAna = $ss($ana, 'manutencao', '2002', 'Chamado da Ana');
+        $doCc = $ss($outro, 'manutencao', '1001', 'Chamado do CC 1001');
+        $outroCc = $ss($outro, 'manutencao', '2002', 'Chamado de outro CC');
+        $outraUnidade = $ss($outro, 'tecnologia', '1001', 'Chamado do CC na Tecnologia');
+        $daBia = $ss($bia, 'manutencao', '1001', 'Chamado da Bia');
+
+        $ids = fn (Usuario $u) => AcessoOs::filtrar(SolicitacaoServico::query(), $u)->orderBy('id')->pluck('id')->all();
+        // Com centro de custo: os seus + os do centro de custo dele, só na unidade em que é solicitante.
+        $this->assertSame([$daAna->id, $doCc->id, $daBia->id], $ids($ana));
+        // Sem centro de custo: só os seus.
+        $this->assertSame([$daBia->id], $ids($bia));
+
+        $this->actingAs($ana)->get('/ordens-de-servico/solicitacoes')->assertOk()->assertSee('Chamado do CC 1001')
+            ->assertDontSee('Chamado de outro CC')->assertDontSee('Chamado do CC na Tecnologia');
+        $this->get("/ordens-de-servico/solicitacoes/{$outroCc->id}")->assertNotFound();
+        $this->get("/ordens-de-servico/solicitacoes/{$outraUnidade->id}")->assertNotFound();
+        $this->actingAs($bia)->get("/ordens-de-servico/solicitacoes/{$doCc->id}")->assertNotFound();
+    }
+
     public function test_relatorio_de_horas_filtra_unidade_e_area_executante_e_mostra_a_area(): void
     {
         $base = ['tipo' => 'corretiva', 'prioridade' => 'alta', 'status' => 'aberta', 'descricao' => 'x'];

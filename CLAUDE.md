@@ -19,7 +19,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   perfis, operador = operador). Administrador de Tecnologia abre todas as PÁGINAS e é o único na aba **Segurança**
   (usuários, grupos, acessos, banco: `perfil:admin_tecnologia`), mas DADOS só da Tecnologia: ninguém vê unidade que
   não está habilitada nos perfis dele (cadastros, filtros, listas, SS/OS, app; `AcessoOs::unidadesHabilitadas` =
-  unidades dos perfis + as em que é Solicitante; `AcessoOs::filtrar` nunca passa delas); cadastros = `perfil:admin_producao,admin_tecnologia,
+  unidades dos perfis + as em que é Solicitante; `AcessoOs::filtrar` nunca passa delas); quem é APENAS solicitante vê só as SS/OS
+  que abriu e as do seu centro de custo (`AcessoOs::centroCustoDo`, do Entra ID; sem centro de custo, só as suas), nas
+  unidades em que é solicitante; cadastros = `perfil:admin_producao,admin_tecnologia,
   admin_ferramentaria`. Use `Usuario::pode()`, `ehAdmin()`, `podeSeguranca()`, `temPerfil()`, `areasAdministradas()` e
   `App\Support\Unidades::areas()` (nunca escreva a lista de áreas fixa no código).
 - Todo cadastro tem **unidade** (`manutencao` | `tecnologia` | `ferramentaria` | `ambos` = "Todas", trait
