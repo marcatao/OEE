@@ -102,9 +102,9 @@ return [
         'operador' => [
             'rotulo' => 'Operador',
             'area' => 'manutencao',
-            'descricao' => 'Informa o apontamento real e vê as ordens de produção.',
+            'descricao' => 'Informa o apontamento real, vê as ordens de produção e a produção por hora das máquinas da unidade.',
             'unidades' => ['manutencao'],
-            'permissoes' => ['apontamentos', 'ordens_producao'],
+            'permissoes' => ['apontamentos', 'ordens_producao', 'producao_hora'],
         ],
         'solicitante_manutencao' => [
             'rotulo' => 'Solicitante de Manutenção',

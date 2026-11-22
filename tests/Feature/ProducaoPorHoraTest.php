@@ -10,6 +10,7 @@ use App\Models\OrdemProducao;
 use App\Models\Planta;
 use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
+use App\Services\Aplicativo\MaquinasAplicativo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -125,9 +126,29 @@ class ProducaoPorHoraTest extends TestCase
         $this->assertSame(0, FiltroUsuario::count());
     }
 
+    public function test_operador_ve_so_as_maquinas_da_sua_unidade_no_portal_e_no_app(): void
+    {
+        $tecnologia = Maquina::create(['codigo' => 'TEC-01', 'nome' => 'Impressora 3D', 'linha_id' => $this->maquina->linha_id,
+            'ativo' => true, 'unidade' => 'tecnologia'] + $this->jornadaGravada() + $this->iotGravado());
+        $operador = Usuario::create(['entra_oid' => 'op', 'nome' => 'Op', 'email' => 'op@alumbra.com.br', 'perfil' => 'operador']);
+        $this->assertTrue($operador->pode('producao_hora'));
+
+        $resposta = $this->actingAs($operador)->get(route('producao-hora'))->assertOk()
+            ->assertSee('Injetora 01')->assertDontSee('Impressora 3D');
+        $this->assertSame([(int) $this->maquina->id], array_map(fn ($d) => (int) $d['maquina']->id, $resposta->viewData('maquinas')));
+        // Pedir a máquina de outra unidade pelo filtro não adianta.
+        $this->get(route('producao-hora', ['maquinas' => [$tecnologia->id]]))->assertOk()->assertDontSee('Impressora 3D');
+
+        // App (função Máquinas): a mesma regra; o gráfico de peças por hora vem no detalhe da máquina.
+        $this->assertNotContains((int) $tecnologia->id, collect(app(MaquinasAplicativo::class)->lista())
+            ->map(fn ($m) => (int) $m['id'])->all());
+        $this->assertArrayHasKey('por_hora', app(MaquinasAplicativo::class)->detalhe($this->maquina->fresh())['producao']);
+    }
+
     public function test_sem_a_permissao_nao_abre(): void
     {
-        $operador = Usuario::create(['entra_oid' => 'op', 'nome' => 'Op', 'email' => 'op@alumbra.com.br', 'perfil' => 'operador']);
-        $this->actingAs($operador)->get(route('producao-hora'))->assertForbidden();
+        $solicitante = Usuario::create(['entra_oid' => 'sol', 'nome' => 'Sol', 'email' => 'sol@alumbra.com.br', 'perfil' => 'operador']);
+        $solicitante->definirPerfis(['solicitante_manutencao']);
+        $this->actingAs($solicitante)->get(route('producao-hora'))->assertForbidden();
     }
 }

@@ -214,7 +214,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - **Produção por hora** (Dashboards › Produção por hora, permissão `producao_hora`, `ProducaoPorHoraController` +
   `App\Services\ProducaoPorHora`): máquina a máquina (as da Timeline), peças do IoT por hora do TURNO da máquina no dia
   (`App\Services\TurnoDaMaquina`, o mesmo do app; `PecasProduzidas::porHora`), total, média e melhor hora, OP atual e
-  produto, OPs do turno e gráfico em SVG (`dashboard.producao-hora._grafico`); meta em pç/min "em breve" (com ela, linha
+  produto, OPs do turno e gráfico em SVG (`dashboard.producao-hora._grafico`); o operador vê (só as máquinas das unidades
+  dos perfis dele, como no app); meta em pç/min "em breve" (com ela, linha
   tracejada e % por hora). Filtro `FiltroProducaoHora` (dia, plantas, linhas, máquinas; salvos na tela `producao_hora`).
 - **Dashboard por máquina** (`DashboardController`): só máquinas ativas com IoT ATIVO (`Maquina::comIotAtivo()`).
   Panorama pelos APONTAMENTOS REAIS (`App\Services\PanoramaMaquinas`, sobre a `Timeline`): situação agora, OP,
