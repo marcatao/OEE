@@ -40,7 +40,7 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>OP</th><th>Status</th><th>Produto</th><th class="num">Quantidade</th><th class="num">Produzido</th><th class="num">Perda</th>
+    <thead><tr><th>OP</th><th>Status</th><th>Produto</th><th class="num">Quantidade</th><th class="num">Produzido</th><th class="num" title="Peças contadas pelo IoT (ciclos × cavidades)">Real (IoT)</th><th class="num">Perda</th>
       <th class="num" title="Baixas da OP rateadas nas produções pelas peças">Custo simulado (OEE)</th><th class="num">Custo unit. meta</th><th class="num" title="Simulado × meta">Divergência</th>
       <th>Emissão</th><th>Previsão</th><th>Encerrada em</th><th class="num">Apontamentos</th></tr></thead>
     <tbody>
@@ -54,6 +54,7 @@
         @php($produzidoPr = $custos[$op->id]->producaoQtd)
         <td class="num" title="Soma dos apontamentos de produção (PR); C2_QUJE no Protheus: {{ \App\Support\Formato::quantidade((float) $op->c2_quje) }}">{{ \App\Support\Formato::quantidade($produzidoPr) }}
           @if ($op->c2_quant > 0)<br><small class="suave">{{ number_format(min($produzidoPr / $op->c2_quant, 9.99) * 100, 0, ',', '.') }}%</small>@endif</td>
+        <td class="num">{{ \App\Support\Formato::quantidade((float) $op->quantidade_real) }}</td>
         <td class="num">{{ \App\Support\Formato::quantidade((float) $op->c2_perda) }}</td>
         <td class="num">{{ Formato::moeda($custos[$op->id]->custoSimulado(), 4) }} <small class="suave">/{{ $op->c2_um ?: 'un' }}</small>
           @if ($custos[$op->id]->pelaMedia > 0)<br><small class="suave" title="Consumos que o Protheus ainda não valorizou: usado o custo médio de estoque (SB2)">{{ $custos[$op->id]->pelaMedia }} pelo custo médio</small>@endif
@@ -66,7 +67,7 @@
         <td class="num">{{ $op->apontamentos_count }}</td>
       </tr>
     @empty
-      <tr><td colspan="13" class="suave">Nenhuma ordem de produção encontrada. As OPs vêm do Protheus: sincronize em Administração › Banco de dados.</td></tr>
+      <tr><td colspan="14" class="suave">Nenhuma ordem de produção encontrada. As OPs vêm do Protheus: sincronize em Administração › Banco de dados.</td></tr>
     @endforelse
     </tbody>
   </table>

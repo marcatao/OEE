@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\Auditavel;
 use App\Services\Manutencao\SsAutomatica;
+use App\Services\PecasProduzidas;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -92,6 +93,29 @@ class ApontamentoEstado extends Model
      */
     protected static function booted(): void
     {
+        // Peças (ciclos do IoT × cavidades): trocar a OP ou a legenda recalcula o apontamento e a quantidade real das OPs.
+        static::saved(function (ApontamentoEstado $ap) {
+            if ($ap->ciclos === null || ! $ap->wasChanged(['ordem_producao_id', 'legenda_id'])) {
+                return;
+            }
+            try {
+                $pecas = app(PecasProduzidas::class);
+                // No "saved" o original ainda é o de antes (aplicar() grava de novo e o sincroniza): guarda a OP antiga.
+                $opAntiga = $ap->wasChanged('ordem_producao_id') ? (int) ($ap->getOriginal('ordem_producao_id') ?? 0) : 0;
+                if ($opAntiga !== 0 || $ap->wasChanged('ordem_producao_id')) {
+                    $ap->cavidades = null; // outra OP, outro molde
+                }
+                $pecas->recalcularOp($pecas->aplicar($ap));
+                $pecas->recalcularOp($opAntiga ?: null);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        });
+        static::deleted(function (ApontamentoEstado $ap) {
+            if ($ap->pecas !== null && $ap->ordem_producao_id) {
+                app(PecasProduzidas::class)->recalcularOp((int) $ap->ordem_producao_id);
+            }
+        });
         static::saved(function (ApontamentoEstado $ap) {
             if (! $ap->wasRecentlyCreated && ! $ap->wasChanged('legenda_id')) {
                 return;
@@ -107,7 +131,7 @@ class ApontamentoEstado extends Model
 
     protected function casts(): array
     {
-        return ['inicio' => 'datetime', 'fim' => 'datetime'];
+        return ['inicio' => 'datetime', 'fim' => 'datetime', 'ciclos' => 'integer', 'cavidades' => 'integer', 'pecas' => 'integer'];
     }
 
     public function maquina(): BelongsTo

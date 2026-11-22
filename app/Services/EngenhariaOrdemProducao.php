@@ -85,7 +85,7 @@ class EngenhariaOrdemProducao
      *
      * @return array{codigo: ?string, informado: bool, outros: list<string>, operacoes: Collection, maquinas: Collection, ferramentas: Collection}
      */
-    public function roteiro(OrdemProducao $op, bool $comMaquinas = true): array
+    public function roteiro(OrdemProducao $op, bool $comMaquinas = true, bool $todasUnidades = false): array
     {
         $todas = RoteiroOperacao::validas()->where('g2_produto', rtrim((string) $op->c2_produto))->whereIn('g2_filial', self::filiais($op))
             ->orderBy('g2_codigo')->orderBy('g2_operac')->get();
@@ -104,10 +104,25 @@ class EngenhariaOrdemProducao
             'operacoes' => $operacoes,
             // Só as que o usuário enxerga (unidade).
             'maquinas' => $ctrab && $comMaquinas ? Maquina::whereIn('codigo', $ctrab)->get()->keyBy('codigo') : collect(),
-            'ferramentas' => $ferram ? Ferramenta::validas()->whereIn('h4_codigo', $ferram)->whereIn('h4_filial', self::filiais($op))->get()
+            'ferramentas' => $ferram ? Ferramenta::query()->when($todasUnidades, fn ($q) => $q->withoutGlobalScope('unidade'))->validas()->whereIn('h4_codigo', $ferram)->whereIn('h4_filial', self::filiais($op))->get()
                 ->keyBy(fn ($f) => $f->codigo()) : collect(),
             'ferramentas_codigos' => $ferram,
         ];
+    }
+
+    /**
+     * Moldes (SH4) da OP para a máquina: os das operações do roteiro cujo centro de trabalho é a máquina; se nenhuma
+     * operação for dela, os de todo o roteiro da OP.
+     *
+     * @return list<array{codigo: string, ferramenta: ?Ferramenta}>
+     */
+    public static function moldesDaMaquina(array $roteiro, string $codigoMaquina): array
+    {
+        $daMaquina = $roteiro['operacoes']->filter(fn ($o) => rtrim($o->g2_ctrab) === rtrim($codigoMaquina));
+        $codigos = ($daMaquina->isNotEmpty() ? $daMaquina : $roteiro['operacoes'])
+            ->pluck('g2_ferram')->map(fn ($c) => rtrim($c))->filter()->unique()->values();
+
+        return $codigos->map(fn ($c) => ['codigo' => $c, 'ferramenta' => $roteiro['ferramentas'][$c] ?? null])->all();
     }
 
     /** Tudo para a tela da OP, com as descrições dos produtos citados. */

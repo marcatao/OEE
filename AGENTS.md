@@ -110,6 +110,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   login. Exportação CSV escapa células que começam com = + - @. Agendador (`routes/console.php`) roda no fuso LOCAL
   (`app.schedule_timezone`). Apontamento real que abriu SS/OS automática NÃO se exclui (aviso); troca de OP e
   continuações levam o chamado (`chamadoParaContinuar`) sem abrir outra SS.
+- **Peças produzidas pelo IoT** (`App\Services\PecasProduzidas`): o Integrador MQTT grava em `apontamentos_estado.ciclos`
+  os pulsos do contador nos apontamentos de PRODUÇÃO e avisa o portal (`producao` e `ops` no `POST /api/iot/apontamentos/
+  processar`); peças = ciclos × cavidades ativas do molde da OP na máquina (`EngenhariaOrdemProducao::moldesDaMaquina`;
+  sem molde = 1), cavidades congeladas no apontamento (`cavidades`; trocar a OP recalcula, evento `saved`);
+  `ordens_producao.quantidade_real` = soma das peças da OP. Peças por minuto = 60 ÷ ciclo médio × cavidades (Timeline,
+  no lugar do "Meta"; app, campo `producao` do detalhe da máquina com `por_hora` do turno, repartido pelo tempo de
+  cada apontamento). Meta em pç/min: em breve (`meta_por_minuto` = null).
 - **Busca de OP** (todas: lista de OPs, campo de OP do apontamento/máquina/Timeline e app): escopo
   `OrdemProducao::busca($termo)` — num campo só, cada palavra em qualquer parte do número, do SKU ou da descrição (SB1).
 - **Ids no SQL Server chegam como TEXTO** (pdo_sqlsrv): compare chaves estrangeiras e `value('id')` sempre com

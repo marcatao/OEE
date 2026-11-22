@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ApontamentoEstado;
-use App\Models\Ferramenta;
 use App\Models\Legenda;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
@@ -61,11 +60,14 @@ class Timeline
                 'desde' => $m->situacao_desde,
                 'op' => $op,
                 'produto' => $op ? ($produtos[rtrim($op->c2_produto)] ?? null) : null,
-                'moldes' => $op ? self::moldesDaMaquina($roteiros[$op->id], (string) $m->codigo) : [],
+                'moldes' => $op ? EngenhariaOrdemProducao::moldesDaMaquina($roteiros[$op->id], (string) $m->codigo) : [],
                 // Ciclo médio (segundos por peça) do apontamento real mais recente da máquina; null = não informado.
                 // Máquina parada com SS/OS aberta pela legenda: número e situação (vai no lugar da meta).
                 'chamado' => $chamados[(int) $m->id] ?? null,
                 'cicloMedio' => $ciclos[(int) $m->id] ?? null,
+                // Peças por minuto agora: 60 ÷ ciclo médio × cavidades ativas do molde da OP (só produzindo).
+                'pecasPorMinuto' => $estado === 'produzindo' ? PecasProduzidas::porMinuto($ciclos[(int) $m->id] ?? null,
+                    $op ? PecasProduzidas::cavidadesDosMoldes(EngenhariaOrdemProducao::moldesDaMaquina($roteiros[$op->id], (string) $m->codigo)) : 1) : 0.0,
             ];
         }
 
@@ -81,21 +83,6 @@ class Timeline
     {
         return collect(ApontamentoEstado::ultimosPorMaquina($maquinas->modelKeys(), ['ciclo_medio']))
             ->map(fn ($u) => $u['ciclo_medio'] === null ? null : (int) $u['ciclo_medio'])->all();
-    }
-
-    /**
-     * Moldes (SH4) da OP para a máquina: os das operações do roteiro cujo centro de trabalho é a máquina; se nenhuma
-     * operação for dela, os de todo o roteiro da OP.
-     *
-     * @return list<array{codigo: string, ferramenta: ?Ferramenta}>
-     */
-    private static function moldesDaMaquina(array $roteiro, string $codigoMaquina): array
-    {
-        $daMaquina = $roteiro['operacoes']->filter(fn ($o) => rtrim($o->g2_ctrab) === rtrim($codigoMaquina));
-        $codigos = ($daMaquina->isNotEmpty() ? $daMaquina : $roteiro['operacoes'])
-            ->pluck('g2_ferram')->map(fn ($c) => rtrim($c))->filter()->unique()->values();
-
-        return $codigos->map(fn ($c) => ['codigo' => $c, 'ferramenta' => $roteiro['ferramentas'][$c] ?? null])->all();
     }
 
     /**

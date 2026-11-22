@@ -155,10 +155,10 @@
                 <small>{{ $ch['rotulo'] }}</small>
               </a>
             @else
-              {{-- Meta de produção da máquina: em breve --}}
-              <div class="tl-meta" title="Meta de produção: em breve">
-                <span class="tl-meta-titulo">Meta</span>
-                <small>em breve</small>
+              {{-- Peças por minuto agora (60 ÷ ciclo médio × cavidades do molde); a meta (pç/min) vem em breve. --}}
+              <div class="tl-meta" title="Peças por minuto agora (ciclo médio × cavidades ativas do molde). Meta de produção: em breve">
+                <span class="tl-meta-titulo">{{ $sit ? \App\Support\Formato::quantidade($sit['pecasPorMinuto'] ?? 0) : '—' }} <small>pç/min</small></span>
+                <small>meta em breve</small>
               </div>
             @endif
           </div>

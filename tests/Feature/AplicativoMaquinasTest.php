@@ -18,6 +18,7 @@ use App\Services\Aplicativo\LoginAplicativo;
 use App\Services\Manutencao\FluxoOrdemServico;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\Concerns\CalendarioDeTeste;
 use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
@@ -280,5 +281,56 @@ class AplicativoMaquinasTest extends TestCase
     {
         $sem = Maquina::withoutGlobalScopes()->where('codigo', 'INJ-02')->first();
         $this->api('GET', "maquinas/{$sem->id}")->assertNotFound();
+    }
+
+    public function test_pecas_pelo_iot_contam_ciclos_vezes_cavidades_somam_na_op_e_aparecem_no_app_e_na_timeline(): void
+    {
+        $this->travar('10:30');
+        RoteiroOperacao::create(['g2_filial' => '', 'g2_produto' => 'PA1', 'g2_codigo' => '01', 'g2_operac' => '10',
+            'g2_descri' => 'INJETAR', 'g2_ctrab' => 'INJ-01', 'g2_ferram' => 'M001', 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 1]);
+        $molde = Ferramenta::forceCreate(['h4_filial' => '', 'h4_codigo' => 'M001', 'h4_descri' => 'MOLDE TAMPA', 'h4_qtdcav' => 8,
+            'h4_qtdcavativas' => 4, 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 1]);
+        $this->maquina->update(['ordem_producao_id' => $this->op1->id, 'situacao' => 'produzindo']);
+        // O integrador grava direto no banco: produção 09:00–10:00 (100 ciclos) e em aberto desde 10:00 (30 ciclos).
+        $novo = fn ($ini, $fim, $ciclos) => DB::table('apontamentos_estado')->insertGetId([
+            'maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id, 'ordem_producao_id' => $this->op1->id,
+            'inicio' => $ini, 'fim' => $fim, 'ciclos' => $ciclos, 'ciclo_medio' => 20, 'observacao' => '[IoT] x', 'criado_em' => now(), 'atualizado_em' => now()]);
+        $a1 = $novo(now()->subMinutes(90), now()->subMinutes(30)->subSecond(), 100);
+        $a2 = $novo(now()->subMinutes(30), null, 30);
+        $parada = DB::table('apontamentos_estado')->insertGetId(['maquina_id' => $this->maquina->id,
+            'legenda_id' => $this->semMotivo->id, 'inicio' => now()->subMinutes(100), 'fim' => now()->subMinutes(90)->subSecond(),
+            'ciclos' => 5, 'observacao' => '[IoT] x', 'criado_em' => now(), 'atualizado_em' => now()]);
+
+        config(['oee.iot.token' => 'tok']);
+        $this->postJson('/api/iot/apontamentos/processar', ['producao' => [$a1, $a2, $parada]], ['Authorization' => 'Bearer tok'])
+            ->assertOk()->assertJsonPath('ops', [$this->op1->id]);
+        // 4 cavidades ativas no molde da OP nesta máquina; parada não conta peça.
+        $this->assertSame([4, 400], [ApontamentoEstado::find($a1)->cavidades, ApontamentoEstado::find($a1)->pecas]);
+        $this->assertNull(ApontamentoEstado::find($parada)->pecas);
+        $this->assertEquals(520, $this->op1->fresh()->quantidade_real);
+
+        // Próximo ciclo do integrador: o aberto cresceu. As cavidades ficam as da 1ª conta, mesmo mudando no molde.
+        $molde->update(['h4_qtdcavativas' => 8]);
+        DB::table('apontamentos_estado')->where('id', $a2)->update(['ciclos' => 45]);
+        $this->postJson('/api/iot/apontamentos/processar', ['producao' => [$a2]], ['Authorization' => 'Bearer tok'])->assertOk();
+        $this->assertEquals(580, $this->op1->fresh()->quantidade_real);
+
+        // App: peças por hora no turno (06:00–22:00), total e peças por minuto (60 ÷ 20 s × 8 cavidades).
+        $prod = $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()->json('producao');
+        $porHora = collect($prod['por_hora'])->pluck('pecas', 'hora');
+        $this->assertSame(16, count($prod['por_hora']));
+        $this->assertSame([0, 400, 180], [$porHora['08:00'], $porHora['09:00'], $porHora['10:00']]);
+        $this->assertSame(580, $prod['pecas_turno']);
+        $this->assertEquals(24, $prod['pecas_por_minuto']);
+        $this->assertNull($prod['meta_por_minuto']);
+
+        // Trocar a OP do apontamento (portal): refaz a conta com o molde da OP nova (sem roteiro = 1 por ciclo).
+        ApontamentoEstado::find($a1)->update(['ordem_producao_id' => $this->op2->id]);
+        $this->assertSame([1, 100], [ApontamentoEstado::find($a1)->cavidades, ApontamentoEstado::find($a1)->pecas]);
+        $this->assertEquals([180, 100], [$this->op1->fresh()->quantidade_real, $this->op2->fresh()->quantidade_real]);
+
+        // Timeline: peças por minuto no cartão da máquina.
+        $adm = Usuario::create(['entra_oid' => 'adm-tl', 'nome' => 'Adm', 'email' => 'adm-tl@alumbra.com.br', 'perfil' => 'admin']);
+        $this->actingAs($adm)->get('/dashboards/timeline?parcial=1')->assertOk()->assertSee('24 <small>pç/min</small>', false);
     }
 }

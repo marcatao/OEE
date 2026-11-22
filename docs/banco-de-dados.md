@@ -59,6 +59,9 @@ erDiagram
         bigint iot_dispositivo_id FK
         nvarchar(20) iot_canal
         bigint solicitacao_vinculada_id FK
+        int ciclos
+        smallint cavidades
+        int pecas
     }
     assistente_conversas {
         bigint id PK
@@ -408,6 +411,7 @@ erDiagram
         float(53) custo_meta
         nvarchar(2) c2_roteiro
         nvarchar(3) c2_revisao
+        decimal(18, quantidade_real
     }
     ordens_servico {
         bigint id PK
@@ -1051,7 +1055,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 |---|---|---|---|---|
 | [`agendas_sincronizacao`](#agendas_sincronizacao) | Sistema | `id` | 10 | 2 |
 | [`apontamentos`](#apontamentos) | Sistema | `id` | 13 | 5 |
-| [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 16 | 7 |
+| [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 19 | 7 |
 | [`assistente_conversas`](#assistente_conversas) | Sistema | `id` | 6 | 1 |
 | [`assistente_perguntas`](#assistente_perguntas) | Sistema | `id` | 16 | 2 |
 | [`cache`](#cache) | Infra | `key` | 3 | 0 |
@@ -1077,7 +1081,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
-| [`ordens_producao`](#ordens_producao) | Protheus | `id` | 28 | 0 |
+| [`ordens_producao`](#ordens_producao) | Protheus | `id` | 29 | 0 |
 | [`ordens_servico`](#ordens_servico) | Sistema | `id` | 36 | 12 |
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
 | [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 11 | 2 |
@@ -1180,6 +1184,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `iot_dispositivo_id` | `bigint` | sim |  | FK → `dispositivos_iot.id` |
 | `iot_canal` | `nvarchar(20)` | sim |  |  |
 | `solicitacao_vinculada_id` | `bigint` | sim |  | FK → `solicitacoes_servico.id` |
+| `ciclos` | `int` | sim |  |  |
+| `cavidades` | `smallint` | sim |  |  |
+| `pecas` | `int` | sim |  |  |
 
 **Índices:** `apontamentos_estado_maquina_id_inicio_index` (maquina_id, inicio) · `apontamentos_estado_ordem_producao_id_index` (ordem_producao_id) · `ix_apontamentos_estado_inicio` (inicio) · `ix_apontamentos_estado_legenda_inicio` (legenda_id, inicio)
 
@@ -1763,6 +1770,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `custo_meta` | `float(53)` | sim |  |  |
 | `c2_roteiro` | `nvarchar(2)` | não | `''` |  |
 | `c2_revisao` | `nvarchar(3)` | não | `''` |  |
+| `quantidade_real` | `decimal(18,` | sim |  |  |
 
 **Índices:** `ordens_producao_c2_filial_c2_num_c2_item_c2_sequen_unique` único (c2_filial, c2_num, c2_item, c2_sequen) · `ordens_producao_numero_index` (numero) · `ordens_producao_status_c2_datprf_index` (status, c2_datprf) · `ordens_producao_c2_produto_index` (c2_produto) · `ordens_producao_r_e_c_n_o__index` (r_e_c_n_o_)
 

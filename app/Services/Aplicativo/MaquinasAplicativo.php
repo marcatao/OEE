@@ -14,6 +14,7 @@ use App\Services\Filtros\FiltroTimeline;
 use App\Services\HorarioApontamento;
 use App\Services\Manutencao\ChamadoDaParada;
 use App\Services\MotivoParada;
+use App\Services\PecasProduzidas;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use App\Services\TrocaOpMaquina;
@@ -37,6 +38,7 @@ class MaquinasAplicativo
         private EngenhariaOrdemProducao $engenharia,
         private CustoOrdemProducao $custo,
         private DiasUteis $diasUteis,
+        private PecasProduzidas $pecas,
     ) {}
 
     /** Máquinas ativas com IoT ativo que o usuário enxerga. */
@@ -110,6 +112,7 @@ class MaquinasAplicativo
             'sem_motivo' => $pendentes->map(fn ($a) => $this->apontamento($a, $fuso))->values()->all(),
             'op' => $op ? $this->op($op, $maquina, $produtos) : null,
             'legendas_motivo' => $this->legendasMotivo()->map(fn ($l) => $this->legenda($l))->values()->all(),
+            'producao' => $this->producao($maquina, $op, $de, $ate, $fuso),
         ];
     }
 
@@ -217,6 +220,26 @@ class MaquinasAplicativo
             'cor' => $l->cor, 'exige_op' => (bool) $l->exige_op] : null;
     }
 
+    /**
+     * Produção do turno para o gráfico do app: peças por hora (repartidas pelo tempo de cada apontamento de produção),
+     * total do turno e peças por minuto agora (60 ÷ ciclo médio × cavidades). A meta (pç/min) vem em breve: null.
+     */
+    private function producao(Maquina $maquina, ?OrdemProducao $op, CarbonImmutable $de, CarbonImmutable $ate, string $fuso): array
+    {
+        $porHora = $this->pecas->porHora($maquina, $de, $ate, $fuso);
+        $ciclo = ApontamentoEstado::ultimosPorMaquina([$maquina->id], ['ciclo_medio'])[(int) $maquina->id]['ciclo_medio'] ?? null;
+        $cavidades = $this->pecas->cavidades($op, $maquina);
+
+        return [
+            'por_hora' => $porHora,
+            'pecas_turno' => array_sum(array_column($porHora, 'pecas')),
+            'ciclo_medio' => $ciclo === null ? null : (int) $ciclo,
+            'cavidades' => $cavidades,
+            'pecas_por_minuto' => $maquina->situacao === 'produzindo' ? PecasProduzidas::porMinuto($ciclo === null ? null : (int) $ciclo, $cavidades) : 0.0,
+            'meta_por_minuto' => null,
+        ];
+    }
+
     private function apontamento(ApontamentoEstado $a, string $fuso): array
     {
         return [
@@ -230,6 +253,7 @@ class MaquinasAplicativo
             'fim_utc' => $a->fim?->toIso8601String(),
             'minutos' => round($a->duracaoMin(), 1),
             'op' => $a->ordemProducao?->numero,
+            'pecas' => $a->pecas,
         ];
     }
 
@@ -246,6 +270,7 @@ class MaquinasAplicativo
             'status_rotulo' => $op->rotuloStatus(),
             'quantidade' => (float) $op->c2_quant,
             'produzido' => (float) $op->c2_quje,
+            'quantidade_real' => (float) $op->quantidade_real, // peças contadas pelo IoT
         ];
     }
 
