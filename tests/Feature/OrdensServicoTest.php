@@ -726,7 +726,7 @@ class OrdensServicoTest extends TestCase
         $base = ['tipo' => 'corretiva', 'prioridade' => 'alta', 'status' => 'aberta', 'descricao' => 'x'];
         $manut = OrdemServico::create($base + ['unidade' => 'manutencao', 'area_executante_id' => $this->mecanica->id, 'centro_custo' => '110101']);
         $ti = OrdemServico::create($base + ['unidade' => 'tecnologia', 'area_executante_id' => $this->ti->id, 'centro_custo' => '220202']);
-        $inicio = now()->setTime(12, 0);
+        $inicio = now(config('oee.fuso_exibicao'))->startOfDay()->setTime(8, 0)->utc(); // hoje no fuso local (o padrão do relatório)
         $mant = ['manutencao' => Mantenedor::create(['nome' => 'Joao Mecanico', 'unidade' => 'manutencao', 'area_executante_id' => $this->mecanica->id]),
             'tecnologia' => Mantenedor::create(['nome' => 'Rafa Suporte', 'unidade' => 'tecnologia', 'area_executante_id' => $this->ti->id])];
         foreach ([$manut, $ti] as $os) {
