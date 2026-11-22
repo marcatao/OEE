@@ -116,7 +116,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   sem molde = 1), cavidades congeladas no apontamento (`cavidades`; trocar a OP recalcula, evento `saved`);
   `ordens_producao.quantidade_real` = soma das peças da OP. Peças por minuto = 60 ÷ ciclo médio × cavidades (Timeline,
   no lugar do "Meta"; app, campo `producao` do detalhe da máquina com `por_hora` do turno, repartido pelo tempo de
-  cada apontamento). Meta em pç/min: em breve (`meta_por_minuto` = null).
+  cada apontamento). Meta em pç/min: em breve (`meta_por_minuto` = null). Toda peça conta, em qualquer legenda (ciclo lento cai num 99);
+  `pecas:conferir` (agendador, 5 min) refaz as peças desatualizadas (aviso perdido). A troca de OP no modo `novo` grava
+  o apontamento com observação começando por "Troca de OP": o integrador corta o trecho ali e mantém a OP nova.
 - **Busca de OP** (todas: lista de OPs, campo de OP do apontamento/máquina/Timeline e app): escopo
   `OrdemProducao::busca($termo)` — num campo só, cada palavra em qualquer parte do número, do SKU ou da descrição (SB1).
 - **Ids no SQL Server chegam como TEXTO** (pdo_sqlsrv): compare chaves estrangeiras e `value('id')` sempre com

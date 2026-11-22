@@ -18,6 +18,14 @@ class RaizDaSubpasta
     {
         $subpasta = rtrim((string) parse_url((string) config('app.url'), PHP_URL_PATH), '/');
 
+        // O IIS aceita "/OEE", mas o cookie de sessão vale só para "/oee" (o navegador diferencia maiúsculas):
+        // leva para a grafia certa, senão o login entra em ciclo.
+        $uri = (string) $request->server('REQUEST_URI', '');
+        if ($subpasta !== '' && strncasecmp($uri, $subpasta, strlen($subpasta)) === 0 && strncmp($uri, $subpasta, strlen($subpasta)) !== 0
+            && in_array(substr($uri, strlen($subpasta), 1), ['', '/', '?'], true)) {
+            return redirect()->to(rtrim((string) config('app.url'), '/').substr($uri, strlen($subpasta)) ?: '/', 301);
+        }
+
         if ($subpasta !== '' && $request->getBaseUrl() === '' && rtrim($request->getPathInfo(), '/') === $subpasta) {
             $destino = rtrim((string) config('app.url'), '/').'/';
             $consulta = $request->getQueryString();

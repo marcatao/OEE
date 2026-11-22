@@ -10,6 +10,7 @@ use App\Services\ImportadorUsuariosEntra;
 use App\Services\InfoBanco;
 use App\Services\Manutencao\GeradorPreventivas;
 use App\Services\MaquinasSemIot;
+use App\Services\PecasProduzidas;
 use App\Services\Protheus\AgendaSincronizacoes;
 use App\Services\Protheus\SincronizadorProtheus;
 use App\Services\SituacaoMaquina;
@@ -163,6 +164,13 @@ Artisan::command('os:gerar-preventivas', function (GeradorPreventivas $gerador) 
     $this->info(count($criadas).' OS preventiva(s) gerada(s).');
 })->purpose('Gera as OS preventivas programadas nos planos de preventiva (PAMP)');
 Schedule::command('os:gerar-preventivas')->dailyAt('05:10')->withoutOverlapping();
+
+// Peças pelo IoT: refaz as que ficaram desatualizadas (aviso do Integrador MQTT perdido). Idempotente.
+Artisan::command('pecas:conferir', function (PecasProduzidas $pecas) {
+    $r = $pecas->conferir();
+    $this->info("Peças conferidas: {$r['apontamentos']} apontamento(s) refeito(s), {$r['ops']} OP(s) somada(s).");
+})->purpose('Refaz as peças dos apontamentos do IoT que ficaram desatualizadas e soma a quantidade real das OPs');
+Schedule::command('pecas:conferir')->everyFiveMinutes()->withoutOverlapping()->runInBackground();
 
 // Cadastra as contas novas do Entra ID já BLOQUEADAS (inativas, sem perfil); quem já existe não muda.
 Artisan::command('usuarios:importar-entra', function (ImportadorUsuariosEntra $importador) {

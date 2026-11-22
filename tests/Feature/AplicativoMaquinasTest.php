@@ -304,9 +304,9 @@ class AplicativoMaquinasTest extends TestCase
         config(['oee.iot.token' => 'token-do-integrador-com-mais-de-32-caracteres']);
         $this->postJson('/api/iot/apontamentos/processar', ['producao' => [$a1, $a2, $parada]], ['Authorization' => 'Bearer token-do-integrador-com-mais-de-32-caracteres'])
             ->assertOk()->assertJsonPath('ops', [$this->op1->id]);
-        // 4 cavidades ativas no molde da OP nesta máquina; parada não conta peça.
+        // 4 cavidades ativas no molde da OP nesta máquina; pulsos numa parada (ciclo lento) também são peças.
         $this->assertSame([4, 400], [ApontamentoEstado::find($a1)->cavidades, ApontamentoEstado::find($a1)->pecas]);
-        $this->assertNull(ApontamentoEstado::find($parada)->pecas);
+        $this->assertSame(5, ApontamentoEstado::find($parada)->pecas); // parada sem OP e sem molde: 1 por ciclo
         $this->assertEquals(520, $this->op1->fresh()->quantidade_real);
 
         // Próximo ciclo do integrador: o aberto cresceu. As cavidades ficam as da 1ª conta, mesmo mudando no molde.
@@ -319,8 +319,8 @@ class AplicativoMaquinasTest extends TestCase
         $prod = $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()->json('producao');
         $porHora = collect($prod['por_hora'])->pluck('pecas', 'hora');
         $this->assertSame(16, count($prod['por_hora']));
-        $this->assertSame([0, 400, 180], [$porHora['08:00'], $porHora['09:00'], $porHora['10:00']]);
-        $this->assertSame(580, $prod['pecas_turno']);
+        $this->assertSame([5, 400, 180], [$porHora['08:00'], $porHora['09:00'], $porHora['10:00']]);
+        $this->assertSame(585, $prod['pecas_turno']);
         $this->assertEquals(24, $prod['pecas_por_minuto']);
         $this->assertNull($prod['meta_por_minuto']);
 
@@ -332,5 +332,26 @@ class AplicativoMaquinasTest extends TestCase
         // Timeline: peças por minuto no cartão da máquina.
         $adm = Usuario::create(['entra_oid' => 'adm-tl', 'nome' => 'Adm', 'email' => 'adm-tl@alumbra.com.br', 'perfil' => 'admin']);
         $this->actingAs($adm)->get('/dashboards/timeline?parcial=1')->assertOk()->assertSee('24 <small>pç/min</small>', false);
+    }
+
+    public function test_conferencia_refaz_pecas_desatualizadas_e_soma_a_op(): void
+    {
+        $id = DB::table('apontamentos_estado')->insertGetId(['maquina_id' => $this->maquina->id,
+            'legenda_id' => $this->produzindo->id, 'ordem_producao_id' => $this->op1->id, 'inicio' => now()->subHour(),
+            'ciclos' => 12, 'observacao' => '[IoT] x', 'criado_em' => now(), 'atualizado_em' => now()]);
+        $this->artisan('pecas:conferir')->assertSuccessful();
+        $this->assertSame([1, 12], [ApontamentoEstado::find($id)->cavidades, ApontamentoEstado::find($id)->pecas]);
+        $this->assertEquals(12, $this->op1->fresh()->quantidade_real);
+        // Ciclos subiram e o aviso se perdeu: a próxima conferência acerta.
+        DB::table('apontamentos_estado')->where('id', $id)->update(['ciclos' => 30]);
+        $this->artisan('pecas:conferir')->assertSuccessful();
+        $this->assertEquals(30, $this->op1->fresh()->quantidade_real);
+    }
+
+    public function test_porta_de_entrada_com_maiusculas_vai_para_a_subpasta_certa(): void
+    {
+        config(['app.url' => 'https://www.alumbra.com.br/oee']);
+        $this->call('GET', '/OEE/dashboards/timeline', [], [], [], ['REQUEST_URI' => '/OEE/dashboards/timeline'])
+            ->assertRedirect('https://www.alumbra.com.br/oee/dashboards/timeline')->assertStatus(301);
     }
 }

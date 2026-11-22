@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ApontamentoEstado;
-use App\Models\Legenda;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use Carbon\CarbonImmutable;
@@ -47,8 +46,9 @@ class PecasProduzidas
      */
     public function aplicar(ApontamentoEstado $ap): ?int
     {
-        $produzindo = Legenda::withoutGlobalScopes()->whereKey($ap->legenda_id)->value('tipo') === 'produzindo';
-        if ($ap->ciclos === null || ! $produzindo) {
+        // Toda peça produzida conta, em qualquer legenda (ciclo mais lento que a microparada cai num 99, e a troca do
+        // operador para "Setup" não apaga o que a máquina fez); sem ciclos (apontamento manual), sem peças.
+        if ($ap->ciclos === null) {
             $novo = ['pecas' => null];
         } else {
             $cavidades = $ap->cavidades ?? $this->cavidades(
@@ -62,6 +62,31 @@ class PecasProduzidas
         }
 
         return $ap->ordem_producao_id ? (int) $ap->ordem_producao_id : null;
+    }
+
+    /**
+     * Conferência periódica (agendador, a cada 5 min): apontamentos dos últimos dias com ciclos e peças desatualizadas
+     * (aviso do integrador perdido com o portal fora do ar e o integrador reiniciado). Refaz as peças e as OPs.
+     *
+     * @return array{apontamentos: int, ops: int}
+     */
+    public function conferir(int $dias = 3): array
+    {
+        $ops = [];
+        $n = 0;
+        ApontamentoEstado::whereNotNull('ciclos')->where('inicio', '>=', now()->subDays($dias))
+            ->where(fn ($q) => $q->whereNull('pecas')->orWhereNull('cavidades')->orWhereRaw('pecas <> ciclos * cavidades'))
+            ->orderBy('id')->limit(2000)->get()
+            ->each(function (ApontamentoEstado $ap) use (&$ops, &$n) {
+                $ops[] = $this->aplicar($ap);
+                $n++;
+            });
+        $ops = array_values(array_unique(array_filter($ops)));
+        foreach ($ops as $op) {
+            $this->recalcularOp($op);
+        }
+
+        return ['apontamentos' => $n, 'ops' => count($ops)];
     }
 
     /** Soma as peças dos apontamentos da OP em ordens_producao.quantidade_real. */
@@ -90,13 +115,17 @@ class PecasProduzidas
         }
         $apontamentos = $jaLidos !== null ? collect($jaLidos)->filter(fn ($a) => $a->pecas > 0)
             : ApontamentoEstado::where('maquina_id', $maquina->id)->whereNotNull('pecas')->where('pecas', '>', 0)
-                ->tocando($de, $ate)->get(['inicio', 'fim', 'pecas']);
+                ->tocando($de, $ate)->get(['inicio', 'fim', 'pecas', 'atualizado_em']);
+        $inicioTurno = $de->getTimestamp();
         foreach ($apontamentos as $a) {
             $ini = $a->inicio->getTimestamp();
-            $fim = ($a->fim ?? $agora)->getTimestamp() + ($a->fim ? 1 : 0);
+            // Em aberto: as peças são as da última conta do integrador (atualizado_em), não até agora.
+            $ultimaConta = $a->atualizado_em && $a->atualizado_em->greaterThan($a->inicio) ? $a->atualizado_em : $agora;
+            $fim = ($a->fim ?? ($ultimaConta->lessThan($agora) ? $ultimaConta : $agora))->getTimestamp() + ($a->fim ? 1 : 0);
             $duracao = max(1, $fim - $ini);
             foreach ($horas as &$h) {
-                $sobreposto = min($fim, $h['fim']->getTimestamp()) - max($ini, $h['inicio']->getTimestamp());
+                // a 1ª hora começa no início do turno (turno às 05:30 não conta 05:00–05:30)
+                $sobreposto = min($fim, $h['fim']->getTimestamp()) - max($ini, $h['inicio']->getTimestamp(), $inicioTurno);
                 if ($sobreposto > 0) {
                     $h['pecas'] += $a->pecas * $sobreposto / $duracao;
                 }
