@@ -8,6 +8,8 @@ import br.com.alumbra.oee.maquinas.ConteudoMaquinas
 import br.com.alumbra.oee.maquinas.DetalheMaquina
 import br.com.alumbra.oee.maquinas.DialogoCavidades
 import br.com.alumbra.oee.maquinas.DialogoMotivo
+import br.com.alumbra.oee.maquinas.HoraProducao
+import br.com.alumbra.oee.maquinas.ProducaoApp
 import br.com.alumbra.oee.maquinas.LegendaApp
 import br.com.alumbra.oee.maquinas.MaquinaResumo
 import br.com.alumbra.oee.maquinas.MoldeApp
@@ -29,13 +31,13 @@ class CapturasMaquinasTest {
     private val quebra = LegendaApp(3, "10", "Quebra de molde", "parada", "#d97706")
     private val motivos = listOf(quebra, LegendaApp(4, "11", "Falta de material", "parada", "#7c3aed"),
         LegendaApp(5, "12", "Manutenção corretiva", "parada", "#be123c"), LegendaApp(6, "13", "Ajuste de processo", "parada", "#0f766e"))
-    private val op = OpResumo(1, "06267801001", "PA0910755", "INTERRUPTOR PARALELO 10A", "Andamento", 12000.0, 7350.0)
+    private val op = OpResumo(1, "06267801001", "PA0910755", "INTERRUPTOR PARALELO 10A", "Andamento", 12000.0, 7350.0, 7412.0)
 
     private fun iso(msAtras: Long) = java.time.Instant.ofEpochMilli(agora - msAtras).toString()
 
     private val apontamentos = listOf(
         ApontamentoApp(10, semMotivo, true, "17/11", "14:20:01", null, iso(25 * 60_000), null, 25.0, "06267801001"),
-        ApontamentoApp(9, produzindo, false, "17/11", "08:00:00", "14:20:00", iso(6 * 3_600_000 + 45 * 60_000), iso(25 * 60_000 + 1000), 380.0, "06267801001"),
+        ApontamentoApp(9, produzindo, false, "17/11", "08:00:00", "14:20:00", iso(6 * 3_600_000 + 45 * 60_000), iso(25 * 60_000 + 1000), 380.0, "06267801001", 2736),
         ApontamentoApp(8, quebra, false, "17/11", "07:10:00", "07:59:59", iso(7 * 3_600_000 + 35 * 60_000), iso(6 * 3_600_000 + 45 * 60_000), 50.0, null),
         ApontamentoApp(7, produzindo, false, "17/11", "06:00:00", "07:09:59", iso(11 * 3_600_000 + 20 * 60_000), iso(7 * 3_600_000 + 35 * 60_000), 70.0, null),
     )
@@ -50,6 +52,12 @@ class CapturasMaquinasTest {
         ), listOf(MoldeApp(1, "M001", "MOLDE TAMPA 8 CAV", 8, 6))) else null,
         legendasMotivo = motivos, servidorAgora = "", segundosAtualizacao = 10,
         periodoDe = iso(11 * 3_600_000L + 20 * 60_000), periodoAte = iso(-(4 * 3_600_000L + 41 * 60_000)), periodoRotulo = "Turno de hoje, 17/11 · 06:00 às 22:00",
+        producao = ProducaoApp(
+            porHora = listOf(310, 120, 0, 420, 455, 440, 470, 430, 210, 0, 0, 0, 0, 0, 0, 0).mapIndexed { i, p ->
+                HoraProducao("%02d:00".format(6 + i), iso((11 * 3_600_000L + 20 * 60_000) - i * 3_600_000L), p)
+            },
+            pecasTurno = 2855, cicloMedio = 50, cavidades = 6, pecasPorMinuto = 7.2, metaPorMinuto = 7.5,
+        ),
     )
 
     @Test

@@ -15,6 +15,8 @@ data class OpResumo(
     val statusRotulo: String,
     val quantidade: Double,
     val produzido: Double,
+    /** Peças contadas pelo IoT na OP (ciclos × cavidades). */
+    val quantidadeReal: Double? = null,
 )
 
 /** SS/OS aberta pela legenda da parada atual (o portal só manda com a máquina parada). */
@@ -52,6 +54,21 @@ data class ApontamentoApp(
     val fimUtc: String?,
     val minutos: Double,
     val op: String?,
+    /** Peças do apontamento (ciclos do IoT × cavidades); null sem contagem. */
+    val pecas: Int? = null,
+)
+
+/** Uma hora do turno no gráfico de produção. */
+data class HoraProducao(val hora: String, val inicioUtc: String?, val pecas: Int)
+
+/** Produção do turno de hoje (peças por hora, total, peças por minuto agora e a meta, quando houver). */
+data class ProducaoApp(
+    val porHora: List<HoraProducao>,
+    val pecasTurno: Int,
+    val cicloMedio: Int?,
+    val cavidades: Int,
+    val pecasPorMinuto: Double,
+    val metaPorMinuto: Double?,
 )
 
 data class OperacaoApp(val operacao: String, val descricao: String, val maquina: String, val ferramenta: String, val destaMaquina: Boolean)
@@ -79,6 +96,7 @@ data class DetalheMaquina(
     val periodoDe: String? = null,
     val periodoAte: String? = null,
     val periodoRotulo: String = "Hoje",
+    val producao: ProducaoApp? = null,
 )
 
 private fun JSONObject.texto(nome: String): String? = if (isNull(nome)) null else optString(nome)
@@ -98,6 +116,7 @@ fun opResumoDe(j: JSONObject?): OpResumo? = j?.let {
     OpResumo(
         it.optInt("id"), it.optString("numero"), it.optString("produto"), it.texto("descricao"),
         it.optString("status_rotulo"), it.optDouble("quantidade", 0.0), it.optDouble("produzido", 0.0),
+        if (it.has("quantidade_real") && !it.isNull("quantidade_real")) it.optDouble("quantidade_real") else null,
     )
 }
 
@@ -114,7 +133,19 @@ fun opsDe(j: JSONObject): List<OpResumo> = j.optJSONArray("ops").lista { opResum
 private fun apontamentoDe(j: JSONObject) = ApontamentoApp(
     j.optInt("id"), legendaDe(j.optJSONObject("legenda")), j.optBoolean("sem_motivo"), j.texto("dia"), j.texto("inicio"),
     j.texto("fim"), j.texto("inicio_utc"), j.texto("fim_utc"), j.optDouble("minutos", 0.0), j.texto("op"),
+    if (j.has("pecas") && !j.isNull("pecas")) j.optInt("pecas") else null,
 )
+
+fun producaoDe(j: JSONObject?): ProducaoApp? = j?.let {
+    ProducaoApp(
+        porHora = it.optJSONArray("por_hora").lista { h -> HoraProducao(h.optString("hora"), h.texto("inicio"), h.optInt("pecas")) },
+        pecasTurno = it.optInt("pecas_turno"),
+        cicloMedio = if (it.isNull("ciclo_medio")) null else it.optInt("ciclo_medio"),
+        cavidades = it.optInt("cavidades", 1),
+        pecasPorMinuto = it.optDouble("pecas_por_minuto", 0.0),
+        metaPorMinuto = if (!it.has("meta_por_minuto") || it.isNull("meta_por_minuto")) null else it.optDouble("meta_por_minuto"),
+    )
+}
 
 fun detalheDe(j: JSONObject): DetalheMaquina {
     val m = j.getJSONObject("maquina")
@@ -144,5 +175,6 @@ fun detalheDe(j: JSONObject): DetalheMaquina {
         periodoDe = j.optJSONObject("periodo")?.texto("de_utc"),
         periodoAte = j.optJSONObject("periodo")?.texto("ate_utc"),
         periodoRotulo = j.optJSONObject("periodo")?.optString("rotulo", "Hoje") ?: "Hoje",
+        producao = producaoDe(j.optJSONObject("producao")),
     )
 }

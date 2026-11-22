@@ -5,11 +5,25 @@ import org.json.JSONObject
 import java.net.URLEncoder
 
 /** Chamadas da função Máquinas à API do portal (precisam da rede da fábrica). */
-class RepositorioMaquinas(private val token: () -> String?) {
+class RepositorioMaquinas(private val pastaGuardada: java.io.File? = null, private val token: () -> String?) {
 
     suspend fun lista(): List<MaquinaResumo> = maquinasDe(ApiPortal.get("maquinas", token()))
 
-    suspend fun detalhe(id: Int): DetalheMaquina = detalheDe(ApiPortal.get("maquinas/$id", token()))
+    /** Detalhe da máquina; a resposta fica guardada no celular para abrir sem rede (último dado recebido). */
+    suspend fun detalhe(id: Int): DetalheMaquina {
+        val json = ApiPortal.get("maquinas/$id", token())
+        guardar(id, json)
+        return detalheDe(json)
+    }
+
+    /** Último detalhe recebido desta máquina (sem rede), ou null. */
+    fun detalheGuardado(id: Int): DetalheMaquina? = pastaGuardada?.let { pasta ->
+        runCatching { detalheDe(JSONObject(java.io.File(pasta, "maquina_$id.json").readText())) }.getOrNull()
+    }
+
+    private fun guardar(id: Int, json: JSONObject) {
+        pastaGuardada?.let { pasta -> runCatching { java.io.File(pasta, "maquina_$id.json").writeText(json.toString()) } }
+    }
 
     suspend fun informarMotivo(apontamentoId: Int, legendaId: Int): DetalheMaquina =
         detalheDe(ApiPortal.post("apontamentos/$apontamentoId/motivo", token(), JSONObject().put("legenda_id", legendaId)))

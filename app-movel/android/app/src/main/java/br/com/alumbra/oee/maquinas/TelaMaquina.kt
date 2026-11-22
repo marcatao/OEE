@@ -13,6 +13,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.text.drawText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -130,7 +131,13 @@ fun TelaMaquina(
                     atualizadoEm = System.currentTimeMillis()
                     erro = null
                 } catch (e: ErroApi) {
-                    if (e.semAcesso) aoPerderAcesso(e.message ?: "") else erro = e.message
+                    if (e.semAcesso) {
+                        aoPerderAcesso(e.message ?: "")
+                    } else {
+                        erro = e.message
+                        // Sem rede ao abrir: mostra o último dado guardado no celular.
+                        if (detalhe == null) detalhe = repositorio.detalheGuardado(maquinaId)
+                    }
                 }
                 delay((detalhe?.segundosAtualizacao ?: 10) * 1000L)
             }
@@ -295,6 +302,7 @@ fun ConteudoMaquina(
 
             CartaoSituacao(detalhe, atualizadoEm, hora)
             CartaoLinhaDoTempo(detalhe, agora)
+            detalhe.producao?.let { CartaoProducao(it, agora, detalhe.situacao == "produzindo") }
 
             TituloSecao("Ordem de produção")
             CartaoOp(detalhe.op, podeAlterar, aoTrocarOp)
@@ -410,6 +418,116 @@ private fun CartaoLinhaDoTempo(d: DetalheMaquina, agora: Long) {
     }
 }
 
+/**
+ * Produção do turno: peças por minuto agora (em destaque), total do turno e barras de peças por hora (a hora atual
+ * destacada). Com meta (pç/min), uma linha tracejada na altura de meta × 60 por hora.
+ */
+@Composable
+private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
+    val corBarra = MaterialTheme.colorScheme.primary
+    val corBarraClara = MaterialTheme.colorScheme.primary.copy(alpha = .45f)
+    val corTrilho = MaterialTheme.colorScheme.surfaceVariant
+    val corMeta = CoresOee.atual.alerta
+    val corTexto = MaterialTheme.colorScheme.onSurfaceVariant
+    val horas = p.porHora
+    // Hora atual = a última que já começou.
+    val atual = horas.indexOfLast { (paraMs(it.inicioUtc) ?: Long.MAX_VALUE) <= agora }
+    val metaHora = p.metaPorMinuto?.let { it * 60 }
+    val maximo = maxOf(horas.maxOfOrNull { it.pecas } ?: 0, metaHora?.toInt() ?: 0, 1) * 1.15f
+    val medidor = androidx.compose.ui.text.rememberTextMeasurer()
+    val estiloValor = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurface)
+
+    Cartao(preenchimento = PaddingValues(16.dp)) {
+        Text("Produção do turno", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "%.1f".format(Locale("pt", "BR"), p.pecasPorMinuto),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = if (produzindo) MaterialTheme.colorScheme.primary else corTexto,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text("pç/min agora", style = MaterialTheme.typography.bodyMedium, color = corTexto)
+            }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                Text(numero(p.pecasTurno.toDouble()), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("peças no turno", style = MaterialTheme.typography.bodyMedium, color = corTexto)
+            }
+        }
+        Text(
+            listOfNotNull(
+                p.cicloMedio?.let { "Ciclo $it s" },
+                "${p.cavidades} ${if (p.cavidades == 1) "cavidade" else "cavidades"}",
+                p.metaPorMinuto?.let { "Meta %.1f pç/min".format(Locale("pt", "BR"), it) },
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.labelSmall,
+            color = corTexto,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Spacer(Modifier.height(12.dp))
+        if (horas.isEmpty()) {
+            Text("Sem horas do turno para mostrar.", color = corTexto)
+            return@Cartao
+        }
+        Canvas(Modifier.fillMaxWidth().height(150.dp)) {
+            val topoLivre = 16.dp.toPx() // espaço para o número em cima da barra
+            val alturaUtil = size.height - topoLivre
+            val passo = size.width / horas.size
+            val largura = (passo * 0.68f).coerceAtLeast(2f)
+            horas.forEachIndexed { i, h ->
+                val x = i * passo + (passo - largura) / 2
+                drawRect(corTrilho, topLeft = Offset(x, topoLivre), size = Size(largura, alturaUtil))
+                val alt = (h.pecas / maximo) * alturaUtil
+                if (h.pecas > 0) {
+                    drawRect(
+                        if (i == atual) corBarra else if (i > atual && atual >= 0) corBarraClara else corBarra.copy(alpha = .75f),
+                        topLeft = Offset(x, topoLivre + alturaUtil - alt),
+                        size = Size(largura, alt),
+                    )
+                    // Número em cima da barra (se couber).
+                    val texto = medidor.measure(h.pecas.toString(), estiloValor)
+                    if (texto.size.width <= passo) {
+                        drawText(texto, topLeft = Offset(x + largura / 2 - texto.size.width / 2, topoLivre + alturaUtil - alt - texto.size.height))
+                    }
+                }
+                if (i == atual) {
+                    drawRect(corBarra, topLeft = Offset(x, size.height - 3.dp.toPx()), size = Size(largura, 3.dp.toPx()))
+                }
+            }
+            metaHora?.let { meta ->
+                val y = topoLivre + alturaUtil - (meta.toFloat() / maximo) * alturaUtil
+                drawLine(corMeta, Offset(0f, y), Offset(size.width, y), strokeWidth = 2.dp.toPx(),
+                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(12f, 8f)))
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        // Horas embaixo: todas se couberem; senão, uma a cada duas (ou três).
+        val pulo = when {
+            horas.size <= 10 -> 1
+            horas.size <= 18 -> 2
+            else -> 3
+        }
+        Row(Modifier.fillMaxWidth()) {
+            horas.forEachIndexed { i, h ->
+                Text(
+                    if (i % pulo == 0) h.hora.take(2) else "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (i == atual) MaterialTheme.colorScheme.primary else corTexto,
+                    fontWeight = if (i == atual) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    maxLines = 1,
+                )
+            }
+        }
+        if (metaHora != null) {
+            Text("— — meta por hora (%s pç)".format(numero(metaHora)), style = MaterialTheme.typography.labelSmall, color = corMeta,
+                modifier = Modifier.padding(top = 6.dp))
+        }
+    }
+}
+
 @Composable
 private fun CartaoOp(op: OpDetalhe?, podeAlterar: Boolean, aoTrocarOp: () -> Unit) {
     Cartao {
@@ -441,6 +559,14 @@ private fun CartaoOp(op: OpDetalhe?, podeAlterar: Boolean, aoTrocarOp: () -> Uni
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (r.quantidadeReal != null) {
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Quantidade real (IoT)", style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    Text("${numero(r.quantidadeReal)} pç", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                }
             }
         }
         if (podeAlterar) {
@@ -540,7 +666,8 @@ private fun LinhaApontamento(a: ApontamentoApp) {
                     if (a.semMotivo) Selo("SEM MOTIVO", Situacao.ERRO)
                 }
                 Text(
-                    "${a.dia ?: ""} ${a.inicio ?: ""} – ${a.fim ?: "agora"} · ${formatarMinutos(a.minutos)}" + (a.op?.let { " · OP $it" } ?: ""),
+                    "${a.dia ?: ""} ${a.inicio ?: ""} – ${a.fim ?: "agora"} · ${formatarMinutos(a.minutos)}" +
+                        (a.pecas?.let { " · $it pç" } ?: "") + (a.op?.let { " · OP $it" } ?: ""),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

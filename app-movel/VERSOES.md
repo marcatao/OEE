@@ -1,5 +1,13 @@
 # Versões do aplicativo
 
+## 0.11.0 (build 16)
+
+- Máquinas: novo cartão "Produção do turno" na tela da máquina, abaixo da linha do tempo — peças por minuto agora
+  (em destaque), total de peças do turno, ciclo médio e cavidades, e gráfico de barras de peças por hora do turno
+  (hora atual destacada). Quando o portal mandar a meta (pç/min), aparece a linha tracejada da meta por hora.
+- Resumo da OP mostra a "Quantidade real (IoT)" e cada apontamento mostra as peças contadas.
+- Sem rede ao abrir a máquina: mostra o último dado guardado no celular (apagado ao sair ou perder o acesso).
+
 ## 0.10.0 (build 15)
 - **Acesso por perfil** (o app e a API do portal conferem igual):
   - **Máquinas**: só quem tem o perfil **Operador** no login;

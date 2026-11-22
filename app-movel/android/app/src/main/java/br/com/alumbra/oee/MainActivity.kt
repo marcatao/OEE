@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
     private var ocupado by mutableStateOf(false)
     private var relogio by mutableIntStateOf(0) // muda para reavaliar o bloqueio de 48 h
     private var tela by mutableStateOf<Tela>(Tela.Principal)
-    private val repositorioMaquinas by lazy { RepositorioMaquinas { sessao.token } }
+    private val repositorioMaquinas by lazy { RepositorioMaquinas(java.io.File(filesDir, "maquinas").apply { mkdirs() }) { sessao.token } }
     private val repositorioOs by lazy { RepositorioOs { sessao.token } }
     private val alarme by lazy { Alarme(this) }
 
@@ -396,6 +396,7 @@ class MainActivity : ComponentActivity() {
     /** O portal recusou o token (saiu, expirou ou perdeu o acesso): volta para a entrada. */
     private fun perderAcesso(motivo: String) {
         ServicoAlertas.parar(this)
+        java.io.File(filesDir, "maquinas").deleteRecursively() // o próximo usuário não vê dados guardados deste
         sessao.sair()
         usuario = null
         tela = Tela.Principal
@@ -489,6 +490,7 @@ class MainActivity : ComponentActivity() {
     private fun sair() {
         val token = sessao.token
         ServicoAlertas.parar(this)
+        java.io.File(filesDir, "maquinas").deleteRecursively() // o próximo usuário não vê dados guardados deste
         sessao.sair()
         usuario = null
         tela = Tela.Principal
