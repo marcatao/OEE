@@ -16,7 +16,7 @@ return [
     // Vazio = rota desligada. Gere com: php -r "echo bin2hex(random_bytes(32));" e ponha o MESMO valor no integrador.
     'iot' => [
         'token' => env('IOT_TOKEN', ''),
-        'max_apontamentos' => 500, // por chamada
+        'max_apontamentos' => 100, // por chamada (cada SS automática pode esperar a trava da máquina)
     ],
 
     'app' => [

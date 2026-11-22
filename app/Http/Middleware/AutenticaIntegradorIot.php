@@ -15,8 +15,8 @@ class AutenticaIntegradorIot
     public function handle(Request $request, Closure $next): Response
     {
         $esperado = (string) config('oee.iot.token');
-        if ($esperado === '') {
-            return response()->json(['erro' => 'desligado', 'mensagem' => 'IOT_TOKEN não configurado no portal.'], 503);
+        if (strlen($esperado) < 32) { // vazio ou curto demais para ser seguro: rota desligada
+            return response()->json(['erro' => 'desligado', 'mensagem' => 'IOT_TOKEN não configurado no portal (mínimo 32 caracteres).'], 503);
         }
         if (! hash_equals($esperado, (string) $request->bearerToken())) {
             return response()->json(['erro' => 'token_invalido', 'mensagem' => 'Token do integrador inválido.'], 401);

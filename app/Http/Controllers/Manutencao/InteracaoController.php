@@ -71,7 +71,8 @@ class InteracaoController extends Controller
                 ]);
                 foreach ($arquivos as $arquivo) {
                     $nome = mb_substr($arquivo->getClientOriginalName() ?: 'arquivo', 0, 200);
-                    $extensao = strtolower($arquivo->getClientOriginalExtension() ?: $arquivo->extension() ?: 'bin');
+                    // Extensão pelo CONTEÚDO (o nome do cliente pode dizer ".php"); o nome original fica só para exibir.
+                    $extensao = strtolower($arquivo->extension() ?: 'bin');
                     $caminho = $arquivo->storeAs("os-anexos/{$os->id}", Str::uuid()->toString().'.'.$extensao, 'local');
                     $gravados[] = $caminho;
                     AnexoInteracaoOs::create([

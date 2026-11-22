@@ -7,6 +7,7 @@ use App\Models\Aplicativo\TokenAplicativo;
 use App\Models\Grupo;
 use App\Models\Usuario;
 use App\Services\ImportadorUsuariosEntra;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,9 +60,12 @@ class UsuarioController extends Controller
         try {
             $r = $importador->importar();
         } catch (Throwable $e) {
-            Log::warning('Importação de usuários do Entra ID falhou', ['erro' => $e->getMessage()]);
+            Log::warning('Importação de usuários do Entra ID falhou', ['erro' => $e->getMessage(), 'tipo' => $e::class]);
+            // Só as mensagens próprias (configuração, permissão) vão para a tela; o resto fica no log.
+            $motivo = $e instanceof \RuntimeException && ! $e instanceof QueryException
+                ? $e->getMessage() : 'erro ao falar com o Microsoft Graph ou com o banco (detalhes no log do portal).';
 
-            return back()->with('erro', 'Não foi possível importar do Entra ID: '.$e->getMessage());
+            return back()->with('erro', 'Não foi possível importar do Entra ID: '.$motivo);
         }
 
         return back()->with('ok', "Entra ID: {$r['criados']} conta(s) nova(s) cadastrada(s) bloqueada(s); {$r['existentes']} já existiam; {$r['ignorados']} ignorada(s) (convidados, desabilitadas ou sem e-mail).");

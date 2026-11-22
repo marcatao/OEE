@@ -66,11 +66,13 @@ class SsAutomaticaTest extends TestCase
         $url = '/api/iot/apontamentos/processar';
         config(['oee.iot.token' => '']);
         $this->postJson($url, ['apontamentos' => [$id]])->assertStatus(503);       // sem token no portal: desligada
-        config(['oee.iot.token' => 'segredo-do-integrador']);
+        config(['oee.iot.token' => 'curto']);
+        $this->postJson($url, ['apontamentos' => [$id]], ['Authorization' => 'Bearer curto'])->assertStatus(503); // token fraco: desligada
+        config(['oee.iot.token' => 'token-do-integrador-com-mais-de-32-caracteres']);
         $this->postJson($url, ['apontamentos' => [$id]])->assertUnauthorized();
         $this->postJson($url, ['apontamentos' => [$id]], ['Authorization' => 'Bearer errado'])->assertUnauthorized();
 
-        $cab = ['Authorization' => 'Bearer segredo-do-integrador'];
+        $cab = ['Authorization' => 'Bearer token-do-integrador-com-mais-de-32-caracteres'];
         $this->postJson($url, ['apontamentos' => [$id, 999999]], $cab)->assertOk()
             ->assertJsonPath('processados', 1)->assertJsonPath('nao_encontrados', [999999]);
         $ss = SolicitacaoServico::sole();

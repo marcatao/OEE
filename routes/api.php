@@ -60,4 +60,5 @@ Route::prefix('app')->name('api.app.')->group(function () {
 // Integrador MQTT (marcatao/MQTT): depois de gravar os apontamentos reais do IoT no banco, pede ao portal a SS
 // automática dos apontamentos novos ou com a legenda trocada. Token em IOT_TOKEN (middleware "integrador").
 Route::post('iot/apontamentos/processar', [IntegradorIotController::class, 'processar'])
-    ->middleware(['integrador', 'throttle:120,1'])->name('api.iot.processar');
+    // limite antes do token: tentativas com token errado também contam
+    ->middleware(['throttle:120,1', 'integrador'])->name('api.iot.processar');

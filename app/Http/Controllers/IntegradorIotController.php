@@ -42,7 +42,7 @@ class IntegradorIotController extends Controller
                     'mensagem' => SsAutomatica::mensagem((int) $ap->id)];
             } catch (Throwable $e) {
                 Log::error('Integrador IoT: falha ao processar o apontamento', ['apontamento' => $ap->id, 'erro' => $e->getMessage()]);
-                $resultado[] = ['id' => (int) $ap->id, 'ss' => null, 'mensagem' => 'Falha no portal: '.$e->getMessage()];
+                $resultado[] = ['id' => (int) $ap->id, 'ss' => null, 'mensagem' => 'Falha no portal (detalhes no log do portal).'];
             }
         }
 

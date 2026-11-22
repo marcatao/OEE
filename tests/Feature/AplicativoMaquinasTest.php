@@ -301,8 +301,8 @@ class AplicativoMaquinasTest extends TestCase
             'legenda_id' => $this->semMotivo->id, 'inicio' => now()->subMinutes(100), 'fim' => now()->subMinutes(90)->subSecond(),
             'ciclos' => 5, 'observacao' => '[IoT] x', 'criado_em' => now(), 'atualizado_em' => now()]);
 
-        config(['oee.iot.token' => 'tok']);
-        $this->postJson('/api/iot/apontamentos/processar', ['producao' => [$a1, $a2, $parada]], ['Authorization' => 'Bearer tok'])
+        config(['oee.iot.token' => 'token-do-integrador-com-mais-de-32-caracteres']);
+        $this->postJson('/api/iot/apontamentos/processar', ['producao' => [$a1, $a2, $parada]], ['Authorization' => 'Bearer token-do-integrador-com-mais-de-32-caracteres'])
             ->assertOk()->assertJsonPath('ops', [$this->op1->id]);
         // 4 cavidades ativas no molde da OP nesta máquina; parada não conta peça.
         $this->assertSame([4, 400], [ApontamentoEstado::find($a1)->cavidades, ApontamentoEstado::find($a1)->pecas]);
@@ -312,7 +312,7 @@ class AplicativoMaquinasTest extends TestCase
         // Próximo ciclo do integrador: o aberto cresceu. As cavidades ficam as da 1ª conta, mesmo mudando no molde.
         $molde->update(['h4_qtdcavativas' => 8]);
         DB::table('apontamentos_estado')->where('id', $a2)->update(['ciclos' => 45]);
-        $this->postJson('/api/iot/apontamentos/processar', ['producao' => [$a2]], ['Authorization' => 'Bearer tok'])->assertOk();
+        $this->postJson('/api/iot/apontamentos/processar', ['producao' => [$a2]], ['Authorization' => 'Bearer token-do-integrador-com-mais-de-32-caracteres'])->assertOk();
         $this->assertEquals(580, $this->op1->fresh()->quantidade_real);
 
         // App: peças por hora no turno (06:00–22:00), total e peças por minuto (60 ÷ 20 s × 8 cavidades).
