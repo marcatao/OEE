@@ -39,6 +39,7 @@
     'calendario' => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 14h2M12 14h2M16 14h0M8 17.5h2M12 17.5h2"/>',
     'caixa' => '<path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/>',
     'relatorio' => '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    'barras' => '<path d="M3 21h18"/><rect x="4.5" y="12" width="3.5" height="9" rx=".8"/><rect x="10.25" y="7" width="3.5" height="14" rx=".8"/><rect x="16" y="3" width="3.5" height="18" rx=".8"/>',
     'cronometro' => '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M10 2h4M12 2v3"/>',
     'imprimir' => '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
   ];

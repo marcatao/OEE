@@ -26,7 +26,7 @@
         @include('layouts.partials.menu-link', ['rota' => 'inicio', 'rotulo' => 'Início', 'icone' => 'inicio'])
 
         {{-- Seções recolhíveis: o título abre e fecha a lista (o navegador lembra). A seção da página atual fica aberta. --}}
-        @if ($u->pode('dashboard_maquina') || $u->pode('timeline'))
+        @if ($u->pode('dashboard_maquina') || $u->pode('timeline') || $u->pode('producao_hora'))
           <div class="menu-bloco" data-bloco="dashboards">
             @include('layouts.partials.menu-secao', ['titulo' => 'Dashboards'])
             <div class="menu-itens">
@@ -35,6 +35,9 @@
               @endif
               @if ($u->pode('timeline'))
                 @include('layouts.partials.menu-link', ['rota' => 'timeline', 'rotulo' => 'Timeline', 'icone' => 'timeline'])
+              @endif
+              @if ($u->pode('producao_hora'))
+                @include('layouts.partials.menu-link', ['rota' => 'producao-hora', 'rotulo' => 'Produção por hora', 'icone' => 'barras'])
               @endif
             </div>
           </div>

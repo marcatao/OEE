@@ -34,6 +34,7 @@ use App\Http\Controllers\Manutencao\SolicitacaoMaterialController;
 use App\Http\Controllers\OrdemProducaoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PortalController;
+use App\Http\Controllers\ProducaoPorHoraController;
 use App\Http\Controllers\RoteiroOperacaoController;
 use App\Http\Controllers\TimelineController;
 use Illuminate\Support\Facades\Route;
@@ -64,6 +65,12 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permissao:dashboard_maquina')->prefix('producao/dashboard')->name('dashboard.')->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('maquinas');
         Route::get('{maquina}', [DashboardController::class, 'maquina'])->name('maquina');
+    });
+    // Dashboards › Produção por hora: peças por hora do turno, máquina a máquina (com OP, produto e meta).
+    Route::middleware('permissao:producao_hora')->group(function () {
+        Route::get('dashboards/producao-por-hora', ProducaoPorHoraController::class)->name('producao-hora');
+        Route::post('dashboards/producao-por-hora/filtros', [ProducaoPorHoraController::class, 'salvarFiltro'])->name('producao-hora.filtros.salvar');
+        Route::delete('dashboards/producao-por-hora/filtros/{filtro}', [ProducaoPorHoraController::class, 'excluirFiltro'])->name('producao-hora.filtros.excluir');
     });
     Route::middleware('permissao:timeline')->group(function () {
         Route::get('dashboards/timeline', TimelineController::class)->name('timeline');

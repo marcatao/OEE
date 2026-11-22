@@ -10,7 +10,6 @@ use App\Models\OrdemProducao;
 use App\Services\Calendario\DiasUteis;
 use App\Services\CustoOrdemProducao;
 use App\Services\EngenhariaOrdemProducao;
-use App\Services\Filtros\FiltroTimeline;
 use App\Services\HorarioApontamento;
 use App\Services\Manutencao\ChamadoDaParada;
 use App\Services\MotivoParada;
@@ -18,6 +17,7 @@ use App\Services\PecasProduzidas;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use App\Services\TrocaOpMaquina;
+use App\Services\TurnoDaMaquina;
 use App\Support\JornadaSemanal;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -125,27 +125,7 @@ class MaquinasAplicativo
      */
     public function periodoDeHoje(Maquina $maquina): array
     {
-        $hoje = CarbonImmutable::now(HorarioApontamento::fuso());
-        $jornadas = JornadaSemanal::de($maquina);
-        // Turno noturno de ontem ainda em andamento (ex.: seg 22:00–06:00, agora ter 02:00): é ele que vale.
-        $ontem = $hoje->subDay();
-        $jornadaOntem = $jornadas[$ontem->dayOfWeekIso] ?? null;
-        if ($jornadaOntem && $jornadaOntem[1] < $jornadaOntem[0] && $this->diasUteis->trabalha($maquina, $ontem->format('Y-m-d'))) {
-            [$de, $ate] = FiltroTimeline::periodoDoDia($ontem, $jornadaOntem[0], $jornadaOntem[1]);
-            if ($hoje->lessThan($ate->addMinute())) {
-                return [$de, $ate->addMinute(), 'Turno de '.$ontem->format('d/m').' · '.$jornadaOntem[0].' às '.$jornadaOntem[1]];
-            }
-        }
-        $jornada = $jornadas[$hoje->dayOfWeekIso] ?? null;
-        if ($jornada && $this->diasUteis->trabalha($maquina, $hoje->format('Y-m-d'))) {
-            [$de, $ate] = FiltroTimeline::periodoDoDia($hoje, $jornada[0], $jornada[1]);
-
-            return [$de, $ate->addMinute(), 'Turno de hoje, '.$hoje->format('d/m').' · '.$jornada[0].' às '.$jornada[1]];
-        }
-        $padrao = FiltroTimeline::padrao();
-
-        return [$padrao->de, $padrao->fimExclusivo(), 'Hoje, '.$hoje->format('d/m').' · '.$padrao->de->format('H:i')
-            .' às '.$padrao->ate->format('H:i').($jornada ? ' (fora do calendário de trabalho)' : '')];
+        return app(TurnoDaMaquina::class)->periodo($maquina);
     }
 
     /** Troca a legenda "sem motivo" de UM apontamento (regra única em App\Services\MotivoParada, a mesma da Timeline). */

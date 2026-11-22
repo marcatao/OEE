@@ -42,6 +42,7 @@ return [
     'permissoes' => [
         'dashboard_maquina' => 'Dashboard por máquina',
         'timeline' => 'Timeline das máquinas',
+        'producao_hora' => 'Produção por hora (peças por hora do turno, meta, OP e produto, máquina a máquina)',
         'apontamentos' => 'Apontamento real (registrar estados das máquinas)',
         'apontamentos_producao' => 'Apontamentos OP (produções, baixas e notas das OPs no Protheus)',
         'ordens_producao' => 'Ordens de produção (consulta, custos e kardex)',
@@ -118,7 +119,7 @@ return [
             'area' => 'manutencao',
             'descricao' => 'Vê, aprova e executa as SS/OS das áreas executantes dele e as máquinas de manutenção nos dashboards.',
             'unidades' => ['manutencao'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'producao_hora', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material'],
         ],
         'admin_producao' => [
             'rotulo' => 'Administrador de Produção',
@@ -142,7 +143,7 @@ return [
             'area' => 'tecnologia',
             'descricao' => 'Vê, aprova e executa as SS/OS das áreas executantes dele e vê equipamentos e dashboards de tecnologia.',
             'unidades' => ['tecnologia'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'producao_hora', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material'],
         ],
         'admin_tecnologia' => [
             'rotulo' => 'Administrador de Tecnologia',
@@ -166,7 +167,7 @@ return [
             'area' => 'ferramentaria',
             'descricao' => 'Vê, aprova e executa as SS/OS das áreas executantes dele e vê as máquinas da ferramentaria nos dashboards.',
             'unidades' => ['ferramentaria'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'producao_hora', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material'],
         ],
         'admin_ferramentaria' => [
             'rotulo' => 'Administrador de Ferramentaria',
