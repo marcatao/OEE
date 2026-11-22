@@ -18,7 +18,9 @@ use App\Services\ResumoCustoOp;
 use App\Support\AcessoOs;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Consultas (ferramentas) que a Claude pode usar no "Pergunte para Alumbra". Todas são SÓ LEITURA e rodam como o
@@ -40,6 +42,9 @@ class FerramentasAssistente
      */
     public function definicoes(Usuario $usuario): array
     {
+        if ($this->motivoBloqueio($usuario) !== null) {
+            return [];
+        }
         $lista = [];
         foreach ($this->catalogo() as $nome => $f) {
             if ($this->permitida($usuario, $f['permissoes'])) {
@@ -66,11 +71,41 @@ class FerramentasAssistente
         if ($f === null) {
             throw new ErroFerramenta("Consulta desconhecida: {$nome}.");
         }
+        if (($motivo = $this->motivoBloqueio($usuario)) !== null) {
+            Log::warning('Assistente: consulta bloqueada', ['ferramenta' => $nome, 'usuario' => $usuario->id,
+                'logado' => Auth::id(), 'motivo' => $motivo]);
+            throw new ErroFerramenta('Consulta bloqueada: '.$motivo);
+        }
         if (! $this->permitida($usuario, $f['permissoes'])) {
             throw new ErroFerramenta('O usuário não tem permissão para esta consulta.');
         }
 
         return $this->{$f['metodo']}($usuario, $entrada);
+    }
+
+    /**
+     * Trava extra: as consultas só rodam para o usuário LOGADO na requisição (os filtros de unidade das telas e do
+     * TemUnidade leem o usuário logado; sem ninguém logado eles não filtram nada), ativo, com perfil e com a permissão
+     * do assistente. Protege o box e qualquer integração futura (MCP, comandos) de ver dados de outra pessoa ou de
+     * todas as unidades. Devolve o motivo do bloqueio ou null.
+     */
+    private function motivoBloqueio(Usuario $usuario): ?string
+    {
+        $logado = Auth::user();
+        if (! $logado instanceof Usuario) {
+            return 'nenhum usuário logado.';
+        }
+        if ((int) $logado->getKey() !== (int) $usuario->getKey()) {
+            return 'o usuário da consulta não é o usuário logado.';
+        }
+        if (! $logado->ativo || ! $logado->temAcesso()) {
+            return 'usuário inativo ou sem perfil.';
+        }
+        if (! $logado->pode('assistente')) {
+            return 'usuário sem a permissão do assistente.';
+        }
+
+        return null;
     }
 
     /** Rótulo amigável para mostrar na tela enquanto a consulta roda. */

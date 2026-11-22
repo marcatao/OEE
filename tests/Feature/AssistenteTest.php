@@ -18,6 +18,7 @@ use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
 use App\Services\Assistente\ClienteClaude;
 use App\Services\Assistente\DiagnosticoErro;
+use App\Services\Assistente\ErroFerramenta;
 use App\Services\Assistente\FerramentasAssistente;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
@@ -156,6 +157,41 @@ class AssistenteTest extends TestCase
         $resultado = end($this->claude->requisicoes[1]['messages'])['content'][0];
         $this->assertTrue($resultado['is_error']);
         $this->assertStringContainsString('não tem permissão', $resultado['content']);
+    }
+
+    public function test_trava_so_consulta_como_o_usuario_logado(): void
+    {
+        $ferramentas = app(FerramentasAssistente::class);
+        $prod = $this->usuario(['admin_producao'], 'prod@empresa.com');
+        $ti = $this->usuario(['admin_tecnologia'], 'ti@empresa.com');
+        $bloqueada = function (Usuario $u, string $motivo) use ($ferramentas) {
+            $this->assertSame([], $ferramentas->definicoes($u));
+            try {
+                $ferramentas->executar($u, 'listar_maquinas', []);
+                $this->fail('A consulta deveria ser bloqueada.');
+            } catch (ErroFerramenta $e) {
+                $this->assertStringContainsString($motivo, $e->getMessage());
+            }
+        };
+
+        // Sem ninguém logado os filtros de unidade não filtram: bloqueia.
+        $bloqueada($prod, 'nenhum usuário logado');
+
+        // Logado como um, consultando como outro: bloqueia (não vê a máquina de Tecnologia pelo usuário de TI).
+        $this->actingAs($prod);
+        $bloqueada($ti, 'não é o usuário logado');
+
+        // O próprio usuário: só a máquina da unidade dele.
+        $maquinas = $ferramentas->executar($prod, 'listar_maquinas', []);
+        $this->assertSame(['INJ-01'], array_column($maquinas['maquinas'], 'codigo'));
+
+        // Logado sem a permissão do assistente, ou desativado: bloqueia.
+        $operador = $this->usuario(['operador'], 'op@empresa.com');
+        $this->actingAs($operador);
+        $bloqueada($operador, 'sem a permissão do assistente');
+        $prod->update(['ativo' => false]);
+        $this->actingAs($prod->fresh());
+        $bloqueada($prod->fresh(), 'inativo ou sem perfil');
     }
 
     public function test_ultima_etapa_responde_sem_novas_consultas(): void
