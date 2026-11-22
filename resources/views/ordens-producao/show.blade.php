@@ -40,7 +40,7 @@
   <div class="abas" data-abas data-aba-inicial="{{ $abaInicial }}">
     <div class="abas-lista" role="tablist" aria-label="Informações da OP">
       <button type="button" role="tab" data-aba="op">OP</button>
-      <button type="button" role="tab" data-aba="apontamentos">Apontamentos reais <span class="abas-contador">{{ $apontamentosReais->count() }}</span></button>
+      <button type="button" role="tab" data-aba="apontamentos">Apontamentos reais <span class="abas-contador">{{ $temposApontamentos['quantidade'] }}</span></button>
       <button type="button" role="tab" data-aba="kardex">Kardex <span class="abas-contador">{{ count($linhas) }}</span></button>
       <button type="button" role="tab" data-aba="empenhos">Empenhos <span class="abas-contador">{{ $empenhos->count() }}</span></button>
       <button type="button" role="tab" data-aba="estrutura">Estrutura <span class="abas-contador">{{ $estrutura->count() }}</span></button>
@@ -122,8 +122,9 @@
     <div class="abas-painel" role="tabpanel" data-painel="apontamentos" hidden>
       <h3>Apontamentos reais</h3>
       <p class="suave">Estados das máquinas apontados com esta OP (os mesmos da Timeline).
-        @if ($apontamentosReais->isNotEmpty()) Tempo total: <strong>{{ Formato::minutos($apontamentosReais->sum(fn ($a) => $a->duracaoMin())) }}</strong>
-          · produzindo: <strong>{{ Formato::minutos($apontamentosReais->filter(fn ($a) => $a->legenda?->tipo === 'produzindo')->sum(fn ($a) => $a->duracaoMin())) }}</strong>.@endif</p>
+        @if ($apontamentosReais->isNotEmpty()) Tempo total: <strong>{{ Formato::minutos($temposApontamentos['total']) }}</strong>
+          · produzindo: <strong>{{ Formato::minutos($temposApontamentos['produzindo']) }}</strong>.@endif
+        @if ($temposApontamentos['quantidade'] > $apontamentosReais->count()) Mostrando os {{ $apontamentosReais->count() }} mais recentes de {{ $temposApontamentos['quantidade'] }}.@endif</p>
       <div class="rolagem">
       <table class="tabela">
         <thead><tr><th>Dia</th><th>Máquina</th><th>Legenda</th><th>Início</th><th>Fim</th><th class="num">Duração</th><th>Referência / observação</th>

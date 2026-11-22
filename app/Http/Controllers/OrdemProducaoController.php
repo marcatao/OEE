@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Legenda;
 use App\Models\OrdemProducao;
 use App\Models\ProdutoProtheus;
 use App\Models\Sincronizacao;
 use App\Services\CustoOrdemProducao;
 use App\Services\EngenhariaOrdemProducao;
 use App\Services\TiposMovimento;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -58,10 +60,19 @@ class OrdemProducaoController extends Controller
 
         // Kardex e custo; depois empenhos (SD4), estrutura (SG1), roteiro (SG2) e ferramentas/moldes (SH4) da OP.
         // Apontamentos reais (Timeline) com esta OP, do mais recente para o mais antigo.
-        $apontamentosReais = $ordem->apontamentos()->with(['maquina', 'legenda'])->orderByDesc('inicio')->orderByDesc('id')->get();
+        // Lista: os 500 mais recentes (OP longa com IoT tem milhares); totais de tempo sobre TODOS, numa leitura leve.
+        $apontamentosReais = $ordem->apontamentos()->with(['maquina', 'legenda'])->orderByDesc('inicio')->orderByDesc('id')->limit(500)->get();
+        $produzindo = Legenda::withoutGlobalScopes()->where('tipo', 'produzindo')->pluck('id')->map(fn ($id) => (int) $id)->flip();
+        $tempos = ['total' => 0.0, 'produzindo' => 0.0, 'quantidade' => 0];
+        foreach ($ordem->apontamentos()->toBase()->get(['inicio', 'fim', 'legenda_id']) as $a) {
+            $min = max(0, (CarbonImmutable::parse($a->fim ?? now())->getTimestamp() - CarbonImmutable::parse($a->inicio)->getTimestamp()) / 60);
+            $tempos['total'] += $min;
+            $tempos['produzindo'] += isset($produzindo[(int) $a->legenda_id]) ? $min : 0;
+            $tempos['quantidade']++;
+        }
 
-        return view('ordens-producao.show', ['op' => $ordem, 'tipos' => $tipos, 'apontamentos' => $apontamentosReais->count(),
-            'apontamentosReais' => $apontamentosReais]
+        return view('ordens-producao.show', ['op' => $ordem, 'tipos' => $tipos, 'apontamentos' => $tempos['quantidade'],
+            'apontamentosReais' => $apontamentosReais, 'temposApontamentos' => $tempos]
             + $custo->kardex($ordem) + $engenharia->daOp($ordem));
     }
 

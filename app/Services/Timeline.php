@@ -51,7 +51,7 @@ class Timeline
             };
             $op = $m->ordemProducao;
             if ($op) {
-                $roteiros[$op->id] ??= $engenharia->roteiro($op, comMaquinas: false);
+                $roteiros[$op->id] ??= $engenharia->roteiro($op, comMaquinas: false, todasUnidades: true); // mesmo molde das peças
             }
             $situacoes[$m->id] = [
                 'estado' => $estado,

@@ -80,7 +80,7 @@ class PecasProduzidas
      *
      * @return list<array{hora: string, inicio: string, pecas: int}> uma linha por hora do período, no fuso local
      */
-    public function porHora(Maquina $maquina, CarbonImmutable $de, CarbonImmutable $ate, string $fuso): array
+    public function porHora(Maquina $maquina, CarbonImmutable $de, CarbonImmutable $ate, string $fuso, ?iterable $jaLidos = null): array
     {
         $agora = CarbonImmutable::now();
         $horas = [];
@@ -88,8 +88,9 @@ class PecasProduzidas
         for ($h = $de->setTimezone($fuso)->startOfHour(); $h->lessThan($ate->subMinutes(2)); $h = $h->addHour()) {
             $horas[] = ['inicio' => $h, 'fim' => $h->addHour(), 'pecas' => 0.0];
         }
-        $apontamentos = ApontamentoEstado::where('maquina_id', $maquina->id)->whereNotNull('pecas')->where('pecas', '>', 0)
-            ->tocando($de, $ate)->get(['inicio', 'fim', 'pecas']);
+        $apontamentos = $jaLidos !== null ? collect($jaLidos)->filter(fn ($a) => $a->pecas > 0)
+            : ApontamentoEstado::where('maquina_id', $maquina->id)->whereNotNull('pecas')->where('pecas', '>', 0)
+                ->tocando($de, $ate)->get(['inicio', 'fim', 'pecas']);
         foreach ($apontamentos as $a) {
             $ini = $a->inicio->getTimestamp();
             $fim = ($a->fim ?? $agora)->getTimestamp() + ($a->fim ? 1 : 0);

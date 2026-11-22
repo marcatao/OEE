@@ -110,9 +110,9 @@ class MaquinasAplicativo
             ],
             'apontamentos' => $apontamentos->map(fn ($a) => $this->apontamento($a, $fuso))->values()->all(),
             'sem_motivo' => $pendentes->map(fn ($a) => $this->apontamento($a, $fuso))->values()->all(),
-            'op' => $op ? $this->op($op, $maquina, $produtos) : null,
+            'op' => $dadosOp = ($op ? $this->op($op, $maquina, $produtos) : null),
             'legendas_motivo' => $this->legendasMotivo()->map(fn ($l) => $this->legenda($l))->values()->all(),
-            'producao' => $this->producao($maquina, $op, $de, $ate, $fuso),
+            'producao' => $this->producao($maquina, $dadosOp, $apontamentos, $de, $ate, $fuso),
         ];
     }
 
@@ -183,6 +183,9 @@ class MaquinasAplicativo
     public function buscarOps(string $busca): array
     {
         $busca = trim($busca);
+        if ($busca !== '' && mb_strlen($busca) < 2) {
+            return []; // como no portal: a busca começa com 2 letras (sem nada, as 30 mais recentes)
+        }
         $ops = OrdemProducao::apontaveis()
             ->busca($busca) // número da OP, SKU ou descrição do produto (igual ao portal)
             ->orderByDesc('numero')->limit(30)->get();
@@ -224,11 +227,18 @@ class MaquinasAplicativo
      * Produção do turno para o gráfico do app: peças por hora (repartidas pelo tempo de cada apontamento de produção),
      * total do turno e peças por minuto agora (60 ÷ ciclo médio × cavidades). A meta (pç/min) vem em breve: null.
      */
-    private function producao(Maquina $maquina, ?OrdemProducao $op, CarbonImmutable $de, CarbonImmutable $ate, string $fuso): array
+    private function producao(Maquina $maquina, ?array $dadosOp, $apontamentos, CarbonImmutable $de, CarbonImmutable $ate, string $fuso): array
     {
-        $porHora = $this->pecas->porHora($maquina, $de, $ate, $fuso);
-        $ciclo = ApontamentoEstado::ultimosPorMaquina([$maquina->id], ['ciclo_medio'])[(int) $maquina->id]['ciclo_medio'] ?? null;
-        $cavidades = $this->pecas->cavidades($op, $maquina);
+        // Reaproveita os apontamentos já lidos (a tela é consultada a cada poucos segundos) e os moldes da OP.
+        $porHora = $this->pecas->porHora($maquina, $de, $ate, $fuso, $apontamentos);
+        $ciclo = $apontamentos->first()?->ciclo_medio;
+        $cavidades = 1;
+        foreach ($dadosOp['moldes'] ?? [] as $molde) {
+            if ((int) $molde['cavidades_ativas'] > 0) {
+                $cavidades = (int) $molde['cavidades_ativas'];
+                break;
+            }
+        }
 
         return [
             'por_hora' => $porHora,
@@ -276,7 +286,8 @@ class MaquinasAplicativo
 
     private function op(OrdemProducao $op, Maquina $maquina, $produtos): array
     {
-        $roteiro = $this->engenharia->roteiro($op);
+        // Molde de qualquer unidade (quem vê a máquina vê o molde dela; mesmas cavidades das peças).
+        $roteiro = $this->engenharia->roteiro($op, comMaquinas: false, todasUnidades: true);
         $codigoMaquina = rtrim((string) $maquina->codigo);
         $operacoes = $roteiro['operacoes']->map(fn ($o) => [
             'operacao' => trim($o->g2_operac),
