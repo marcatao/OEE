@@ -73,7 +73,7 @@ apaga o que já foi copiado: **troque os segredos**.
 
 ## 5. Aplicativo Android
 
-- [ ] Instalar o APK mais recente nos celulares (operadores e mantenedores). O token do app agora vale **30 dias**:
+- [ ] Instalar o APK **0.12.0 (build 17)** nos celulares (operadores e mantenedores) — tem o cartão "Produção do turno" e os "Detalhes da OP" em abas (precisa do portal atualizado e do `php artisan optimize`, senão o botão abre com erro). O token do app agora vale **30 dias**:
       depois disso, o app pede login de novo. Celular perdido: Segurança › Usuários › Editar › "Desconectar".
 
 ## 6. Usuários
