@@ -1,5 +1,10 @@
 # Versões do aplicativo
 
+## 0.12.1 (build 18)
+
+- Detalhes da OP › Engenharia: a estrutura do produto mostra a **vigência** (ex.: "Vigência: 15/03/2026 até
+  31/12/2026", "sem limite") ao lado da revisão, e cada componente com data mostra a dele ("Vale de … até …").
+
 ## 0.12.0 (build 17)
 
 - Máquinas: botão **Detalhes da OP** no cartão da OP (tela da máquina). Abre a OP em abas, com os mesmos dados da tela

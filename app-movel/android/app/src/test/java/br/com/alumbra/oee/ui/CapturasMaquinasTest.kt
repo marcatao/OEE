@@ -129,10 +129,11 @@ class CapturasMaquinasTest {
             EmpenhoApp("MP0310", "MASTER BRANCO", "KG", "02", "01", "L2611", "02/11/2026", 9.0, 9.0, 0.0, 1.0),
         ),
         estrutura = listOf(
-            ItemEstrutura("01", "MP0001", "POLIPROPILENO NATURAL", "KG", 0.025, 0.0, false, 300.0, 300.0, false),
+            ItemEstrutura("01", "MP0001", "POLIPROPILENO NATURAL", "KG", 0.025, 0.0, false, 300.0, 300.0, false, "15/03/2026", "31/12/2026"),
             ItemEstrutura("02", "MP0310", "MASTER BRANCO", "KG", 0.00075, 0.0, false, 9.0, 9.0, false),
             ItemEstrutura("03", "PI0450", "MOLA INOX", "UN", 1.0, 2.0, false, 12244.9, null, true),
         ),
+        estruturaVigencia = "15/03/2026 até 31/12/2026",
         roteiro = "01",
         operacoes = listOf(
             OperacaoRoteiro("10", "INJETAR TAMPA", "INJ-01", "Injetora 01", true, null, "M001", "MOLDE TAMPA 8 CAV", 8, 6, "Normal", 0.5, 0.0139, 1.0, 1.0),

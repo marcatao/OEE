@@ -321,7 +321,15 @@ private fun LazyListScope.abaEmpenhos(d: DetalhesOp) {
 // ---------- Aba Engenharia (estrutura e roteiro padrão) ----------
 
 private fun LazyListScope.abaEngenharia(d: DetalhesOp) {
-    item { TituloSecao("Estrutura do produto" + (d.op.revisao?.let { " · revisão $it" } ?: "")) }
+    item {
+        Column {
+            TituloSecao("Estrutura do produto" + (d.op.revisao?.let { " · revisão $it" } ?: ""))
+            d.estruturaVigencia?.let {
+                Text("Vigência: $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp))
+            }
+        }
+    }
     if (d.estrutura.isEmpty()) item { Aviso("Nenhuma estrutura vigente para este produto.", Situacao.NEUTRA) }
     items(d.estrutura) { g ->
         val dif = g.empenhado?.let { it - g.necessidade }
@@ -342,6 +350,10 @@ private fun LazyListScope.abaEngenharia(d: DetalhesOp) {
                 Numero("Por peça", "${qtd(g.porPeca, 6)} ${g.um ?: ""}" + if (g.fixa) " (fixa)" else "", Modifier.weight(1f))
                 Numero("Necessidade", qtd(g.necessidade), Modifier.weight(1f))
                 Numero("Empenhado", g.empenhado?.let { qtd(it) } ?: "—", Modifier.weight(1f))
+            }
+            vigenciaDoItem(g)?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (g.perda > 0 || g.intermediario) {
                 Spacer(Modifier.height(6.dp))
@@ -374,6 +386,14 @@ private fun LazyListScope.abaEngenharia(d: DetalhesOp) {
             }
         }
     }
+}
+
+/** Vigência do componente, só quando tem data: "vale de X até Y", "vale desde X" ou "vale até Y". */
+private fun vigenciaDoItem(g: ItemEstrutura): String? = when {
+    g.vigenciaInicio != null && g.vigenciaFim != null -> "Vale de ${g.vigenciaInicio} até ${g.vigenciaFim}"
+    g.vigenciaInicio != null -> "Vale desde ${g.vigenciaInicio}"
+    g.vigenciaFim != null -> "Vale até ${g.vigenciaFim}"
+    else -> null
 }
 
 // ---------- Peças ----------

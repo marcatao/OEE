@@ -83,6 +83,8 @@ data class ItemEstrutura(
     val necessidade: Double,
     val empenhado: Double?,
     val intermediario: Boolean,
+    val vigenciaInicio: String? = null,
+    val vigenciaFim: String? = null,
 )
 
 data class OperacaoRoteiro(
@@ -110,6 +112,8 @@ data class DetalhesOp(
     val kardex: List<MovimentoKardex>,
     val empenhos: List<EmpenhoApp>,
     val estrutura: List<ItemEstrutura>,
+    /** Vigência da estrutura inteira (ex.: "15/03/2026 até 31/12/2026", "sem limite"); null sem estrutura. */
+    val estruturaVigencia: String? = null,
     val roteiro: String?,
     val operacoes: List<OperacaoRoteiro>,
 )
@@ -152,8 +156,10 @@ fun detalhesOpDe(j: JSONObject): DetalhesOp {
         },
         estrutura = j.optJSONArray("estrutura").cada {
             ItemEstrutura(it.t("trt"), it.optString("componente"), it.t("descricao"), it.t("um"), it.optDouble("por_peca", 0.0),
-                it.optDouble("perda", 0.0), it.optBoolean("fixa"), it.optDouble("necessidade", 0.0), it.d("empenhado"), it.optBoolean("intermediario"))
+                it.optDouble("perda", 0.0), it.optBoolean("fixa"), it.optDouble("necessidade", 0.0), it.d("empenhado"), it.optBoolean("intermediario"),
+                it.t("vigencia_inicio"), it.t("vigencia_fim"))
         },
+        estruturaVigencia = j.optJSONObject("estrutura_vigencia")?.t("texto"),
         roteiro = r.t("codigo"),
         operacoes = r.optJSONArray("operacoes").cada {
             OperacaoRoteiro(it.optString("operacao"), it.optString("descricao"), it.t("maquina"), it.t("maquina_nome"), it.optBoolean("com_esta_op"),
