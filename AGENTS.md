@@ -122,7 +122,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   cada apontamento). Meta em pç/min: ver **Meta de produção** (`meta_por_minuto`). Toda peça conta, em qualquer legenda (ciclo lento cai num 99);
   `pecas:conferir` (agendador, 5 min) refaz as peças desatualizadas (aviso perdido). Card "Contagem IoT" na tela da OP e
   `contagem_iot` nos detalhes da OP do app (`PecasProduzidas::contagemDaOp`: total, ciclos, hoje, por máquina, última
-  contagem — as mesmas peças da Produção por hora; acerta `quantidade_real` se estiver diferente). A troca de OP no modo `novo` grava
+  contagem — as mesmas peças da Produção por hora; acerta `quantidade_real` se estiver diferente). `quantidade_real`
+  ("Contagem IoT" nas telas) é campo SÓ do portal: os campos da OP vindos do Protheus (C2_QUANT, C2_QUJE...) nunca mudam. A troca de OP no modo `novo` grava
   o apontamento com observação começando por "Troca de OP": o integrador corta o trecho ali e mantém a OP nova.
 - **Meta de produção** (pç/min, `App\Services\MetaProducao`, scoped por requisição): vem do item do TIPO MO (B1_TIPO
   = 'MO' na SB1) da estrutura vigente da OP (`EngenhariaOrdemProducao::linhasVigentes`): G1_QUANT = horas CENTESIMAIS

@@ -75,7 +75,7 @@
         <div title="Soma dos apontamentos de produção (PR) da OP no kardex"><dt>Produzido (apontamentos PR)</dt><dd>{{ Formato::quantidade($resumo->producaoQtd) }} {{ $op->c2_um }}
           @if ($op->c2_quant > 0)<small>{{ Formato::pct($resumo->producaoQtd / $op->c2_quant) }}</small>@endif
           @if (abs((float) $op->c2_quje - $resumo->producaoQtd) > 0.0001)<small>na OP do Protheus (C2_QUJE): {{ Formato::quantidade($op->c2_quje) }}</small>@endif</dd></div>
-        <div title="Peças contadas pelo IoT nos apontamentos de produção (ciclos do contador × cavidades ativas do molde)"><dt>Quantidade real (IoT)</dt><dd>{{ Formato::quantidade((float) $op->quantidade_real) }} pç
+        <div title="Peças contadas pelo IoT (ciclos do contador × cavidades ativas do molde). Campo do portal: não altera a quantidade da OP do Protheus"><dt>Contagem IoT</dt><dd>{{ Formato::quantidade((float) $op->quantidade_real) }} pç
           @if ($op->c2_quant > 0 && $op->quantidade_real)<small>{{ Formato::pct($op->quantidade_real / $op->c2_quant) }}</small>@endif</dd></div>
         <div><dt>Perda</dt><dd>{{ Formato::quantidade($op->c2_perda) }}</dd></div>
         <div><dt>Emissão</dt><dd>{{ OrdemProducao::data($op->c2_emissao) ?: '-' }}</dd></div>

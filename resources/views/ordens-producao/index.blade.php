@@ -40,7 +40,7 @@
 
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>OP</th><th>Status</th><th>Produto</th><th class="num">Quantidade</th><th class="num">Produzido</th><th class="num" title="Peças contadas pelo IoT (ciclos × cavidades)">Real (IoT)</th><th class="num">Perda</th>
+    <thead><tr><th>OP</th><th>Status</th><th>Produto</th><th class="num">Quantidade</th><th class="num">Produzido</th><th class="num" title="Peças contadas pelo IoT (ciclos × cavidades); campo do portal, não altera a OP do Protheus">Contagem IoT</th><th class="num">Perda</th>
       <th class="num" title="Baixas da OP rateadas nas produções pelas peças">Custo simulado (OEE)</th><th class="num">Custo unit. meta</th><th class="num" title="Simulado × meta">Divergência</th>
       <th>Emissão</th><th>Previsão</th><th>Encerrada em</th><th class="num">Apontamentos</th></tr></thead>
     <tbody>

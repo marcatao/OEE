@@ -398,6 +398,7 @@ class AplicativoMaquinasTest extends TestCase
         $this->assertSame([165, 165], [$json['total'], $json['ciclos']]);
         $this->assertSame('Injetora 01', trim(str_replace('INJ-01', '', $json['por_maquina'][0]['maquina'])));
         $this->assertEquals(165, $this->op1->fresh()->quantidade_real); // gravada igual à contagem
+        $this->assertEquals([1000, 250], [$this->op1->fresh()->c2_quant, $this->op1->fresh()->c2_quje]); // OP do Protheus intacta
 
         $adm = Usuario::create(['entra_oid' => 'adm-op', 'nome' => 'Adm', 'email' => 'adm-op@alumbra.com.br', 'perfil' => 'admin']);
         $this->actingAs($adm)->get("/producao/ordens-de-producao/{$this->op1->id}")->assertOk()->assertSee('Contagem IoT')->assertSee('165');
