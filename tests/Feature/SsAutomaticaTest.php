@@ -216,4 +216,20 @@ class SsAutomaticaTest extends TestCase
         $this->maquina->forceFill(['situacao' => 'parada', 'situacao_desde' => now(), 'ativo' => true])->save(); // parou depois da SS
         $this->assertSame($ss->numeroFormatado(), ChamadoDaParada::da($this->maquina->fresh())['numero']);
     }
+
+    public function test_ss_de_uma_parada_antiga_nao_aparece_na_parada_atual(): void
+    {
+        // 05:00 parada (apontamento antigo), 06:39 nova parada (atual). Às 08:00 alguém troca o motivo da parada das 05:00
+        // para uma legenda que abre SS: a SS é daquela parada, não da atual.
+        $this->quebra->forceFill(['abre_ss_unidade' => 'manutencao', 'abre_ss_area_executante_id' => $this->mecanica->id])->save();
+        $semMotivo = Legenda::create(['codigo' => '98', 'descricao' => 'Parada sem motivo', 'tipo' => 'parada', 'cor' => '#ff0000']);
+        $antigo = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $semMotivo->id,
+            'inicio' => now()->subHours(3), 'fim' => now()->subHours(2)->subSecond()]);
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $semMotivo->id, 'inicio' => now()->subHours(2)]);
+        $this->maquina->forceFill(['situacao' => 'parada', 'situacao_desde' => now()->subHours(2), 'ativo' => true])->save();
+
+        $antigo->update(['legenda_id' => $this->quebra->id]);
+        $this->assertSame(1, SolicitacaoServico::count());
+        $this->assertNull(ChamadoDaParada::da($this->maquina->fresh()));
+    }
 }

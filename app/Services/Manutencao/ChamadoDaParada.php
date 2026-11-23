@@ -5,6 +5,8 @@ namespace App\Services\Manutencao;
 use App\Models\ApontamentoEstado;
 use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 
 /**
  * SS/OS aberta pelo apontamento de uma legenda que "abre SS" (SsAutomatica) para a máquina que está PARADA agora:
@@ -57,10 +59,25 @@ final class ChamadoDaParada
             }
         }
 
+        // A SS tem de ser DESTA parada: aberta por um apontamento que começou nela (não basta ter sido criada depois —
+        // ex.: alguém troca o motivo de uma parada antiga para uma legenda que abre SS e ela apareceria na parada atual).
+        $iniciosApontamento = DB::table('apontamentos_estado')
+            ->whereIntegerInRaw('id', $automaticas->flatten()->pluck('apontamento_estado_id')->filter()->map(fn ($v) => (int) $v)->unique()->values()->all())
+            ->pluck('inicio', 'id')->mapWithKeys(fn ($inicio, $apId) => [(int) $apId => CarbonImmutable::parse($inicio)]);
+        $daParada = function ($s, Maquina $maquina) use ($iniciosApontamento) {
+            if (! $maquina->situacao_desde) {
+                return true;
+            }
+            $limite = CarbonImmutable::instance($maquina->situacao_desde)->subMinute();
+            $inicio = $s->apontamento_estado_id ? ($iniciosApontamento[(int) $s->apontamento_estado_id] ?? null) : null;
+
+            return $inicio ? $inicio->gte($limite) : $s->criado_em->gte($limite);
+        };
+
         $chamados = [];
         foreach ($paradas as $id => $maquina) {
             $ss = $ssVinculadas[$vinculadas[$id] ?? 0] ?? ($automaticas[$id] ?? collect())
-                ->first(fn ($s) => ! $maquina->situacao_desde || $s->criado_em->gte($maquina->situacao_desde->copy()->subMinute()));
+                ->first(fn ($s) => $daParada($s, $maquina));
             if ($ss) {
                 $chamados[$id] = self::resumo($ss);
             }
