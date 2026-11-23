@@ -6,11 +6,13 @@ use App\Models\ApontamentoEstado;
 use App\Models\Legenda;
 use App\Models\Linha;
 use App\Models\Manutencao\AreaExecutante;
+use App\Models\Manutencao\HistoricoOs;
 use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\Planta;
 use App\Models\Usuario;
+use App\Services\Manutencao\FluxoOrdemServico;
 use App\Services\TrocaOpMaquina;
 use App\Support\AcessoOs;
 use Carbon\CarbonImmutable;
@@ -49,13 +51,72 @@ class CorrecoesAuditoriaProducaoTest extends TestCase
         return OrdemProducao::create(['c2_filial' => '01', 'c2_num' => $num, 'c2_item' => '01', 'c2_sequen' => '001', 'numero' => "{$num}01001", 'status' => 'aberta']);
     }
 
-    public function test_apontamento_que_abriu_ss_nao_e_excluido_e_avisa(): void
+    public function test_excluir_apontamento_que_abriu_ss_avisa_antes_e_cancela_a_ss_junto(): void
     {
         $ap = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->quebra->id, 'inicio' => now()->subHour()]);
-        $this->assertSame(1, SolicitacaoServico::withoutGlobalScopes()->count());
+        $ss = SolicitacaoServico::withoutGlobalScopes()->sole();
+        $numero = $ss->numeroFormatado();
 
-        $this->delete("/producao/apontamentos/{$ap->id}")->assertRedirect()->assertSessionHas('erro', fn ($m) => str_contains($m, 'não pode ser excluído'));
-        $this->assertNotNull($ap->fresh());
+        // A tela avisa antes (no texto e na confirmação) que a SS será cancelada.
+        $this->get("/producao/apontamentos/{$ap->id}/editar")->assertOk()
+            ->assertSee("Este apontamento abriu {$numero} (aguardando análise)")->assertSee('serão CANCELADAS');
+
+        $this->delete("/producao/apontamentos/{$ap->id}")->assertRedirect()
+            ->assertSessionHas('ok', fn ($m) => str_contains($m, "{$numero} cancelada"));
+        $this->assertNull($ap->fresh());
+        $ss->refresh();
+        $this->assertSame(['cancelada', null], [$ss->status, $ss->apontamento_estado_id]);
+        $this->assertTrue(HistoricoOs::where('solicitacao_id', $ss->id)->where('acao', 'cancelada')
+            ->where('observacao', 'like', 'Apontamento real de origem excluído por%')->exists());
+    }
+
+    public function test_excluir_apontamento_com_os_em_atendimento_mantem_a_os_e_so_desvincula(): void
+    {
+        $ap = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->quebra->id, 'inicio' => now()->subHour()]);
+        $ss = SolicitacaoServico::withoutGlobalScopes()->sole();
+        $os = app(FluxoOrdemServico::class)->aprovar($ss, auth()->user());
+        $os->forceFill(['status' => 'em_execucao', 'total_minutos' => 30, 'apontamento_estado_id' => $ap->id])->save();
+
+        $this->delete("/producao/apontamentos/{$ap->id}")->assertRedirect()
+            ->assertSessionHas('ok', fn ($m) => str_contains($m, $os->numeroFormatado().' continua (em execução)'));
+        $this->assertNull($ap->fresh());
+        $this->assertSame(['em_execucao', null], [$os->fresh()->status, $os->fresh()->apontamento_estado_id]);
+        $this->assertSame(['aprovada', null], [$ss->fresh()->status, $ss->fresh()->apontamento_estado_id]);
+    }
+
+    public function test_integrador_pede_para_excluir_o_trecho_corrigido_que_abriu_ss(): void
+    {
+        $prod = Legenda::create(['codigo' => 'XPR', 'descricao' => 'Produção', 'tipo' => 'produzindo', 'cor' => '#2e7d32', 'unidade' => 'manutencao']);
+        // Como no print: produção do IoT em aberto desde 10:59 e um 97 (abriu SS) no meio que o IoT corrigiu.
+        $p = DB::table('apontamentos_estado')->insertGetId(['maquina_id' => $this->maquina->id, 'legenda_id' => $prod->id,
+            'inicio' => now()->subHours(4), 'observacao' => '[IoT] x', 'criado_em' => now(), 'atualizado_em' => now()]);
+        $sem = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->quebra->id,
+            'inicio' => now()->subMinutes(10), 'fim' => now()->subMinutes(8), 'observacao' => '[IoT] x']);
+        $ss = SolicitacaoServico::withoutGlobalScopes()->sole();
+        $manual = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->quebra->id,
+            'inicio' => now()->subMinutes(5), 'fim' => now()->subMinutes(4)]);
+        DB::table('apontamentos_estado')->where('id', $p)->update(['fim' => null]);
+
+        config(['oee.iot.token' => str_repeat('t', 40)]);
+        $this->postJson('/api/iot/apontamentos/processar', ['excluir' => [$sem->id, $manual->id]], ['Authorization' => 'Bearer '.str_repeat('t', 40)])
+            ->assertOk()->assertJsonPath('excluidos.0.id', (int) $sem->id);
+        $this->assertNull($sem->fresh());
+        $this->assertNotNull($manual->fresh());   // só apontamentos do IoT são excluídos pela API
+        $this->assertSame('cancelada', $ss->fresh()->status);
+    }
+
+    public function test_um_so_em_aberto_que_nao_e_o_ultimo_e_encerrado(): void
+    {
+        $prod = Legenda::create(['codigo' => 'XPR', 'descricao' => 'Produção', 'tipo' => 'produzindo', 'cor' => '#2e7d32', 'unidade' => 'manutencao']);
+        $fuso = config('oee.fuso_exibicao');
+        $hora = fn (string $h) => CarbonImmutable::parse("2026-11-20 {$h}", $fuso)->utc();
+        $p = DB::table('apontamentos_estado')->insertGetId(['maquina_id' => $this->maquina->id, 'legenda_id' => $prod->id,
+            'inicio' => $hora('10:59:53'), 'criado_em' => now(), 'atualizado_em' => now()]);
+        DB::table('apontamentos_estado')->insert(['maquina_id' => $this->maquina->id, 'legenda_id' => $prod->id,
+            'inicio' => $hora('15:33:22'), 'fim' => $hora('15:34:53'), 'criado_em' => now(), 'atualizado_em' => now()]);
+
+        $this->artisan('apontamentos:conferir-abertos')->assertSuccessful();
+        $this->assertSame('15:33:21', ApontamentoEstado::find($p)->fim->copy()->setTimezone($fuso)->format('H:i:s'));
     }
 
     public function test_troca_de_op_com_novo_apontamento_nao_abre_outra_ss(): void

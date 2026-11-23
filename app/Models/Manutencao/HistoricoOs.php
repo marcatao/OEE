@@ -56,6 +56,7 @@ class HistoricoOs extends Model
         'maquina_parada' => 'Máquina parada / liberada', 'horas_lancadas' => 'Horas lançadas', 'horas_excluidas' => 'Horas excluídas',
         'material_requisitado' => 'Material requisitado', 'assinatura' => 'Assinatura no aplicativo',
         'nao_aceita' => 'SS não aceita pelo mantenedor (aplicativo)',
+        'desvinculada' => 'Apontamento de origem excluído',
     ];
 
     /** Ações que marcam as etapas da SS/OS (destacadas). */

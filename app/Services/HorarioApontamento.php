@@ -7,6 +7,7 @@ use App\Models\Legenda;
 use App\Providers\AppServiceProvider;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -155,8 +156,9 @@ class HorarioApontamento
      */
     public static function fecharAbertosAnteriores(int $maquinaId): int
     {
+        // (também um só em aberto que não é o último: ex. um apontamento depois dele que o integrador não conseguiu excluir)
         $abertos = ApontamentoEstado::where('maquina_id', $maquinaId)->whereNull('fim')->orderBy('inicio')->orderBy('id')->get();
-        if ($abertos->count() < 2) {
+        if ($abertos->isEmpty()) {
             return 0;
         }
         $fechados = 0;
@@ -206,6 +208,12 @@ class HorarioApontamento
     {
         $total = 0;
         $maquinas = ApontamentoEstado::whereNull('fim')->groupBy('maquina_id')->havingRaw('COUNT(*) > 1')->pluck('maquina_id');
+        // Máquinas com um apontamento em aberto que não é o último (há outro que começa depois dele).
+        $ultimos = DB::table('apontamentos_estado')->whereIn('maquina_id', DB::table('apontamentos_estado')->whereNull('fim')->select('maquina_id'))
+            ->groupBy('maquina_id')->select('maquina_id', DB::raw('MAX(inicio) as ultimo'));
+        $maquinas = $maquinas->merge(DB::table('apontamentos_estado as a')->joinSub($ultimos, 'u', 'u.maquina_id', '=', 'a.maquina_id')
+            ->whereNull('a.fim')->whereColumn('a.inicio', '<', 'u.ultimo')->distinct()->pluck('a.maquina_id'))
+            ->map(fn ($id) => (int) $id)->unique();
         foreach ($maquinas as $maquinaId) {
             $total += self::fecharAbertosAnteriores((int) $maquinaId);
         }

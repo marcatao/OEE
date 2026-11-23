@@ -111,7 +111,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   assistente (+ trava por usuário no limite diário). Token do app vale `oee.app.dias_validade_token` (30) dias desde o
   login; o administrador desconecta celulares em Segurança › Usuários. Locatário do Entra ID que não é GUID recusa todo
   login. Exportação CSV escapa células que começam com = + - @. Agendador (`routes/console.php`) roda no fuso LOCAL
-  (`app.schedule_timezone`). Apontamento real que abriu SS/OS automática NÃO se exclui (aviso); troca de OP e
+  (`app.schedule_timezone`). Apontamento real que abriu SS/OS automática: ao excluir, o chamado vai junto
+  (`App\Services\Manutencao\ExclusaoApontamento`, pedido do usuário em 23/11/2026): SS pendente e OS aberta sem
+  atendimento são CANCELADAS, as que já tiveram atendimento só perdem o vínculo; histórico com o motivo; a tela de edição
+  avisa antes (texto + confirmação); o integrador pede a exclusão dos trechos do IoT que corrigiu (campo `excluir` do
+  `POST /api/iot/apontamentos/processar`, só apontamentos `[IoT]`). Troca de OP e
   continuações levam o chamado (`chamadoParaContinuar`) sem abrir outra SS.
 - **Peças produzidas pelo IoT** (`App\Services\PecasProduzidas`): o Integrador MQTT grava em `apontamentos_estado.ciclos`
   os pulsos do contador nos apontamentos de PRODUÇÃO e avisa o portal (`producao` e `ops` no `POST /api/iot/apontamentos/

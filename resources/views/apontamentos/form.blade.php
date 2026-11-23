@@ -66,8 +66,12 @@
   </form>
 
   @if ($apontamento->exists)
+    @php($avisoChamado = \App\Services\Manutencao\ExclusaoApontamento::aviso($apontamento))
+    @if ($avisoChamado)
+      <p class="aviso alerta" style="margin-top:1.5rem">{{ $avisoChamado }}</p>
+    @endif
     <form method="post" action="{{ route('apontamentos.destroy', $apontamento) }}" style="margin-top:1.5rem"
-          onsubmit="return confirm('Excluir este apontamento?')">
+          onsubmit="return confirm(@js($avisoChamado ? $avisoChamado.' Excluir mesmo assim?' : 'Excluir este apontamento?'))">
       @csrf @method('delete')
       <input type="hidden" name="voltar" value="{{ $voltar }}">
       <button class="botao secundario pequeno" type="submit">@include('layouts.partials.icone', ['nome' => 'lixeira']) Excluir apontamento</button>
