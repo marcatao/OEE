@@ -1,5 +1,14 @@
 # Versões do aplicativo
 
+## 0.12.5 (build 22)
+
+- Produção do turno (tela da máquina), com a meta da OP (pç/min, do portal):
+  - **% da meta até agora**: peças do turno ÷ (meta × minutos já passados do turno), com as peças e a meta até agora;
+  - barras de peças por hora pela meta da hora (na hora atual, só até agora): **≥ 90% verde, ≥ 50% amarela, abaixo
+    vermelha** (mesma regra da Produção por hora do portal); sem meta, a cor de antes;
+  - aviso **"Molde … com X/Y cavidades e abaixo da meta: indicar para conserto"** quando o portal manda
+    `molde_conserto` (cavidades desativadas e pç/min abaixo da meta).
+
 ## 0.12.4 (build 21)
 
 - Máquinas rápidas (mais de uma peça por segundo): o ciclo médio aparece com milissegundos ("Ciclo 0,040 s"; acima de

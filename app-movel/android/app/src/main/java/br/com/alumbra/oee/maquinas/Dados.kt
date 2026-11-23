@@ -61,6 +61,9 @@ data class ApontamentoApp(
 /** Uma hora do turno no gráfico de produção. */
 data class HoraProducao(val hora: String, val inicioUtc: String?, val pecas: Int)
 
+/** Molde com cavidades desativadas e produção abaixo da meta: indicar para conserto. */
+data class MoldeConserto(val codigo: String, val descricao: String?, val ativas: Int, val total: Int)
+
 /** Produção do turno de hoje (peças por hora, total, peças por minuto agora e a meta, quando houver). */
 data class ProducaoApp(
     val porHora: List<HoraProducao>,
@@ -73,6 +76,7 @@ data class ProducaoApp(
     val cavidades: Int,
     val pecasPorMinuto: Double,
     val metaPorMinuto: Double?,
+    val moldeConserto: MoldeConserto? = null,
 )
 
 data class OperacaoApp(val operacao: String, val descricao: String, val maquina: String, val ferramenta: String, val destaMaquina: Boolean)
@@ -150,6 +154,9 @@ fun producaoDe(j: JSONObject?): ProducaoApp? = j?.let {
         cavidades = it.optInt("cavidades", 1),
         pecasPorMinuto = it.optDouble("pecas_por_minuto", 0.0),
         metaPorMinuto = if (!it.has("meta_por_minuto") || it.isNull("meta_por_minuto")) null else it.optDouble("meta_por_minuto"),
+        moldeConserto = it.optJSONObject("molde_conserto")?.let { m ->
+            MoldeConserto(m.optString("codigo"), if (m.isNull("descricao")) null else m.optString("descricao"), m.optInt("ativas"), m.optInt("total"))
+        },
     )
 }
 

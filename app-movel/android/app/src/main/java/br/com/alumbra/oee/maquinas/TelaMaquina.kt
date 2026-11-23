@@ -438,6 +438,20 @@ private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
     val atual = horas.indexOfLast { (paraMs(it.inicioUtc) ?: Long.MAX_VALUE) <= agora }
     val metaHora = p.metaPorMinuto?.let { it * 60 }
     val maximo = maxOf(horas.maxOfOrNull { it.pecas } ?: 0, metaHora?.toInt() ?: 0, 1) * 1.15f
+    // Meta até agora (como a Produção por hora do portal): minutos já passados de cada hora × meta por minuto.
+    val minutosPassados = horas.map { h ->
+        val ini = paraMs(h.inicioUtc) ?: return@map 0.0
+        ((agora - ini) / 60_000.0).coerceIn(0.0, 60.0)
+    }
+    val metaAteAgora = p.metaPorMinuto?.let { m -> m * minutosPassados.sum() }?.takeIf { it > 0 }
+    val pctMeta = metaAteAgora?.let { p.pecasTurno / it }
+    val cores = CoresOee.atual
+    /** ≥ 90% da meta verde, ≥ 50% amarela, abaixo vermelha (mesma regra das barras do portal). */
+    fun corDoNivel(pct: Double) = when {
+        pct >= 0.9 -> cores.ok
+        pct >= 0.5 -> cores.alerta
+        else -> cores.erro
+    }
     val medidor = androidx.compose.ui.text.rememberTextMeasurer()
     val estiloValor = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurface)
 
@@ -476,6 +490,25 @@ private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
             color = corTexto,
             modifier = Modifier.padding(top = 4.dp),
         )
+        if (pctMeta != null) {
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    java.text.NumberFormat.getPercentInstance(Locale("pt", "BR")).format(pctMeta) + " da meta até agora",
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = corDoNivel(pctMeta),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text("(${numero(p.pecasTurno.toDouble())} de ${numero(Math.round(metaAteAgora).toDouble())} pç)",
+                    style = MaterialTheme.typography.labelSmall, color = corTexto)
+            }
+        }
+        p.moldeConserto?.let { m ->
+            Spacer(Modifier.height(8.dp))
+            br.com.alumbra.oee.ui.Aviso(
+                "Molde ${m.codigo}${m.descricao?.let { " ($it)" } ?: ""} com ${m.ativas}/${m.total} cavidades e abaixo da meta: indicar para conserto.",
+                br.com.alumbra.oee.ui.Situacao.ALERTA,
+            )
+        }
         Spacer(Modifier.height(12.dp))
         if (horas.isEmpty()) {
             Text("Sem horas do turno para mostrar.", color = corTexto)
@@ -492,7 +525,8 @@ private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
                 val alt = (h.pecas / maximo) * alturaUtil
                 if (h.pecas > 0) {
                     drawRect(
-                        if (i == atual) corBarra else if (i > atual && atual >= 0) corBarraClara else corBarra.copy(alpha = .75f),
+                        p.metaPorMinuto?.takeIf { minutosPassados[i] > 0 }?.let { m -> corDoNivel(h.pecas / (m * minutosPassados[i])) }
+                            ?: if (i == atual) corBarra else if (i > atual && atual >= 0) corBarraClara else corBarra.copy(alpha = .75f),
                         topLeft = Offset(x, topoLivre + alturaUtil - alt),
                         size = Size(largura, alt),
                     )
