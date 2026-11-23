@@ -768,7 +768,15 @@ class OrdensServicoTest extends TestCase
         ApontamentoHoras::create(['ordem_servico_id' => $os->id, 'mantenedor_id' => $m->id,
             'inicio' => $hoje->copy()->addHours(2), 'fim' => $hoje->copy()->addHours(3), 'minutos_normais' => 60, 'minutos_extras' => 0]);
 
+        // SQL Server exige GROUP BY em consulta com agregação e coluna solta (o SQLite aceita sem): confere no texto.
+        $semGrupo = [];
+        DB::listen(function ($c) use (&$semGrupo) {
+            if (preg_match('/\b(min|max|sum|count)\(/i', $c->sql) && preg_match('/^select\s+"?\w+"?\s*,/i', $c->sql) && ! preg_match('/group by/i', $c->sql)) {
+                $semGrupo[] = $c->sql;
+            }
+        });
         $dados = app(PainelManutencao::class)->dados($adm, 'manutencao');
+        $this->assertSame([], $semGrupo);
         $this->assertEquals(30, $dados['tempoMedioMin']);
         $this->assertEquals(150, $dados['tempoReparoMin']);
         $this->assertSame(now(config('oee.fuso_exibicao'))->startOfMonth()->format('Y-m-d'), $dados['periodoDe']->format('Y-m-d')); // padrão: mês atual

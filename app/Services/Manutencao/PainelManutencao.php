@@ -150,8 +150,8 @@ final class PainelManutencao
         if ($ordens->isEmpty()) {
             return collect();
         }
-        $primeiros = ApontamentoHoras::whereIntegerInRaw('ordem_servico_id', $ordens->pluck('id')->map(fn ($id) => (int) $id)->all()) // sem parâmetros: período longo passa de 2100 OS->groupBy('ordem_servico_id')
-            ->selectRaw('ordem_servico_id, MIN(inicio) as primeiro')->pluck('primeiro', 'ordem_servico_id');
+        $primeiros = ApontamentoHoras::whereIntegerInRaw('ordem_servico_id', $ordens->pluck('id')->map(fn ($id) => (int) $id)->all()) // sem parâmetros: período longo passa de 2100 OS
+            ->groupBy('ordem_servico_id')->selectRaw('ordem_servico_id, MIN(inicio) as primeiro')->pluck('primeiro', 'ordem_servico_id');
         $fuso = HorasManutencao::fuso();
         $linhas = collect();
         foreach ($ordens as $o) {
