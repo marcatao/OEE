@@ -50,6 +50,25 @@
 
     {{-- OP: dados da SC2 e custo --}}
     <div class="abas-painel" role="tabpanel" data-painel="op">
+      {{-- Contagem IoT: as mesmas peças da Produção por hora (ciclos do contador × cavidades do molde), somadas agora. --}}
+      <div class="kpis" style="margin-top:0;margin-bottom:1.25rem">
+        <div class="kpi" title="Peças contadas pelo IoT nos apontamentos desta OP (ciclos do contador × cavidades ativas do molde) — as mesmas da Produção por hora">
+          <div class="kpi-icone">@include('layouts.partials.icone', ['nome' => 'sinal'])</div>
+          <div><span>Contagem IoT</span><strong>{{ Formato::inteiro($contagemIot['total']) }}<small> pç</small></strong>
+            <small>@if ($op->c2_quant > 0){{ Formato::pct($contagemIot['total'] / $op->c2_quant) }} de {{ Formato::quantidade($op->c2_quant) }} · @endif{{ Formato::inteiro($contagemIot['ciclos']) }} ciclos</small></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-icone">@include('layouts.partials.icone', ['nome' => 'relogio'])</div>
+          <div><span>Contadas hoje</span><strong>{{ Formato::inteiro($contagemIot['hoje']) }}<small> pç</small></strong>
+            <small>{{ $contagemIot['ultima'] ? 'última contagem '.\App\Providers\AppServiceProvider::dataHora($contagemIot['ultima']) : 'sem contagem do IoT ainda' }}</small></div>
+        </div>
+        @foreach (array_slice($contagemIot['por_maquina'], 0, 3) as $pm)
+          <div class="kpi">
+            <div class="kpi-icone">@include('layouts.partials.icone', ['nome' => 'maquina'])</div>
+            <div><span class="quebra">{{ $pm['maquina'] }}</span><strong>{{ Formato::inteiro($pm['pecas']) }}<small> pç</small></strong></div>
+          </div>
+        @endforeach
+      </div>
       <dl class="op-ficha">
         <div><dt>Quantidade</dt><dd>{{ Formato::quantidade($op->c2_quant) }} {{ $op->c2_um }}</dd></div>
         {{-- Produzido = soma dos apontamentos de produção (PR) do kardex; o C2_QUJE da OP fica só de referência. --}}

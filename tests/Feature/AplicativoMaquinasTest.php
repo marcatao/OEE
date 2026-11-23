@@ -383,4 +383,23 @@ class AplicativoMaquinasTest extends TestCase
 
         $this->api('GET', 'ops/999999/detalhes')->assertNotFound();
     }
+
+    public function test_contagem_iot_da_op_e_a_mesma_da_producao_por_hora_e_acerta_a_quantidade_gravada(): void
+    {
+        $this->maquina->update(['ordem_producao_id' => $this->op1->id]);
+        foreach ([[now()->subHours(3), now()->subHours(2), 120], [now()->subHour(), null, 45]] as [$ini, $fim, $pecas]) {
+            DB::table('apontamentos_estado')->insert(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id,
+                'ordem_producao_id' => $this->op1->id, 'inicio' => $ini, 'fim' => $fim, 'ciclos' => $pecas, 'cavidades' => 1, 'pecas' => $pecas,
+                'observacao' => '[IoT] x', 'criado_em' => now(), 'atualizado_em' => now()]);
+        }
+        DB::table('ordens_producao')->where('id', $this->op1->id)->update(['quantidade_real' => 10]); // aviso perdido: desatualizada
+
+        $json = $this->api('GET', "ops/{$this->op1->id}/detalhes")->assertOk()->json('contagem_iot');
+        $this->assertSame([165, 165], [$json['total'], $json['ciclos']]);
+        $this->assertSame('Injetora 01', trim(str_replace('INJ-01', '', $json['por_maquina'][0]['maquina'])));
+        $this->assertEquals(165, $this->op1->fresh()->quantidade_real); // gravada igual à contagem
+
+        $adm = Usuario::create(['entra_oid' => 'adm-op', 'nome' => 'Adm', 'email' => 'adm-op@alumbra.com.br', 'perfil' => 'admin']);
+        $this->actingAs($adm)->get("/producao/ordens-de-producao/{$this->op1->id}")->assertOk()->assertSee('Contagem IoT')->assertSee('165');
+    }
 }

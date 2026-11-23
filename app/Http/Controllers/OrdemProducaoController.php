@@ -8,6 +8,7 @@ use App\Models\ProdutoProtheus;
 use App\Models\Sincronizacao;
 use App\Services\CustoOrdemProducao;
 use App\Services\EngenhariaOrdemProducao;
+use App\Services\PecasProduzidas;
 use App\Services\TiposMovimento;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -54,9 +55,11 @@ class OrdemProducaoController extends Controller
      * Detalhes da OP: kardex com os movimentos (SD3 e SD2), resumos e comparação com o custo meta (SB9); empenhos (SD4),
      * estrutura atual (SG1), roteiro (SG2) e ferramenta/molde (SH4) da OP.
      */
-    public function show(OrdemProducao $ordem, CustoOrdemProducao $custo, TiposMovimento $tipos, EngenhariaOrdemProducao $engenharia): View
+    public function show(OrdemProducao $ordem, CustoOrdemProducao $custo, TiposMovimento $tipos, EngenhariaOrdemProducao $engenharia, PecasProduzidas $pecas): View
     {
         abort_if($ordem->d_e_l_e_t_ === '*', 404);
+        // Contagem IoT: as mesmas peças da Produção por hora; acerta a quantidade real gravada na OP se estiver diferente.
+        $contagemIot = $pecas->contagemDaOp($ordem, config('oee.fuso_exibicao'));
 
         // Kardex e custo; depois empenhos (SD4), estrutura (SG1), roteiro (SG2) e ferramentas/moldes (SH4) da OP.
         // Apontamentos reais (Timeline) com esta OP, do mais recente para o mais antigo.
@@ -72,7 +75,7 @@ class OrdemProducaoController extends Controller
         }
 
         return view('ordens-producao.show', ['op' => $ordem, 'tipos' => $tipos, 'apontamentos' => $tempos['quantidade'],
-            'apontamentosReais' => $apontamentosReais, 'temposApontamentos' => $tempos]
+            'apontamentosReais' => $apontamentosReais, 'temposApontamentos' => $tempos, 'contagemIot' => $contagemIot]
             + $custo->kardex($ordem) + $engenharia->daOp($ordem));
     }
 

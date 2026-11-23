@@ -89,6 +89,48 @@ class PecasProduzidas
         return ['apontamentos' => $n, 'ops' => count($ops)];
     }
 
+    /**
+     * "Contagem IoT" da OP (card da tela da OP e do app): as MESMAS peças da Produção por hora (apontamentos.pecas =
+     * ciclos × cavidades), somadas na hora: total, ciclos, hoje (repartido pelo tempo, como o gráfico), por máquina e a
+     * última contagem. Se ordens_producao.quantidade_real estiver diferente (aviso perdido), já grava o total certo.
+     *
+     * @return array{total: int, ciclos: int, hoje: int, apontamentos: int, ultima: ?CarbonImmutable, por_maquina: list<array{maquina: string, pecas: int}>}
+     */
+    public function contagemDaOp(OrdemProducao $op, string $fuso): array
+    {
+        $aps = ApontamentoEstado::where('ordem_producao_id', $op->id)->whereNotNull('pecas')
+            ->get(['maquina_id', 'inicio', 'fim', 'pecas', 'ciclos', 'atualizado_em']);
+        $total = (int) $aps->sum('pecas');
+        if (abs($total - (float) $op->quantidade_real) > 0.0001) {
+            $this->recalcularOp((int) $op->id);
+            $op->quantidade_real = $total;
+        }
+        $agora = CarbonImmutable::now();
+        $inicioHoje = $agora->setTimezone($fuso)->startOfDay();
+        $hoje = 0.0;
+        foreach ($aps as $a) {
+            if ($a->pecas <= 0) {
+                continue;
+            }
+            $ini = $a->inicio->getTimestamp();
+            $ultima = $a->atualizado_em && $a->atualizado_em->greaterThan($a->inicio) && $a->atualizado_em->lessThan($agora) ? $a->atualizado_em : $agora;
+            $fim = ($a->fim ?? $ultima)->getTimestamp() + ($a->fim ? 1 : 0);
+            $sobreposto = min($fim, $agora->getTimestamp()) - max($ini, $inicioHoje->getTimestamp());
+            if ($sobreposto > 0) {
+                $hoje += $a->pecas * $sobreposto / max(1, $fim - $ini);
+            }
+        }
+        $nomes = Maquina::withoutGlobalScopes()->whereIntegerInRaw('id', $aps->pluck('maquina_id')->map(fn ($i) => (int) $i)->unique()->values()->all())
+            ->get(['id', 'codigo', 'nome'])->keyBy(fn ($m) => (int) $m->id);
+        $porMaquina = $aps->groupBy(fn ($a) => (int) $a->maquina_id)
+            ->map(fn ($g, $id) => ['maquina' => trim(($nomes[$id]->codigo ?? '').' '.($nomes[$id]->nome ?? '')) ?: "máquina {$id}", 'pecas' => (int) $g->sum('pecas')])
+            ->sortByDesc('pecas')->values()->all();
+        $ultima = $aps->max('atualizado_em');
+
+        return ['total' => $total, 'ciclos' => (int) $aps->sum('ciclos'), 'hoje' => (int) round($hoje),
+            'apontamentos' => $aps->count(), 'ultima' => $ultima ? CarbonImmutable::instance($ultima) : null, 'por_maquina' => $porMaquina];
+    }
+
     /** Soma as peças dos apontamentos da OP em ordens_producao.quantidade_real. */
     public function recalcularOp(?int $opId): void
     {

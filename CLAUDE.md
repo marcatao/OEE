@@ -120,7 +120,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `ordens_producao.quantidade_real` = soma das peças da OP. Peças por minuto = 60 ÷ ciclo médio × cavidades (Timeline,
   no lugar do "Meta"; app, campo `producao` do detalhe da máquina com `por_hora` do turno, repartido pelo tempo de
   cada apontamento). Meta em pç/min: ver **Meta de produção** (`meta_por_minuto`). Toda peça conta, em qualquer legenda (ciclo lento cai num 99);
-  `pecas:conferir` (agendador, 5 min) refaz as peças desatualizadas (aviso perdido). A troca de OP no modo `novo` grava
+  `pecas:conferir` (agendador, 5 min) refaz as peças desatualizadas (aviso perdido). Card "Contagem IoT" na tela da OP e
+  `contagem_iot` nos detalhes da OP do app (`PecasProduzidas::contagemDaOp`: total, ciclos, hoje, por máquina, última
+  contagem — as mesmas peças da Produção por hora; acerta `quantidade_real` se estiver diferente). A troca de OP no modo `novo` grava
   o apontamento com observação começando por "Troca de OP": o integrador corta o trecho ali e mantém a OP nova.
 - **Meta de produção** (pç/min, `App\Services\MetaProducao`, scoped por requisição): vem do item do TIPO MO (B1_TIPO
   = 'MO' na SB1) da estrutura vigente da OP (`EngenhariaOrdemProducao::linhasVigentes`): G1_QUANT = horas CENTESIMAIS

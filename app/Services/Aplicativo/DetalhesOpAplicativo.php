@@ -5,6 +5,7 @@ namespace App\Services\Aplicativo;
 use App\Models\OrdemProducao;
 use App\Services\CustoOrdemProducao;
 use App\Services\EngenhariaOrdemProducao;
+use App\Services\PecasProduzidas;
 use App\Services\TiposMovimento;
 
 /**
@@ -21,6 +22,7 @@ class DetalhesOpAplicativo
         private CustoOrdemProducao $custo,
         private EngenhariaOrdemProducao $engenharia,
         private TiposMovimento $tipos,
+        private PecasProduzidas $pecas,
     ) {}
 
     public function detalhes(OrdemProducao $op): array
@@ -35,8 +37,18 @@ class DetalhesOpAplicativo
         $texto = fn ($v) => trim((string) $v) !== '' ? trim((string) $v) : null;
 
         $linhas = array_slice(array_reverse($kardex['linhas']), 0, self::MAX_KARDEX);
+        // Contagem IoT: as mesmas peças da Produção por hora (acerta a quantidade real da OP se estiver diferente).
+        $contagem = $this->pecas->contagemDaOp($op, (string) config('oee.fuso_exibicao'));
 
         return [
+            'contagem_iot' => [
+                'total' => $contagem['total'],
+                'ciclos' => $contagem['ciclos'],
+                'hoje' => $contagem['hoje'],
+                'percentual' => (float) $op->c2_quant > 0 ? round($contagem['total'] / (float) $op->c2_quant * 100, 1) : null,
+                'ultima_contagem' => $contagem['ultima']?->setTimezone((string) config('oee.fuso_exibicao'))->format('d/m H:i'),
+                'por_maquina' => $contagem['por_maquina'],
+            ],
             'op' => [
                 'id' => (int) $op->id,
                 'numero' => $op->numero,
