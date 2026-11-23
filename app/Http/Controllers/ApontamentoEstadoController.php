@@ -214,6 +214,13 @@ class ApontamentoEstadoController extends Controller
             throw ValidationException::withMessages(['hora_inicio' => $proximo['mensagem']]);
         }
 
+        // Em aberto (sem horário final) só o ÚLTIMO apontamento da máquina (o modelo confere de novo ao gravar).
+        if ($fim === null) {
+            $teste = clone $apontamento;
+            $teste->forceFill(['maquina_id' => (int) $dados['maquina_id'], 'inicio' => $inicio, 'fim' => null]);
+            HorarioApontamento::exigirUltimoSeAberto($teste);
+        }
+
         // Ordem de produção: digitada ou escolhida pelo número (C2_NUM + C2_ITEM + C2_SEQUEN).
         $numeroOp = trim((string) ($dados['ordem_producao'] ?? ''));
         $legenda = Legenda::withoutGlobalScopes()->find($dados['legenda_id']);

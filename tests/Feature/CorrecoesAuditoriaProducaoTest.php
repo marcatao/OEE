@@ -16,6 +16,7 @@ use App\Support\AcessoOs;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
 
@@ -145,5 +146,35 @@ class CorrecoesAuditoriaProducaoTest extends TestCase
         $abrir();
         $this->get('/dashboards/timeline?parcial=1');
         $this->assertSame(1, $abertos());
+    }
+
+    public function test_em_aberto_so_o_ultimo_apontamento_da_maquina(): void
+    {
+        $setup = Legenda::create(['codigo' => 'XST', 'descricao' => 'Setup', 'tipo' => 'parada', 'cor' => '#1d5fa8', 'unidade' => 'manutencao']);
+        $fuso = config('oee.fuso_exibicao');
+        $hora = fn (string $h) => CarbonImmutable::parse("2026-11-20 {$h}", $fuso)->utc();
+        $a = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $setup->id, 'inicio' => $hora('08:00:00'), 'fim' => $hora('08:59:59')]);
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $setup->id, 'inicio' => $hora('09:00:00')]);
+
+        // Portal: tirar o horário final de um apontamento que não é o último é recusado, com o motivo.
+        $this->put("/producao/apontamentos/{$a->id}", ['maquina_id' => $this->maquina->id, 'legenda_id' => $setup->id,
+            'dia' => '2026-11-20', 'hora_inicio' => '08:00:00', 'hora_fim' => ''])
+            ->assertSessionHasErrors(['hora_fim' => 'Só o último apontamento da máquina pode ficar em aberto: já existe o apontamento XST às 20/11/2026 09:00, depois deste. Informe o horário final.']);
+        $this->assertNotNull($a->fresh()->fim);
+
+        // Qualquer outro caminho (app, serviços): o modelo recusa um em aberto antes de outro.
+        try {
+            ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $setup->id, 'inicio' => $hora('07:00:00')]);
+            $this->fail('Deveria recusar um apontamento em aberto antes de outro.');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('Só o último apontamento', $e->getMessage());
+        }
+
+        // O último pode ficar em aberto; trocar só a legenda de um aberto antigo (dado ruim de antes) continua possível.
+        $this->assertSame(1, ApontamentoEstado::where('maquina_id', $this->maquina->id)->whereNull('fim')->count());
+        $velho = DB::table('apontamentos_estado')->insertGetId(['maquina_id' => $this->maquina->id, 'legenda_id' => $setup->id,
+            'inicio' => $hora('06:00:00'), 'criado_em' => now(), 'atualizado_em' => now()]);
+        ApontamentoEstado::find($velho)->update(['legenda_id' => $this->quebra->id]);
+        $this->assertSame((int) $this->quebra->id, (int) ApontamentoEstado::find($velho)->legenda_id);
     }
 }

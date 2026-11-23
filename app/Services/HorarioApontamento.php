@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\ApontamentoEstado;
 use App\Models\Legenda;
+use App\Providers\AppServiceProvider;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Regras de horário do apontamento real (dia no fuso local, oee.fuso_exibicao):
@@ -172,6 +174,31 @@ class HorarioApontamento
         }
 
         return $fechados;
+    }
+
+    /**
+     * Validação (pedido do usuário em 23/11/2026): o apontamento EM ABERTO (sem fim) só pode ser o ÚLTIMO da máquina.
+     * Recusa criar, reabrir (apagar o fim) ou mover para trás um apontamento em aberto quando a máquina já tem outro
+     * que começa depois dele. Chamada pelo evento `saving` do ApontamentoEstado (portal, app e serviços do portal).
+     *
+     * @throws ValidationException
+     */
+    public static function exigirUltimoSeAberto(ApontamentoEstado $ap): void
+    {
+        if ($ap->fim !== null || ! $ap->maquina_id || ! $ap->inicio
+            || ($ap->exists && ! $ap->isDirty(['fim', 'inicio', 'maquina_id']))) {
+            return;
+        }
+        $depois = ApontamentoEstado::with('legenda')->where('maquina_id', (int) $ap->maquina_id)
+            ->when($ap->exists, fn ($q) => $q->whereKeyNot($ap->id))
+            ->where(fn ($q) => $q->where('inicio', '>', $ap->inicio)
+                ->when($ap->exists, fn ($e) => $e->orWhere(fn ($i) => $i->where('inicio', $ap->inicio)->where('id', '>', $ap->id))))
+            ->orderBy('inicio')->orderBy('id')->first();
+        if ($depois) {
+            throw ValidationException::withMessages(['hora_fim' => sprintf(
+                'Só o último apontamento da máquina pode ficar em aberto: já existe o apontamento %s às %s, depois deste. Informe o horário final.',
+                $depois->legenda?->codigo ?? '', AppServiceProvider::dataHora($depois->inicio))]);
+        }
     }
 
     /** Conferência periódica (agendador): todas as máquinas com mais de um apontamento em aberto. */

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditavel;
+use App\Services\HorarioApontamento;
 use App\Services\Manutencao\SsAutomatica;
 use App\Services\PecasProduzidas;
 use Carbon\CarbonImmutable;
@@ -93,6 +94,9 @@ class ApontamentoEstado extends Model
      */
     protected static function booted(): void
     {
+        // Em aberto (sem fim) só o ÚLTIMO apontamento da máquina (o integrador grava direto no banco e faz a mesma regra).
+        static::saving(fn (ApontamentoEstado $ap) => HorarioApontamento::exigirUltimoSeAberto($ap));
+
         // Peças (ciclos do IoT × cavidades): trocar a OP ou a legenda recalcula o apontamento e a quantidade real das OPs.
         static::saved(function (ApontamentoEstado $ap) {
             if ($ap->ciclos === null || ! $ap->wasChanged(['ordem_producao_id', 'legenda_id'])) {
