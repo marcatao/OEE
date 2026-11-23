@@ -40,19 +40,31 @@ class EngenhariaOrdemProducao
     }
 
     /**
+     * Linhas da estrutura (SG1) do produto da OP vigentes hoje e na revisão da OP (C2_REVISAO), na filial da OP ou em
+     * branco, pela sequência (TRT) e pelo componente. Usada pela aba Estrutura e pela meta de produção (item MO).
+     *
+     * @return Collection<int, EstruturaProduto>
+     */
+    public function linhasVigentes(OrdemProducao $op): Collection
+    {
+        $hoje = now(config('oee.fuso_exibicao'))->format('Ymd');
+        $revisao = trim((string) $op->c2_revisao);
+
+        return EstruturaProduto::validas()->vigentes($hoje)
+            ->where('g1_cod', rtrim((string) $op->c2_produto))->whereIn('g1_filial', self::filiais($op))
+            ->when($revisao !== '', fn ($q) => $q->where(fn ($w) => $w->where('g1_revini', '')->orWhere('g1_revini', '<=', $revisao))
+                ->where(fn ($w) => $w->where('g1_revfim', '')->orWhere('g1_revfim', '>=', $revisao)))
+            ->orderBy('g1_trt')->orderBy('g1_comp')->get();
+    }
+
+    /**
      * Estrutura atual do produto da OP (1º nível), com a necessidade para a quantidade da OP e o empenhado.
      *
      * @return Collection<int, EstruturaProduto> com os atributos extras necessidade, empenhado, saldo_empenho, tem_estrutura
      */
     public function estrutura(OrdemProducao $op, ?Collection $empenhos = null): Collection
     {
-        $hoje = now(config('oee.fuso_exibicao'))->format('Ymd');
-        $revisao = trim((string) $op->c2_revisao);
-        $linhas = EstruturaProduto::validas()->vigentes($hoje)
-            ->where('g1_cod', rtrim((string) $op->c2_produto))->whereIn('g1_filial', self::filiais($op))
-            ->when($revisao !== '', fn ($q) => $q->where(fn ($w) => $w->where('g1_revini', '')->orWhere('g1_revini', '<=', $revisao))
-                ->where(fn ($w) => $w->where('g1_revfim', '')->orWhere('g1_revfim', '>=', $revisao)))
-            ->orderBy('g1_trt')->orderBy('g1_comp')->get();
+        $linhas = $this->linhasVigentes($op);
 
         $empenhos ??= $this->empenhos($op);
         $comEstrutura = $linhas->isEmpty() ? collect() : EstruturaProduto::validas()

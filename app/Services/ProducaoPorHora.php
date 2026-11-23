@@ -14,7 +14,8 @@ use Illuminate\Support\Collection;
  * app), o total do turno, as OPs que produziram no turno (com o produto) e a situação agora (OP atual, produto,
  * molde, cavidades e peças por minuto, de Timeline::situacoes).
  *
- * Meta em peças por minuto: ainda não existe (em breve); com ela, cada hora ganha a meta (meta × 60) e o % atingido.
+ * Meta em peças por minuto: a da OP ATUAL da máquina (MetaProducao, item MO da estrutura); cada hora ganha a meta
+ * (meta × minutos da hora no turno) e o % atingido. Molde com cavidades desativadas abaixo da meta: indicado para conserto.
  */
 class ProducaoPorHora
 {
@@ -63,7 +64,7 @@ class ProducaoPorHora
             [$inicio, $fim, $rotulo] = $periodos[$id];
             $aps = $lidos->get($id, collect());
             $sit = $situacoes[$id] ?? [];
-            $metaPorMinuto = null; // em breve
+            $metaPorMinuto = $sit['metaPorMinuto'] ?? null;
             $horas = $this->horas($this->pecas->porHora($m, $inicio, $fim, $fuso, $aps), $fim, $agora, $metaPorMinuto);
 
             // OPs que produziram no turno (peças repartidas pelo tempo dentro do turno, como as horas).
@@ -96,6 +97,7 @@ class ProducaoPorHora
                 'pecasPorMinuto' => (float) ($sit['pecasPorMinuto'] ?? 0),
                 'metaPorMinuto' => $metaPorMinuto,
                 'metaTurno' => $metaPorMinuto !== null ? (int) round(array_sum(array_column($horas, 'meta'))) : null,
+                'moldeConserto' => $sit['moldeConserto'] ?? null,
                 'produto' => $opAtual ? ($produtos->get(rtrim((string) $opAtual->c2_produto)) ?? ($sit['produto'] ?? null)) : null,
                 'ops' => $porOp,
             ];
@@ -146,6 +148,9 @@ class ProducaoPorHora
                 $porHora[$h['inicio']]['pecas'] += $h['pecas'];
                 $porHora[$h['inicio']]['atual'] = $porHora[$h['inicio']]['atual'] || $h['atual'];
                 $porHora[$h['inicio']]['futura'] = $porHora[$h['inicio']]['futura'] && $h['futura'];
+                if ($h['meta'] !== null) {
+                    $porHora[$h['inicio']]['meta'] = ($porHora[$h['inicio']]['meta'] ?? 0) + $h['meta'];
+                }
             }
         }
         ksort($porHora);
@@ -155,6 +160,9 @@ class ProducaoPorHora
             'produzindo' => count(array_filter($maquinas, fn ($d) => ($d['situacao']['estado'] ?? null) === 'produzindo')),
             'total' => array_sum(array_column($maquinas, 'total')),
             'pecasPorMinuto' => round(array_sum(array_column($maquinas, 'pecasPorMinuto')), 1),
+            // Meta somada das máquinas com meta (pç/min) e quantos moldes estão indicados para conserto.
+            'metaPorMinuto' => ($comMeta = array_filter($maquinas, fn ($d) => $d['metaPorMinuto'] !== null)) ? round(array_sum(array_column($comMeta, 'metaPorMinuto')), 1) : null,
+            'consertos' => count(array_filter($maquinas, fn ($d) => $d['moldeConserto'] !== null)),
             'horas' => array_values($porHora),
             'aoVivo' => (bool) array_filter($maquinas, fn ($d) => $d['aoVivo']),
             'atualizadoEm' => $agora->setTimezone(HorarioApontamento::fuso()),

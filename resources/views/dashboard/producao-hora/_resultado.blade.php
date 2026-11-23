@@ -10,7 +10,10 @@
     <div class="estado-produzindo"><span>Produzindo agora</span><strong>{{ $geral['produzindo'] }}</strong></div>
     <div><span>Peças no dia</span><strong>{{ Formato::inteiro($geral['total']) }}</strong></div>
     <div><span>Pç/min agora (soma)</span><strong>{{ $pcMin($geral['pecasPorMinuto']) }}</strong></div>
-    <div title="A meta em peças por minuto será cadastrada em breve"><span>Meta</span><strong class="suave">Em breve</strong></div>
+    <div title="Soma das metas (pç/min) das máquinas cuja OP atual tem item MO na estrutura"><span>Meta pç/min (soma)</span><strong class="{{ $geral['metaPorMinuto'] === null ? 'suave' : '' }}">{{ $geral['metaPorMinuto'] === null ? 'Sem meta' : $pcMin($geral['metaPorMinuto']) }}</strong></div>
+    @if ($geral['consertos'] > 0)
+      <div class="estado-parada" title="Moldes com cavidades desativadas e produção abaixo da meta"><span>Moldes p/ conserto</span><strong>{{ $geral['consertos'] }}</strong></div>
+    @endif
     <div><span>Atualizado</span><strong>{{ $geral['atualizadoEm']->format('H:i') }}</strong></div>
   </div>
 
@@ -58,12 +61,16 @@
 
               <div class="ph-agora">
                 <strong>{{ $pcMin($d['pecasPorMinuto']) }}</strong>
-                <span>pç/min agora</span>
+                <span>pç/min agora{{ $d['metaPorMinuto'] !== null ? ' · meta '.$pcMin($d['metaPorMinuto']) : ' · sem meta' }}</span>
               </div>
+              @if ($d['moldeConserto'])
+                @php($mc = $d['moldeConserto'])
+                <p class="aviso alerta" style="margin:0;padding:.4rem .6rem;font-size:.85rem">Molde <b>{{ $mc['codigo'] }}</b> com {{ $mc['ativas'] }}/{{ $mc['total'] }} cavidades ativas e abaixo da meta: indicar para conserto.</p>
+              @endif
 
               <dl class="ph-numeros">
                 <div><dt>Peças no turno</dt><dd>{{ Formato::inteiro($d['total']) }}</dd></div>
-                <div><dt>Meta do turno</dt><dd class="{{ $d['metaTurno'] === null ? 'suave' : '' }}">{{ $d['metaTurno'] === null ? 'Em breve' : Formato::inteiro($d['metaTurno']) }}</dd></div>
+                <div><dt>Meta do turno</dt><dd class="{{ $d['metaTurno'] === null ? 'suave' : '' }}">{{ $d['metaTurno'] === null ? 'Sem meta' : Formato::inteiro($d['metaTurno']) }}</dd></div>
                 <div><dt>Média por hora</dt><dd>{{ $d['mediaHora'] === null ? '—' : Formato::inteiro($d['mediaHora']) }}</dd></div>
                 <div><dt>Melhor hora</dt><dd>{{ Formato::inteiro($d['melhorHora']) }}</dd></div>
                 <div><dt>Ciclo médio</dt><dd>{{ $d['cicloMedio'] === null ? '—' : $d['cicloMedio'].' s' }}</dd></div>

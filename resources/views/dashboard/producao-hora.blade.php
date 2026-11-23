@@ -8,7 +8,7 @@
   <div class="tl-topo">
     <div>
       <h1>Produção por hora</h1>
-      <p class="suave" style="margin:0">Peças contadas pelo IoT em cada hora do turno de cada máquina, com a OP e o produto. A meta em peças por minuto chega em breve.</p>
+      <p class="suave" style="margin:0">Peças contadas pelo IoT em cada hora do turno de cada máquina, com a OP e o produto. A meta em peças por minuto vem do item MO da estrutura da OP atual (Protheus).</p>
     </div>
     <div class="tl-topo-acoes">
       <button type="button" id="ph-alternar-filtros" class="botao secundario pequeno" aria-expanded="false" aria-controls="ph-painel-filtros"

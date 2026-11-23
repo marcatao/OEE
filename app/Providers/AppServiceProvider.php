@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\Assistente\ClienteClaude;
 use App\Services\Assistente\ClienteClaudeAnthropic;
+use App\Services\MetaProducao;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
@@ -18,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // "Pergunte para Alumbra": cliente da API da Claude (os testes trocam por um falso).
         $this->app->singleton(ClienteClaude::class, ClienteClaudeAnthropic::class);
+        // Meta de produção (pç/min): guarda a meta de cada OP durante a requisição (Timeline, painéis, app).
+        $this->app->scoped(MetaProducao::class);
     }
 
     public function boot(): void

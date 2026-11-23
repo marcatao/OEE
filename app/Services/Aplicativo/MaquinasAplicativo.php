@@ -12,6 +12,7 @@ use App\Services\CustoOrdemProducao;
 use App\Services\EngenhariaOrdemProducao;
 use App\Services\HorarioApontamento;
 use App\Services\Manutencao\ChamadoDaParada;
+use App\Services\MetaProducao;
 use App\Services\MotivoParada;
 use App\Services\PecasProduzidas;
 use App\Services\SituacaoMaquina;
@@ -112,7 +113,7 @@ class MaquinasAplicativo
             'sem_motivo' => $pendentes->map(fn ($a) => $this->apontamento($a, $fuso))->values()->all(),
             'op' => $dadosOp = ($op ? $this->op($op, $maquina, $produtos) : null),
             'legendas_motivo' => $this->legendasMotivo()->map(fn ($l) => $this->legenda($l))->values()->all(),
-            'producao' => $this->producao($maquina, $dadosOp, $apontamentos, $de, $ate, $fuso),
+            'producao' => $this->producao($maquina, $op, $dadosOp, $apontamentos, $de, $ate, $fuso),
         ];
     }
 
@@ -205,9 +206,10 @@ class MaquinasAplicativo
 
     /**
      * Produção do turno para o gráfico do app: peças por hora (repartidas pelo tempo de cada apontamento de produção),
-     * total do turno e peças por minuto agora (60 ÷ ciclo médio × cavidades). A meta (pç/min) vem em breve: null.
+     * total do turno e peças por minuto agora (60 ÷ ciclo médio × cavidades). Meta (pç/min) do item MO da estrutura da
+     * OP (MetaProducao; null sem OP ou sem MO) e o molde indicado para conserto (cavidades desativadas abaixo da meta).
      */
-    private function producao(Maquina $maquina, ?array $dadosOp, $apontamentos, CarbonImmutable $de, CarbonImmutable $ate, string $fuso): array
+    private function producao(Maquina $maquina, ?OrdemProducao $op, ?array $dadosOp, $apontamentos, CarbonImmutable $de, CarbonImmutable $ate, string $fuso): array
     {
         // Reaproveita os apontamentos já lidos (a tela é consultada a cada poucos segundos) e os moldes da OP.
         $porHora = $this->pecas->porHora($maquina, $de, $ate, $fuso, $apontamentos);
@@ -220,13 +222,24 @@ class MaquinasAplicativo
             }
         }
 
+        $porMinuto = $maquina->situacao === 'produzindo' ? PecasProduzidas::porMinuto($ciclo === null ? null : (int) $ciclo, $cavidades) : 0.0;
+        $meta = app(MetaProducao::class)->porMinuto($op);
+        $conserto = null;
+        if ($meta !== null && $porMinuto > 0 && $porMinuto < $meta) {
+            $molde = collect($dadosOp['moldes'] ?? [])->first(fn ($m) => $m['cavidades'] > 0 && $m['cavidades_ativas'] < $m['cavidades']);
+            $conserto = $molde ? ['codigo' => $molde['codigo'], 'descricao' => $molde['descricao'],
+                'ativas' => $molde['cavidades_ativas'], 'total' => $molde['cavidades']] : null;
+        }
+
         return [
             'por_hora' => $porHora,
             'pecas_turno' => array_sum(array_column($porHora, 'pecas')),
             'ciclo_medio' => $ciclo === null ? null : (int) $ciclo,
             'cavidades' => $cavidades,
-            'pecas_por_minuto' => $maquina->situacao === 'produzindo' ? PecasProduzidas::porMinuto($ciclo === null ? null : (int) $ciclo, $cavidades) : 0.0,
-            'meta_por_minuto' => null,
+            'pecas_por_minuto' => $porMinuto,
+            'meta_por_minuto' => $meta,
+            // Molde com cavidades desativadas e produção abaixo da meta: indicar para conserto (null = nada a indicar).
+            'molde_conserto' => $conserto,
         ];
     }
 

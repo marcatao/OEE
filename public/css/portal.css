@@ -339,6 +339,9 @@ a.kpi:hover { border-color:var(--primaria); }
   border-radius:8px; border:1px dashed var(--borda-forte); background:var(--fundo); min-width:0; line-height:1.2; text-align:center; }
 .tl-meta-titulo { font-weight:700; font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; color:var(--suave); }
 .tl-meta small { font-size:.64rem; color:var(--suave); white-space:nowrap; }
+.tl-meta.tl-na-meta .tl-meta-titulo { color:var(--ok); }
+.tl-meta.tl-abaixo-meta .tl-meta-titulo { color:var(--alerta); }
+.tl-meta small.tl-conserto { color:var(--alerta); font-weight:700; }
 
 /* Situação atual da máquina (última legenda apontada): cartão colorido com ponto pulsante */
 .tl-estado { --estado:var(--suave); --estado-suave:var(--fundo); display:flex; flex-direction:column; justify-content:center; align-self:stretch; gap:.05rem; padding:.3rem .5rem;
@@ -1071,7 +1074,7 @@ a.pm-cartao:hover { border-color:var(--primaria); border-top-color:var(--estado)
 .pm-op-numero { font-weight:700; color:var(--primaria); font-variant-numeric:tabular-nums; }
 .pm-op small { font-size:.76rem; color:var(--suave); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pm-op .pm-molde { color:var(--texto); white-space:normal; }
-.pm-resumo { display:grid; grid-template-columns:repeat(3, 1fr); gap:.4rem; }
+.pm-resumo { display:grid; grid-template-columns:repeat(4, 1fr); gap:.4rem; }
 .pm-resumo > div { text-align:center; }
 .pm-resumo span { display:block; font-size:.7rem; color:var(--suave); }
 .pm-resumo strong { font-size:.98rem; font-variant-numeric:tabular-nums; }

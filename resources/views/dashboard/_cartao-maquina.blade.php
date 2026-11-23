@@ -1,6 +1,6 @@
 {{--
   Cartão de uma máquina no panorama (apontamentos reais): situação atual, OP, produto, molde e cavidades, tempos do
-  período e disponibilidade. Parâmetros: $maquina, $sit (Timeline::situacoes), $dados (PanoramaMaquinas, da máquina),
+  período, disponibilidade, performance pela meta (IoT) e molde indicado para conserto. Parâmetros: $maquina, $sit (Timeline::situacoes), $dados (PanoramaMaquinas, da máquina),
   $periodo e opcionais $link (URL; sem link = cartão fixo) e $ind (OEE das peças, quando houver).
 --}}
 @php
@@ -40,7 +40,16 @@
     <div class="{{ \App\Support\Formato::nivel($dados['disponibilidade']) }}"><span>Disponib.</span><strong class="texto-nivel">{{ \App\Support\Formato::pct($dados['disponibilidade'], 0) }}</strong></div>
     <div><span>Produzindo</span><strong>{{ \App\Support\Formato::minutos($seg['produzindo'] / 60) }}</strong></div>
     <div title="Só paradas não planejadas: parada planejada e fora de turno não contam"><span>Parada</span><strong>{{ \App\Support\Formato::minutos(($seg['parada'] ?? 0) / 60) }}</strong></div>
+    <div class="{{ ($dados['performance'] ?? null) === null ? '' : \App\Support\Formato::nivel(min($dados['performance'], 1)) }}"
+         title="Peças do IoT ÷ peças na meta (meta da OP, item MO da estrutura, × tempo produzindo){{ ($dados['pecasNaMeta'] ?? null) ? ': '.\App\Support\Formato::inteiro($dados['pecas']).' de '.\App\Support\Formato::inteiro($dados['pecasNaMeta']).' peças' : ': sem meta no período' }}">
+      <span>Performance</span><strong class="texto-nivel">{{ ($dados['performance'] ?? null) === null ? '—' : \App\Support\Formato::pct($dados['performance'], 0) }}</strong></div>
   </div>
+  @if (($dados['oeeIot'] ?? null) !== null)
+    <small class="pm-rodape" title="Disponibilidade × performance pelos apontamentos reais e o IoT (a qualidade ainda não é apontada)">OEE (IoT) {{ \App\Support\Formato::pct($dados['oeeIot'], 0) }} · D × P</small>
+  @endif
+  @if (! empty($sit['moldeConserto']))
+    <small class="pm-rodape texto-alerta">Molde {{ $sit['moldeConserto']['codigo'] }} com {{ $sit['moldeConserto']['ativas'] }}/{{ $sit['moldeConserto']['total'] }} cavidades abaixo da meta: indicar para conserto</small>
+  @endif
   @if ($dados['apontado'] > 0)
     <div class="pm-barra" title="Tempo apontado no período por tipo">
       @foreach (['produzindo', 'parada', 'planejada', 'desligada'] as $tipo)

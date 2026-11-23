@@ -38,4 +38,27 @@ class CalculadoraOee
 
         return new ResultadoOee($disponibilidade, $performance, $qualidade);
     }
+
+    /**
+     * Peças que a meta pede no tempo produzindo: meta (pç/min, item MO da estrutura da OP) × minutos produzindo.
+     */
+    public static function pecasNaMeta(float $metaPorMinuto, float $segundosProduzindo): float
+    {
+        return $metaPorMinuto > 0 && $segundosProduzindo > 0 ? $metaPorMinuto * $segundosProduzindo / 60 : 0.0;
+    }
+
+    /**
+     * Performance pelo IoT = peças reais ÷ peças na meta (meta × tempo produzindo). Pode passar de 100% (meta baixa
+     * ou ciclo acima do padrão): o valor mostrado é o real; no OEE entra limitado a 100%. null sem meta no período.
+     */
+    public static function performancePelaMeta(float $pecas, float $pecasNaMeta): ?float
+    {
+        return $pecasNaMeta > 0 ? max(0.0, $pecas) / $pecasNaMeta : null;
+    }
+
+    /** OEE pelos apontamentos reais e o IoT = disponibilidade × performance (limitada a 100%); sem qualidade ainda. */
+    public static function oeeIot(?float $disponibilidade, ?float $performance): ?float
+    {
+        return $disponibilidade !== null && $performance !== null ? $disponibilidade * min($performance, 1.0) : null;
+    }
 }

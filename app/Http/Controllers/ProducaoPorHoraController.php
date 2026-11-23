@@ -15,7 +15,7 @@ use Illuminate\View\View;
 
 /**
  * Dashboards › Produção por hora: máquina a máquina, as peças contadas pelo IoT em cada hora do turno (o gráfico do
- * app), o total do turno, a OP e o produto atuais e as OPs que produziram no turno. Meta em pç/min: em breve.
+ * app), o total do turno, a OP e o produto atuais e as OPs que produziram no turno. Meta em pç/min: do item MO da estrutura da OP (MetaProducao).
  *
  * Mesmo padrão da Timeline: filtros (dia, plantas, linhas e máquinas) que começam escondidos e trocam só a área de
  * resultado (?parcial=1), atualização sozinha a cada minuto no dia de hoje e filtros salvos (filtros_usuarios).

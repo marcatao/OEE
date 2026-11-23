@@ -36,6 +36,7 @@ class Timeline
             ->produtos($maquinas->pluck('ordemProducao')->filter()->map(fn ($op) => $op->c2_produto));
 
         $engenharia = app(EngenhariaOrdemProducao::class);
+        $metas = app(MetaProducao::class);
         $roteiros = [];
         $ciclos = $this->ciclosAtuais($maquinas);
         $chamados = ChamadoDaParada::dasMaquinas($maquinas);
@@ -53,6 +54,7 @@ class Timeline
             if ($op) {
                 $roteiros[$op->id] ??= $engenharia->roteiro($op, comMaquinas: false, todasUnidades: true); // mesmo molde das peças
             }
+            $moldes = $op ? EngenhariaOrdemProducao::moldesDaMaquina($roteiros[$op->id], (string) $m->codigo) : [];
             $situacoes[$m->id] = [
                 'estado' => $estado,
                 'rotulo' => $rotulo,
@@ -60,14 +62,17 @@ class Timeline
                 'desde' => $m->situacao_desde,
                 'op' => $op,
                 'produto' => $op ? ($produtos[rtrim($op->c2_produto)] ?? null) : null,
-                'moldes' => $op ? EngenhariaOrdemProducao::moldesDaMaquina($roteiros[$op->id], (string) $m->codigo) : [],
+                'moldes' => $moldes,
                 // Ciclo médio (segundos por peça) do apontamento real mais recente da máquina; null = não informado.
                 // Máquina parada com SS/OS aberta pela legenda: número e situação (vai no lugar da meta).
                 'chamado' => $chamados[(int) $m->id] ?? null,
                 'cicloMedio' => $ciclos[(int) $m->id] ?? null,
                 // Peças por minuto agora: 60 ÷ ciclo médio × cavidades ativas do molde da OP (só produzindo).
-                'pecasPorMinuto' => $estado === 'produzindo' ? PecasProduzidas::porMinuto($ciclos[(int) $m->id] ?? null,
-                    $op ? PecasProduzidas::cavidadesDosMoldes(EngenhariaOrdemProducao::moldesDaMaquina($roteiros[$op->id], (string) $m->codigo)) : 1) : 0.0,
+                'pecasPorMinuto' => $porMinuto = $estado === 'produzindo' ? PecasProduzidas::porMinuto($ciclos[(int) $m->id] ?? null,
+                    PecasProduzidas::cavidadesDosMoldes($moldes)) : 0.0,
+                // Meta (pç/min) do item MO da estrutura da OP; molde com cavidades desativadas abaixo da meta = conserto.
+                'metaPorMinuto' => $meta = $metas->porMinuto($op),
+                'moldeConserto' => MetaProducao::moldeParaConserto($moldes, $porMinuto, $meta),
             ];
         }
 

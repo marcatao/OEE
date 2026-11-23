@@ -118,9 +118,18 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   sem molde = 1), cavidades congeladas no apontamento (`cavidades`; trocar a OP recalcula, evento `saved`);
   `ordens_producao.quantidade_real` = soma das peças da OP. Peças por minuto = 60 ÷ ciclo médio × cavidades (Timeline,
   no lugar do "Meta"; app, campo `producao` do detalhe da máquina com `por_hora` do turno, repartido pelo tempo de
-  cada apontamento). Meta em pç/min: em breve (`meta_por_minuto` = null). Toda peça conta, em qualquer legenda (ciclo lento cai num 99);
+  cada apontamento). Meta em pç/min: ver **Meta de produção** (`meta_por_minuto`). Toda peça conta, em qualquer legenda (ciclo lento cai num 99);
   `pecas:conferir` (agendador, 5 min) refaz as peças desatualizadas (aviso perdido). A troca de OP no modo `novo` grava
   o apontamento com observação começando por "Troca de OP": o integrador corta o trecho ali e mantém a OP nova.
+- **Meta de produção** (pç/min, `App\Services\MetaProducao`, scoped por requisição): vem do item do TIPO MO (B1_TIPO
+  = 'MO' na SB1) da estrutura vigente da OP (`EngenhariaOrdemProducao::linhasVigentes`): G1_QUANT = horas CENTESIMAIS
+  por peça para a quantidade base B1_QB → meta = 1 ÷ (G1_QUANT ÷ B1_QB × 60) (ex.: 0130066, MO-1135 0,00034 h ≈ 49
+  pç/min). Só um MO: com mais de um vale o PRIMEIRO (TRT, código), nunca soma; sem MO = sem meta. A meta é FIXA (não
+  cai com cavidades desativadas): molde com ativas < H4_QTDCAV e pç/min abaixo da meta = "indicar para conserto"
+  (`MetaProducao::moldeParaConserto`; Timeline, Produção por hora, Dashboard por máquina e app `molde_conserto`).
+  Performance (IoT) = peças reais ÷ (meta × tempo produzindo), só dos apontamentos cuja OP tem meta
+  (`CalculadoraOee::performancePelaMeta`, mostrada real, no OEE limitada a 100%); OEE (IoT) = D × P
+  (`CalculadoraOee::oeeIot`, `PanoramaMaquinas`), sem qualidade ainda.
 - **Busca de OP** (todas: lista de OPs, campo de OP do apontamento/máquina/Timeline e app): escopo
   `OrdemProducao::busca($termo)` — num campo só, cada palavra em qualquer parte do número, do SKU ou da descrição (SB1).
 - **Ids no SQL Server chegam como TEXTO** (pdo_sqlsrv): compare chaves estrangeiras e `value('id')` sempre com
@@ -217,8 +226,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `App\Services\ProducaoPorHora`): máquina a máquina (as da Timeline), peças do IoT por hora do TURNO da máquina no dia
   (`App\Services\TurnoDaMaquina`, o mesmo do app; `PecasProduzidas::porHora`), total, média e melhor hora, OP atual e
   produto, OPs do turno e gráfico em SVG (`dashboard.producao-hora._grafico`); o operador vê (só as máquinas das unidades
-  dos perfis dele, como no app); meta em pç/min "em breve" (com ela, linha
-  tracejada e % por hora). Filtro `FiltroProducaoHora` (dia, plantas, linhas, máquinas; salvos na tela `producao_hora`).
+  dos perfis dele, como no app); meta em pç/min da OP ATUAL da máquina (linha tracejada, meta do turno e % por hora). Filtro `FiltroProducaoHora` (dia, plantas, linhas, máquinas; salvos na tela `producao_hora`).
 - **Dashboard por máquina** (`DashboardController`): só máquinas ativas com IoT ATIVO (`Maquina::comIotAtivo()`).
   Panorama pelos APONTAMENTOS REAIS (`App\Services\PanoramaMaquinas`, sobre a `Timeline`): situação agora, OP,
   produto, molde e cavidades, tempos por tipo e disponibilidade (partial `dashboard._cartao-maquina`). Legenda do tipo

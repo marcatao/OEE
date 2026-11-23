@@ -89,7 +89,7 @@ class ProducaoPorHoraTest extends TestCase
         $this->assertTrue(collect($dados['horas'])->firstWhere('hora', '11:00')['futura']);
         $this->assertSame([240, 150], array_column($dados['ops'], 'pecas')); // a OP que mais produziu primeiro
         $this->assertSame(2.0, $dados['pecasPorMinuto']); // 60 ÷ 30 s × 1 cavidade
-        $this->assertNull($dados['metaPorMinuto']); // meta em breve
+        $this->assertNull($dados['metaPorMinuto']); // OP sem item MO na estrutura: sem meta
         $this->assertSame(390, $resposta->viewData('geral')['total']);
 
         // Atualização sem recarregar: só a área de resultado.
