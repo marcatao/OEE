@@ -207,12 +207,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   evento `saved` de `ApontamentoEstado` → `App\Services\Manutencao\SsAutomatica`): título "OS automática — …", CC da
   máquina, solicitante = QUEM APONTOU (usuário logado no portal ou no app: criado_por/atualizado_por do apontamento);
   só apontamento do IoT sem usuário usa o usuário técnico inativo "IoT (automático)" + `origem_iot` (e aí a OS é avaliada
-  pelo administrador da unidade); uma por apontamento e nenhuma nova com outra automática em aberto da mesma máquina e
-  área (trava por máquina+área) — nesse caso a SS/OS que já está em aberto fica VINCULADA ao apontamento (`apontamentos_estado.
+  pelo administrador da unidade); uma por apontamento e nenhuma nova com outra automática em aberto da mesma MÁQUINA
+  (de qualquer área; trava por máquina; decidido em 23/11/2026) — nesse caso a SS/OS que já está em aberto fica VINCULADA ao apontamento (`apontamentos_estado.
   solicitacao_vinculada_id`) e a tela avisa o porquê (`SsAutomatica::mensagem`). O Integrador MQTT (repositório `marcatao/MQTT`)
   grava os apontamentos do IoT DIRETO no banco (sem eventos) e depois chama `POST /api/iot/apontamentos/processar`
   (token `IOT_TOKEN`, middleware `integrador`; `IntegradorIotController`) com os criados/legenda trocada: o portal roda a
-  `SsAutomatica` (idempotente). Máquina PARADA com SS/OS da parada
+  `SsAutomatica` (idempotente). `ss:conferir-automaticas` (agendador, 5 min) abre/vincula a SS das paradas EM ABERTO com legenda
+  "Abre SS" que ficaram sem chamado (aviso perdido ou anterior à configuração). Máquina PARADA com SS/OS da parada
   atual (a vinculada ao apontamento atual ou a aberta na parada): número e situação no lugar da meta (Timeline e app;
   `App\Services\Manutencao\ChamadoDaParada`, campo `chamado` da API).
 - Filtros salvos das telas de relatório ficam em `filtros_usuarios` (por usuário e tela, com um "padrão"). Na

@@ -9,6 +9,7 @@ use App\Services\Compras\PedidoCompraMuro;
 use App\Services\ImportadorUsuariosEntra;
 use App\Services\InfoBanco;
 use App\Services\Manutencao\GeradorPreventivas;
+use App\Services\Manutencao\SsAutomatica;
 use App\Services\MaquinasSemIot;
 use App\Services\PecasProduzidas;
 use App\Services\Protheus\AgendaSincronizacoes;
@@ -171,6 +172,14 @@ Artisan::command('pecas:conferir', function (PecasProduzidas $pecas) {
     $this->info("Peças conferidas: {$r['apontamentos']} apontamento(s) refeito(s), {$r['ops']} OP(s) somada(s).");
 })->purpose('Refaz as peças dos apontamentos do IoT que ficaram desatualizadas e soma a quantidade real das OPs');
 Schedule::command('pecas:conferir')->everyFiveMinutes()->withoutOverlapping()->runInBackground();
+
+// SS automática: paradas EM ABERTO com legenda que abre SS e sem chamado (aviso do integrador perdido). Idempotente.
+Artisan::command('ss:conferir-automaticas', function (SsAutomatica $ss) {
+    foreach ($ss->conferirAbertos() as $id => $texto) {
+        $this->line("Apontamento {$id}: {$texto}");
+    }
+})->purpose('Abre a SS automática das paradas em aberto com legenda "Abre SS" que ficaram sem chamado');
+Schedule::command('ss:conferir-automaticas')->everyFiveMinutes()->withoutOverlapping()->runInBackground();
 
 // Cadastra as contas novas do Entra ID já BLOQUEADAS (inativas, sem perfil); quem já existe não muda.
 Artisan::command('usuarios:importar-entra', function (ImportadorUsuariosEntra $importador) {

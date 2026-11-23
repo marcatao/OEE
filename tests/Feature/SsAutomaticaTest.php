@@ -207,7 +207,7 @@ class SsAutomaticaTest extends TestCase
         $ap2 = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $semMotivo->id, 'inicio' => now()->subMinute()]);
         $this->postJson("/producao/apontamentos/{$ap2->id}/informar-motivo", ['legenda_id' => $this->quebra->id])->assertOk()
             ->assertJsonPath('mensagem', 'SS automática da legenda 10 NÃO aberta: já existe a SS '.SolicitacaoServico::sole()->numeroFormatado()
-                .' automática em aberto desta máquina para Mecânica (uma por vez) — vinculada a esta parada.');
+                .' automática em aberto desta máquina (uma por máquina) — vinculada a esta parada.');
         $this->assertSame(1, SolicitacaoServico::count());
 
         // A SS que já existia fica vinculada a esta parada e aparece no lugar da meta.
@@ -231,5 +231,39 @@ class SsAutomaticaTest extends TestCase
         $antigo->update(['legenda_id' => $this->quebra->id]);
         $this->assertSame(1, SolicitacaoServico::count());
         $this->assertNull(ChamadoDaParada::da($this->maquina->fresh()));
+    }
+
+    public function test_conferencia_abre_a_ss_da_parada_em_aberto_que_ficou_sem_aviso(): void
+    {
+        $this->quebra->forceFill(['abre_ss_unidade' => 'manutencao', 'abre_ss_area_executante_id' => $this->mecanica->id])->save();
+        // IoT gravou direto no banco antes de o aviso ao portal estar ligado: em aberto e sem SS; outra já encerrada.
+        $insere = fn ($ini, $fim) => DB::table('apontamentos_estado')->insertGetId(['maquina_id' => $this->maquina->id,
+            'legenda_id' => $this->quebra->id, 'inicio' => $ini, 'fim' => $fim, 'observacao' => '[IoT] x', 'criado_em' => now(), 'atualizado_em' => now()]);
+        $insere(now()->subHours(5), now()->subHours(4));
+        $aberto = $insere(now()->subHour(), null);
+
+        $this->artisan('ss:conferir-automaticas')->assertSuccessful();
+        $ss = SolicitacaoServico::sole();
+        $this->assertSame((int) $aberto, (int) $ss->apontamento_estado_id); // só a em aberto; a encerrada não abre SS atrasada
+        $this->artisan('ss:conferir-automaticas')->assertSuccessful();
+        $this->assertSame(1, SolicitacaoServico::count());               // idempotente
+    }
+
+    public function test_ss_pendente_de_outra_area_na_mesma_maquina_vincula_a_parada_nova(): void
+    {
+        // Já existe SS automática pendente da máquina (Mecânica); a legenda "IoT sem resposta" abre para a TI: não abre
+        // outra — vincula a parada nova à pendente, e ela aparece na máquina parada.
+        $this->quebra->forceFill(['abre_ss_unidade' => 'manutencao', 'abre_ss_area_executante_id' => $this->mecanica->id])->save();
+        $semIot = Legenda::create(['codigo' => '97', 'descricao' => 'IoT sem resposta', 'tipo' => 'parada', 'cor' => '#ec4899']);
+        $semIot->forceFill(['abre_ss_unidade' => 'tecnologia', 'abre_ss_area_executante_id' => $this->ti->id])->save();
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->quebra->id,
+            'inicio' => now()->subHours(2), 'fim' => now()->subHour()->subSecond()]);
+        $pendente = SolicitacaoServico::sole();
+
+        $ap = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $semIot->id, 'inicio' => now()->subHour()]);
+        $this->assertSame(1, SolicitacaoServico::count());
+        $this->assertSame((int) $pendente->id, (int) $ap->fresh()->solicitacao_vinculada_id);
+        $this->maquina->forceFill(['situacao' => 'parada', 'situacao_desde' => now()->subHour(), 'ativo' => true])->save();
+        $this->assertSame($pendente->numeroFormatado(), ChamadoDaParada::da($this->maquina->fresh())['numero']);
     }
 }

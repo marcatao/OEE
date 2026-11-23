@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
  * - solicitante = quem apontou (o usuário logado no portal ou no aplicativo: quem criou o apontamento ou trocou a
  *   legenda); apontamento do IoT (sem usuário): o usuário técnico "IoT (automático)" e, em origem_iot, o IoT e o canal;
  * - não repete: uma por apontamento, e nenhuma nova enquanto houver SS automática pendente ou OS automática aberta da
- *   mesma máquina e área.
+ *   mesma máquina (de qualquer área: uma por máquina) — a parada nova fica VINCULADA a ela e aparece na máquina.
  */
 final class SsAutomatica
 {
@@ -44,6 +44,37 @@ final class SsAutomatica
         self::$resultados[$apontamentoId] = $mensagem;
     }
 
+    /**
+     * Conferência periódica (agendador, 5 min): apontamentos EM ABERTO com legenda que abre SS e ainda sem chamado (nem
+     * aberto por eles, nem vinculado). Cobre o apontamento do IoT cujo aviso se perdeu (portal fora, integrador
+     * reiniciado, aviso ainda não configurado quando a parada começou). Só os em aberto: parada que já acabou não abre
+     * SS atrasada. Devolve [apontamento => mensagem] do que foi tentado.
+     *
+     * @return array<int, string>
+     */
+    public function conferirAbertos(): array
+    {
+        $legendas = Legenda::withoutGlobalScopes()->whereNotNull('abre_ss_area_executante_id')->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if (! $legendas) {
+            return [];
+        }
+        $resultado = [];
+        ApontamentoEstado::whereNull('fim')->whereIntegerInRaw('legenda_id', $legendas)->whereNull('solicitacao_vinculada_id')
+            ->whereNotExists(fn ($q) => $q->from('solicitacoes_servico')->whereColumn('solicitacoes_servico.apontamento_estado_id', 'apontamentos_estado.id'))
+            ->orderBy('inicio')->limit(200)->get()
+            ->each(function (ApontamentoEstado $ap) use (&$resultado) {
+                try {
+                    $ss = $this->aoApontar($ap);
+                    $resultado[(int) $ap->id] = $ss ? 'SS '.$ss->numeroFormatado().' aberta' : (self::mensagem((int) $ap->id) ?? 'não abriu');
+                } catch (\Throwable $e) {
+                    report($e);
+                    $resultado[(int) $ap->id] = 'erro: '.$e->getMessage();
+                }
+            });
+
+        return $resultado;
+    }
+
     public function aoApontar(ApontamentoEstado $ap): ?SolicitacaoServico
     {
         $legenda = Legenda::withoutGlobalScopes()->find($ap->legenda_id);
@@ -62,7 +93,7 @@ final class SsAutomatica
             return null;
         }
         // Dois apontamentos da mesma máquina ao mesmo tempo (ex.: IoT e operador): um de cada vez, para não abrir duas SS.
-        $trava = Cache::lock("ss-automatica-{$maquina->id}-{$area->id}", 30);
+        $trava = Cache::lock("ss-automatica-{$maquina->id}", 30); // por máquina (uma automática em aberto por máquina)
         try {
             $trava->block(20);
         } catch (LockTimeoutException) {
@@ -86,10 +117,10 @@ final class SsAutomatica
 
             return null;
         }
-        if ($emAberto = $this->jaEmAberto($maquina->id, $area->id)) {
+        if ($emAberto = $this->jaEmAberto($maquina->id)) {
             // Não abre outra: vincula a SS que já está em aberto a esta parada (a Timeline e o app mostram o chamado).
             $ap->forceFill(['solicitacao_vinculada_id' => $emAberto['ss_id']])->saveQuietly();
-            self::registrar($ap->id, $nao."já existe {$emAberto['texto']} automática em aberto desta máquina para {$area->nome} (uma por vez)"
+            self::registrar($ap->id, $nao."já existe {$emAberto['texto']} automática em aberto desta máquina (uma por máquina)"
                 .($emAberto['ss_id'] ? ' — vinculada a esta parada.' : '.'));
 
             return null;
@@ -147,15 +178,16 @@ final class SsAutomatica
      *
      * @return array{texto: string, ss_id: ?int}|null texto "a SS 000123" / "a OS 000045" e a SS (da OS, se for OS)
      */
-    private function jaEmAberto(int $maquinaId, int $areaId): ?array
+    /** SS/OS automática em aberto da máquina, de QUALQUER área executante (uma por máquina; decidido em 23/11/2026). */
+    private function jaEmAberto(int $maquinaId): ?array
     {
         $ss = SolicitacaoServico::withoutGlobalScopes()->where('automatica', true)->where('status', 'pendente')
-            ->where('maquina_id', $maquinaId)->where('area_executante_id', $areaId)->orderByDesc('id')->first();
+            ->where('maquina_id', $maquinaId)->orderByDesc('id')->first();
         if ($ss) {
             return ['texto' => 'a SS '.$ss->numeroFormatado(), 'ss_id' => $ss->id];
         }
         $os = OrdemServico::withoutGlobalScopes()->where('automatica', true)->whereIn('status', OrdemServico::STATUS_ABERTOS)
-            ->where('maquina_id', $maquinaId)->where('area_executante_id', $areaId)->orderByDesc('id')->first();
+            ->where('maquina_id', $maquinaId)->orderByDesc('id')->first();
 
         return $os ? ['texto' => 'a OS '.$os->numeroFormatado(), 'ss_id' => $os->solicitacao_id] : null;
     }
