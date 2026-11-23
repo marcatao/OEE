@@ -99,7 +99,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   ganham CONTINUAÇÕES (mesma legenda/OP, `HorarioApontamento::encerrarAberto`, sem SS automática) — a madrugada não
   some. Buraco entre apontamentos (encurtar o fim para dividir uma parada, excluir um do meio) vira 98 "Parada sem
   motivo" (`HorarioApontamento::preencherBuracos`, ao salvar/excluir) para ser editado; o integrador mantém essas
-  divisões manuais dentro das paradas do IoT (ponto de corte, como a "Troca de OP"). Apontamento real só de máquina que o usuário enxerga (editar/excluir/próximo início: 404); a legenda do
+  divisões manuais dentro das paradas do IoT (ponto de corte, como a "Troca de OP"). Só o apontamento MAIS RECENTE da máquina fica
+  em aberto (`HorarioApontamento::fecharAbertosAnteriores`, ao salvar e no agendador `apontamentos:conferir-abertos`, 5 min). Apontamento real só de máquina que o usuário enxerga (editar/excluir/próximo início: 404); a legenda do
   apontamento e da situação da máquina é lida sem escopo de unidade (`withoutGlobalScopes` na relação).
 - **Desempenho e segurança para produção** (auditoria antes da publicação): apontamentos por período SEMPRE com o
   escopo `ApontamentoEstado::tocando($inicio, $fim)` (usa o índice; folga `DIAS_FOLGA_PERIODO`); o último apontamento de

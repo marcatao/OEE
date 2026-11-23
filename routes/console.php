@@ -8,6 +8,7 @@ use App\Models\Usuario;
 use App\Services\Assistente\ClienteClaude;
 use App\Services\Assistente\DiagnosticoErro;
 use App\Services\Compras\PedidoCompraMuro;
+use App\Services\HorarioApontamento;
 use App\Services\ImportadorUsuariosEntra;
 use App\Services\InfoBanco;
 use App\Services\Manutencao\GeradorPreventivas;
@@ -197,6 +198,12 @@ Artisan::command('ss:conferir-automaticas', function (SsAutomatica $ss) {
     }
 })->purpose('Abre a SS automática das paradas em aberto com legenda "Abre SS" que ficaram sem chamado');
 Schedule::command('ss:conferir-automaticas')->everyFiveMinutes()->withoutOverlapping()->runInBackground();
+
+// Só o apontamento mais recente de cada máquina fica em aberto (ajuste manual × IoT): encerra os anteriores.
+Artisan::command('apontamentos:conferir-abertos', function () {
+    $this->info(HorarioApontamento::conferirAbertos().' apontamento(s) em aberto encerrado(s).');
+})->purpose('Encerra apontamentos em aberto que não são o mais recente da máquina (só o último fica em aberto)');
+Schedule::command('apontamentos:conferir-abertos')->everyFiveMinutes()->withoutOverlapping()->runInBackground();
 
 // Cadastra as contas novas do Entra ID já BLOQUEADAS (inativas, sem perfil); quem já existe não muda.
 Artisan::command('usuarios:importar-entra', function (ImportadorUsuariosEntra $importador) {

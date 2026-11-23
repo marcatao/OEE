@@ -280,6 +280,7 @@ class ApontamentoEstadoController extends Controller
         foreach (array_filter([$inicioAntes, $apontamento->inicio]) as $perto) {
             HorarioApontamento::preencherBuracos((int) $apontamento->maquina_id, $perto);
         }
+        HorarioApontamento::fecharAbertosAnteriores((int) $apontamento->maquina_id); // só o mais recente fica em aberto
 
         // Máquina: situação (pelo tipo da legenda) e OP atual, se este for o apontamento mais recente dela.
         app(SituacaoMaquina::class)->aplicar($apontamento);

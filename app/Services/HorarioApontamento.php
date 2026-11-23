@@ -145,4 +145,44 @@ class HorarioApontamento
 
         return $criados;
     }
+
+    /**
+     * Só o apontamento MAIS RECENTE da máquina pode ficar em aberto. Outro em aberto antes dele (ex.: ajuste manual
+     * misturado com o IoT) é encerrado 1 s antes do seguinte, sem passar do dia dele; o que sobrar do dia vira 98 para
+     * informar o motivo (preencherBuracos). Devolve quantos encerrou.
+     */
+    public static function fecharAbertosAnteriores(int $maquinaId): int
+    {
+        $abertos = ApontamentoEstado::where('maquina_id', $maquinaId)->whereNull('fim')->orderBy('inicio')->orderBy('id')->get();
+        if ($abertos->count() < 2) {
+            return 0;
+        }
+        $fechados = 0;
+        foreach ($abertos as $aberto) {
+            $seguinte = ApontamentoEstado::where('maquina_id', $maquinaId)->whereKeyNot($aberto->id)
+                ->where(fn ($q) => $q->where('inicio', '>', $aberto->inicio)
+                    ->orWhere(fn ($e) => $e->where('inicio', $aberto->inicio)->where('id', '>', $aberto->id)))
+                ->orderBy('inicio')->orderBy('id')->first();
+            if (! $seguinte) {
+                continue; // é o mais recente: pode ficar em aberto
+            }
+            $aberto->update(['fim' => self::fimAutomatico($aberto, $seguinte->inicio)]);
+            self::preencherBuracos($maquinaId, $aberto->inicio);
+            $fechados++;
+        }
+
+        return $fechados;
+    }
+
+    /** Conferência periódica (agendador): todas as máquinas com mais de um apontamento em aberto. */
+    public static function conferirAbertos(): int
+    {
+        $total = 0;
+        $maquinas = ApontamentoEstado::whereNull('fim')->groupBy('maquina_id')->havingRaw('COUNT(*) > 1')->pluck('maquina_id');
+        foreach ($maquinas as $maquinaId) {
+            $total += self::fecharAbertosAnteriores((int) $maquinaId);
+        }
+
+        return $total;
+    }
 }

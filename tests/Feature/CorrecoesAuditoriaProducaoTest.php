@@ -15,6 +15,7 @@ use App\Services\TrocaOpMaquina;
 use App\Support\AcessoOs;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
 
@@ -96,5 +97,24 @@ class CorrecoesAuditoriaProducaoTest extends TestCase
         foreach ($lista->slice(1)->values() as $i => $atual) {
             $this->assertSame($lista[$i]->fim->getTimestamp() + 1, $atual->inicio->getTimestamp());
         }
+    }
+
+    public function test_so_o_mais_recente_fica_em_aberto(): void
+    {
+        Legenda::create(['codigo' => '98', 'descricao' => 'Parada sem motivo', 'tipo' => 'parada', 'cor' => '#b42318', 'unidade' => 'manutencao']);
+        $prod = Legenda::create(['codigo' => 'XPR', 'descricao' => 'Produção', 'tipo' => 'produzindo', 'cor' => '#2e7d32', 'unidade' => 'manutencao']);
+        $fuso = config('oee.fuso_exibicao');
+        $hora = fn (string $h) => CarbonImmutable::parse("2026-11-20 {$h}", $fuso)->utc();
+        // Como no print: produção em aberto desde 12:00:47 e parada (IoT) em aberto desde 13:37:22.
+        $p = DB::table('apontamentos_estado')->insertGetId(['maquina_id' => $this->maquina->id,
+            'legenda_id' => $prod->id, 'inicio' => $hora('12:00:47'), 'criado_em' => now(), 'atualizado_em' => now()]);
+        $q = DB::table('apontamentos_estado')->insertGetId(['maquina_id' => $this->maquina->id,
+            'legenda_id' => $this->quebra->id, 'inicio' => $hora('13:37:22'), 'observacao' => '[IoT] x', 'criado_em' => now(), 'atualizado_em' => now()]);
+
+        $this->artisan('apontamentos:conferir-abertos')->assertSuccessful();
+        $local = fn ($c) => $c?->copy()->setTimezone($fuso)->format('H:i:s');
+        $this->assertSame('13:37:21', $local(ApontamentoEstado::find($p)->fim));
+        $this->assertNull(ApontamentoEstado::find($q)->fim);
+        $this->assertSame(1, ApontamentoEstado::where('maquina_id', $this->maquina->id)->whereNull('fim')->count());
     }
 }
