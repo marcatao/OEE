@@ -1,5 +1,11 @@
 # Versões do aplicativo
 
+## 0.12.3 (build 20)
+
+- As peças do IoT passam a se chamar **Contagem IoT** em todo o app (cartão da OP na tela da máquina e Detalhes da
+  OP), um campo a mais da OP. "Quantidade" (C2_QUANT) e "Produzido" (Protheus) continuam como vêm do Protheus,
+  separados.
+
 ## 0.12.2 (build 19)
 
 - Detalhes da OP › OP: cartão em destaque **Contagem IoT** — peças contadas pelo IoT na OP (as mesmas da Produção por

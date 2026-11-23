@@ -181,7 +181,7 @@ private fun LazyListScope.abaOp(d: DetalhesOp) {
             Spacer(Modifier.height(12.dp))
             Row {
                 // Com a "Contagem IoT" (cartão abaixo), as peças do IoT ficam só lá.
-                if (d.contagemIot == null) Numero("Quantidade real (IoT)", "${qtd(op.quantidadeReal)} pç", Modifier.weight(1f), destaque = true)
+                if (d.contagemIot == null) Numero("Contagem IoT", "${qtd(op.quantidadeReal)} pç", Modifier.weight(1f), destaque = true)
                 Numero("Produzido no Protheus", qtd(op.produzidoProtheus), Modifier.weight(1f))
             }
         }

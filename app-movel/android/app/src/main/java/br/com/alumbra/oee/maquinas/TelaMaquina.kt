@@ -567,7 +567,7 @@ private fun CartaoOp(op: OpDetalhe?, podeAlterar: Boolean, aoTrocarOp: () -> Uni
             if (r.quantidadeReal != null) {
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Quantidade real (IoT)", style = MaterialTheme.typography.bodyMedium,
+                    Text("Contagem IoT", style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                     Text("${numero(r.quantidadeReal)} pç", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                 }
