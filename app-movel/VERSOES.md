@@ -1,5 +1,17 @@
 # Versões do aplicativo
 
+## 0.12.0 (build 17)
+
+- Máquinas: botão **Detalhes da OP** no cartão da OP (tela da máquina). Abre a OP em abas, com os mesmos dados da tela
+  da OP no portal:
+  - **OP**: situação, produzido × quantidade, quantidade real (IoT), datas, roteiro, revisão, armazém, centro de custo
+    e custo por peça (simulado, meta, Protheus, divergência) com o consumo por componente;
+  - **Kardex**: produções, baixas, devoluções e notas, do mais recente para o mais antigo (até 400);
+  - **Empenhos**: empenhado, baixado, saldo e % atendido de cada componente;
+  - **Engenharia**: estrutura padrão (por peça, necessidade, empenhado, diferença) e roteiro (máquina, molde e
+    cavidades, tempos padrão).
+- Sem rede, os detalhes da OP abrem com o último dado guardado no celular.
+
 ## 0.11.0 (build 16)
 
 - Máquinas: novo cartão "Produção do turno" na tela da máquina, abaixo da linha do tempo — peças por minuto agora

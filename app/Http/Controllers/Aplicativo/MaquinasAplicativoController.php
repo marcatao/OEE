@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Aplicativo;
 use App\Http\Controllers\Controller;
 use App\Models\ApontamentoEstado;
 use App\Models\Ferramenta;
+use App\Models\OrdemProducao;
+use App\Services\Aplicativo\DetalhesOpAplicativo;
 use App\Services\Aplicativo\MaquinasAplicativo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -63,5 +65,14 @@ class MaquinasAplicativoController extends Controller
     public function ops(Request $request): JsonResponse
     {
         return response()->json(['ops' => $this->maquinas->buscarOps((string) $request->query('busca', ''))]);
+    }
+
+    /** Detalhes da OP (abas do portal: OP e custo, kardex, empenhos, estrutura e roteiro), só leitura. */
+    public function detalhesOp(int $ordem, DetalhesOpAplicativo $detalhes): JsonResponse
+    {
+        $op = OrdemProducao::findOrFail($ordem);
+        abort_if($op->d_e_l_e_t_ === '*', 404);
+
+        return response()->json($detalhes->detalhes($op));
     }
 }

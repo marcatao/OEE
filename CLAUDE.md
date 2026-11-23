@@ -258,6 +258,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (operador): `App\Services\Aplicativo\MaquinasAplicativo` — máquinas ativas com IoT ativo, apontamento com legenda
   `oee.app.legenda_sem_motivo` (98, do IoT) obriga escolher um motivo do tipo parada (troca a legenda só dele), máquina
   sem OP obriga escolher a OP, troca de OP divide o apontamento em aberto, cavidades ativas editáveis pelo operador.
+  "Detalhes da OP" (botão no cartão da OP; `GET /api/app/ops/{id}/detalhes`, permissão `ordens_producao`,
+  `App\Services\Aplicativo\DetalhesOpAplicativo` sobre `CustoOrdemProducao::kardex` e `EngenhariaOrdemProducao::daOp`):
+  abas OP (e custo), Kardex, Empenhos e Engenharia (estrutura e roteiro).
   Função Ordens de serviço (mantenedor): `App\Services\Aplicativo\OrdensServicoAplicativo` sobre `AcessoOs` e
   `FluxoOrdemServico` — "assumir" SS = aprovar com o mantenedor como principal (só o primeiro leva), apontamento de
   horas com a tela travada no cronômetro, avaliação do solicitante no celular do mantenedor com assinatura

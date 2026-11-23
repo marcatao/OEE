@@ -40,6 +40,17 @@ class RepositorioMaquinas(private val pastaGuardada: java.io.File? = null, priva
             ),
         )
 
+    /** Detalhes da OP (kardex, empenhos, engenharia); guardados no celular para abrir sem rede. */
+    suspend fun detalhesOp(opId: Int): DetalhesOp {
+        val json = ApiPortal.get("ops/$opId/detalhes", token())
+        pastaGuardada?.let { pasta -> runCatching { java.io.File(pasta, "op_$opId.json").writeText(json.toString()) } }
+        return detalhesOpDe(json)
+    }
+
+    fun detalhesOpGuardado(opId: Int): DetalhesOp? = pastaGuardada?.let { pasta ->
+        runCatching { detalhesOpDe(JSONObject(java.io.File(pasta, "op_$opId.json").readText())) }.getOrNull()
+    }
+
     suspend fun buscarOps(busca: String): List<OpResumo> =
         opsDe(ApiPortal.get("ops?busca=" + URLEncoder.encode(busca, "UTF-8"), token()))
 }

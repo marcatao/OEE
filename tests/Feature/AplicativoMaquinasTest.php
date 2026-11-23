@@ -354,4 +354,33 @@ class AplicativoMaquinasTest extends TestCase
         $this->call('GET', '/OEE/dashboards/timeline', [], [], [], ['REQUEST_URI' => '/OEE/dashboards/timeline'])
             ->assertRedirect('https://www.alumbra.com.br/oee/dashboards/timeline')->assertStatus(301);
     }
+
+    public function test_detalhes_da_op_com_kardex_empenhos_e_engenharia(): void
+    {
+        ProdutoProtheus::forceCreate(['b1_filial' => '', 'b1_cod' => 'PA1', 'b1_desc' => 'TAMPA', 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 1]);
+        ProdutoProtheus::forceCreate(['b1_filial' => '', 'b1_cod' => 'MP1', 'b1_desc' => 'RESINA PP', 'b1_um' => 'KG', 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 2]);
+        $mov = fn ($rec, $cf, $tipo, $cod, $qtd, $custo) => DB::table('movimentos_producao')->insert(['d3_filial' => '', 'op' => $this->op1->numero,
+            'op_numero' => $this->op1->numero, 'd3_emissao' => '20261110', 'd3_cf' => $cf, 'tipo' => $tipo, 'd3_cod' => $cod, 'd3_um' => 'UN',
+            'd3_quant' => $qtd, 'd3_custo1' => $custo, 'd3_doc' => 'DOC'.$rec, 'd3_local' => '01', 'd3_numseq' => (string) $rec,
+            'd3_estorno' => '', 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => $rec]);
+        $mov(1, 'RE1', 'consumo', 'MP1', 5, 50);
+        $mov(2, 'PR0', 'producao', 'PA1', 100, 80);
+        DB::table('empenhos_op')->insert(['d4_filial' => '', 'op_numero' => $this->op1->numero, 'd4_op' => $this->op1->numero, 'd4_cod' => 'MP1',
+            'd4_trt' => '', 'd4_local' => '01', 'd4_data' => '20261101', 'd4_qtdeori' => 10, 'd4_quant' => 4, 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 1]);
+        RoteiroOperacao::forceCreate(['g2_filial' => '', 'g2_produto' => 'PA1', 'g2_codigo' => '01', 'g2_operac' => '10',
+            'g2_descri' => 'INJETAR', 'g2_ctrab' => 'INJ-01', 'g2_ferram' => 'M001', 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 1]);
+        $this->maquina->update(['ordem_producao_id' => $this->op1->id]);
+
+        $json = $this->api('GET', "ops/{$this->op1->id}/detalhes")->assertOk()->json();
+        $this->assertSame(['00010001001', 'TAMPA', 100.0], [$json['op']['numero'], $json['op']['descricao'], (float) $json['op']['produzido']]);
+        $this->assertSame(2, $json['kardex']['total']);
+        $this->assertSame('producao', $json['kardex']['movimentos'][0]['tipo']); // o mais recente primeiro
+        $this->assertEquals(0.5, $json['custo']['simulado']); // baixas 50 ÷ 100 peças
+        $this->assertSame(['MP1', 'RESINA PP', 6.0, 0.6], [$json['empenhos'][0]['componente'], $json['empenhos'][0]['descricao'],
+            (float) $json['empenhos'][0]['baixado'], (float) $json['empenhos'][0]['atendido']]);
+        $this->assertSame('INJ-01', $json['roteiro']['operacoes'][0]['maquina']);
+        $this->assertTrue($json['roteiro']['operacoes'][0]['com_esta_op']);
+
+        $this->api('GET', 'ops/999999/detalhes')->assertNotFound();
+    }
 }

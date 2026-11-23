@@ -3,6 +3,15 @@ package br.com.alumbra.oee.ui
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import br.com.alumbra.oee.maquinas.ApontamentoApp
+import br.com.alumbra.oee.maquinas.ComponenteCusto
+import br.com.alumbra.oee.maquinas.ConteudoDetalhesOp
+import br.com.alumbra.oee.maquinas.CustoOp
+import br.com.alumbra.oee.maquinas.DetalhesOp
+import br.com.alumbra.oee.maquinas.EmpenhoApp
+import br.com.alumbra.oee.maquinas.ItemEstrutura
+import br.com.alumbra.oee.maquinas.MovimentoKardex
+import br.com.alumbra.oee.maquinas.OpCompleta
+import br.com.alumbra.oee.maquinas.OperacaoRoteiro
 import br.com.alumbra.oee.maquinas.ConteudoMaquina
 import br.com.alumbra.oee.maquinas.ConteudoMaquinas
 import br.com.alumbra.oee.maquinas.DetalheMaquina
@@ -101,4 +110,45 @@ class CapturasMaquinasTest {
             }
         }
     }
+
+    private val detalhesOp = DetalhesOp(
+        op = OpCompleta(1, "06267801001", "PA0910755", "INTERRUPTOR PARALELO 10A", "Andamento", "UN", 12000.0, 7350.0, 7200.0, 7412.0,
+            0.0, "02/11/2026", "03/11/2026", "20/11/2026", null, "01", "002", "01", "310101", "Firme", null),
+        custo = CustoOp(0.4120, 0.3980, 0.4215, 0.059, 3098.0, 0.0, 120.0, listOf(
+            ComponenteCusto("MP0001", "POLIPROPILENO NATURAL", "KG", 185.4, 2410.2, 0.3279),
+            ComponenteCusto("MP0310", "MASTER BRANCO", "KG", 9.2, 568.0, 0.0773),
+        )),
+        kardexTotal = 3,
+        kardex = listOf(
+            MovimentoKardex("17/11/2026", "producao", "Produção", "PR0 · Produção", "PA0910755", "INTERRUPTOR PARALELO 10A", "OP0617", true, 1200.0, "UN", 494.4, 7350.0, 0.4215),
+            MovimentoKardex("16/11/2026", "consumo", "Baixa", "RE1 · Requisição", "MP0001", "POLIPROPILENO NATURAL", "000981", false, 32.5, "KG", 422.5, 6150.0, 0.4188),
+            MovimentoKardex("14/11/2026", "devolucao", "Devolução", "DE1 · Devolução", "MP0310", "MASTER BRANCO", "000977", true, 1.2, "KG", 74.0, 6150.0, 0.4110),
+        ),
+        empenhos = listOf(
+            EmpenhoApp("MP0001", "POLIPROPILENO NATURAL", "KG", "01", "01", null, "02/11/2026", 300.0, 185.4, 114.6, 0.618),
+            EmpenhoApp("MP0310", "MASTER BRANCO", "KG", "02", "01", "L2611", "02/11/2026", 9.0, 9.0, 0.0, 1.0),
+        ),
+        estrutura = listOf(
+            ItemEstrutura("01", "MP0001", "POLIPROPILENO NATURAL", "KG", 0.025, 0.0, false, 300.0, 300.0, false),
+            ItemEstrutura("02", "MP0310", "MASTER BRANCO", "KG", 0.00075, 0.0, false, 9.0, 9.0, false),
+            ItemEstrutura("03", "PI0450", "MOLA INOX", "UN", 1.0, 2.0, false, 12244.9, null, true),
+        ),
+        roteiro = "01",
+        operacoes = listOf(
+            OperacaoRoteiro("10", "INJETAR TAMPA", "INJ-01", "Injetora 01", true, null, "M001", "MOLDE TAMPA 8 CAV", 8, 6, "Normal", 0.5, 0.0139, 1.0, 1.0),
+            OperacaoRoteiro("20", "MONTAGEM", "MON-02", "Montadora 02", false, null, null, null, null, null, "Normal", 0.0, 0.02, 1.0, 1.0),
+        ),
+    )
+
+    @Test
+    fun detalhes_op_aba_op() = paparazzi.snapshot { TemaOee(escuro = false) { ConteudoDetalhesOp("06267801001", detalhesOp, null, 0, {}, {}, {}) } }
+
+    @Test
+    fun detalhes_op_kardex() = paparazzi.snapshot { TemaOee(escuro = false) { ConteudoDetalhesOp("06267801001", detalhesOp, null, 1, {}, {}, {}) } }
+
+    @Test
+    fun detalhes_op_empenhos() = paparazzi.snapshot { TemaOee(escuro = false) { ConteudoDetalhesOp("06267801001", detalhesOp, null, 2, {}, {}, {}) } }
+
+    @Test
+    fun detalhes_op_engenharia() = paparazzi.snapshot { TemaOee(escuro = false) { ConteudoDetalhesOp("06267801001", detalhesOp, null, 3, {}, {}, {}) } }
 }

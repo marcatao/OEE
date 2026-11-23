@@ -27,6 +27,9 @@ Route::prefix('app')->name('api.app.')->group(function () {
             Route::post('maquinas/{maquina}/op', [MaquinasAplicativoController::class, 'op'])->whereNumber('maquina')->name('maquinas.op');
             Route::post('apontamentos/{apontamento}/motivo', [MaquinasAplicativoController::class, 'motivo'])->whereNumber('apontamento')->name('apontamentos.motivo');
             Route::post('ferramentas/{ferramenta}/cavidades', [MaquinasAplicativoController::class, 'cavidades'])->whereNumber('ferramenta')->name('ferramentas.cavidades');
+            // Detalhes da OP (kardex, empenhos, engenharia): a mesma permissão da tela da OP no portal.
+            Route::get('ops/{ordem}/detalhes', [MaquinasAplicativoController::class, 'detalhesOp'])->whereNumber('ordem')
+                ->middleware('permissao:ordens_producao')->name('ops.detalhes');
         });
 
         // Ordens de serviço: só quem tem um perfil de MANTENEDOR no login (oee.mantenedores_area), mais as mesmas
