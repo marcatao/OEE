@@ -103,6 +103,7 @@ class ApontamentoEstadoController extends Controller
         $eraOMaisRecente = (int) ApontamentoEstado::where('maquina_id', $apontamento->maquina_id)
             ->orderByDesc('inicio')->orderByDesc('id')->value('id') === (int) $apontamento->id; // (int): SQL Server devolve texto
         $apontamento->delete();
+        HorarioApontamento::preencherBuracos((int) $apontamento->maquina_id, $apontamento->inicio); // o do meio vira 98
         $status->atualizar($op);
         if ($eraOMaisRecente) {
             $situacao->recalcular($apontamento->maquina_id); // a máquina volta a seguir o apontamento anterior
@@ -230,6 +231,7 @@ class ApontamentoEstadoController extends Controller
             }
         }
         $opAnterior = $apontamento->ordemProducao;
+        $inicioAntes = $apontamento->inicio; // edição: o buraco pode ficar perto do horário antigo
 
         $afetadas = [];
         $encerrado = DB::transaction(function () use ($apontamento, $dados, $inicio, $fim, $op, &$afetadas) {
@@ -273,6 +275,11 @@ class ApontamentoEstadoController extends Controller
 
             return $encerrado;
         });
+
+        // Encurtou/mudou o horário: o buraco que sobrou vira 98 "Parada sem motivo" para ser editado.
+        foreach (array_filter([$inicioAntes, $apontamento->inicio]) as $perto) {
+            HorarioApontamento::preencherBuracos((int) $apontamento->maquina_id, $perto);
+        }
 
         // Máquina: situação (pelo tipo da legenda) e OP atual, se este for o apontamento mais recente dela.
         app(SituacaoMaquina::class)->aplicar($apontamento);

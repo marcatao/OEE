@@ -97,7 +97,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   OBRIGATORIAMENTE 1 segundo depois do fim do último (campo travado; rota `apontamentos.proximo-inicio`); o primeiro do
   dia é livre. Em aberto é encerrado 1 s antes do novo, sem passar do dia dele; se o novo é de outro dia, os dias seguintes
   ganham CONTINUAÇÕES (mesma legenda/OP, `HorarioApontamento::encerrarAberto`, sem SS automática) — a madrugada não
-  some. Apontamento real só de máquina que o usuário enxerga (editar/excluir/próximo início: 404); a legenda do
+  some. Buraco entre apontamentos (encurtar o fim para dividir uma parada, excluir um do meio) vira 98 "Parada sem
+  motivo" (`HorarioApontamento::preencherBuracos`, ao salvar/excluir) para ser editado; o integrador mantém essas
+  divisões manuais dentro das paradas do IoT (ponto de corte, como a "Troca de OP"). Apontamento real só de máquina que o usuário enxerga (editar/excluir/próximo início: 404); a legenda do
   apontamento e da situação da máquina é lida sem escopo de unidade (`withoutGlobalScopes` na relação).
 - **Desempenho e segurança para produção** (auditoria antes da publicação): apontamentos por período SEMPRE com o
   escopo `ApontamentoEstado::tocando($inicio, $fim)` (usa o índice; folga `DIAS_FOLGA_PERIODO`); o último apontamento de
@@ -211,6 +213,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   só mostra máquinas ATIVAS e com IoT cadastrado (dispositivo + canal, `Maquina::comIot()`; nos testes,
   `Tests\Concerns\IotDeTeste`). Novos
   relatórios seguem o mesmo padrão.
+- **Produção por hora** (Dashboards › Produção por hora, permissão `producao_hora`, `ProducaoPorHoraController` +
+  `App\Services\ProducaoPorHora`): máquina a máquina (as da Timeline), peças do IoT por hora do TURNO da máquina no dia
+  (`App\Services\TurnoDaMaquina`, o mesmo do app; `PecasProduzidas::porHora`), total, média e melhor hora, OP atual e
+  produto, OPs do turno e gráfico em SVG (`dashboard.producao-hora._grafico`); o operador vê (só as máquinas das unidades
+  dos perfis dele, como no app); meta em pç/min "em breve" (com ela, linha
+  tracejada e % por hora). Filtro `FiltroProducaoHora` (dia, plantas, linhas, máquinas; salvos na tela `producao_hora`).
 - **Dashboard por máquina** (`DashboardController`): só máquinas ativas com IoT ATIVO (`Maquina::comIotAtivo()`).
   Panorama pelos APONTAMENTOS REAIS (`App\Services\PanoramaMaquinas`, sobre a `Timeline`): situação agora, OP,
   produto, molde e cavidades, tempos por tipo e disponibilidade (partial `dashboard._cartao-maquina`). Legenda do tipo
@@ -252,6 +260,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (operador): `App\Services\Aplicativo\MaquinasAplicativo` — máquinas ativas com IoT ativo, apontamento com legenda
   `oee.app.legenda_sem_motivo` (98, do IoT) obriga escolher um motivo do tipo parada (troca a legenda só dele), máquina
   sem OP obriga escolher a OP, troca de OP divide o apontamento em aberto, cavidades ativas editáveis pelo operador.
+  "Detalhes da OP" (botão no cartão da OP; `GET /api/app/ops/{id}/detalhes`, permissão `ordens_producao`,
+  `App\Services\Aplicativo\DetalhesOpAplicativo` sobre `CustoOrdemProducao::kardex` e `EngenhariaOrdemProducao::daOp`):
+  abas OP (e custo), Kardex, Empenhos e Engenharia (estrutura e roteiro).
   Função Ordens de serviço (mantenedor): `App\Services\Aplicativo\OrdensServicoAplicativo` sobre `AcessoOs` e
   `FluxoOrdemServico` — "assumir" SS = aprovar com o mantenedor como principal (só o primeiro leva), apontamento de
   horas com a tela travada no cronômetro, avaliação do solicitante no celular do mantenedor com assinatura

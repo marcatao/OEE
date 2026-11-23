@@ -13,6 +13,7 @@ use App\Models\Planta;
 use App\Models\Usuario;
 use App\Services\TrocaOpMaquina;
 use App\Support\AcessoOs;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\IotDeTeste;
 use Tests\TestCase;
@@ -68,5 +69,32 @@ class CorrecoesAuditoriaProducaoTest extends TestCase
         $novo = ApontamentoEstado::whereKeyNot($ap->id)->sole();
         $this->assertSame((int) $ss->id, (int) $novo->solicitacao_vinculada_id); // a Timeline segue mostrando o chamado
         $this->assertNotNull($novo->criado_por_id);
+    }
+
+    public function test_buraco_entre_apontamentos_vira_98_para_informar_o_motivo(): void
+    {
+        $sem = Legenda::create(['codigo' => '98', 'descricao' => 'Parada sem motivo', 'tipo' => 'parada', 'cor' => '#b42318', 'unidade' => 'manutencao']);
+        $setup = Legenda::create(['codigo' => 'XST', 'descricao' => 'Setup', 'tipo' => 'parada', 'cor' => '#1d5fa8', 'unidade' => 'manutencao']);
+        $fuso = config('oee.fuso_exibicao');
+        $hora = fn (string $h) => CarbonImmutable::parse("2026-11-20 {$h}", $fuso)->utc();
+        $a = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $setup->id, 'inicio' => $hora('08:00:00'), 'fim' => $hora('09:59:59')]);
+        $b = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $setup->id, 'inicio' => $hora('10:00:00'), 'fim' => $hora('10:59:59')]);
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $setup->id, 'inicio' => $hora('11:00:00'), 'fim' => $hora('11:59:59')]);
+
+        // Dividir a parada das 08:00: encurta até 09:00 → das 09:00:01 às 09:59:59 vira 98 para editar.
+        $this->put("/producao/apontamentos/{$a->id}", ['maquina_id' => $this->maquina->id, 'legenda_id' => $setup->id,
+            'dia' => '2026-11-20', 'hora_inicio' => '08:00:00', 'hora_fim' => '09:00:00'])->assertSessionHasNoErrors();
+        $buraco = ApontamentoEstado::where('legenda_id', $sem->id)->sole();
+        $local = fn ($c) => $c->copy()->setTimezone($fuso)->format('H:i:s');
+        $this->assertSame(['09:00:01', '09:59:59'], [$local($buraco->inicio), $local($buraco->fim)]);
+
+        // Excluir o do meio (10:00–10:59:59): também vira 98.
+        $this->delete("/producao/apontamentos/{$b->id}")->assertRedirect();
+        $this->assertSame(2, ApontamentoEstado::where('legenda_id', $sem->id)->count());
+        // Sem buracos: cada um começa 1 s depois do fim do anterior.
+        $lista = ApontamentoEstado::where('maquina_id', $this->maquina->id)->orderBy('inicio')->get();
+        foreach ($lista->slice(1)->values() as $i => $atual) {
+            $this->assertSame($lista[$i]->fim->getTimestamp() + 1, $atual->inicio->getTimestamp());
+        }
     }
 }

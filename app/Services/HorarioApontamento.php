@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ApontamentoEstado;
+use App\Models\Legenda;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
@@ -104,5 +105,44 @@ class HorarioApontamento
         }
 
         return $continuacoes;
+    }
+
+    /**
+     * Buracos entre apontamentos da máquina (ex.: encurtou o fim de uma parada para dividi-la em mais de uma legenda,
+     * ou excluiu um do meio) viram apontamentos 98 "Parada sem motivo" (config oee.app.legenda_sem_motivo), um por dia,
+     * para serem editados (pisca "INFORMAR MOTIVO" na Timeline). Assim cada apontamento começa 1 s depois do fim do
+     * anterior. Olha um dia antes e dois depois de $perto. Devolve quantos criou.
+     */
+    public static function preencherBuracos(int $maquinaId, CarbonInterface $perto): int
+    {
+        $legendaId = Legenda::withoutGlobalScopes()->where('codigo', MotivoParada::codigoSemMotivo())->value('id');
+        if (! $legendaId) {
+            return 0;
+        }
+        $centro = CarbonImmutable::instance($perto)->setTimezone(self::fuso());
+        $lista = ApontamentoEstado::where('maquina_id', $maquinaId)
+            ->tocando($centro->subDay()->startOfDay()->utc(), $centro->addDays(2)->startOfDay()->utc())
+            ->orderBy('inicio')->orderBy('id')->get(['id', 'inicio', 'fim', 'ordem_producao_id']);
+        $criados = 0;
+        foreach ($lista->values() as $i => $a) {
+            $b = $lista->values()[$i + 1] ?? null;
+            if (! $b || $a->fim === null) {
+                continue;
+            }
+            $ini = CarbonImmutable::instance($a->fim)->addSecond();
+            $fimBuraco = CarbonImmutable::instance($b->inicio)->subSecond();
+            while ($ini->lessThanOrEqualTo($fimBuraco)) {
+                $fimDoDia = $ini->setTimezone(self::fuso())->endOfDay()->startOfSecond()->utc();
+                $fim = $fimBuraco->lessThan($fimDoDia) ? $fimBuraco : $fimDoDia;
+                $novo = new ApontamentoEstado(['maquina_id' => $maquinaId, 'legenda_id' => $legendaId,
+                    'ordem_producao_id' => $a->ordem_producao_id, 'inicio' => $ini, 'fim' => $fim,
+                    'observacao' => 'Intervalo sem apontamento: informe o motivo']);
+                $novo->save();
+                $criados++;
+                $ini = $fim->addSecond();
+            }
+        }
+
+        return $criados;
     }
 }
