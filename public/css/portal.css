@@ -344,6 +344,9 @@ a.kpi:hover { border-color:var(--primaria); }
 .tl-meta.tl-na-meta .tl-meta-titulo { color:var(--ok); }
 .tl-meta.tl-abaixo-meta .tl-meta-titulo { color:var(--alerta); }
 .tl-meta small.tl-conserto { color:var(--alerta); font-weight:700; }
+/* Timeline: molde com cavidades desativadas e abaixo da meta = cartão em amarelo (sem o texto de conserto) */
+.tl-meta.tl-meta-amarelo { background:color-mix(in srgb, var(--meta-media) 22%, var(--fundo)); border:1px solid var(--meta-media); }
+.tl-meta.tl-meta-amarelo .tl-meta-titulo, .tl-meta.tl-meta-amarelo small { color:var(--texto); }
 
 /* Situação atual da máquina (última legenda apontada): cartão colorido com ponto pulsante */
 .tl-estado { --estado:var(--suave); --estado-suave:var(--fundo); display:flex; flex-direction:column; justify-content:center; align-self:stretch; gap:.05rem; padding:.3rem .5rem;

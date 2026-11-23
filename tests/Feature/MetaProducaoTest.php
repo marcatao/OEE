@@ -132,7 +132,8 @@ class MetaProducaoTest extends TestCase
         $this->assertEquals(2941, collect($dados['horas'])->firstWhere('hora', '06:00')['meta']); // 49,02 × 60
         $this->assertSame(1, $resposta->viewData('geral')['consertos']);
 
-        $this->get(route('timeline', ['parcial' => 1]))->assertOk()->assertSee('meta 49,02')->assertSee('molde p/ conserto');
+        $this->get(route('timeline', ['parcial' => 1]))->assertOk()->assertSee('meta 49,02')
+            ->assertSee('tl-meta-amarelo', false)->assertDontSee('molde p/ conserto'); // Timeline: cartão amarelo, sem o texto de conserto
 
         // App: meta e molde para conserto no detalhe da máquina.
         $producao = app(MaquinasAplicativo::class)->detalhe($this->maquina->fresh())['producao'];

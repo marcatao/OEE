@@ -134,7 +134,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   por peça para a quantidade base B1_QB → meta = 1 ÷ (G1_QUANT ÷ B1_QB × 60) (ex.: 0130066, MO-1135 0,00034 h ≈ 49
   pç/min). Só um MO: com mais de um vale o PRIMEIRO (TRT, código), nunca soma; sem MO = sem meta. A meta é FIXA (não
   cai com cavidades desativadas): molde com ativas < H4_QTDCAV e pç/min abaixo da meta = "indicar para conserto"
-  (`MetaProducao::moldeParaConserto`; Timeline, Produção por hora, Dashboard por máquina e app `molde_conserto`).
+  (`MetaProducao::moldeParaConserto`; Produção por hora, Dashboard por máquina e app `molde_conserto`; na Timeline SEM o texto: mostra a meta e o cartão fica amarelo, `tl-meta-amarelo`).
   REGISTRADA em `metas_producao` (modelo `MetaRegistrada`, por produto + C2_REVISAO): cada mudança da meta calculada
   ganha uma linha `vigente_desde` agora (estrutura sem MO = linha sem meta); o passado usa a meta vigente na época
   (`porMinuto($op, $em)`; antes do 1º registro, o 1º) — mudar a estrutura NUNCA muda a meta para trás. Registra ao

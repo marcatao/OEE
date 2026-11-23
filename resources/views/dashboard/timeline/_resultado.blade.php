@@ -159,14 +159,11 @@
               @php($pm = (float) ($sit['pecasPorMinuto'] ?? 0))
               @php($metaPm = $sit['metaPorMinuto'] ?? null)
               @php($conserto = $sit['moldeConserto'] ?? null)
-              <div @class(['tl-meta', 'tl-abaixo-meta' => $metaPm && $pm > 0 && $pm < $metaPm, 'tl-na-meta' => $metaPm && $pm >= $metaPm])
+              {{-- Molde com cavidades desativadas e abaixo da meta: sem texto de conserto na Timeline, só o cartão em amarelo (a dica explica). --}}
+              <div @class(['tl-meta', 'tl-abaixo-meta' => $metaPm && $pm > 0 && $pm < $metaPm, 'tl-na-meta' => $metaPm && $pm >= $metaPm, 'tl-meta-amarelo' => $conserto])
                    title="Peças por minuto agora (ciclo médio × cavidades ativas do molde){{ $metaPm ? ' · meta '.\App\Support\Formato::quantidade($metaPm).' pç/min (item MO da estrutura da OP)' : ' · OP sem item MO na estrutura: sem meta' }}{{ $conserto ? ' · molde '.$conserto['codigo'].' com '.$conserto['ativas'].'/'.$conserto['total'].' cavidades abaixo da meta: indicar para conserto' : '' }}">
                 <span class="tl-meta-titulo">{{ $sit ? \App\Support\Formato::quantidade($pm) : '—' }} <small>pç/min</small></span>
-                @if ($conserto)
-                  <small class="tl-conserto">molde p/ conserto</small>
-                @else
-                  <small>{{ $metaPm ? 'meta '.\App\Support\Formato::quantidade($metaPm) : 'sem meta' }}</small>
-                @endif
+                <small>{{ $metaPm ? 'meta '.\App\Support\Formato::quantidade($metaPm) : 'sem meta' }}</small>
               </div>
             @endif
           </div>
