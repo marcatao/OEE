@@ -59,4 +59,55 @@ object ApiPortal {
                 conexao.disconnect()
             }
         }
+
+    /**
+     * Baixa um arquivo da API (ex.: o APK da atualização) para [destino], avisando o progresso (bytes, total).
+     * Devolve o valor do cabeçalho [cabecalho] da resposta (ex.: "X-Sha256"), se houver.
+     */
+    suspend fun baixar(
+        caminho: String,
+        token: String?,
+        destino: java.io.File,
+        cabecalho: String? = null,
+        aoProgresso: (Long, Long) -> Unit = { _, _ -> },
+    ): String? = withContext(Dispatchers.IO) {
+        val conexao = (URL(base + caminho).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 10_000
+            readTimeout = 60_000
+            setRequestProperty("User-Agent", "OEE-Alumbra-App/${BuildConfig.VERSION_NAME}")
+            if (token != null) {
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("X-Token-App", token)
+            }
+        }
+        try {
+            val codigo = conexao.responseCode
+            if (codigo == 401) throw ErroApi("Entre de novo no aplicativo.", semAcesso = true)
+            if (codigo !in 200..299) throw ErroApi("O portal não entregou o arquivo ($codigo).")
+            val total = conexao.contentLengthLong
+            destino.parentFile?.mkdirs()
+            conexao.inputStream.use { entrada ->
+                destino.outputStream().use { saida ->
+                    val buffer = ByteArray(64 * 1024)
+                    var lidos = 0L
+                    while (true) {
+                        val n = entrada.read(buffer)
+                        if (n < 0) break
+                        saida.write(buffer, 0, n)
+                        lidos += n
+                        aoProgresso(lidos, total)
+                    }
+                }
+            }
+            cabecalho?.let { conexao.getHeaderField(it) }
+        } catch (e: ErroApi) {
+            destino.delete()
+            throw e
+        } catch (e: Exception) {
+            destino.delete()
+            throw ErroApi("Download interrompido: " + br.com.alumbra.oee.rede.VerificadorRede.motivoDa(e))
+        } finally {
+            conexao.disconnect()
+        }
+    }
 }

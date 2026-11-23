@@ -296,6 +296,10 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (`os_assinaturas`, PNG base64). Alerta de SS: a cada toque o app consulta `/api/app/os/alerta` (para quando outro
   assume); "Recusar" grava em `os_recusas_aplicativo` (só aquela SS para de tocar para ele) e no histórico
   (`nao_aceita`, "SS não aceita por …").
+  **Atualização pelo portal** (app 0.13.0+): Segurança › Aplicativo (`perfil:admin_tecnologia`,
+  `Admin\AplicativoController`) publica o APK em `versoes_aplicativo` (versão lida do arquivo por `App\Support\LeitorApk`;
+  arquivo no disco `local`, pasta `aplicativo`; obrigatória/ativa); o app consulta `GET /api/app/versao` e baixa
+  `GET /api/app/versao/apk` (`App\Services\Aplicativo\VersoesAplicativo`), confere o SHA-256 e abre o instalador.
 
 ## Git
 

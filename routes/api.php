@@ -18,6 +18,9 @@ Route::prefix('app')->name('api.app.')->group(function () {
     Route::middleware(['aplicativo', 'throttle:300,1'])->group(function () {
         Route::get('eu', [ApiAplicativoController::class, 'eu'])->name('eu');
         Route::post('sair', [ApiAplicativoController::class, 'sair'])->name('sair');
+        // Atualização do app pelo portal (qualquer usuário logado no app): versão mais nova e o APK dela.
+        Route::get('versao', [ApiAplicativoController::class, 'versao'])->name('versao');
+        Route::get('versao/apk', [ApiAplicativoController::class, 'apk'])->middleware('throttle:10,1')->name('versao.apk');
 
         // Função "Máquinas": só quem tem o perfil OPERADOR no login (e a permissão de apontamento real).
         Route::middleware(['perfil:operador', 'permissao:apontamentos'])->group(function () {

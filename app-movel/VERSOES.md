@@ -1,5 +1,16 @@
 # Versões do aplicativo
 
+## 0.13.0 (build 23)
+
+- **Atualização pelo portal**: o app pergunta ao portal se há versão nova (ao abrir, ao sincronizar e a cada 30 min com
+  o app aberto). Havendo, aparece o cartão "Atualização disponível" na tela inicial; "Atualizar agora" baixa o APK
+  pelo portal (com o login do app, barra de progresso e conferência do SHA-256) e abre o instalador do Android — o
+  usuário toca em **Instalar** (o Android não deixa instalar sem essa confirmação). Na primeira vez o Android pede
+  "Permitir desta fonte" para o OEE Alumbra; ao voltar, a atualização continua sozinha.
+- Versão marcada como **obrigatória** no portal: o app mostra só a tela "Atualize o aplicativo" até atualizar
+  (o cronômetro de apontamento de horas em andamento continua tendo prioridade).
+- As versões são publicadas em Segurança › Aplicativo, no portal (Administrador de Tecnologia).
+
 ## 0.12.5 (build 22)
 
 - Produção do turno (tela da máquina), com a meta da OP (pç/min, do portal):

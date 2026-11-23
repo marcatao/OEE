@@ -139,6 +139,7 @@
               @include('layouts.partials.menu-link', ['rota' => 'cadastros.grupos.index', 'rotulo' => 'Grupos', 'icone' => 'grupos', 'ativo' => 'cadastros.grupos.*'])
               @include('layouts.partials.menu-link', ['rota' => 'cadastros.acessos', 'rotulo' => 'Histórico de acessos', 'icone' => 'historico'])
               @include('layouts.partials.menu-link', ['rota' => 'admin.banco', 'rotulo' => 'Banco de dados', 'icone' => 'banco'])
+              @include('layouts.partials.menu-link', ['rota' => 'admin.aplicativo', 'rotulo' => 'Aplicativo', 'icone' => 'celular'])
             </div>
           </div>
         @endif

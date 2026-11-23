@@ -22,6 +22,15 @@ cd app-movel/android
 # APK: app/build/outputs/apk/release/oee-alumbra-<versão>-<build>.apk
 ```
 
+## Atualização pelo portal (a partir da 0.13.0)
+
+Publique o APK em **Segurança › Aplicativo** no portal (Administrador de Tecnologia; a versão é lida do próprio
+APK, que precisa ser do pacote `br.com.alumbra.oee` e de build ainda não publicado). Os celulares perguntam
+`GET /api/app/versao?instalado=<build>`, baixam `GET /api/app/versao/apk` (com o token do app; o arquivo fica em
+`storage/app/private/aplicativo`, fora da pasta pública), conferem o SHA-256 e abrem o instalador do Android — o
+usuário toca em "Instalar" (o Android exige; instalação silenciosa só com celular gerenciado por MDM). Versão marcada
+como obrigatória trava o app na tela "Atualize o aplicativo"; versão desativada deixa de ser oferecida.
+
 ## Visual
 
 - Cores só em `ui/Tema.kt` (as mesmas variáveis de `public/css/portal.css`, claro e escuro); componentes comuns

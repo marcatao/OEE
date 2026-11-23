@@ -20,6 +20,7 @@
     'relogio' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     'alerta' => '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
     'sinal' => '<path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/>',
+    'celular' => '<rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><path d="M10.5 18h3"/>',
     'mais' => '<path d="M12 5v14M5 12h14"/>',
     'atualizar' => '<path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/>',
     'camera' => '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',

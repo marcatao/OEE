@@ -71,6 +71,8 @@ fun TelaPrincipal(
     itensAlerta: List<br.com.alumbra.oee.alertas.ItemAlerta>? = null,
     aoAjustarAlerta: (android.content.Intent) -> Unit = {},
     aoTestarAlerta: () -> Unit = {},
+    /** Cartão "Atualização disponível" (versão nova publicada no portal), quando houver. */
+    cartaoAtualizacao: (@Composable () -> Unit)? = null,
     agora: Long = System.currentTimeMillis(),
 ) {
     var confirmarSaida by remember { mutableStateOf(false) }
@@ -90,6 +92,8 @@ fun TelaPrincipal(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CartaoSincronizacao(ultimaSincronizacao, horasOffline, bloqueada, sincronizando, mensagem, naRedeDaFabrica, aoSincronizar, agora)
+
+            cartaoAtualizacao?.invoke()
 
             if (itensAlerta != null) CartaoAlertas(itensAlerta, aoAjustarAlerta, aoTestarAlerta)
 

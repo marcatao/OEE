@@ -30,6 +30,8 @@ return [
         'tipos_legenda_motivo' => ['parada'],
         'dias_pendencia_sem_motivo' => 7,
         'segundos_atualizacao' => 10, // de quanto em quanto tempo a tela da máquina se atualiza
+        'pacote' => 'br.com.alumbra.oee', // só APK deste pacote pode ser publicado em Segurança › Aplicativo
+        'tamanho_max_apk_mb' => 20, // upload_max_filesize do php.ini do servidor (php8.3/php.ini) é 20M
     ],
 
     'admins' => array_values(array_filter(array_map(

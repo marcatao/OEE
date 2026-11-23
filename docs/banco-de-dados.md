@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **60** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **61** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -925,6 +925,22 @@ erDiagram
         nvarchar(25) usuario_protheus
         nvarchar(20) id_protheus
     }
+    versoes_aplicativo {
+        bigint id PK
+        int codigo UK
+        nvarchar(40) nome
+        nvarchar(255) arquivo
+        bigint tamanho
+        nvarchar(64) sha256
+        bit obrigatoria
+        bit ativo
+        nvarchar(1000) observacao
+        nvarchar(20) unidade
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     maquinas ||--o{ apontamentos : "maquina_id"
     turnos |o--o{ apontamentos : "turno_id"
     produtos |o--o{ apontamentos : "produto_id"
@@ -1133,6 +1149,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
 | [`usuarios`](#usuarios) | Sistema | `id` | 24 | 0 |
+| [`versoes_aplicativo`](#versoes_aplicativo) | Sistema | `id` | 14 | 2 |
 
 ### agendas_sincronizacao
 
@@ -2613,3 +2630,26 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `usuarios_entra_oid_unique` único (entra_oid) · `usuarios_email_index` (email) · `usuarios_usuario_protheus_index` (usuario_protheus) · `usuarios_id_protheus_index` (id_protheus)
 
 **Regras (CHECK, só no SQL Server):** `ck_usuarios_perfil`: `perfil IN ('sem_acesso', 'operador', 'admin')`
+
+### versoes_aplicativo
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `codigo` | `int` | não |  |  |
+| `nome` | `nvarchar(40)` | não |  |  |
+| `arquivo` | `nvarchar(255)` | não |  |  |
+| `tamanho` | `bigint` | não |  |  |
+| `sha256` | `nvarchar(64)` | não |  |  |
+| `obrigatoria` | `bit` | não | `'0'` |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `observacao` | `nvarchar(1000)` | sim |  |  |
+| `unidade` | `nvarchar(20)` | não | `'ambos'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `versoes_aplicativo_codigo_unique` único (codigo)

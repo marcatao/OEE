@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AplicativoController;
 use App\Http\Controllers\Admin\BancoController;
 use App\Http\Controllers\Admin\CalendarioController;
 use App\Http\Controllers\Admin\CentroCustoController;
@@ -256,6 +257,11 @@ Route::middleware('auth')->group(function () {
         Route::put('banco/agendas/{chave}', [BancoController::class, 'salvarAgenda'])->name('banco.agenda');
         // Botão da tela: sincroniza em etapas curtas (JSON), sem estourar o tempo limite do IIS.
         Route::post('banco/sincronizar/etapa', [BancoController::class, 'etapa'])->name('banco.sincronizar.etapa');
+        // Aplicativo Android: publicar o APK (os celulares se atualizam pelo portal).
+        Route::get('aplicativo', [AplicativoController::class, 'index'])->name('aplicativo');
+        Route::post('aplicativo', [AplicativoController::class, 'store'])->name('aplicativo.store');
+        Route::put('aplicativo/{versao}', [AplicativoController::class, 'update'])->whereNumber('versao')->name('aplicativo.update');
+        Route::get('aplicativo/{versao}/apk', [AplicativoController::class, 'baixar'])->whereNumber('versao')->name('aplicativo.baixar');
     });
 
     // Administração / cadastros (Administrador de Produção ou de Tecnologia; cada um vê as unidades dele)

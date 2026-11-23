@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Aplicativo;
 use App\Http\Controllers\Controller;
 use App\Models\Usuario;
 use App\Services\Aplicativo\LoginAplicativo;
+use App\Services\Aplicativo\VersoesAplicativo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** API do aplicativo Android: login (troca do código), dados do usuário e logout. */
 class ApiAplicativoController extends Controller
@@ -37,6 +40,27 @@ class ApiAplicativoController extends Controller
         $request->attributes->get('token_aplicativo')->forceFill(['revogado_em' => now()])->save();
 
         return response()->json(['ok' => true]);
+    }
+
+    /** Versão mais nova do app no portal (?instalado=build do celular): se há nova e se é obrigatória. */
+    public function versao(Request $request, VersoesAplicativo $versoes): JsonResponse
+    {
+        $instalado = $request->filled('instalado') ? max(0, (int) $request->query('instalado')) : null;
+
+        return response()->json($versoes->paraOApp($instalado));
+    }
+
+    /** O APK da versão mais nova (o app confere o SHA-256 e pede a instalação). */
+    public function apk(VersoesAplicativo $versoes): StreamedResponse
+    {
+        $atual = $versoes->atual();
+        abort_unless($atual !== null, 404, 'Nenhuma versão publicada.');
+
+        return Storage::disk('local')->download($atual->arquivo, $atual->nomeArquivo(), [
+            'Content-Type' => 'application/vnd.android.package-archive',
+            'X-Versao-Codigo' => (string) $atual->codigo,
+            'X-Sha256' => $atual->sha256,
+        ]);
     }
 
     /** O que o app precisa saber do usuário: quem é, perfis, áreas e quais menus mostra (mesmas permissões do portal). */

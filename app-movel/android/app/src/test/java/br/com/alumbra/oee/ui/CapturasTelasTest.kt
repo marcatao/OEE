@@ -2,6 +2,10 @@ package br.com.alumbra.oee.ui
 
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
+import br.com.alumbra.oee.atualizacao.CartaoAtualizacao
+import br.com.alumbra.oee.atualizacao.EstadoAtualizacao
+import br.com.alumbra.oee.atualizacao.InfoAtualizacao
+import br.com.alumbra.oee.atualizacao.TelaAtualizacaoObrigatoria
 import br.com.alumbra.oee.rede.EstadoRede
 import br.com.alumbra.oee.sessao.UsuarioApp
 import org.junit.Rule
@@ -45,6 +49,23 @@ class CapturasTelasTest {
     fun principal_bloqueada_escuro() = paparazzi.snapshot {
         TemaOee(escuro = true) {
             TelaPrincipal(usuario, agora - 50 * 3_600_000L, 48, true, false, null, false, {}, {}, agora = agora)
+        }
+    }
+
+    private val novaVersao = InfoAtualizacao(23, "0.13.0", 8_840_000, "abc", "Atualização pelo portal e gráfico com a meta.", true, false)
+
+    @Test
+    fun principal_com_atualizacao() = paparazzi.snapshot {
+        TemaOee(escuro = false) {
+            TelaPrincipal(usuario, agora - 5 * 60_000, 48, false, false, null, true, {}, {}, agora = agora,
+                cartaoAtualizacao = { CartaoAtualizacao(EstadoAtualizacao(novaVersao, progresso = 0.42f)) {} })
+        }
+    }
+
+    @Test
+    fun atualizacao_obrigatoria() = paparazzi.snapshot {
+        TemaOee(escuro = false) {
+            TelaAtualizacaoObrigatoria(EstadoAtualizacao(novaVersao.copy(obrigatoria = true)), {}, {})
         }
     }
 }

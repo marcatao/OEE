@@ -79,6 +79,9 @@ class MainActivity : ComponentActivity() {
     private var encerramento by mutableStateOf<EncerramentoPendente?>(null)
     private var enviandoEncerramento by mutableStateOf(false)
     private var erroEncerramento by mutableStateOf<String?>(null)
+    // Atualização do app pelo portal (Segurança › Aplicativo).
+    private var atualizacao by mutableStateOf<br.com.alumbra.oee.atualizacao.EstadoAtualizacao?>(null)
+    private var ultimaVerificacaoVersao = 0L
 
     /** Telas internas (o usuário logado navega entre elas; "voltar" sobe um nível). */
     private sealed interface Tela {
@@ -169,10 +172,20 @@ class MainActivity : ComponentActivity() {
                                     atualizarResumo++
                                 },
                             )
+                        } else if (atualizacao?.info?.obrigatoria == true) {
+                            // Versão obrigatória no portal: só volta a usar o app depois de atualizar.
+                            br.com.alumbra.oee.atualizacao.TelaAtualizacaoObrigatoria(atualizacao!!, ::atualizarApp, ::sair)
                         } else {
                             val atual = if (bloqueada) Tela.Principal else tela
                             BackHandler(enabled = atual != Tela.Principal) { tela = atual.acima() }
                             TelaLogado(u, atual, bloqueada, resumo)
+                        }
+                        // Confere a versão no portal ao entrar e a cada 30 minutos com o app aberto.
+                        LaunchedEffect(u) {
+                            while (true) {
+                                verificarAtualizacao()
+                                kotlinx.coroutines.delay(30 * 60_000L)
+                            }
                         }
                         if (pendentes.isNotEmpty() && System.currentTimeMillis() >= silenciadoAte && !bloqueada) {
                             AlertaNovaSs(pendentes, assumindo, aoAssumir = ::assumir, aoRecusar = ::recusar, aoVerDepois = { silenciadoAte = System.currentTimeMillis() + 180_000 })
@@ -199,6 +212,9 @@ class MainActivity : ComponentActivity() {
                 aoAbrirFuncao = { funcao -> tela = if (funcao == "maquinas") Tela.Maquinas else Tela.Os },
                 pendenciasOs = (resumo?.pendentes?.size ?: 0) + (resumo?.avaliacoes ?: 0),
                 itensAlerta = if (u.mantenedor) itensAlerta else null,
+                cartaoAtualizacao = atualizacao?.takeIf { it.info.temNova }?.let { e ->
+                    { br.com.alumbra.oee.atualizacao.CartaoAtualizacao(e, ::atualizarApp) }
+                },
                 aoAjustarAlerta = { runCatching { startActivity(it) } },
                 aoTestarAlerta = {
                     ServicoAlertas.testar(this)
@@ -425,6 +441,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Voltou da tela "Instalar apps desconhecidos": continua a atualização sozinho se a permissão foi dada.
+        atualizacao?.takeIf { it.aguardandoPermissao }?.let {
+            if (br.com.alumbra.oee.atualizacao.Atualizador.podeInstalar(this)) atualizarApp() else atualizacao = it.copy(aguardandoPermissao = false)
+        }
+        verificarAtualizacao()
         ServicoAlertas.appNaFrente = true
         itensAlerta = br.com.alumbra.oee.alertas.ConferenciaAlertas.itens(this)
         // Religa o serviço de alertas a cada abertura (o sistema pode tê-lo matado).
@@ -476,6 +497,46 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Pergunta ao portal se há versão nova (no máximo a cada 10 min, ou [forcar]); sem rede, não faz nada. */
+    private fun verificarAtualizacao(forcar: Boolean = false) {
+        val token = sessao.token ?: return
+        val agora = System.currentTimeMillis()
+        if (!forcar && agora - ultimaVerificacaoVersao < 10 * 60_000L) return
+        if (atualizacao?.progresso != null) return
+        ultimaVerificacaoVersao = agora
+        lifecycleScope.launch {
+            runCatching { br.com.alumbra.oee.atualizacao.Atualizador.verificar(token) }.onSuccess { info ->
+                atualizacao = info?.takeIf { it.temNova }?.let { novo ->
+                    atualizacao?.takeIf { it.info.codigo == novo.codigo }?.copy(info = novo) ?: br.com.alumbra.oee.atualizacao.EstadoAtualizacao(novo)
+                }
+            }
+        }
+    }
+
+    /** Baixa o APK novo pelo portal e abre o instalador do Android (o usuário toca em "Instalar"). */
+    private fun atualizarApp() {
+        val token = sessao.token ?: return
+        val estado = atualizacao ?: return
+        val atualizador = br.com.alumbra.oee.atualizacao.Atualizador
+        if (!atualizador.podeInstalar(this)) {
+            atualizacao = estado.copy(aguardandoPermissao = true, erro = null)
+            runCatching { atualizador.abrirPermissao(this) }
+            return
+        }
+        atualizacao = estado.copy(progresso = 0f, erro = null, aguardandoPermissao = false)
+        lifecycleScope.launch {
+            try {
+                val apk = atualizador.baixar(this@MainActivity, token, estado.info) { p -> atualizacao = atualizacao?.copy(progresso = p) }
+                atualizacao = atualizacao?.copy(progresso = null)
+                atualizador.instalar(this@MainActivity, apk)
+            } catch (e: ErroApi) {
+                if (e.semAcesso) perderAcesso(e.message ?: "") else atualizacao = atualizacao?.copy(progresso = null, erro = e.message)
+            } catch (e: Exception) {
+                atualizacao = atualizacao?.copy(progresso = null, erro = "Não foi possível abrir o instalador: ${e.message}")
+            }
+        }
+    }
+
     private fun sincronizar() {
         val token = sessao.token ?: return
         ocupado = true
@@ -485,6 +546,7 @@ class MainActivity : ComponentActivity() {
                 sessao.gravarSincronizacao(ApiPortal.get("eu", token))
                 usuario = sessao.usuario
                 relogio++
+                verificarAtualizacao(forcar = true)
             } catch (e: ErroApi) {
                 if (e.semAcesso) {
                     sessao.sair()
