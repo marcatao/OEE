@@ -66,6 +66,10 @@ data class ProducaoApp(
     val porHora: List<HoraProducao>,
     val pecasTurno: Int,
     val cicloMedio: Int?,
+    /** Ciclo médio pronto para exibir, com milissegundos ("0,040 s", "32,0 s"); null em portal antigo. */
+    val cicloMedioTexto: String? = null,
+    /** Ciclo médio em segundos com milissegundos (0.04 = 40 ms). */
+    val cicloMedioS: Double? = null,
     val cavidades: Int,
     val pecasPorMinuto: Double,
     val metaPorMinuto: Double?,
@@ -141,6 +145,8 @@ fun producaoDe(j: JSONObject?): ProducaoApp? = j?.let {
         porHora = it.optJSONArray("por_hora").lista { h -> HoraProducao(h.optString("hora"), h.texto("inicio"), h.optInt("pecas")) },
         pecasTurno = it.optInt("pecas_turno"),
         cicloMedio = if (it.isNull("ciclo_medio")) null else it.optInt("ciclo_medio"),
+        cicloMedioTexto = if (!it.has("ciclo_medio_texto") || it.isNull("ciclo_medio_texto")) null else it.optString("ciclo_medio_texto"),
+        cicloMedioS = if (!it.has("ciclo_medio_s") || it.isNull("ciclo_medio_s")) null else it.optDouble("ciclo_medio_s"),
         cavidades = it.optInt("cavidades", 1),
         pecasPorMinuto = it.optDouble("pecas_por_minuto", 0.0),
         metaPorMinuto = if (!it.has("meta_por_minuto") || it.isNull("meta_por_minuto")) null else it.optDouble("meta_por_minuto"),

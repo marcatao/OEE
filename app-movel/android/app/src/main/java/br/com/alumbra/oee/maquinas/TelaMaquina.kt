@@ -446,24 +446,31 @@ private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
+                val textoPcMin = pcMin(p.pecasPorMinuto)
                 Text(
-                    "%.1f".format(Locale("pt", "BR"), p.pecasPorMinuto),
-                    style = MaterialTheme.typography.headlineMedium,
+                    textoPcMin,
+                    // Máquina rápida (milhares de pç/min): letra menor para caber na metade do cartão.
+                    style = if (textoPcMin.length > 8) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
+                    maxLines = 1,
+                    softWrap = false,
                     color = if (produzindo) MaterialTheme.colorScheme.primary else corTexto,
                     fontWeight = FontWeight.Bold,
                 )
                 Text("pç/min agora", style = MaterialTheme.typography.bodyMedium, color = corTexto)
             }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                Text(numero(p.pecasTurno.toDouble()), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                val textoTurno = numero(p.pecasTurno.toDouble())
+                Text(textoTurno, style = if (textoTurno.length > 8) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                 Text("peças no turno", style = MaterialTheme.typography.bodyMedium, color = corTexto)
             }
         }
         Text(
             listOfNotNull(
-                p.cicloMedio?.let { "Ciclo $it s" },
+                // Ciclo com milissegundos (máquinas com mais de uma peça por segundo): o texto do portal; senão o inteiro antigo.
+                (p.cicloMedioTexto?.takeIf { it != "—" } ?: p.cicloMedioS?.let { cicloTexto(it) } ?: p.cicloMedio?.let { "$it s" })?.let { "Ciclo $it" },
                 "${p.cavidades} ${if (p.cavidades == 1) "cavidade" else "cavidades"}",
-                p.metaPorMinuto?.let { "Meta %.1f pç/min".format(Locale("pt", "BR"), it) },
+                p.metaPorMinuto?.let { "Meta ${pcMin(it)} pç/min" },
             ).joinToString(" · "),
             style = MaterialTheme.typography.labelSmall,
             color = corTexto,
@@ -691,6 +698,17 @@ private fun LinhaApontamento(a: ApontamentoApp) {
         }
     }
 }
+
+/** Peças por minuto com 1 casa e milhar ("12.000,0"). */
+private fun pcMin(v: Double): String =
+    java.text.NumberFormat.getNumberInstance(Locale("pt", "BR")).apply { minimumFractionDigits = 1; maximumFractionDigits = 1 }.format(v)
+
+/** Ciclo em segundos: 3 casas abaixo de 10 s ("0,040 s"), 1 casa acima ("32,0 s"). */
+private fun cicloTexto(s: Double): String =
+    java.text.NumberFormat.getNumberInstance(Locale("pt", "BR")).apply {
+        val casas = if (s < 10) 3 else 1
+        minimumFractionDigits = casas; maximumFractionDigits = casas
+    }.format(s) + " s"
 
 private fun paraMs(iso: String?): Long? = iso?.let { runCatching { OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull() }
 

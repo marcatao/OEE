@@ -1,5 +1,11 @@
 # Versões do aplicativo
 
+## 0.12.4 (build 21)
+
+- Máquinas rápidas (mais de uma peça por segundo): o ciclo médio aparece com milissegundos ("Ciclo 0,040 s"; acima de
+  10 s, "32,0 s"), pelo `ciclo_medio_texto` do portal. Peças por minuto, meta e peças no turno com separador de milhar
+  ("12.000,0 pç/min"); números grandes usam letra um pouco menor para não quebrar o cartão de produção.
+
 ## 0.12.3 (build 20)
 
 - As peças do IoT passam a se chamar **Contagem IoT** em todo o app (cartão da OP na tela da máquina e Detalhes da

@@ -154,4 +154,22 @@ class CapturasMaquinasTest {
 
     @Test
     fun detalhes_op_engenharia() = paparazzi.snapshot { TemaOee(escuro = false) { ConteudoDetalhesOp("06267801001", detalhesOp, null, 3, {}, {}, {}) } }
+
+    /** Máquina rápida (mais de uma peça por segundo): ciclo em milissegundos e milhares de pç/min sem quebrar o cartão. */
+    @Test
+    fun maquina_rapida() = paparazzi.snapshot {
+        TemaOee(escuro = false) {
+            val d = detalhe(comOp = true, pendente = false).copy(
+                situacao = "produzindo", legenda = produzindo,
+                producao = ProducaoApp(
+                    porHora = listOf(720000, 718500, 0, 702300, 719900, 360000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).mapIndexed { i, p ->
+                        HoraProducao("%02d:00".format(6 + i), iso((11 * 3_600_000L + 20 * 60_000) - i * 3_600_000L), p)
+                    },
+                    pecasTurno = 3220700, cicloMedio = 0, cicloMedioTexto = "0,040 s", cicloMedioS = 0.04, cavidades = 8,
+                    pecasPorMinuto = 12000.0, metaPorMinuto = 11500.0,
+                ),
+            )
+            ConteudoMaquina("Prensa 05", d, null, agora, true, {}, {}, {}, {}, agora = agora)
+        }
+    }
 }
