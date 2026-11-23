@@ -137,6 +137,13 @@ class EmpenhosEngenhariaOpTest extends TestCase
             ->assertSee('name="h4_qtdcavativas"', false)
             ->assertSee('MOLDE TAMPA 8 CAV')->assertSee('INJETAR NA 02')->assertDontSee('MOLDE TAMPA 4 CAV')
             ->assertSee('RESINA PP')->assertSee('tem estrutura própria')->assertDontSee('ANTIGO');
+        $this->get("/producao/ordens-de-producao/{$op->id}")->assertSee('Vigência da estrutura')->assertSee('<strong>Vigência:</strong> sem limite', false);
+        // Vigência da estrutura inteira: do início mais recente ao fim mais próximo dos componentes.
+        $linhas = collect([(object) ['g1_ini' => '20260101', 'g1_fim' => ''], (object) ['g1_ini' => '20260315', 'g1_fim' => '20261231'],
+            (object) ['g1_ini' => '', 'g1_fim' => '20270630']]);
+        $v = EngenhariaOrdemProducao::vigenciaDaEstrutura($linhas);
+        $this->assertSame(['inicio' => '20260315', 'fim' => '20261231'], $v);
+        $this->assertSame('15/03/2026 até 31/12/2026', EngenhariaOrdemProducao::textoVigencia($v));
 
         // Cavidades ativas editadas na aba Ferramenta: volta para a OP; acima das do Protheus, erro.
         $molde = Ferramenta::where('h4_codigo', 'MOLD02')->sole();

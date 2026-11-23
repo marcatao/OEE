@@ -125,6 +125,34 @@ class EngenhariaOrdemProducao
         return $codigos->map(fn ($c) => ['codigo' => $c, 'ferramenta' => $roteiro['ferramentas'][$c] ?? null])->all();
     }
 
+    /**
+     * Vigência da estrutura (SG1) como um todo: de o início mais recente dos componentes (quando esta composição passou
+     * a valer) até o fim mais próximo (quando algum componente sai e ela muda). Datas AAAAMMDD; null = sem limite.
+     *
+     * @return array{inicio: ?string, fim: ?string}
+     */
+    public static function vigenciaDaEstrutura(Collection $linhas): array
+    {
+        $inicios = $linhas->map(fn ($l) => trim((string) $l->g1_ini))->filter();
+        $fins = $linhas->map(fn ($l) => trim((string) $l->g1_fim))->filter();
+
+        return ['inicio' => $inicios->max() ?: null, 'fim' => $fins->min() ?: null];
+    }
+
+    /** Texto da vigência: "01/03/2026 até 31/12/2026", "desde 01/03/2026", "até 31/12/2026" ou "sem limite". */
+    public static function textoVigencia(array $vigencia): string
+    {
+        $ini = $vigencia['inicio'] ? OrdemProducao::data($vigencia['inicio']) : null;
+        $fim = $vigencia['fim'] ? OrdemProducao::data($vigencia['fim']) : null;
+
+        return match (true) {
+            $ini && $fim => "{$ini} até {$fim}",
+            (bool) $ini => "desde {$ini}",
+            (bool) $fim => "até {$fim}",
+            default => 'sem limite',
+        };
+    }
+
     /** Tudo para a tela da OP, com as descrições dos produtos citados. */
     public function daOp(OrdemProducao $op): array
     {
@@ -135,6 +163,7 @@ class EngenhariaOrdemProducao
             'empenhos' => $empenhos,
             'estrutura' => $estrutura,
             'roteiro' => $this->roteiro($op),
+            'vigenciaEstrutura' => self::vigenciaDaEstrutura($estrutura),
             'produtosEngenharia' => $this->custo->produtos($empenhos->pluck('d4_cod')->merge($estrutura->pluck('g1_comp'))),
         ];
     }

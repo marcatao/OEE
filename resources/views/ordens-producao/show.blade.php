@@ -64,6 +64,7 @@
         <div><dt>Encerrada em</dt><dd>{{ trim($op->c2_datrf) !== '' ? OrdemProducao::data($op->c2_datrf) : '-' }}</dd></div>
         <div><dt>Roteiro</dt><dd>{{ $roteiro['codigo'] ?: '-' }}@if ($roteiro['codigo'] && ! $roteiro['informado'])<small>padrão do produto</small>@endif</dd></div>
         <div><dt>Revisão da estrutura</dt><dd>{{ trim($op->c2_revisao) ?: '-' }}</dd></div>
+        <div title="Período em que a estrutura atual (SG1) vale: do início mais recente ao fim mais próximo dos componentes"><dt>Vigência da estrutura</dt><dd>{{ $estrutura->isEmpty() ? '-' : \App\Services\EngenhariaOrdemProducao::textoVigencia($vigenciaEstrutura) }}</dd></div>
         <div><dt>Armazém</dt><dd>{{ trim($op->c2_local) ?: '-' }}</dd></div>
         <div><dt>Centro de custo</dt><dd>{{ trim($op->c2_cc) ?: '-' }}</dd></div>
         <div><dt>Tipo</dt><dd>{{ ['F' => 'Firme', 'P' => 'Prevista'][trim($op->c2_tpop)] ?? (trim($op->c2_tpop) ?: '-') }}</dd></div>
@@ -234,6 +235,8 @@
 
     <div class="abas-painel" role="tabpanel" data-painel="estrutura" hidden>
       <h3>Estrutura atual do produto</h3>
+      <p><strong>Revisão:</strong> {{ trim($op->c2_revisao) ?: 'sem revisão na OP' }}
+        · <strong>Vigência:</strong> {{ $estrutura->isEmpty() ? '-' : \App\Services\EngenhariaOrdemProducao::textoVigencia($vigenciaEstrutura) }}</p>
       <p class="suave">Componentes de <code>{{ $op->c2_produto }}</code> na estrutura do Protheus (SG1) vigente {{ trim($op->c2_revisao) !== '' ? 'hoje, na revisão '.trim($op->c2_revisao).' da OP' : 'hoje' }} (1º nível). Por peça = quantidade da estrutura ÷ quantidade base do
         produto (B1_QB). Necessidade da OP = por peça × {{ Formato::quantidade($op->c2_quant) }} (quantidade da OP), acrescida da perda %
         como na explosão do Protheus (÷ (1 − perda)); componente de quantidade fixa não multiplica. Empenhado: o que está na SD4 para o

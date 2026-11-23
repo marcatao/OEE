@@ -106,6 +106,12 @@ class DetalhesOpAplicativo
                 'saldo' => (float) $e->d4_quant,
                 'atendido' => $e->atendido(), // fração
             ])->values()->all(),
+            // Vigência da estrutura como um todo (início mais recente → fim mais próximo dos componentes; null = sem limite)
+            'estrutura_vigencia' => [
+                'inicio' => ($v = EngenhariaOrdemProducao::vigenciaDaEstrutura($engenharia['estrutura']))['inicio'] ? OrdemProducao::data($v['inicio']) : null,
+                'fim' => $v['fim'] ? OrdemProducao::data($v['fim']) : null,
+                'texto' => $engenharia['estrutura']->isEmpty() ? null : EngenhariaOrdemProducao::textoVigencia($v),
+            ],
             'estrutura' => $engenharia['estrutura']->map(fn ($g) => [
                 'trt' => $texto($g->g1_trt),
                 'componente' => rtrim((string) $g->g1_comp),
@@ -117,6 +123,8 @@ class DetalhesOpAplicativo
                 'necessidade' => (float) $g->necessidade,
                 'empenhado' => $g->empenhado === null ? null : (float) $g->empenhado,
                 'intermediario' => (bool) $g->tem_estrutura,
+                'vigencia_inicio' => OrdemProducao::data($g->g1_ini) ?: null,
+                'vigencia_fim' => OrdemProducao::data($g->g1_fim) ?: null,
             ])->values()->all(),
             'roteiro' => [
                 'codigo' => $roteiro['codigo'],
