@@ -6,6 +6,7 @@ use App\Models\FiltroUsuario;
 use App\Models\Legenda;
 use App\Models\Turno;
 use App\Services\Filtros\FiltroTimeline;
+use App\Services\HorarioApontamento;
 use App\Services\MotivoParada;
 use App\Services\SituacaoMaquina;
 use App\Services\Timeline;
@@ -43,6 +44,8 @@ class TimelineController extends Controller
         if (! $request->boolean('parcial')) {
             app(SituacaoMaquina::class)->desvincularOpsFechadas();
         }
+        // Só o mais recente de cada máquina fica em aberto (rede de segurança além do agendador; uma consulta agrupada).
+        HorarioApontamento::conferirAbertos();
 
         $dados = $this->resultado($filtro, $timeline);
         if ($request->boolean('parcial')) {

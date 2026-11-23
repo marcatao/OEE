@@ -6,6 +6,7 @@ use App\Models\Apontamento;
 use App\Models\ApontamentoEstado;
 use App\Models\Maquina;
 use App\Models\Parada;
+use App\Services\HorarioApontamento;
 use App\Services\IndicadoresOee;
 use App\Services\PanoramaMaquinas;
 use App\Services\Periodo;
@@ -39,6 +40,7 @@ class DashboardController extends Controller
     public function maquina(Request $request, Maquina $maquina, IndicadoresOee $indicadores, PanoramaMaquinas $panorama): View
     {
         $periodo = Periodo::de($request->query('periodo'));
+        HorarioApontamento::fecharAbertosAnteriores((int) $maquina->id); // só o mais recente fica em aberto
         $maquina->load(['linha.planta', 'dispositivos' => fn ($q) => $q->orderBy('nome')]);
 
         return view('dashboard.maquina', [

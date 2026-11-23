@@ -117,4 +117,33 @@ class CorrecoesAuditoriaProducaoTest extends TestCase
         $this->assertNull(ApontamentoEstado::find($q)->fim);
         $this->assertSame(1, ApontamentoEstado::where('maquina_id', $this->maquina->id)->whereNull('fim')->count());
     }
+
+    public function test_dois_em_aberto_sao_corrigidos_sem_esperar_o_agendador(): void
+    {
+        $prod = Legenda::create(['codigo' => 'XPR', 'descricao' => 'Produção', 'tipo' => 'produzindo', 'cor' => '#2e7d32', 'unidade' => 'manutencao']);
+        $abrir = function () use ($prod) {
+            ApontamentoEstado::query()->delete();
+            DB::table('apontamentos_estado')->insert(['maquina_id' => $this->maquina->id, 'legenda_id' => $prod->id,
+                'inicio' => now()->subHours(3), 'criado_em' => now(), 'atualizado_em' => now()]);
+            DB::table('apontamentos_estado')->insert(['maquina_id' => $this->maquina->id, 'legenda_id' => $prod->id,
+                'inicio' => now()->subMinutes(12), 'observacao' => '[IoT] x', 'criado_em' => now(), 'atualizado_em' => now()]);
+        };
+        $abertos = fn () => ApontamentoEstado::where('maquina_id', $this->maquina->id)->whereNull('fim')->count();
+
+        // 1) Aviso do integrador depois de cada ciclo.
+        $abrir();
+        config(['oee.iot.token' => str_repeat('t', 40)]);
+        $this->postJson('/api/iot/apontamentos/processar', ['ops' => [1]], ['Authorization' => 'Bearer '.str_repeat('t', 40)])->assertOk();
+        $this->assertSame(1, $abertos());
+
+        // 2) Ao abrir o Dashboard da máquina.
+        $abrir();
+        $this->get("/producao/dashboard/{$this->maquina->id}");
+        $this->assertSame(1, $abertos());
+
+        // 3) Ao abrir (ou atualizar) a Timeline.
+        $abrir();
+        $this->get('/dashboards/timeline?parcial=1');
+        $this->assertSame(1, $abertos());
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ApontamentoEstado;
+use App\Services\HorarioApontamento;
 use App\Services\Manutencao\SsAutomatica;
 use App\Services\PecasProduzidas;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +33,14 @@ class IntegradorIotController extends Controller
             'ops.*' => ['integer', 'min:1'],
         ]);
         $ids = array_values(array_unique(array_map('intval', $dados['apontamentos'] ?? [])));
+
+        // 0) Só o apontamento mais recente de cada máquina fica em aberto (o integrador grava direto no banco, sem os
+        //    eventos do portal): encerra os abertos que ficaram para trás antes de tudo (uma consulta agrupada).
+        try {
+            HorarioApontamento::conferirAbertos();
+        } catch (Throwable $e) {
+            Log::error('Integrador IoT: falha ao encerrar apontamentos em aberto', ['erro' => $e->getMessage()]);
+        }
 
         // 1) SS automática dos apontamentos criados ou com a legenda trocada.
         $resultado = [];
