@@ -1,7 +1,8 @@
 {{--
   Gráfico de barras de peças por hora (SVG, cores do portal.css). Parâmetros: $horas (ProducaoPorHora: hora, pecas,
   atual, futura, meta) e opcional $altura (unidades do desenho). A barra da hora atual fica destacada; as horas que
-  ainda não chegaram aparecem só como trilho. Com meta, um traço tracejado na altura da meta de cada hora.
+  ainda não chegaram aparecem só como trilho. Com meta, um traço tracejado na altura da meta de cada hora e a barra
+  colorida pelo % da meta (ProducaoPorHora::nivelMeta: ≥ 90% verde, ≥ 50% amarela, abaixo vermelha).
 --}}
 @php
   $passo = 48; $barra = 32; $altura ??= 200; $topo = 22; $base = 24;
@@ -15,8 +16,9 @@
 <svg class="ph-svg" viewBox="0 0 {{ $largura }} {{ $altura }}" role="img" aria-label="Peças por hora">
   @foreach ($horas as $i => $h)
     @php($x = $i * $passo + ($passo - $barra) / 2)
-    <g class="ph-hora {{ $h['atual'] ? 'atual' : '' }} {{ $h['futura'] ? 'futura' : '' }}">
-      <title>{{ $h['hora'] }} — {{ \App\Support\Formato::inteiro($h['pecas']) }} peças{{ $h['meta'] !== null ? ' · meta '.\App\Support\Formato::inteiro($h['meta']) : '' }}{{ $h['atual'] ? ' (hora atual)' : '' }}</title>
+    @php($nivel = \App\Services\ProducaoPorHora::nivelMeta($h))
+    <g class="ph-hora {{ $h['atual'] ? 'atual' : '' }} {{ $h['futura'] ? 'futura' : '' }} {{ $nivel ? 'meta-'.$nivel : '' }}">
+      <title>{{ $h['hora'] }} — {{ \App\Support\Formato::inteiro($h['pecas']) }} peças{{ $h['meta'] !== null ? ' · meta '.\App\Support\Formato::inteiro($h['meta']) : '' }}{{ $nivel ? ' · '.\App\Support\Formato::pct($h['pecas'] / $h['metaAteAgora'], 0).' da meta'.($h['atual'] ? ' até agora' : '') : '' }}{{ $h['atual'] ? ' (hora atual)' : '' }}</title>
       <rect class="ph-trilho" x="{{ $x }}" y="{{ $topo }}" width="{{ $barra }}" height="{{ $util }}" rx="5"/>
       @if ($h['pecas'] > 0)
         <rect class="ph-barra" x="{{ $x }}" y="{{ $y($h['pecas']) }}" width="{{ $barra }}" height="{{ round($topo + $util - $y($h['pecas']), 2) }}" rx="5"/>

@@ -2,6 +2,8 @@
 
 use App\Models\ApontamentoEstado;
 use App\Models\Compras\PedidoCompra;
+use App\Models\Maquina;
+use App\Models\OrdemProducao;
 use App\Models\Usuario;
 use App\Services\Assistente\ClienteClaude;
 use App\Services\Assistente\DiagnosticoErro;
@@ -11,6 +13,7 @@ use App\Services\InfoBanco;
 use App\Services\Manutencao\GeradorPreventivas;
 use App\Services\Manutencao\SsAutomatica;
 use App\Services\MaquinasSemIot;
+use App\Services\MetaProducao;
 use App\Services\PecasProduzidas;
 use App\Services\Protheus\AgendaSincronizacoes;
 use App\Services\Protheus\SincronizadorProtheus;
@@ -172,6 +175,20 @@ Artisan::command('pecas:conferir', function (PecasProduzidas $pecas) {
     $this->info("Peças conferidas: {$r['apontamentos']} apontamento(s) refeito(s), {$r['ops']} OP(s) somada(s).");
 })->purpose('Refaz as peças dos apontamentos do IoT que ficaram desatualizadas e soma a quantidade real das OPs');
 Schedule::command('pecas:conferir')->everyFiveMinutes()->withoutOverlapping()->runInBackground();
+
+// Metas de produção: registra (metas_producao) a meta do item MO da estrutura das OPs atuais das máquinas quando muda,
+// para que mudar a estrutura não altere a meta para trás.
+Artisan::command('metas:registrar', function (MetaProducao $metas) {
+    $n = 0;
+    OrdemProducao::whereIn('id', Maquina::withoutGlobalScopes()->where('ativo', true)
+        ->whereNotNull('ordem_producao_id')->select('ordem_producao_id'))
+        ->get()->each(function ($op) use ($metas, &$n) {
+            $metas->registrar($op);
+            $n++;
+        });
+    $this->info("Metas conferidas de {$n} OP(s).");
+})->purpose('Registra as metas de produção (item MO da estrutura) das OPs atuais das máquinas quando mudam');
+Schedule::command('metas:registrar')->everyFiveMinutes()->withoutOverlapping()->runInBackground();
 
 // SS automática: paradas EM ABERTO com legenda que abre SS e sem chamado (aviso do integrador perdido). Idempotente.
 Artisan::command('ss:conferir-automaticas', function (SsAutomatica $ss) {

@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **59** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **60** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -325,6 +325,17 @@ erDiagram
         nvarchar(5) jornada_inicio
         nvarchar(5) jornada_fim
         nvarchar(200) horarios_semana
+    }
+    metas_producao {
+        bigint id PK
+        nvarchar(30) produto
+        nvarchar(3) revisao
+        nvarchar(30) item_mo
+        float(53) horas
+        float(53) base
+        float(53) por_minuto
+        datetime vigente_desde
+        datetime registrado_em
     }
     motivos_parada {
         bigint id PK
@@ -1078,6 +1089,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`legendas`](#legendas) | Sistema | `id` | 15 | 3 |
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
 | [`maquinas`](#maquinas) | Mista | `id` | 42 | 9 |
+| [`metas_producao`](#metas_producao) | Sistema | `id` | 9 | 0 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
@@ -1658,6 +1670,24 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_) · `maquinas_unidade_index` (unidade)
 
 **Regras (CHECK, só no SQL Server):** `ck_maquinas_paradas`: `micro_parada_s IS NULL OR macro_parada_s IS NULL OR macro_parada_s > micro_parada_s` · `ck_maquinas_iot1_tipo`: `iot1_tipo IS NULL OR iot1_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot2_tipo`: `iot2_tipo IS NULL OR iot2_tipo IN ('producao', 'refugo')` · `ck_maquinas_iot3_tipo`: `iot3_tipo IS NULL OR iot3_tipo IN ('producao', 'refugo')` · `ck_maquinas_d_e_l_e_t_`: `d_e_l_e_t_ IN (' ', '*')` · `ck_maquinas_ativa_com_linha`: `ativo = 0 OR linha_id IS NOT NULL` · `ck_maquinas_ativa_nao_excluida`: `ativo = 0 OR d_e_l_e_t_ <> '*'` · `ck_maquinas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')` · `ck_maquinas_situacao`: `situacao IS NULL OR situacao IN ('produzindo', 'parada')`
+
+### metas_producao
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `produto` | `nvarchar(30)` | não |  |  |
+| `revisao` | `nvarchar(3)` | não | `''` |  |
+| `item_mo` | `nvarchar(30)` | sim |  |  |
+| `horas` | `float(53)` | sim |  |  |
+| `base` | `float(53)` | sim |  |  |
+| `por_minuto` | `float(53)` | sim |  |  |
+| `vigente_desde` | `datetime` | não |  |  |
+| `registrado_em` | `datetime` | não |  |  |
+
+**Índices:** `metas_producao_produto_revisao_vigente_desde_index` (produto, revisao, vigente_desde)
 
 ### motivos_parada
 

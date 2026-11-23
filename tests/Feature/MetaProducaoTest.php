@@ -7,6 +7,7 @@ use App\Models\Ferramenta;
 use App\Models\Legenda;
 use App\Models\Linha;
 use App\Models\Maquina;
+use App\Models\MetaRegistrada;
 use App\Models\OrdemProducao;
 use App\Models\Planta;
 use App\Models\ProdutoProtheus;
@@ -16,6 +17,7 @@ use App\Services\Aplicativo\MaquinasAplicativo;
 use App\Services\CalculadoraOee;
 use App\Services\MetaProducao;
 use App\Services\PanoramaMaquinas;
+use App\Services\ProducaoPorHora;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -168,5 +170,56 @@ class MetaProducaoTest extends TestCase
         $this->assertSame(1.2, CalculadoraOee::performancePelaMeta(120, 100)); // mostrado acima de 100%...
         $this->assertSame(0.9, CalculadoraOee::oeeIot(0.9, 1.2));              // ...mas no OEE limitado a 100%
         $this->assertSame(98.04, round(CalculadoraOee::pecasNaMeta(49.02, 120), 2));
+    }
+
+    public function test_meta_registrada_nao_muda_para_tras_quando_a_estrutura_muda(): void
+    {
+        $metas = function () { // instância nova = requisição nova
+            app()->forgetScopedInstances();
+
+            return app(MetaProducao::class);
+        };
+        $this->assertSame(49.02, $metas()->porMinuto($this->op));
+        $this->assertSame(1, MetaRegistrada::count());
+        $this->assertSame(49.02, $metas()->porMinuto($this->op)); // sem mudança, não registra de novo
+        $this->assertSame(1, MetaRegistrada::count());
+
+        // No dia seguinte a estrutura muda (0,0005 h → 33,33 pç/min): registra a nova, o passado fica com a antiga.
+        $antes = now()->subHour();
+        Carbon::setTestNow(now()->addDay());
+        EstruturaProduto::where('g1_comp', 'MO-1135')->update(['g1_quant' => 0.0005]);
+        $this->assertSame(33.33, $metas()->porMinuto($this->op));
+        $this->assertSame(2, MetaRegistrada::count());
+        $this->assertSame(49.02, $metas()->porMinuto($this->op, $antes));
+        $this->assertSame(49.02, $metas()->porMinuto($this->op, $antes->copy()->subYear())); // antes do 1º registro
+        $this->assertSame(33.33, $metas()->porMinuto($this->op, now()));
+
+        // Estrutura sem MO: a meta acaba a partir daqui (registro sem meta), mas o passado continua.
+        Carbon::setTestNow(now()->addDay());
+        EstruturaProduto::where('g1_comp', 'like', 'MO-%')->update(['d_e_l_e_t_' => '*']);
+        $this->assertNull($metas()->porMinuto($this->op));
+        $this->assertSame(3, MetaRegistrada::count());
+        $this->assertSame(49.02, $metas()->porMinuto($this->op, $antes));
+
+        // O agendador registra as metas das OPs atuais das máquinas.
+        $this->artisan('metas:registrar')->assertSuccessful();
+    }
+
+    public function test_cor_da_barra_pelo_percentual_da_meta(): void
+    {
+        $nivel = fn ($pecas, $meta, $futura = false) => ProducaoPorHora::nivelMeta(['pecas' => $pecas, 'metaAteAgora' => $meta, 'futura' => $futura]);
+        $this->assertSame('boa', $nivel(90, 100));
+        $this->assertSame('media', $nivel(89, 100));
+        $this->assertSame('media', $nivel(50, 100));
+        $this->assertSame('ruim', $nivel(49, 100));
+        $this->assertNull($nivel(10, null));
+        $this->assertNull($nivel(0, 100, true));
+
+        // Hora atual: compara com a meta só até agora (10:00 em ponto = hora 10h sem meta ainda; 09h inteira).
+        $this->apontamento('09:00:00', '09:59:59', 1480, 1, 2); // 1.480 de 2.941 = 50,3%
+        $dados = $this->actingAs($this->admin())->get(route('producao-hora'))->assertOk()
+            ->assertSee('meta-media')->assertSee('meta-ruim')->viewData('maquinas')[0];
+        $this->assertSame('media', ProducaoPorHora::nivelMeta(collect($dados['horas'])->firstWhere('hora', '09:00')));
+        $this->assertSame('ruim', ProducaoPorHora::nivelMeta(collect($dados['horas'])->firstWhere('hora', '08:00')));
     }
 }

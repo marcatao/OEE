@@ -41,7 +41,7 @@ class PanoramaMaquinas
             $blocos = $dados['linhas'][$m->id] ?? [];
             foreach ($blocos as $b) {
                 $s = $b['fim'] - $b['inicio'];
-                $meta = $this->metas->porMinuto($b['apontamento']->ordemProducao);
+                $meta = $this->metas->porMinuto($b['apontamento']->ordemProducao, $b['apontamento']->inicio); // a meta da época
                 if ($meta !== null) {
                     if ($b['legenda']->tipo === 'produzindo') {
                         $pecasNaMeta += CalculadoraOee::pecasNaMeta($meta, $this->fimDoBloco($b) - $b['inicio']);

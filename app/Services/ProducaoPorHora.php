@@ -24,6 +24,7 @@ class ProducaoPorHora
         private PecasProduzidas $pecas,
         private Timeline $timeline,
         private CustoOrdemProducao $custo,
+        private MetaProducao $metas,
     ) {}
 
     /**
@@ -64,7 +65,8 @@ class ProducaoPorHora
             [$inicio, $fim, $rotulo] = $periodos[$id];
             $aps = $lidos->get($id, collect());
             $sit = $situacoes[$id] ?? [];
-            $metaPorMinuto = $sit['metaPorMinuto'] ?? null;
+            // Hoje: a meta de agora; dia passado: a meta registrada vigente no fim daquele turno.
+            $metaPorMinuto = $fim->lessThan($agora) ? $this->metas->porMinuto($sit['op'] ?? null, $fim) : ($sit['metaPorMinuto'] ?? null);
             $horas = $this->horas($this->pecas->porHora($m, $inicio, $fim, $fuso, $aps), $fim, $agora, $metaPorMinuto);
 
             // OPs que produziram no turno (peças repartidas pelo tempo dentro do turno, como as horas).
@@ -123,8 +125,26 @@ class ProducaoPorHora
                 'atual' => $agoraTs >= $ini && $agoraTs < $fimHora,
                 'futura' => $agoraTs < $ini,
                 'meta' => $metaPorMinuto !== null ? round($metaPorMinuto * max(0, $fimHora - $ini) / 60) : null,
+                // Meta até agora (cor da barra): a hora inteira se já passou; a atual só até agora; futura, nenhuma.
+                'metaAteAgora' => $metaPorMinuto !== null && $agoraTs >= $ini
+                    ? $metaPorMinuto * max(0, min($fimHora, $agoraTs) - $ini) / 60 : null,
             ];
         }, $porHora);
+    }
+
+    /**
+     * Cor da barra pela meta (pedido do usuário): % = peças ÷ meta até agora; ≥ 90% verde (boa), ≥ 50% amarela
+     * (media), abaixo vermelha (ruim). null sem meta ou hora futura.
+     */
+    public static function nivelMeta(array $hora): ?string
+    {
+        $meta = $hora['metaAteAgora'] ?? null;
+        if ($meta === null || $meta <= 0 || ! empty($hora['futura'])) {
+            return null;
+        }
+        $pct = $hora['pecas'] / $meta;
+
+        return $pct >= 0.9 ? 'boa' : ($pct >= 0.5 ? 'media' : 'ruim');
     }
 
     /** Média por hora das horas já passadas (sem a atual, que ainda não fechou; sem nenhuma passada, a atual). */
@@ -144,12 +164,15 @@ class ProducaoPorHora
         $porHora = [];
         foreach ($maquinas as $d) {
             foreach ($d['horas'] as $h) {
-                $porHora[$h['inicio']] ??= ['hora' => $h['hora'], 'inicio' => $h['inicio'], 'pecas' => 0, 'atual' => false, 'futura' => true, 'meta' => null];
+                $porHora[$h['inicio']] ??= ['hora' => $h['hora'], 'inicio' => $h['inicio'], 'pecas' => 0, 'atual' => false, 'futura' => true, 'meta' => null, 'metaAteAgora' => null];
                 $porHora[$h['inicio']]['pecas'] += $h['pecas'];
                 $porHora[$h['inicio']]['atual'] = $porHora[$h['inicio']]['atual'] || $h['atual'];
                 $porHora[$h['inicio']]['futura'] = $porHora[$h['inicio']]['futura'] && $h['futura'];
                 if ($h['meta'] !== null) {
                     $porHora[$h['inicio']]['meta'] = ($porHora[$h['inicio']]['meta'] ?? 0) + $h['meta'];
+                }
+                if ($h['metaAteAgora'] !== null) {
+                    $porHora[$h['inicio']]['metaAteAgora'] = ($porHora[$h['inicio']]['metaAteAgora'] ?? 0) + $h['metaAteAgora'];
                 }
             }
         }

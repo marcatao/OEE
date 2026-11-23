@@ -13,6 +13,7 @@
   --grafico-1:#008650; --grafico-2:#1d5fa8; --grafico-3:#d97706; --grafico-4:#7c3aed; --grafico-5:#0f766e; --grafico-6:#be123c; /* séries dos gráficos do assistente */
   --tempo-atendimento:#008650; --tempo-reparo:#1d5fa8; /* gráfico de tempos do painel de OS (validado) */
   --falta-verde:#067647; --falta-amarelo:#a15c07; --falta-vermelho:#b42318; --falta-preto:#1f2a24; /* legendas da ZB5 (falta de produtos) */
+  --meta-boa:#16a34a; --meta-media:#eab308; --meta-ruim:#dc2626; /* barras da produção por hora × meta (≥ 90%, ≥ 50%, abaixo) */
   --falta-faltantes:#d97706; --falta-atendidas:#008650; /* gráfico faltantes × atendidas */
   --largura-menu:clamp(14.5rem, 13vw, 16.5rem); --largura-menu-recolhido:4.25rem; --altura-topo:3.75rem;
 }
@@ -30,6 +31,7 @@
     --grafico-1:#3fbf82; --grafico-2:#7cb2ee; --grafico-3:#fbbf24; --grafico-4:#b794f6; --grafico-5:#5fd4c4; --grafico-6:#fb7185;
     --tempo-atendimento:#2fa86f; --tempo-reparo:#5a95d6;
     --falta-verde:#47cd89; --falta-amarelo:#fbbf24; --falta-vermelho:#f97066; --falta-preto:#c9d4cd;
+    --meta-boa:#4ade80; --meta-media:#facc15; --meta-ruim:#f87171;
     --falta-faltantes:#fbbf24; --falta-atendidas:#3fbf82;
   }
 }
@@ -1281,6 +1283,9 @@ a.kpi:hover { border-color:var(--primaria); transform:translateY(-1px); }
 .ph-trilho { fill:var(--tl-vazio); }
 .ph-barra { fill:var(--primaria); opacity:.72; }
 .ph-hora.atual .ph-barra { opacity:1; }
+.ph-hora.meta-boa .ph-barra { fill:var(--meta-boa); }
+.ph-hora.meta-media .ph-barra { fill:var(--meta-media); }
+.ph-hora.meta-ruim .ph-barra { fill:var(--meta-ruim); }
 .ph-hora.atual .ph-trilho { fill:var(--primaria-suave); }
 .ph-valor { font-size:12px; font-weight:600; fill:var(--texto); font-variant-numeric:tabular-nums; }
 .ph-eixo { font-size:12px; fill:var(--suave); }

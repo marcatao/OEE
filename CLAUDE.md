@@ -127,7 +127,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   pç/min). Só um MO: com mais de um vale o PRIMEIRO (TRT, código), nunca soma; sem MO = sem meta. A meta é FIXA (não
   cai com cavidades desativadas): molde com ativas < H4_QTDCAV e pç/min abaixo da meta = "indicar para conserto"
   (`MetaProducao::moldeParaConserto`; Timeline, Produção por hora, Dashboard por máquina e app `molde_conserto`).
-  Performance (IoT) = peças reais ÷ (meta × tempo produzindo), só dos apontamentos cuja OP tem meta
+  REGISTRADA em `metas_producao` (modelo `MetaRegistrada`, por produto + C2_REVISAO): cada mudança da meta calculada
+  ganha uma linha `vigente_desde` agora (estrutura sem MO = linha sem meta); o passado usa a meta vigente na época
+  (`porMinuto($op, $em)`; antes do 1º registro, o 1º) — mudar a estrutura NUNCA muda a meta para trás. Registra ao
+  calcular e pelo agendador `metas:registrar` (5 min, OPs atuais das máquinas). Produção por hora: barras pela meta
+  até agora (`ProducaoPorHora::nivelMeta`: ≥ 90% verde, ≥ 50% amarela, abaixo vermelha; variáveis `--meta-*`).
+  Performance (IoT) = peças reais ÷ (meta da época × tempo produzindo), só dos apontamentos cuja OP tem meta
   (`CalculadoraOee::performancePelaMeta`, mostrada real, no OEE limitada a 100%); OEE (IoT) = D × P
   (`CalculadoraOee::oeeIot`, `PanoramaMaquinas`), sem qualidade ainda.
 - **Busca de OP** (todas: lista de OPs, campo de OP do apontamento/máquina/Timeline e app): escopo
