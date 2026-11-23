@@ -48,7 +48,7 @@
               <div class="ph-op">
                 @if ($op)
                   <span class="ph-op-rotulo">OP atual</span>
-                  <span class="ph-op-numero">{{ $op->numero }}</span>
+                  <span class="ph-op-numero">@include('partials.link-op', ['op' => $op])</span>
                   <span class="ph-produto"><b>{{ $produto ? $produto->codigo() : rtrim($op->c2_produto) }}</b>@if ($produto) · {{ $produto->descricao() }}@endif</span>
                   @foreach ($sit['moldes'] ?? [] as $molde)
                     <small class="suave">Molde {{ $molde['codigo'] }}@if ($molde['ferramenta']) · {{ $molde['ferramenta']->h4_qtdcavativas }}/{{ $molde['ferramenta']->h4_qtdcav }} cav. ativas @endif</small>
@@ -101,7 +101,7 @@
             <span class="suave">OPs no turno:</span>
             @forelse ($d['ops'] as $o)
               <span class="ph-op-chip" title="{{ $o['produto']?->descricao() }}">
-                @if ($o['op'])<b>OP {{ $o['op']->numero }}</b> · {{ $o['produto'] ? $o['produto']->codigo() : rtrim($o['op']->c2_produto) }}@else<b>Sem OP</b>@endif
+                @if ($o['op'])<b>@include('partials.link-op', ['op' => $o['op'], 'texto' => 'OP '.$o['op']->numero])</b> · {{ $o['produto'] ? $o['produto']->codigo() : rtrim($o['op']->c2_produto) }}@else<b>Sem OP</b>@endif
                 <strong>{{ Formato::inteiro($o['pecas']) }} pç</strong>
               </span>
             @empty

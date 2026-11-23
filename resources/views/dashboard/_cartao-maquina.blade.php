@@ -23,7 +23,7 @@
 
   <div class="pm-op">
     @if (! empty($sit['op']))
-      <span class="pm-op-numero">OP {{ $sit['op']->numero }}</span>
+      <span class="pm-op-numero">@include('partials.link-op', ['op' => $sit['op'], 'texto' => 'OP '.$sit['op']->numero])</span>
       <small>{{ $sit['produto'] ? $sit['produto']->codigo().' · '.$sit['produto']->descricao() : rtrim($sit['op']->c2_produto) }}</small>
       @forelse ($sit['moldes'] as $molde)
         <small class="pm-molde">Molde <b>{{ $molde['codigo'] }}</b>@if ($molde['ferramenta']) · {{ $molde['ferramenta']->h4_descri }} ·

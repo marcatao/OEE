@@ -1,0 +1,2 @@
+{{-- Número da OP com link para a tela da OP em NOVA aba (quem não abre a tela de OPs vê só o texto). Parâmetros: $op, $texto (opcional) --}}
+@if (auth()->user()?->pode('ordens_producao'))<a class="link-op" href="{{ route('ordens-producao.show', $op) }}" target="_blank" rel="noopener" title="Abrir a OP {{ $op->numero }} em nova aba">{{ $texto ?? $op->numero }}</a>@else{{ $texto ?? $op->numero }}@endif

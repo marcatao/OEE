@@ -93,7 +93,7 @@
               @endif
               @if ($sit && $sit['op'])
                 <span class="tl-op" title="OP {{ $sit['op']->numero }}{{ $sit['produto'] ? ' · '.$sit['produto']->codigo().' '.$sit['produto']->descricao() : '' }}">
-                  <strong>OP {{ $sit['op']->numero }}@if ($podeApontar)<button type="button" class="tl-trocar-op"
+                  <strong>@include('partials.link-op', ['op' => $sit['op'], 'texto' => 'OP '.$sit['op']->numero])@if ($podeApontar)<button type="button" class="tl-trocar-op"
                       data-trocar-op="{{ route('apontamentos.trocar-op', $maquina->id) }}" data-maquina="{{ $maquina->nome }}"
                       data-op="{{ $sit['op']->numero }}">Trocar OP</button>@endif</strong>
                   <small>{{ $sit['produto'] ? $sit['produto']->codigo().' · '.$sit['produto']->descricao() : rtrim($sit['op']->c2_produto) }}</small>

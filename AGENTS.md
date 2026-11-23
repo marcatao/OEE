@@ -139,6 +139,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Performance (IoT) = peças reais ÷ (meta da época × tempo produzindo), só dos apontamentos cuja OP tem meta
   (`CalculadoraOee::performancePelaMeta`, mostrada real, no OEE limitada a 100%); OEE (IoT) = D × P
   (`CalculadoraOee::oeeIot`, `PanoramaMaquinas`), sem qualidade ainda.
+- **Link da OP**: onde aparece o número da OP (Timeline, Produção por hora, Dashboard por máquina) use
+  `@include('partials.link-op', ['op' => $op])` — abre a tela da OP em NOVA aba (só para quem tem `ordens_producao`).
 - **Busca de OP** (todas: lista de OPs, campo de OP do apontamento/máquina/Timeline e app): escopo
   `OrdemProducao::busca($termo)` — num campo só, cada palavra em qualquer parte do número, do SKU ou da descrição (SB1).
 - **Ids no SQL Server chegam como TEXTO** (pdo_sqlsrv): compare chaves estrangeiras e `value('id')` sempre com

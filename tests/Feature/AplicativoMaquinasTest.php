@@ -332,6 +332,8 @@ class AplicativoMaquinasTest extends TestCase
         // Timeline: peças por minuto no cartão da máquina.
         $adm = Usuario::create(['entra_oid' => 'adm-tl', 'nome' => 'Adm', 'email' => 'adm-tl@alumbra.com.br', 'perfil' => 'admin']);
         $this->actingAs($adm)->get('/dashboards/timeline?parcial=1')->assertOk()->assertSee('24 <small>pç/min</small>', false);
+        // A OP da Timeline abre a tela da OP em nova aba.
+        $this->get('/dashboards/timeline?parcial=1')->assertSee('href="'.route('ordens-producao.show', $this->op1).'" target="_blank" rel="noopener"', false);
     }
 
     public function test_conferencia_refaz_pecas_desatualizadas_e_soma_a_op(): void

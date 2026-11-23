@@ -1299,3 +1299,7 @@ a.kpi:hover { border-color:var(--primaria); transform:translateY(-1px); }
 .ph-ops { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .5rem; padding:.7rem 1.15rem; border-top:1px solid var(--borda); background:var(--fundo); font-size:.82rem; }
 .ph-op-chip { display:inline-flex; align-items:center; gap:.4rem; padding:.2rem .6rem; border:1px solid var(--borda-forte); border-radius:999px; background:var(--cartao); }
 .ph-op-chip strong { color:var(--primaria); font-variant-numeric:tabular-nums; }
+
+/* Número da OP com link para a tela da OP (Timeline, Produção por hora): mesmo texto, sublinhado leve. */
+a.link-op { color:inherit; text-decoration:underline; text-decoration-color:var(--borda-forte); text-underline-offset:2px; }
+a.link-op:hover { color:var(--primaria); text-decoration-color:var(--primaria); }

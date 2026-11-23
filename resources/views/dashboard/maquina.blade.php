@@ -72,7 +72,7 @@
         <td>{{ $ini->format('H:i:s') }}</td>
         <td>@if ($a->fim){{ $a->fim->copy()->setTimezone(config('oee.fuso_exibicao'))->format('H:i:s') }}@else<span class="etiqueta situacao-online">em aberto</span>@endif</td>
         <td class="num">{{ Formato::minutos($a->duracaoMin()) }}</td>
-        <td>@if ($a->ordemProducao)<code>{{ $a->ordemProducao->numero }}</code>@elseif ($a->legenda?->exige_op)<small class="texto-alerta">sem OP</small>@else - @endif</td>
+        <td>@if ($a->ordemProducao)<code>@include('partials.link-op', ['op' => $a->ordemProducao])</code>@elseif ($a->legenda?->exige_op)<small class="texto-alerta">sem OP</small>@else - @endif</td>
         <td>{{ $a->referencia ?: '-' }}</td>
         @if (auth()->user()->pode('apontamentos'))<td><a href="{{ route('apontamentos.edit', $a) }}">Editar</a></td>@endif
       </tr>
