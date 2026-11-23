@@ -180,11 +180,13 @@ private fun LazyListScope.abaOp(d: DetalhesOp) {
             }
             Spacer(Modifier.height(12.dp))
             Row {
-                Numero("Quantidade real (IoT)", "${qtd(op.quantidadeReal)} pç", Modifier.weight(1f), destaque = true)
+                // Com a "Contagem IoT" (cartão abaixo), as peças do IoT ficam só lá.
+                if (d.contagemIot == null) Numero("Quantidade real (IoT)", "${qtd(op.quantidadeReal)} pç", Modifier.weight(1f), destaque = true)
                 Numero("Produzido no Protheus", qtd(op.produzidoProtheus), Modifier.weight(1f))
             }
         }
     }
+    d.contagemIot?.let { c -> item { CartaoContagemIot(c, op.quantidade, op.um) } }
     item {
         Cartao {
             Text("Dados da OP", style = MaterialTheme.typography.titleMedium)
@@ -236,6 +238,64 @@ private fun LazyListScope.abaOp(d: DetalhesOp) {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(moeda(comp.valor), style = MaterialTheme.typography.titleSmall)
                         Text("${moeda(comp.porPeca, 4)}/pç", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Destaque da aba OP: peças contadas pelo IoT (total, % da OP, hoje, última contagem e por máquina). */
+@Composable
+private fun CartaoContagemIot(c: ContagemIot, quantidade: Double, um: String?) {
+    androidx.compose.material3.Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .35f)),
+    ) {
+        Column(Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Contagem IoT", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(1f))
+                c.ultimaContagem?.let {
+                    Text("última: $it", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .75f))
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(qtd(c.total.toDouble()), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(6.dp))
+                Text("pç", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 6.dp))
+                Spacer(Modifier.weight(1f))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("hoje", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .75f))
+                    Text("${qtd(c.hoje.toDouble())} pç", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+            }
+            c.percentual?.let { p ->
+                Spacer(Modifier.height(10.dp))
+                LinearProgressIndicator(
+                    progress = { (p / 100).toFloat().coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(MaterialTheme.shapes.small),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surface,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("${pct(p / 100)} da OP (${qtd(quantidade)} ${um ?: ""})".trim(), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+            if (c.porMaquina.size > 1) {
+                HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = .25f))
+                c.porMaquina.forEach { (maquina, pecas) ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                        Text(maquina, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.weight(1f))
+                        Text("${qtd(pecas.toDouble())} pç", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                 }
             }

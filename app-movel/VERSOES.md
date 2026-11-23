@@ -1,5 +1,11 @@
 # Versões do aplicativo
 
+## 0.12.2 (build 19)
+
+- Detalhes da OP › OP: cartão em destaque **Contagem IoT** — peças contadas pelo IoT na OP (as mesmas da Produção por
+  hora), % da quantidade da OP com barra, peças de hoje, horário da última contagem e, com mais de uma máquina, as
+  peças de cada máquina.
+
 ## 0.12.1 (build 18)
 
 - Detalhes da OP › Engenharia: a estrutura do produto mostra a **vigência** (ex.: "Vigência: 15/03/2026 até

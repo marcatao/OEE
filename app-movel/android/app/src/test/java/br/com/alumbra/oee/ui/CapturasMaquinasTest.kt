@@ -5,6 +5,7 @@ import app.cash.paparazzi.Paparazzi
 import br.com.alumbra.oee.maquinas.ApontamentoApp
 import br.com.alumbra.oee.maquinas.ComponenteCusto
 import br.com.alumbra.oee.maquinas.ConteudoDetalhesOp
+import br.com.alumbra.oee.maquinas.ContagemIot
 import br.com.alumbra.oee.maquinas.CustoOp
 import br.com.alumbra.oee.maquinas.DetalhesOp
 import br.com.alumbra.oee.maquinas.EmpenhoApp
@@ -134,6 +135,7 @@ class CapturasMaquinasTest {
             ItemEstrutura("03", "PI0450", "MOLA INOX", "UN", 1.0, 2.0, false, 12244.9, null, true),
         ),
         estruturaVigencia = "15/03/2026 até 31/12/2026",
+        contagemIot = ContagemIot(7412, 1840, 61.8, "17/11 17:19", listOf("INJ-01 Injetora 01" to 6930, "INJ-03 Injetora 03" to 482)),
         roteiro = "01",
         operacoes = listOf(
             OperacaoRoteiro("10", "INJETAR TAMPA", "INJ-01", "Injetora 01", true, null, "M001", "MOLDE TAMPA 8 CAV", 8, 6, "Normal", 0.5, 0.0139, 1.0, 1.0),

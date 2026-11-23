@@ -105,6 +105,16 @@ data class OperacaoRoteiro(
     val maoDeObra: Double,
 )
 
+/** Peças contadas pelo IoT na OP (as mesmas da Produção por hora). */
+data class ContagemIot(
+    val total: Int,
+    val hoje: Int,
+    /** % da quantidade da OP (0 a 100+), null sem quantidade. */
+    val percentual: Double?,
+    val ultimaContagem: String?,
+    val porMaquina: List<Pair<String, Int>>,
+)
+
 data class DetalhesOp(
     val op: OpCompleta,
     val custo: CustoOp,
@@ -116,6 +126,7 @@ data class DetalhesOp(
     val estruturaVigencia: String? = null,
     val roteiro: String?,
     val operacoes: List<OperacaoRoteiro>,
+    val contagemIot: ContagemIot? = null,
 )
 
 private fun JSONObject.t(nome: String): String? = if (!has(nome) || isNull(nome)) null else optString(nome).takeIf { it.isNotBlank() }
@@ -160,6 +171,12 @@ fun detalhesOpDe(j: JSONObject): DetalhesOp {
                 it.t("vigencia_inicio"), it.t("vigencia_fim"))
         },
         estruturaVigencia = j.optJSONObject("estrutura_vigencia")?.t("texto"),
+        contagemIot = j.optJSONObject("contagem_iot")?.let { c ->
+            ContagemIot(
+                c.optInt("total"), c.optInt("hoje"), c.d("percentual"), c.t("ultima_contagem"),
+                c.optJSONArray("por_maquina").cada { it.optString("maquina") to it.optInt("pecas") },
+            )
+        },
         roteiro = r.t("codigo"),
         operacoes = r.optJSONArray("operacoes").cada {
             OperacaoRoteiro(it.optString("operacao"), it.optString("descricao"), it.t("maquina"), it.t("maquina_nome"), it.optBoolean("com_esta_op"),
