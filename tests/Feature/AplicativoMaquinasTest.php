@@ -335,6 +335,18 @@ class AplicativoMaquinasTest extends TestCase
         // A OP da Timeline abre a tela da OP em nova aba.
         $this->get('/dashboards/timeline?parcial=1')->assertSee('href="'.route('ordens-producao.show', $this->op1).'" target="_blank" rel="noopener"', false);
 
+        // Nenhum link dentro de link (o navegador desmonta o cartão): lista e tela do Dashboard por máquina, Timeline e
+        // Produção por hora, todas com a OP na máquina.
+        foreach (['/producao/dashboard', "/producao/dashboard/{$this->maquina->id}", '/dashboards/timeline', '/dashboards/producao-por-hora'] as $url) {
+            $html = $this->actingAs($adm)->get($url)->assertOk()->getContent();
+            $profundidade = 0;
+            preg_match_all('#<a\b|</a>#i', $html, $marcas);
+            foreach ($marcas[0] as $marca) {
+                $profundidade += str_starts_with(strtolower($marca), '</') ? -1 : 1;
+                $this->assertLessThanOrEqual(1, $profundidade, "link dentro de link em {$url}");
+            }
+        }
+
         // Milissegundos (máquina com mais de uma peça por segundo): ciclo_medio_ms vale mais que o ciclo_medio (s).
         // 40 ms por ciclo × 8 cavidades = 60 ÷ 0,04 × 8 = 12.000 pç/min; a coluna antiga fica 0.
         DB::table('apontamentos_estado')->where('id', $a2)->update(['ciclo_medio' => 0, 'ciclo_medio_ms' => 40]);

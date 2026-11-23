@@ -23,7 +23,9 @@
 
   <div class="pm-op">
     @if (! empty($sit['op']))
-      <span class="pm-op-numero">@include('partials.link-op', ['op' => $sit['op'], 'texto' => 'OP '.$sit['op']->numero])</span>
+      {{-- Cartão que já é um link (lista do Dashboard por máquina): link dentro de link quebra o HTML e o navegador
+           desmonta o cartão; ali a OP vai em texto (o link da OP fica na tela da máquina). --}}
+      <span class="pm-op-numero">@if (! empty($link))OP {{ $sit['op']->numero }}@else @include('partials.link-op', ['op' => $sit['op'], 'texto' => 'OP '.$sit['op']->numero])@endif</span>
       <small>{{ $sit['produto'] ? $sit['produto']->codigo().' · '.$sit['produto']->descricao() : rtrim($sit['op']->c2_produto) }}</small>
       @forelse ($sit['moldes'] as $molde)
         <small class="pm-molde">Molde <b>{{ $molde['codigo'] }}</b>@if ($molde['ferramenta']) · {{ $molde['ferramenta']->h4_descri }} ·
