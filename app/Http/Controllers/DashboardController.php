@@ -10,6 +10,8 @@ use App\Services\HorarioApontamento;
 use App\Services\IndicadoresOee;
 use App\Services\PanoramaMaquinas;
 use App\Services\Periodo;
+use App\Services\ProducaoPorHora;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -37,7 +39,7 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function maquina(Request $request, Maquina $maquina, IndicadoresOee $indicadores, PanoramaMaquinas $panorama): View
+    public function maquina(Request $request, Maquina $maquina, IndicadoresOee $indicadores, PanoramaMaquinas $panorama, ProducaoPorHora $producaoHora): View
     {
         $periodo = Periodo::de($request->query('periodo'));
         HorarioApontamento::fecharAbertosAnteriores((int) $maquina->id); // só o mais recente fica em aberto
@@ -49,6 +51,11 @@ class DashboardController extends Controller
             'maquinas' => Maquina::where(fn ($q) => $q->where('ativo', true)->comIotAtivo())->orWhere('id', $maquina->id)
                 ->orderBy('nome')->get(['id', 'codigo', 'nome']),
             'panorama' => $panorama->montar(new Collection([$maquina]), $periodo->inicio, $periodo->fim),
+            // Produção por hora desta máquina (o mesmo cartão de Dashboards › Produção por hora): o turno de hoje ou,
+            // num período que já terminou, o do último dia dele.
+            'diaProducao' => $dia = ($periodo->fim->subSecond()->lessThan(CarbonImmutable::now()) ? $periodo->fim->subSecond() : CarbonImmutable::now())
+                ->setTimezone(HorarioApontamento::fuso())->startOfDay(),
+            'producaoHora' => $producaoHora->montar(new Collection([$maquina->loadMissing('ordemProducao')]), $dia)['maquinas'][0] ?? null,
             // Apontamentos reais (Timeline) que tocam o período, do mais recente para o mais antigo.
             'apontamentosReais' => ApontamentoEstado::with(['legenda', 'ordemProducao'])->where('maquina_id', $maquina->id)
                 ->tocando($periodo->inicio, $periodo->fim)

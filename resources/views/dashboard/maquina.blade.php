@@ -57,6 +57,14 @@
   </section>
 </div>
 
+{{-- Produção por hora desta máquina (o mesmo cartão de Dashboards › Produção por hora) --}}
+@if ($producaoHora)
+  <section style="margin-top:1.25rem">
+    <h3 style="margin:0 0 .5rem">Produção por hora — {{ $diaProducao->isSameDay(now(config('oee.fuso_exibicao'))) ? 'hoje' : $diaProducao->format('d/m/Y') }}</h3>
+    @include('dashboard.producao-hora._maquina', ['d' => $producaoHora])
+  </section>
+@endif
+
 <section class="cartao" style="margin-top:1.25rem">
   <h3>Apontamentos reais — {{ $periodo->rotulo() }}</h3>
   <div class="rolagem">

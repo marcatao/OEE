@@ -248,7 +248,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   dos perfis dele, como no app); meta em pç/min da OP ATUAL da máquina (linha tracejada, meta do turno e % por hora). Filtro `FiltroProducaoHora` (dia, plantas, linhas, máquinas; salvos na tela `producao_hora`).
 - **Dashboard por máquina** (`DashboardController`): só máquinas ativas com IoT ATIVO (`Maquina::comIotAtivo()`).
   Panorama pelos APONTAMENTOS REAIS (`App\Services\PanoramaMaquinas`, sobre a `Timeline`): situação agora, OP,
-  produto, molde e cavidades, tempos por tipo e disponibilidade (partial `dashboard._cartao-maquina`). Legenda do tipo
+  produto, molde e cavidades, tempos por tipo e disponibilidade (partial `dashboard._cartao-maquina`) + o cartão da Produção por hora da máquina (partial `dashboard.producao-hora._maquina`, o mesmo da tela Produção por hora; turno de hoje ou do último dia do período). Legenda do tipo
   `desligada` = "Fora de turno": nunca conta como parada (nem na disponibilidade). O OEE completo
   (performance e qualidade) ainda vem das tabelas antigas de peças (`apontamentos`, `paradas`) e só aparece com dados.
 - Canais IoT da máquina usam `iotN_dispositivo_id` (FK para `dispositivos_iot`). As colunas antigas `iotN_id`
