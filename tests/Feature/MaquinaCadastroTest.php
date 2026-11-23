@@ -73,6 +73,7 @@ class MaquinaCadastroTest extends TestCase
 
         $m = Maquina::sole();
         $this->assertSame(['110101', 60, 300], [$m->centro_custo, $m->micro_parada_s, $m->macro_parada_s]);
+        $this->assertSame([60000, 300000], [$m->micro_parada_ms, $m->macro_parada_ms]);
         $this->assertSame([$sensor->id, 'chd1_value', 'producao'], [$m->iot1_dispositivo_id, $m->iot1_canal, $m->iot1_tipo]);
         $this->assertSame('refugo', $m->iot2_tipo);
         $this->assertNull($m->iot3_dispositivo_id);
@@ -108,6 +109,27 @@ class MaquinaCadastroTest extends TestCase
             'iot1_dispositivo_id' => $sensor->id, 'iot1_canal' => 'chd1_value', 'iot1_tipo' => 'producao']))->assertSessionDoesntHaveErrors();
         $m->refresh();
         $this->assertSame([$sensor->id, 'Teste_Alumbra'], [$m->iot1_dispositivo_id, $m->iot1_id]);
+    }
+
+    public function test_micro_e_macro_parada_em_milissegundos(): void
+    {
+        // 0.5 s = 500 ms; as colunas antigas (s inteiros, lidas pelas versões antigas do integrador) ficam 1 e 2.
+        $this->post('/admin/maquinas', $this->dados(['micro_parada_s' => '0.5', 'macro_parada_s' => '1.25', 'ativo' => '0']))
+            ->assertSessionDoesntHaveErrors();
+        $m = Maquina::sole();
+        $this->assertSame([500, 1250, 1, 2], [$m->micro_parada_ms, $m->macro_parada_ms, $m->micro_parada_s, $m->macro_parada_s]);
+        $this->assertSame([0.5, 1.25], [$m->microParadaSegundos(), $m->macroParadaSegundos()]);
+        $this->get("/admin/maquinas/{$m->id}/editar")->assertSee('name="micro_parada_s" type="number" step="0.001" min="0.001" value="0.5"', false);
+        $this->get('/admin/maquinas')->assertSee('0,5 / 1,25');
+
+        // Máquina antiga (só segundos): segue valendo a coluna antiga.
+        $m->forceFill(['micro_parada_ms' => null, 'macro_parada_ms' => null, 'micro_parada_s' => 60, 'macro_parada_s' => 300])->save();
+        $this->assertSame([60.0, 300.0], [$m->fresh()->microParadaSegundos(), $m->fresh()->macroParadaSegundos()]);
+
+        // Mais de 3 casas (abaixo de 1 ms) e zero são recusados; macro tem de ser maior que micro também com fração.
+        $this->put("/admin/maquinas/{$m->id}", $this->dados(['micro_parada_s' => '0.0005', 'ativo' => '0']))->assertSessionHasErrors('micro_parada_s');
+        $this->put("/admin/maquinas/{$m->id}", $this->dados(['micro_parada_s' => '0', 'ativo' => '0']))->assertSessionHasErrors('micro_parada_s');
+        $this->put("/admin/maquinas/{$m->id}", $this->dados(['micro_parada_s' => '0.6', 'macro_parada_s' => '0.5', 'ativo' => '0']))->assertSessionHasErrors('macro_parada_s');
     }
 
     public function test_validacoes_das_paradas_e_dos_canais_iot(): void

@@ -76,14 +76,15 @@
       <div class="campos">
         <label>Ciclo ideal (segundos por peça)
           <input name="ciclo_ideal_s" type="number" step="any" min="0" value="{{ old('ciclo_ideal_s', $maquina->ciclo_ideal_s) }}">
-          <small>Copiado para cada apontamento; mudar aqui não altera o histórico.</small>
+          <small>Copiado para cada apontamento; mudar aqui não altera o histórico. Aceita fração: 0.5 = 500 ms.</small>
         </label>
         <label>Micro parada (segundos)
-          <input name="micro_parada_s" type="number" step="1" min="1" value="{{ old('micro_parada_s', $maquina->micro_parada_s) }}" placeholder="Ex.: 60">
-          <small>Parada de até este tempo é micro parada (perda de performance).</small>
+          <input name="micro_parada_s" type="number" step="0.001" min="0.001" value="{{ old('micro_parada_s', \App\Support\Segundos::campo($maquina->microParadaSegundos())) }}" placeholder="Ex.: 60 ou 0.5">
+          <small>Parada de até este tempo é micro parada (perda de performance). Aceita milissegundos: 0.5 = 500 ms.
+            Abaixo do intervalo entre as leituras do aparelho IoT, o integrador usa 1,5 × esse intervalo.</small>
         </label>
         <label>Macro parada (segundos)
-          <input name="macro_parada_s" type="number" step="1" min="1" value="{{ old('macro_parada_s', $maquina->macro_parada_s) }}" placeholder="Ex.: 300">
+          <input name="macro_parada_s" type="number" step="0.001" min="0.001" value="{{ old('macro_parada_s', \App\Support\Segundos::campo($maquina->macroParadaSegundos())) }}" placeholder="Ex.: 300 ou 2.5">
           <small>Parada a partir deste tempo é macro parada (perda de disponibilidade). Deve ser maior que a micro.</small>
         </label>
       </div>

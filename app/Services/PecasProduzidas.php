@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\DB;
  *   h4_qtdcavativas); sem molde (ou sem OP) = 1 peça por ciclo. As cavidades usadas ficam gravadas no apontamento
  *   (congeladas na 1ª conta; trocar a OP do apontamento recalcula).
  * - ordens_producao.quantidade_real = soma das peças dos apontamentos de produção da OP.
- * - Peças por minuto (Timeline e app) = 60 ÷ ciclo médio × cavidades, com a máquina produzindo.
+ * - Peças por minuto (Timeline e app) = 60 ÷ ciclo médio × cavidades, com a máquina produzindo (ciclo em ms:
+ *   ciclo_medio_ms, com o ciclo_medio antigo em segundos de reserva).
  */
 class PecasProduzidas
 {
@@ -34,8 +35,10 @@ class PecasProduzidas
         return self::cavidadesDosMoldes(EngenhariaOrdemProducao::moldesDaMaquina($roteiro, (string) $maquina->codigo));
     }
 
-    /** Peças por minuto agora: 60 ÷ ciclo médio (s por ciclo) × cavidades; 0 sem ciclo médio. */
-    public static function porMinuto(?int $cicloMedio, int $cavidades): float
+    /**
+     * Peças por minuto agora: 60 ÷ ciclo médio (s por ciclo, com fração: 0,04 s = 40 ms) × cavidades; 0 sem ciclo médio.
+     */
+    public static function porMinuto(int|float|null $cicloMedio, int $cavidades): float
     {
         return $cicloMedio !== null && $cicloMedio > 0 ? round(60 / $cicloMedio * max(1, $cavidades), 1) : 0.0;
     }

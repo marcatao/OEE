@@ -141,7 +141,7 @@
               <div class="tl-estado estado-{{ $sit['estado'] }}" title="Situação no cadastro da máquina{{ $sit['legenda'] ? ' (pela legenda '.$sit['legenda']->codigo.' · '.$sit['legenda']->descricao.')' : ' (informada no cadastro)' }}">
                 <span class="tl-estado-titulo" title="{{ $sit['rotulo'] }}"><i class="tl-pulso" aria-hidden="true"></i><span class="tl-estado-texto">{{ $sit['rotulo'] }}</span></span>
                 <small>{{ $sit['legenda'] ? $sit['legenda']->codigo.' · '.$sit['legenda']->descricao : 'informada no cadastro' }}</small>
-                <small title="Início da situação atual · ciclo médio do apontamento atual (segundos por peça)">{{ ($sit['desde'] ? 'às '.$sit['desde']->copy()->setTimezone($fuso)->format($sit['desde']->copy()->setTimezone($fuso)->isSameDay(now($fuso)) ? 'H:i' : 'd/m H:i').' · ' : '').'cl: '.($sit['cicloMedio'] !== null ? $sit['cicloMedio'].' s' : '—') }}</small>
+                <small title="Início da situação atual · ciclo médio do apontamento atual (segundos por peça)">{{ ($sit['desde'] ? 'às '.$sit['desde']->copy()->setTimezone($fuso)->format($sit['desde']->copy()->setTimezone($fuso)->isSameDay(now($fuso)) ? 'H:i' : 'd/m H:i').' · ' : '').'cl: '.\App\Support\Segundos::ciclo($sit['cicloMedio']) }}</small>
               </div>
             @else
               <div class="tl-estado estado-sem"><span class="tl-estado-titulo" title="Sem informação"><i class="tl-pulso" aria-hidden="true"></i><span class="tl-estado-texto">Sem informação</span></span></div>

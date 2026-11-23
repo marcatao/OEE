@@ -131,7 +131,18 @@ class ApontamentoEstado extends Model
 
     protected function casts(): array
     {
-        return ['inicio' => 'datetime', 'fim' => 'datetime', 'ciclos' => 'integer', 'cavidades' => 'integer', 'pecas' => 'integer'];
+        return ['inicio' => 'datetime', 'fim' => 'datetime', 'ciclos' => 'integer', 'cavidades' => 'integer', 'pecas' => 'integer',
+            'ciclo_medio_ms' => 'integer'];
+    }
+
+    /** Ciclo médio em segundos com fração: ciclo_medio_ms (Integrador MQTT, 23/11/2026) ou o antigo ciclo_medio (s). */
+    public static function cicloEmSegundos(mixed $cicloMs, mixed $cicloS): ?float
+    {
+        if ($cicloMs !== null && $cicloMs !== '') {
+            return (int) $cicloMs / 1000;
+        }
+
+        return $cicloS === null || $cicloS === '' ? null : (float) $cicloS;
     }
 
     public function maquina(): BelongsTo

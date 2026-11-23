@@ -20,6 +20,7 @@ use App\Services\StatusOrdemProducao;
 use App\Services\TrocaOpMaquina;
 use App\Services\TurnoDaMaquina;
 use App\Support\JornadaSemanal;
+use App\Support\Segundos;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -213,7 +214,8 @@ class MaquinasAplicativo
     {
         // Reaproveita os apontamentos já lidos (a tela é consultada a cada poucos segundos) e os moldes da OP.
         $porHora = $this->pecas->porHora($maquina, $de, $ate, $fuso, $apontamentos);
-        $ciclo = $apontamentos->first()?->ciclo_medio;
+        $ultimo = $apontamentos->first();
+        $ciclo = $ultimo ? ApontamentoEstado::cicloEmSegundos($ultimo->ciclo_medio_ms, $ultimo->ciclo_medio) : null; // s, com fração
         $cavidades = 1;
         foreach ($dadosOp['moldes'] ?? [] as $molde) {
             if ((int) $molde['cavidades_ativas'] > 0) {
@@ -222,7 +224,7 @@ class MaquinasAplicativo
             }
         }
 
-        $porMinuto = $maquina->situacao === 'produzindo' ? PecasProduzidas::porMinuto($ciclo === null ? null : (int) $ciclo, $cavidades) : 0.0;
+        $porMinuto = $maquina->situacao === 'produzindo' ? PecasProduzidas::porMinuto($ciclo, $cavidades) : 0.0;
         $meta = app(MetaProducao::class)->porMinuto($op);
         $conserto = null;
         if ($meta !== null && $porMinuto > 0 && $porMinuto < $meta) {
@@ -234,7 +236,10 @@ class MaquinasAplicativo
         return [
             'por_hora' => $porHora,
             'pecas_turno' => array_sum(array_column($porHora, 'pecas')),
-            'ciclo_medio' => $ciclo === null ? null : (int) $ciclo,
+            // ciclo_medio: segundos inteiros (versões antigas do app); ciclo_medio_s: com milissegundos (0.04 = 40 ms)
+            'ciclo_medio' => $ciclo === null ? null : (int) round($ciclo),
+            'ciclo_medio_s' => $ciclo === null ? null : round($ciclo, 3),
+            'ciclo_medio_texto' => Segundos::ciclo($ciclo),
             'cavidades' => $cavidades,
             'pecas_por_minuto' => $porMinuto,
             'meta_por_minuto' => $meta,

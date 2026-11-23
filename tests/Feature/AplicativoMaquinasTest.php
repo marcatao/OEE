@@ -334,6 +334,14 @@ class AplicativoMaquinasTest extends TestCase
         $this->actingAs($adm)->get('/dashboards/timeline?parcial=1')->assertOk()->assertSee('24 <small>pç/min</small>', false);
         // A OP da Timeline abre a tela da OP em nova aba.
         $this->get('/dashboards/timeline?parcial=1')->assertSee('href="'.route('ordens-producao.show', $this->op1).'" target="_blank" rel="noopener"', false);
+
+        // Milissegundos (máquina com mais de uma peça por segundo): ciclo_medio_ms vale mais que o ciclo_medio (s).
+        // 40 ms por ciclo × 8 cavidades = 60 ÷ 0,04 × 8 = 12.000 pç/min; a coluna antiga fica 0.
+        DB::table('apontamentos_estado')->where('id', $a2)->update(['ciclo_medio' => 0, 'ciclo_medio_ms' => 40]);
+        $prod = $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()->json('producao');
+        $this->assertSame([0, 0.04, '0,040 s'], [$prod['ciclo_medio'], $prod['ciclo_medio_s'], $prod['ciclo_medio_texto']]);
+        $this->assertEquals(12000, $prod['pecas_por_minuto']);
+        $this->actingAs($adm)->get('/dashboards/timeline?parcial=1')->assertSee('cl: 0,040 s')->assertSee('12.000 <small>pç/min</small>', false);
     }
 
     public function test_conferencia_refaz_pecas_desatualizadas_e_soma_a_op(): void

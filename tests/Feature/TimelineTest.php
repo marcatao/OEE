@@ -166,7 +166,7 @@ class TimelineTest extends TestCase
             ->assertSee('<b>PROD</b>', false)->assertSee('<b>DT</b>', false)  // na barra, sempre o código da legenda
             ->assertDontSee('<span>OP 06267801001</span>', false)->assertDontSee('<span>texto antigo</span>', false)
             ->assertSee('OP 06267801001')->assertSee('TAMPA 28MM BRANCA')                    // OP e produto embaixo da máquina
-            ->assertSee('estado-parada', false)->assertSee('às 10:00 · cl: 32 s');          // última legenda (DT) = parada; ciclo médio do apontamento atual
+            ->assertSee('estado-parada', false)->assertSee('às 10:00 · cl: 32,0 s');          // última legenda (DT) = parada; ciclo médio do apontamento atual
 
         // Máquina produzindo: o cartão aparece "Produzindo".
         $this->maquina->update(['situacao' => 'produzindo', 'situacao_legenda_id' => $this->legenda('PROD')->id]);

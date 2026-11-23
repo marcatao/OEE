@@ -24,7 +24,7 @@ class Maquina extends Model
 
     protected $fillable = ['unidade',
         'linha_id', 'codigo', 'nome', 'fabricante', 'modelo', 'ciclo_ideal_s', 'ativo',
-        'centro_custo', 'micro_parada_s', 'macro_parada_s',
+        'centro_custo', 'micro_parada_s', 'macro_parada_s', 'micro_parada_ms', 'macro_parada_ms',
         // Canais IoT: dispositivo (FK para dispositivos_iot), canal e tipo. As colunas antigas iotN_id (texto livre)
         // ficam só para consulta: não são mais gravadas pelo portal.
         'iot1_dispositivo_id', 'iot1_canal', 'iot1_tipo', 'iot2_dispositivo_id', 'iot2_canal', 'iot2_tipo',
@@ -40,8 +40,21 @@ class Maquina extends Model
     protected function casts(): array
     {
         return ['ativo' => 'boolean', 'ciclo_ideal_s' => 'float', 'micro_parada_s' => 'integer', 'macro_parada_s' => 'integer',
+            'micro_parada_ms' => 'integer', 'macro_parada_ms' => 'integer',
             'r_e_c_n_o_' => 'integer', 'sincronizado_em' => 'datetime', 'excluida_protheus_em' => 'datetime',
             'situacao_desde' => 'datetime'];
+    }
+
+    /** Micro parada em segundos com fração (0,5 = 500 ms): a coluna em ms vale mais que a antiga em segundos. */
+    public function microParadaSegundos(): ?float
+    {
+        return $this->micro_parada_ms !== null ? $this->micro_parada_ms / 1000 : ($this->micro_parada_s !== null ? (float) $this->micro_parada_s : null);
+    }
+
+    /** Macro parada em segundos com fração (idem). */
+    public function macroParadaSegundos(): ?float
+    {
+        return $this->macro_parada_ms !== null ? $this->macro_parada_ms / 1000 : ($this->macro_parada_s !== null ? (float) $this->macro_parada_s : null);
     }
 
     /** Unidades em que a máquina só fica ATIVA com calendário, dias de trabalho e canal IoT. */

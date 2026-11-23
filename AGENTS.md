@@ -139,6 +139,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Performance (IoT) = peças reais ÷ (meta da época × tempo produzindo), só dos apontamentos cuja OP tem meta
   (`CalculadoraOee::performancePelaMeta`, mostrada real, no OEE limitada a 100%); OEE (IoT) = D × P
   (`CalculadoraOee::oeeIot`, `PanoramaMaquinas`), sem qualidade ainda.
+- **Milissegundos** (23/11/2026, máquinas com mais de uma peça por segundo): micro/macro parada do cadastro em segundos
+  com até 3 casas (0.5 = 500 ms) → `maquinas.micro_parada_ms|macro_parada_ms` (valem mais; `Maquina::microParadaSegundos()`)
+  + as antigas `*_s` arredondadas (mín. 1, macro > micro) para integradores antigos (`MaquinaController::temposDeParada`).
+  Ciclo médio: `apontamentos_estado.ciclo_medio_ms` (do integrador) vale mais que `ciclo_medio` (s inteiros):
+  `ApontamentoEstado::cicloEmSegundos`; exibir com `App\Support\Segundos::ciclo` ("0,040 s"); pç/min =
+  `PecasProduzidas::porMinuto` com segundos fracionados; API do app: `ciclo_medio` (int, antigo), `ciclo_medio_s` e
+  `ciclo_medio_texto`. O integrador usa micro ≥ 1,5 × o intervalo entre leituras do aparelho (o `ts_unix` é de segundos).
 - **Link da OP**: onde aparece o número da OP (Timeline, Produção por hora, Dashboard por máquina) use
   `@include('partials.link-op', ['op' => $op])` — abre a tela da OP em NOVA aba (só para quem tem `ordens_producao`).
 - **Busca de OP** (todas: lista de OPs, campo de OP do apontamento/máquina/Timeline e app): escopo

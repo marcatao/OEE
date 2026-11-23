@@ -62,6 +62,7 @@ erDiagram
         int ciclos
         smallint cavidades
         int pecas
+        int ciclo_medio_ms
     }
     assistente_conversas {
         bigint id PK
@@ -325,6 +326,8 @@ erDiagram
         nvarchar(5) jornada_inicio
         nvarchar(5) jornada_fim
         nvarchar(200) horarios_semana
+        int micro_parada_ms
+        int macro_parada_ms
     }
     metas_producao {
         bigint id PK
@@ -1066,7 +1069,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 |---|---|---|---|---|
 | [`agendas_sincronizacao`](#agendas_sincronizacao) | Sistema | `id` | 10 | 2 |
 | [`apontamentos`](#apontamentos) | Sistema | `id` | 13 | 5 |
-| [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 19 | 7 |
+| [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 20 | 7 |
 | [`assistente_conversas`](#assistente_conversas) | Sistema | `id` | 6 | 1 |
 | [`assistente_perguntas`](#assistente_perguntas) | Sistema | `id` | 16 | 2 |
 | [`cache`](#cache) | Infra | `key` | 3 | 0 |
@@ -1088,7 +1091,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
 | [`legendas`](#legendas) | Sistema | `id` | 15 | 3 |
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
-| [`maquinas`](#maquinas) | Mista | `id` | 42 | 9 |
+| [`maquinas`](#maquinas) | Mista | `id` | 44 | 9 |
 | [`metas_producao`](#metas_producao) | Sistema | `id` | 9 | 0 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
@@ -1199,10 +1202,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `ciclos` | `int` | sim |  |  |
 | `cavidades` | `smallint` | sim |  |  |
 | `pecas` | `int` | sim |  |  |
+| `ciclo_medio_ms` | `int` | sim |  |  |
 
 **Índices:** `apontamentos_estado_maquina_id_inicio_index` (maquina_id, inicio) · `apontamentos_estado_ordem_producao_id_index` (ordem_producao_id) · `ix_apontamentos_estado_inicio` (inicio) · `ix_apontamentos_estado_legenda_inicio` (legenda_id, inicio)
 
-**Regras (CHECK, só no SQL Server):** `ck_apontamentos_estado_periodo`: `fim IS NULL OR fim > inicio` · `ck_apontamentos_estado_ciclo_medio`: `ciclo_medio IS NULL OR (ciclo_medio >= 0 AND ciclo_medio <= 999)`
+**Regras (CHECK, só no SQL Server):** `ck_apontamentos_estado_periodo`: `fim IS NULL OR fim > inicio` · `ck_apontamentos_estado_ciclo_medio`: `ciclo_medio IS NULL OR (ciclo_medio >= 0 AND ciclo_medio <= 999)` · `ck_apontamentos_estado_ciclo_medio_ms`: `ciclo_medio_ms IS NULL OR ciclo_medio_ms >= 0`
 
 ### assistente_conversas
 
@@ -1666,6 +1670,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `jornada_inicio` | `nvarchar(5)` | sim |  |  |
 | `jornada_fim` | `nvarchar(5)` | sim |  |  |
 | `horarios_semana` | `nvarchar(200)` | sim |  |  |
+| `micro_parada_ms` | `int` | sim |  |  |
+| `macro_parada_ms` | `int` | sim |  |  |
 
 **Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_) · `maquinas_unidade_index` (unidade)
 

@@ -80,14 +80,15 @@ class Timeline
     }
 
     /**
-     * Ciclo médio (s/peça) do apontamento mais recente de cada máquina, numa consulta só (último por início, depois id).
+     * Ciclo médio (s/peça, com fração: milissegundos) do apontamento mais recente de cada máquina, numa consulta só
+     * (último por início, depois id).
      *
-     * @return array<int, ?int> máquina => ciclo médio
+     * @return array<int, ?float> máquina => ciclo médio em segundos
      */
     private function ciclosAtuais(Collection $maquinas): array
     {
-        return collect(ApontamentoEstado::ultimosPorMaquina($maquinas->modelKeys(), ['ciclo_medio']))
-            ->map(fn ($u) => $u['ciclo_medio'] === null ? null : (int) $u['ciclo_medio'])->all();
+        return collect(ApontamentoEstado::ultimosPorMaquina($maquinas->modelKeys(), ['ciclo_medio', 'ciclo_medio_ms']))
+            ->map(fn ($u) => ApontamentoEstado::cicloEmSegundos($u['ciclo_medio_ms'], $u['ciclo_medio']))->all();
     }
 
     /**

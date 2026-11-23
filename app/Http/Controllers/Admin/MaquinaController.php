@@ -125,6 +125,30 @@ class MaquinaController extends Controller
         return (string) ($linha?->planta?->unidade ?? $linha?->unidade ?? 'manutencao');
     }
 
+    /**
+     * Micro/macro parada do formulário (segundos com até 3 casas) → colunas em milissegundos + as antigas em segundos
+     * inteiros, que as versões antigas do Integrador MQTT ainda leem (mínimo 1 e macro > micro, como a CHECK do banco).
+     * Campo ausente do formulário: nada muda.
+     */
+    public static function temposDeParada(array $dados): array
+    {
+        $colunas = [];
+        $micro = array_key_exists('micro_parada_s', $dados) ? $dados['micro_parada_s'] : false;
+        $macro = array_key_exists('macro_parada_s', $dados) ? $dados['macro_parada_s'] : false;
+        $ms = fn ($v) => $v === null || $v === '' ? null : (int) round((float) $v * 1000);
+        if ($micro !== false) {
+            $colunas['micro_parada_ms'] = $ms($micro);
+            $colunas['micro_parada_s'] = $colunas['micro_parada_ms'] === null ? null : max(1, (int) round($colunas['micro_parada_ms'] / 1000));
+        }
+        if ($macro !== false) {
+            $colunas['macro_parada_ms'] = $ms($macro);
+            $colunas['macro_parada_s'] = $colunas['macro_parada_ms'] === null ? null
+                : max(((int) ($colunas['micro_parada_s'] ?? 0)) + 1, (int) round($colunas['macro_parada_ms'] / 1000));
+        }
+
+        return $colunas;
+    }
+
     /** @return string|null aviso (ex.: máquina inativada por ficar sem canal IoT) */
     private function salvar(Request $request, Maquina $maquina): ?string
     {
@@ -137,8 +161,9 @@ class MaquinaController extends Controller
             'modelo' => ['nullable', 'string', 'max:120'],
             'ciclo_ideal_s' => ['nullable', 'numeric', 'gt:0', 'max:86400'],
             'centro_custo' => ['nullable', 'string', 'max:20', Rule::exists('centros_custo', 'ctt_custo')],
-            'micro_parada_s' => ['nullable', 'integer', 'min:1', 'max:86400'],
-            'macro_parada_s' => ['nullable', 'integer', 'min:1', 'max:86400'],
+            // segundos com até 3 casas (0,5 = 500 ms; máquinas com mais de uma peça por segundo)
+            'micro_parada_s' => ['nullable', 'numeric', 'decimal:0,3', 'min:0.001', 'max:86400'],
+            'macro_parada_s' => ['nullable', 'numeric', 'decimal:0,3', 'min:0.001', 'max:86400'],
             'ativo' => ['required', 'boolean'],
             'situacao' => ['nullable', Rule::in(array_keys(Maquina::SITUACOES))],
             // Calendário e jornada: obrigatórios para ativar (conferido abaixo).
@@ -168,8 +193,10 @@ class MaquinaController extends Controller
             'ciclo_ideal_s.gt' => 'O ciclo ideal deve ser maior que zero.',
             'ciclo_ideal_s.numeric' => 'O ciclo ideal deve ser um número (segundos por peça).',
             'centro_custo.exists' => 'Centro de custo não cadastrado.',
-            'micro_parada_s.integer' => 'A micro parada deve ser um número inteiro de segundos.',
-            'macro_parada_s.integer' => 'A macro parada deve ser um número inteiro de segundos.',
+            'micro_parada_s.numeric' => 'A micro parada deve ser um número de segundos (ex.: 0.5 = 500 milissegundos).',
+            'macro_parada_s.numeric' => 'A macro parada deve ser um número de segundos (ex.: 0.5 = 500 milissegundos).',
+            'micro_parada_s.decimal' => 'A micro parada aceita no máximo 3 casas decimais (milissegundos).',
+            'macro_parada_s.decimal' => 'A macro parada aceita no máximo 3 casas decimais (milissegundos).',
             '*.min' => 'Os tempos de parada devem ser maiores que zero.',
             '*.max' => 'Texto ou número muito grande.',
         ];
@@ -191,9 +218,10 @@ class MaquinaController extends Controller
         if ($maquina->excluidaNoProtheus() && $dados['ativo']) {
             throw ValidationException::withMessages(['ativo' => 'Esta máquina foi excluída no Protheus e não pode ser ativada.']);
         }
-        if (isset($dados['micro_parada_s'], $dados['macro_parada_s']) && $dados['macro_parada_s'] <= $dados['micro_parada_s']) {
+        if (isset($dados['micro_parada_s'], $dados['macro_parada_s']) && (float) $dados['macro_parada_s'] <= (float) $dados['micro_parada_s']) {
             throw ValidationException::withMessages(['macro_parada_s' => 'A macro parada deve ser maior que a micro parada.']);
         }
+        $dados = array_merge($dados, self::temposDeParada($dados));
         foreach (Maquina::CANAIS_IOT as $n) {
             // Só o que veio do formulário (campo ausente não apaga o canal gravado).
             if (array_key_exists("iot{$n}_canal", $dados)) {

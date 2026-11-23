@@ -73,7 +73,7 @@
                 <div><dt>Meta do turno</dt><dd class="{{ $d['metaTurno'] === null ? 'suave' : '' }}">{{ $d['metaTurno'] === null ? 'Sem meta' : Formato::inteiro($d['metaTurno']) }}</dd></div>
                 <div><dt>Média por hora</dt><dd>{{ $d['mediaHora'] === null ? '—' : Formato::inteiro($d['mediaHora']) }}</dd></div>
                 <div><dt>Melhor hora</dt><dd>{{ Formato::inteiro($d['melhorHora']) }}</dd></div>
-                <div><dt>Ciclo médio</dt><dd>{{ $d['cicloMedio'] === null ? '—' : $d['cicloMedio'].' s' }}</dd></div>
+                <div><dt>Ciclo médio</dt><dd>{{ \App\Support\Segundos::ciclo($d['cicloMedio']) }}</dd></div>
                 <div><dt>Cavidades</dt><dd>{{ $d['cavidades'] }}</dd></div>
               </dl>
             </div>
