@@ -51,6 +51,12 @@ class RepositorioMaquinas(private val pastaGuardada: java.io.File? = null, priva
         runCatching { detalhesOpDe(JSONObject(java.io.File(pasta, "op_$opId.json").readText())) }.getOrNull()
     }
 
+    suspend fun apontamento(id: Int): ApontamentoDetalhe = apontamentoDetalheDe(ApiPortal.get("apontamentos/$id", token()))
+
+    /** O operador altera só a OP do apontamento (só OPs abertas). */
+    suspend fun alterarOpDoApontamento(id: Int, numero: String): ApontamentoDetalhe =
+        apontamentoDetalheDe(ApiPortal.post("apontamentos/$id/op", token(), JSONObject().put("numero", numero)))
+
     suspend fun buscarOps(busca: String): List<OpResumo> =
         opsDe(ApiPortal.get("ops?busca=" + URLEncoder.encode(busca, "UTF-8"), token()))
 }

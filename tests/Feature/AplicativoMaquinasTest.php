@@ -425,4 +425,40 @@ class AplicativoMaquinasTest extends TestCase
         $adm = Usuario::create(['entra_oid' => 'adm-op', 'nome' => 'Adm', 'email' => 'adm-op@alumbra.com.br', 'perfil' => 'admin']);
         $this->actingAs($adm)->get("/producao/ordens-de-producao/{$this->op1->id}")->assertOk()->assertSee('Contagem IoT')->assertSee('165');
     }
+
+    public function test_detalhe_do_apontamento_e_troca_so_da_op(): void
+    {
+        $this->travar('10:00');
+        $this->maquina->update(['ordem_producao_id' => $this->op1->id]);
+        $antigo = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id,
+            'ordem_producao_id' => $this->op1->id, 'inicio' => now()->subHours(2), 'fim' => now()->subHour()->subSecond(), 'observacao' => 'Teste']);
+        $atual = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id,
+            'ordem_producao_id' => $this->op1->id, 'inicio' => now()->subHour()]);
+
+        $this->api('GET', "apontamentos/{$antigo->id}")->assertOk()
+            ->assertJsonPath('op', '00010001001')->assertJsonPath('legenda.codigo', '1')->assertJsonPath('em_aberto', false)
+            ->assertJsonPath('maquina.nome', 'Injetora 01')->assertJsonPath('observacao', 'Teste')->assertJsonPath('op_detalhe.numero', '00010001001');
+
+        // Antigo: só o apontamento muda; a máquina continua com a OP dela.
+        $this->api('POST', "apontamentos/{$antigo->id}/op", ['numero' => '00020001001'])->assertOk()->assertJsonPath('op', '00020001001');
+        $this->assertSame((int) $this->op2->id, (int) $antigo->fresh()->ordem_producao_id);
+        $this->assertSame((int) $this->op1->id, (int) $this->maquina->fresh()->ordem_producao_id);
+
+        // O mais recente: a máquina passa para a OP nova.
+        $this->api('POST', "apontamentos/{$atual->id}/op", ['numero' => '00020001001'])->assertOk();
+        $this->assertSame((int) $this->op2->id, (int) $this->maquina->fresh()->ordem_producao_id);
+
+        // OP fechada ou inexistente: recusa sem mudar.
+        $this->op1->update(['c2_datrf' => '20261101', 'status' => 'fechada']);
+        $this->api('POST', "apontamentos/{$atual->id}/op", ['numero' => '00010001001'])->assertStatus(422)->assertJsonValidationErrors('numero');
+        $this->assertSame((int) $this->op2->id, (int) $atual->fresh()->ordem_producao_id);
+
+        // Apontamento de máquina que o operador não enxerga: 404.
+        $outra = Maquina::create(['codigo' => 'TEC-01', 'nome' => 'Outra', 'linha_id' => $this->maquina->linha_id, 'ativo' => true, 'unidade' => 'tecnologia']
+            + $this->jornadaGravada() + $this->iotGravado());
+        $deOutra = ApontamentoEstado::create(['maquina_id' => $outra->id, 'legenda_id' => $this->produzindo->id, 'inicio' => now()->subMinutes(5)]);
+        $this->api('GET', "apontamentos/{$deOutra->id}")->assertNotFound();
+        $this->api('POST', "apontamentos/{$deOutra->id}/op", ['numero' => '00020001001'])->assertNotFound();
+        $this->assertNull($deOutra->fresh()->ordem_producao_id);
+    }
 }

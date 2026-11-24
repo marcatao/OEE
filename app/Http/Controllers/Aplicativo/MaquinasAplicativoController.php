@@ -75,4 +75,18 @@ class MaquinasAplicativoController extends Controller
 
         return response()->json($detalhes->detalhes($op));
     }
+
+    /** Detalhe de um apontamento real (toque na lista da tela da máquina). */
+    public function apontamento(int $apontamento): JsonResponse
+    {
+        return response()->json($this->maquinas->detalheApontamento($apontamento));
+    }
+
+    /** O operador altera só a OP do apontamento (só OPs abertas). */
+    public function opDoApontamento(Request $request, int $apontamento): JsonResponse
+    {
+        $dados = $request->validate(['numero' => ['required', 'string', 'max:20']], ['numero.required' => 'Escolha a ordem de produção.']);
+
+        return response()->json($this->maquinas->alterarOpDoApontamento($apontamento, $dados['numero']));
+    }
 }

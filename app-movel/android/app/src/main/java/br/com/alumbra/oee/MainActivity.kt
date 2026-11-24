@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
         data object Maquinas : Tela
         data class Maquina(val id: Int, val nome: String) : Tela
         data class DetalhesOp(val opId: Int, val numero: String, val maquinaId: Int, val maquinaNome: String) : Tela
+        data class Apontamento(val id: Int, val maquinaId: Int, val maquinaNome: String) : Tela
         data object Os : Tela
         data class OsDetalhe(val id: Int) : Tela
         data object AbrirSs : Tela
@@ -98,6 +99,7 @@ class MainActivity : ComponentActivity() {
     private fun Tela.acima(): Tela = when (this) {
         is Tela.Maquina -> Tela.Maquinas
         is Tela.DetalhesOp -> Tela.Maquina(maquinaId, maquinaNome)
+        is Tela.Apontamento -> Tela.Maquina(maquinaId, maquinaNome)
         is Tela.OsDetalhe, Tela.AbrirSs, is Tela.Avaliacao -> Tela.Os
         else -> Tela.Principal
     }
@@ -235,6 +237,14 @@ class MainActivity : ComponentActivity() {
                 aoVoltar = { tela = Tela.Maquinas },
                 aoPerderAcesso = ::perderAcesso,
                 aoDetalhesOp = { op -> tela = Tela.DetalhesOp(op.id, op.numero, atual.id, atual.nome) },
+                aoAbrirApontamento = { a -> tela = Tela.Apontamento(a.id, atual.id, atual.nome) },
+            )
+            is Tela.Apontamento -> br.com.alumbra.oee.maquinas.TelaApontamento(
+                repositorio = repositorioMaquinas,
+                apontamentoId = atual.id,
+                podeAlterar = u.operador,
+                aoVoltar = { tela = Tela.Maquina(atual.maquinaId, atual.maquinaNome) },
+                aoPerderAcesso = ::perderAcesso,
             )
             is Tela.DetalhesOp -> br.com.alumbra.oee.maquinas.TelaDetalhesOp(
                 repositorio = repositorioMaquinas,

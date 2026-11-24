@@ -100,6 +100,7 @@ fun TelaMaquina(
     aoVoltar: () -> Unit,
     aoPerderAcesso: (String) -> Unit,
     aoDetalhesOp: (OpResumo) -> Unit = {},
+    aoAbrirApontamento: (ApontamentoApp) -> Unit = {},
 ) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
@@ -229,6 +230,7 @@ fun TelaMaquina(
         aoTrocarOp = { erroAcao = null; trocarOp = true },
         aoAlterarCavidades = { erroAcao = null; molde = it },
         aoDetalhesOp = aoDetalhesOp,
+        aoAbrirApontamento = aoAbrirApontamento,
     )
     if (esmaecida && !alerta) {
         // Tela escura: o primeiro toque só acende.
@@ -278,6 +280,7 @@ fun ConteudoMaquina(
     aoTrocarOp: () -> Unit,
     aoAlterarCavidades: (MoldeApp) -> Unit,
     aoDetalhesOp: (OpResumo) -> Unit = {},
+    aoAbrirApontamento: (ApontamentoApp) -> Unit = {},
     agora: Long = System.currentTimeMillis(),
 ) {
     val hora = SimpleDateFormat("HH:mm:ss", Locale("pt", "BR"))
@@ -319,7 +322,11 @@ fun ConteudoMaquina(
             if (detalhe.apontamentos.isEmpty()) {
                 Text("Sem apontamentos no turno de hoje.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            detalhe.apontamentos.forEach { LinhaApontamento(it) }
+            if (detalhe.apontamentos.isNotEmpty()) {
+                Text("Toque num apontamento para ver os detalhes.", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            detalhe.apontamentos.forEach { a -> LinhaApontamento(a) { aoAbrirApontamento(a) } }
         }
     }
 }
@@ -705,10 +712,10 @@ private fun CartaoRoteiro(op: OpDetalhe) {
 }
 
 @Composable
-private fun LinhaApontamento(a: ApontamentoApp) {
+private fun LinhaApontamento(a: ApontamentoApp, aoTocar: () -> Unit = {}) {
     val c = CoresOee.atual
     val cor = corDaLegenda(a.legenda?.cor, MaterialTheme.colorScheme.outline)
-    Cartao(preenchimento = PaddingValues(0.dp)) {
+    Cartao(modifier = Modifier.clickable(onClick = aoTocar), preenchimento = PaddingValues(0.dp)) {
         Row(Modifier.height(IntrinsicSize.Min).background(if (a.semMotivo) c.erroSuave else MaterialTheme.colorScheme.surface)) {
             Box(Modifier.width(6.dp).fillMaxHeight().background(cor))
             Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 10.dp)) {

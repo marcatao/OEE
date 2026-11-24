@@ -1,5 +1,14 @@
 # Versões do aplicativo
 
+## 0.13.1 (build 24)
+
+- Máquinas › tela da máquina: tocar num **apontamento real** abre o detalhe dele — legenda, dia, início, fim e
+  duração; ordem de produção (número, produto, situação); produção do IoT (peças, ciclos, cavidades, ciclo médio);
+  origem (IoT ou manual), quem apontou e quem alterou, com horário, referência e observação.
+- O operador pode alterar **só a ordem de produção** do apontamento (busca ou código de barras; só OPs abertas) e, ao
+  salvar, volta para a tela da máquina. Mesma regra da Timeline do portal: no apontamento mais recente a máquina passa
+  para a OP nova; num antigo, só o apontamento muda. Peças e cavidades são refeitas pela OP nova.
+
 ## 0.13.0 (build 23)
 
 - **Atualização pelo portal**: o app pergunta ao portal se há versão nova (ao abrir, ao sincronizar e a cada 30 min com

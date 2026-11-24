@@ -3,6 +3,8 @@ package br.com.alumbra.oee.ui
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import br.com.alumbra.oee.maquinas.ApontamentoApp
+import br.com.alumbra.oee.maquinas.ApontamentoDetalhe
+import br.com.alumbra.oee.maquinas.ConteudoApontamento
 import br.com.alumbra.oee.maquinas.ComponenteCusto
 import br.com.alumbra.oee.maquinas.ConteudoDetalhesOp
 import br.com.alumbra.oee.maquinas.ContagemIot
@@ -172,6 +174,21 @@ class CapturasMaquinasTest {
                 ),
             )
             ConteudoMaquina("Prensa 05", d, null, agora, true, {}, {}, {}, {}, agora = agora)
+        }
+    }
+
+    @Test
+    fun apontamento_detalhe() = paparazzi.snapshot {
+        TemaOee(escuro = false) {
+            ConteudoApontamento(
+                ApontamentoDetalhe(
+                    base = apontamentos[1], maquinaId = 1, maquinaNome = "Injetora 01", emAberto = false, op = op,
+                    ciclos = 456, cavidades = 6, cicloMedioTexto = "50,0 s", observacao = "[IoT] contador do canal 1",
+                    referencia = null, origem = "IoT (automático)", criadoPor = null, criadoEm = "17/11/2026 08:00",
+                    atualizadoPor = "Maria Souza", atualizadoEm = "17/11/2026 14:22",
+                ),
+                null, true, {}, {},
+            )
         }
     }
 }

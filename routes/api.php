@@ -29,6 +29,8 @@ Route::prefix('app')->name('api.app.')->group(function () {
             Route::get('ops', [MaquinasAplicativoController::class, 'ops'])->name('ops');
             Route::post('maquinas/{maquina}/op', [MaquinasAplicativoController::class, 'op'])->whereNumber('maquina')->name('maquinas.op');
             Route::post('apontamentos/{apontamento}/motivo', [MaquinasAplicativoController::class, 'motivo'])->whereNumber('apontamento')->name('apontamentos.motivo');
+            Route::get('apontamentos/{apontamento}', [MaquinasAplicativoController::class, 'apontamento'])->whereNumber('apontamento')->name('apontamentos.show');
+            Route::post('apontamentos/{apontamento}/op', [MaquinasAplicativoController::class, 'opDoApontamento'])->whereNumber('apontamento')->name('apontamentos.op');
             Route::post('ferramentas/{ferramenta}/cavidades', [MaquinasAplicativoController::class, 'cavidades'])->whereNumber('ferramenta')->name('ferramentas.cavidades');
             // Detalhes da OP (kardex, empenhos, engenharia): a mesma permissão da tela da OP no portal.
             Route::get('ops/{ordem}/detalhes', [MaquinasAplicativoController::class, 'detalhesOp'])->whereNumber('ordem')

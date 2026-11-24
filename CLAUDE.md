@@ -294,6 +294,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   "Detalhes da OP" (botão no cartão da OP; `GET /api/app/ops/{id}/detalhes`, permissão `ordens_producao`,
   `App\Services\Aplicativo\DetalhesOpAplicativo` sobre `CustoOrdemProducao::kardex` e `EngenhariaOrdemProducao::daOp`):
   abas OP (e custo), Kardex, Empenhos e Engenharia (estrutura e roteiro).
+  Toque num apontamento real da tela da máquina = detalhe (`GET /api/app/apontamentos/{id}`,
+  `MaquinasAplicativo::detalheApontamento`); o operador altera SÓ a OP dele (`POST /api/app/apontamentos/{id}/op`;
+  regra única `App\Services\OpDoApontamento`, a mesma do "INFORMAR OP" da Timeline).
   Função Ordens de serviço (mantenedor): `App\Services\Aplicativo\OrdensServicoAplicativo` sobre `AcessoOs` e
   `FluxoOrdemServico` — "assumir" SS = aprovar com o mantenedor como principal (só o primeiro leva), apontamento de
   horas com a tela travada no cronômetro, avaliação do solicitante no celular do mantenedor com assinatura

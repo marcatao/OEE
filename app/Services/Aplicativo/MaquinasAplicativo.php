@@ -14,6 +14,7 @@ use App\Services\HorarioApontamento;
 use App\Services\Manutencao\ChamadoDaParada;
 use App\Services\MetaProducao;
 use App\Services\MotivoParada;
+use App\Services\OpDoApontamento;
 use App\Services\PecasProduzidas;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
@@ -174,6 +175,46 @@ class MaquinasAplicativo
         $produtos = $this->custo->produtos($ops->pluck('c2_produto'));
 
         return $ops->map(fn ($op) => $this->resumoOp($op, $produtos))->values()->all();
+    }
+
+    /**
+     * Detalhe de UM apontamento real (toque na lista da tela da máquina): horário, legenda, OP e produto, peças,
+     * ciclos, cavidades, ciclo médio, observação e quem apontou/alterou. Só de máquina que o usuário enxerga.
+     */
+    public function detalheApontamento(int $id): array
+    {
+        $a = ApontamentoEstado::with(['legenda', 'ordemProducao', 'criadoPor', 'atualizadoPor'])->findOrFail($id);
+        $maquina = $this->conferirMaquina((int) $a->maquina_id); // outra unidade ou sem IoT ativo: 404
+        $fuso = HorarioApontamento::fuso();
+        $op = $a->ordemProducao;
+        $produto = $op ? $this->custo->produtos([$op->c2_produto])->get(rtrim((string) $op->c2_produto)) : null;
+        $iot = $a->criado_por_id === null || str_starts_with((string) $a->observacao, '[IoT]');
+
+        return $this->apontamento($a, $fuso) + [
+            'maquina' => ['id' => (int) $maquina->id, 'nome' => $maquina->nome, 'codigo' => rtrim((string) $maquina->codigo)],
+            'em_aberto' => $a->fim === null,
+            'op_detalhe' => $op ? $this->resumoOp($op, collect([rtrim((string) $op->c2_produto) => $produto])->filter()) : null,
+            'ciclos' => $a->ciclos === null ? null : (int) $a->ciclos,
+            'cavidades' => $a->cavidades === null ? null : (int) $a->cavidades,
+            'ciclo_medio_texto' => Segundos::ciclo(ApontamentoEstado::cicloEmSegundos($a->ciclo_medio_ms, $a->ciclo_medio)),
+            'observacao' => trim((string) $a->observacao) !== '' ? trim((string) $a->observacao) : null,
+            'referencia' => trim((string) $a->referencia) !== '' ? trim((string) $a->referencia) : null,
+            'origem' => $iot ? 'IoT (automático)' : 'Manual',
+            'criado_por' => $a->criadoPor?->nome,
+            'criado_em' => $this->hora($a->criado_em, $fuso, 'd/m/Y H:i'),
+            'atualizado_por' => $a->atualizadoPor?->nome,
+            'atualizado_em' => $this->hora($a->atualizado_em, $fuso, 'd/m/Y H:i'),
+        ];
+    }
+
+    /** Operador altera SÓ a OP de um apontamento (regra única em App\Services\OpDoApontamento, a mesma da Timeline). */
+    public function alterarOpDoApontamento(int $id, string $numero): array
+    {
+        $a = ApontamentoEstado::findOrFail($id);
+        $this->conferirMaquina((int) $a->maquina_id); // antes de mexer: só máquina que o usuário enxerga
+        app(OpDoApontamento::class)->alterar($a, $numero, 'numero');
+
+        return $this->detalheApontamento($id);
     }
 
     public function conferirMaquina(int $maquinaId): Maquina

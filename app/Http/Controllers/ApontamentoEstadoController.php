@@ -12,6 +12,7 @@ use App\Services\HorarioApontamento;
 use App\Services\Manutencao\ExclusaoApontamento;
 use App\Services\Manutencao\SsAutomatica;
 use App\Services\MotivoParada;
+use App\Services\OpDoApontamento;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use App\Services\TrocaOpMaquina;
@@ -316,16 +317,7 @@ class ApontamentoEstadoController extends Controller
         $dados = $request->validate(['ordem_producao' => ['required', 'string', 'max:20']],
             ['ordem_producao.required' => 'Escolha a ordem de produção.']);
         abort_unless(Maquina::whereKey($apontamento->maquina_id)->exists(), 404); // máquina de outra unidade
-        $op = OrdemProducao::apontaveis()->where('numero', trim($dados['ordem_producao']))->orderBy('status')->first();
-        if (! $op) {
-            throw ValidationException::withMessages(['ordem_producao' => 'Ordem de produção não encontrada ou fechada no Protheus.']);
-        }
-        $anterior = $apontamento->ordem_producao_id;
-        $apontamento->update(['ordem_producao_id' => $op->id]);
-        $situacao->informarOp($apontamento);
-        foreach (array_unique(array_filter([$op->id, $anterior])) as $id) {
-            $status->atualizar(OrdemProducao::find($id));
-        }
+        $op = app(OpDoApontamento::class)->alterar($apontamento, $dados['ordem_producao']); // regra única (a mesma do app)
 
         return response()->json(['ok' => true, 'mensagem' => "OP {$op->numero} informada no apontamento."]);
     }

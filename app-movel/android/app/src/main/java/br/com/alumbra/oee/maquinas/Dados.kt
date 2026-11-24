@@ -79,6 +79,47 @@ data class ProducaoApp(
     val moldeConserto: MoldeConserto? = null,
 )
 
+/** Detalhe de UM apontamento real (toque na lista da tela da máquina; GET /api/app/apontamentos/{id}). */
+data class ApontamentoDetalhe(
+    val base: ApontamentoApp,
+    val maquinaId: Int,
+    val maquinaNome: String,
+    val emAberto: Boolean,
+    val op: OpResumo?,
+    val ciclos: Int?,
+    val cavidades: Int?,
+    val cicloMedioTexto: String?,
+    val observacao: String?,
+    val referencia: String?,
+    val origem: String,
+    val criadoPor: String?,
+    val criadoEm: String?,
+    val atualizadoPor: String?,
+    val atualizadoEm: String?,
+)
+
+fun apontamentoDetalheDe(j: JSONObject): ApontamentoDetalhe {
+    val m = j.optJSONObject("maquina") ?: JSONObject()
+    fun t(n: String) = if (!j.has(n) || j.isNull(n)) null else j.optString(n).takeIf { it.isNotBlank() }
+    return ApontamentoDetalhe(
+        base = apontamentoDe(j),
+        maquinaId = m.optInt("id"),
+        maquinaNome = m.optString("nome"),
+        emAberto = j.optBoolean("em_aberto"),
+        op = opResumoDe(j.optJSONObject("op_detalhe")),
+        ciclos = if (!j.has("ciclos") || j.isNull("ciclos")) null else j.optInt("ciclos"),
+        cavidades = if (!j.has("cavidades") || j.isNull("cavidades")) null else j.optInt("cavidades"),
+        cicloMedioTexto = t("ciclo_medio_texto")?.takeIf { it != "—" },
+        observacao = t("observacao"),
+        referencia = t("referencia"),
+        origem = t("origem") ?: "—",
+        criadoPor = t("criado_por"),
+        criadoEm = t("criado_em"),
+        atualizadoPor = t("atualizado_por"),
+        atualizadoEm = t("atualizado_em"),
+    )
+}
+
 data class OperacaoApp(val operacao: String, val descricao: String, val maquina: String, val ferramenta: String, val destaMaquina: Boolean)
 
 data class MoldeApp(val id: Int, val codigo: String, val descricao: String, val cavidades: Int, val cavidadesAtivas: Int)
@@ -138,7 +179,7 @@ fun maquinasDe(j: JSONObject): List<MaquinaResumo> = j.optJSONArray("maquinas").
 
 fun opsDe(j: JSONObject): List<OpResumo> = j.optJSONArray("ops").lista { opResumoDe(it)!! }
 
-private fun apontamentoDe(j: JSONObject) = ApontamentoApp(
+internal fun apontamentoDe(j: JSONObject) = ApontamentoApp(
     j.optInt("id"), legendaDe(j.optJSONObject("legenda")), j.optBoolean("sem_motivo"), j.texto("dia"), j.texto("inicio"),
     j.texto("fim"), j.texto("inicio_utc"), j.texto("fim_utc"), j.optDouble("minutos", 0.0), j.texto("op"),
     if (j.has("pecas") && !j.isNull("pecas")) j.optInt("pecas") else null,

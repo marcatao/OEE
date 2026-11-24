@@ -201,6 +201,11 @@ fun DialogoOp(
     erro: String?,
     aoConfirmar: (numero: String, modo: String) -> Unit,
     aoFechar: () -> Unit,
+    /** Título/detalhe próprios (ex.: alterar a OP de um apontamento). */
+    titulo: String? = null,
+    detalheTitulo: String? = null,
+    /** false = confirma direto, sem perguntar "apontamento atual × novo" (OP de um apontamento já lançado). */
+    perguntarModo: Boolean = true,
 ) {
     val contexto = LocalContext.current
     // Troca (não obrigatória): depois de escolher a OP, pergunta se troca no apontamento atual ou num novo.
@@ -224,8 +229,8 @@ fun DialogoOp(
     JanelaMaquina(obrigatorio = obrigatorio, aoFechar = aoFechar) {
         Column {
             CabecalhoDialogo(
-                titulo = if (obrigatorio) "Máquina sem ordem de produção" else "Trocar ordem de produção",
-                detalhe = if (obrigatorio) "Informe a OP que está rodando nesta máquina." else "OP atual: ${opAtual ?: "nenhuma"}",
+                titulo = titulo ?: if (obrigatorio) "Máquina sem ordem de produção" else "Trocar ordem de produção",
+                detalhe = detalheTitulo ?: if (obrigatorio) "Informe a OP que está rodando nesta máquina." else "OP atual: ${opAtual ?: "nenhuma"}",
                 situacao = if (obrigatorio) Situacao.ALERTA else Situacao.OK,
             )
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -332,7 +337,7 @@ fun DialogoOp(
                     BotaoPrincipal(
                         texto = escolhida?.let { "Confirmar a OP $it" } ?: "Escolha uma OP",
                         // Obrigatória (máquina sem OP): grava no apontamento atual. Troca: pergunta o modo.
-                        aoTocar = { escolhida?.let { if (obrigatorio) aoConfirmar(it, "atual") else escolherModo = it } },
+                        aoTocar = { escolhida?.let { if (obrigatorio || !perguntarModo) aoConfirmar(it, "atual") else escolherModo = it } },
                         habilitado = escolhida != null,
                         carregando = ocupado,
                     )
