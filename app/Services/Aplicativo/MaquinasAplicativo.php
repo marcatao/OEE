@@ -16,17 +16,21 @@ use App\Services\MetaPorHora;
 use App\Services\MetaProducao;
 use App\Services\MotivoParada;
 use App\Services\OpDoApontamento;
+use App\Services\PanoramaMaquinas;
 use App\Services\PecasProduzidas;
 use App\Services\ProducaoPorHora;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use App\Services\TrocaOpMaquina;
 use App\Services\TurnoDaMaquina;
+use App\Support\Formato;
 use App\Support\JornadaSemanal;
 use App\Support\Segundos;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -118,7 +122,35 @@ class MaquinasAplicativo
             'op' => $dadosOp = ($op ? $this->op($op, $maquina, $produtos) : null),
             'legendas_motivo' => $this->legendasMotivo()->map(fn ($l) => $this->legenda($l))->values()->all(),
             'producao' => $this->producao($maquina, $op, $dadosOp, $apontamentos, $de, $ate, $fuso),
+            'oee' => $this->oee($maquina, $de, $ate),
         ];
+    }
+
+    /**
+     * OEE (IoT) do turno de hoje da máquina (o mesmo período do gráfico de produção): D × P × Q pelo panorama do
+     * Dashboard por máquina (apontamentos reais, IoT e perdas apontadas). Guardado 30 s (o app consulta a cada 10 s).
+     * Valores de 0 a 1; null = sem dado (ex.: OP sem meta = sem performance = sem OEE).
+     *
+     * @return array{oee: ?float, disponibilidade: ?float, performance: ?float, qualidade: ?float, pecas: int, perdas: float, texto: string}
+     */
+    private function oee(Maquina $maquina, CarbonImmutable $de, CarbonImmutable $ate): array
+    {
+        return Cache::remember("app.oee.{$maquina->id}.{$de->getTimestamp()}", 30, function () use ($maquina, $de, $ate) {
+            $d = app(PanoramaMaquinas::class)->montar(new Collection([$maquina]), $de, $ate)['maquinas'][$maquina->id];
+            $r = fn (?float $v) => $v === null ? null : round($v, 4);
+
+            return [
+                'oee' => $r($d['oeeIot']),
+                'disponibilidade' => $r($d['disponibilidade']),
+                'performance' => $r($d['performance']), // pode passar de 100% (no OEE entra limitada)
+                'qualidade' => $r($d['qualidade']),
+                'pecas' => (int) $d['pecasTodas'],
+                'perdas' => (float) $d['perdas'],
+                'texto' => $d['oeeIot'] === null ? '—' : Formato::pct($d['oeeIot'], 0),
+                // nivel: bom ≥ 85%, medio ≥ 60%, ruim abaixo, sem = sem dado (as mesmas faixas do portal)
+                'nivel' => str_replace('nivel-', '', Formato::nivel($d['oeeIot'])),
+            ];
+        });
     }
 
     /**

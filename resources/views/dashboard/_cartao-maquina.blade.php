@@ -38,6 +38,17 @@
     @endif
   </div>
 
+  {{-- OEE (IoT) da máquina no período: D × P × Q (perdas apontadas), com o medidor --}}
+  @php($oeeMaq = $dados['oeeIot'] ?? null)
+  <div class="pm-oee {{ \App\Support\Formato::nivel($oeeMaq) }}"
+       title="OEE (IoT) = disponibilidade × performance (limitada a 100%) × qualidade, pelos apontamentos reais, o IoT e as perdas apontadas{{ $oeeMaq === null ? '. Sem meta nas OPs do período: sem performance, sem OEE.' : '' }}">
+    <div class="medidor mini" style="--pct: {{ \App\Support\Formato::pct100($oeeMaq) }}"><div><strong>{{ \App\Support\Formato::pct($oeeMaq, 0) }}</strong></div></div>
+    <div><span>OEE</span>
+      <small>D {{ \App\Support\Formato::pct($dados['disponibilidade'], 0) }} · P {{ ($dados['performance'] ?? null) === null ? '—' : \App\Support\Formato::pct($dados['performance'], 0) }} · Q {{ ($dados['qualidade'] ?? null) === null ? '—' : \App\Support\Formato::pct($dados['qualidade'], 0) }}</small>
+      @if (($dados['pecasTodas'] ?? 0) > 0)<small>{{ \App\Support\Formato::inteiro($dados['pecasTodas']) }} pç · {{ \App\Support\Formato::quantidade($dados['perdas']) }} perdidas</small>@endif
+    </div>
+  </div>
+
   <div class="pm-resumo">
     <div class="{{ \App\Support\Formato::nivel($dados['disponibilidade']) }}"><span>Disponib.</span><strong class="texto-nivel">{{ \App\Support\Formato::pct($dados['disponibilidade'], 0) }}</strong></div>
     <div><span>Produzindo</span><strong>{{ \App\Support\Formato::minutos($seg['produzindo'] / 60) }}</strong></div>
@@ -46,12 +57,6 @@
          title="Peças do IoT ÷ peças na meta (meta da OP, item MO da estrutura, × tempo produzindo){{ ($dados['pecasNaMeta'] ?? null) ? ': '.\App\Support\Formato::inteiro($dados['pecas']).' de '.\App\Support\Formato::inteiro($dados['pecasNaMeta']).' peças' : ': sem meta no período' }}">
       <span>Performance</span><strong class="texto-nivel">{{ ($dados['performance'] ?? null) === null ? '—' : \App\Support\Formato::pct($dados['performance'], 0) }}</strong></div>
   </div>
-  @if (($dados['oeeIot'] ?? null) !== null)
-    <small class="pm-rodape" title="Disponibilidade × performance (limitada a 100%) × qualidade, pelos apontamentos reais, o IoT e as perdas apontadas">OEE (IoT) <strong>{{ \App\Support\Formato::pct($dados['oeeIot'], 0) }}</strong> · D × P × Q</small>
-  @endif
-  @if (($dados['qualidade'] ?? null) !== null)
-    <small class="pm-rodape" title="Qualidade = (peças do IoT − perdas apontadas) ÷ peças do IoT (o contador conta também as peças perdidas)">Qualidade {{ \App\Support\Formato::pct($dados['qualidade'], 0) }} · {{ \App\Support\Formato::inteiro($dados['pecasTodas']) }} pç, {{ \App\Support\Formato::quantidade($dados['perdas']) }} perdidas</small>
-  @endif
   @if (! empty($sit['moldeConserto']))
     <small class="pm-rodape texto-alerta">Molde {{ $sit['moldeConserto']['codigo'] }} com {{ $sit['moldeConserto']['ativas'] }}/{{ $sit['moldeConserto']['total'] }} cavidades abaixo da meta: indicar para conserto</small>
   @endif

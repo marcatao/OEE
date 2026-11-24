@@ -316,7 +316,10 @@ class AplicativoMaquinasTest extends TestCase
         $this->assertEquals(580, $this->op1->fresh()->quantidade_real);
 
         // App: peças por hora no turno (06:00–22:00), total e peças por minuto (60 ÷ 20 s × 8 cavidades).
-        $prod = $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()->json('producao');
+        $detalhe = $this->api('GET', "maquinas/{$this->maquina->id}")->assertOk()
+            ->assertJsonStructure(['oee' => ['oee', 'disponibilidade', 'performance', 'qualidade', 'pecas', 'perdas', 'texto', 'nivel']]);
+        $this->assertEquals(1, $detalhe->json('oee.qualidade')); // sem perdas apontadas
+        $prod = $detalhe->json('producao');
         $porHora = collect($prod['por_hora'])->pluck('pecas', 'hora');
         $this->assertSame(16, count($prod['por_hora']));
         $this->assertSame([5, 400, 180], [$porHora['08:00'], $porHora['09:00'], $porHora['10:00']]);

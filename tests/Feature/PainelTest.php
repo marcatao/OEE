@@ -151,6 +151,7 @@ class PainelTest extends TestCase
         $this->actingAs($this->usuario('operador', 'op@empresa.com', ['dashboard_maquina']));
         $this->get('/producao/dashboard')->assertOk()
             ->assertSee('Injetora 01')->assertDontSee('Torno sem IoT')->assertDontSee('Prensa IoT desligado')
+            ->assertSee('class="pm-oee', false) // OEE de cada máquina no cartão
             ->assertSee('Produzindo agora')->assertSee('83,3%')->assertSee('2 h 30 min')->assertSee('Maior parada: 31');
         // Página inicial: o OEE de hoje vem dos apontamentos reais (sem meta nas OPs: mostra a disponibilidade).
         $this->get('/')->assertOk()->assertSee('OEE de hoje')->assertSee('disponibilidade 83%')->assertDontSee('sem apontamentos reais hoje')
