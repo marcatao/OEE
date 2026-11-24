@@ -59,7 +59,17 @@ data class ApontamentoApp(
 )
 
 /** Uma hora do turno no gráfico de produção. */
-data class HoraProducao(val hora: String, val inicioUtc: String?, val pecas: Int)
+data class HoraProducao(
+    val hora: String,
+    val inicioUtc: String?,
+    val pecas: Int,
+    /** Meta da hora em peças (pela OP que a máquina tinha em cada momento da hora); null = sem meta. */
+    val meta: Int? = null,
+    /** Na hora atual, a meta só até agora; nas passadas, a meta inteira; futura = null. */
+    val metaAteAgora: Int? = null,
+    /** "boa" (≥ 90%), "media" (≥ 50%), "ruim" ou null (sem meta ou hora futura) — regra do portal. */
+    val nivel: String? = null,
+)
 
 /** Molde com cavidades desativadas e produção abaixo da meta: indicar para conserto. */
 data class MoldeConserto(val codigo: String, val descricao: String?, val ativas: Int, val total: Int)
@@ -77,6 +87,10 @@ data class ProducaoApp(
     val pecasPorMinuto: Double,
     val metaPorMinuto: Double?,
     val moldeConserto: MoldeConserto? = null,
+    /** Soma das metas das horas do turno (portal que manda a meta de cada hora). */
+    val metaTurno: Int? = null,
+    /** O portal mandou a meta de CADA hora (por_hora[].meta): o app não calcula mais meta × 60. */
+    val metaPorHora: Boolean = false,
 )
 
 /** Detalhe de UM apontamento real (toque na lista da tela da máquina; GET /api/app/apontamentos/{id}). */
@@ -187,7 +201,16 @@ internal fun apontamentoDe(j: JSONObject) = ApontamentoApp(
 
 fun producaoDe(j: JSONObject?): ProducaoApp? = j?.let {
     ProducaoApp(
-        porHora = it.optJSONArray("por_hora").lista { h -> HoraProducao(h.optString("hora"), h.texto("inicio"), h.optInt("pecas")) },
+        porHora = it.optJSONArray("por_hora").lista { h ->
+            HoraProducao(
+                h.optString("hora"), h.texto("inicio"), h.optInt("pecas"),
+                meta = if (!h.has("meta") || h.isNull("meta")) null else h.optInt("meta"),
+                metaAteAgora = if (!h.has("meta_ate_agora") || h.isNull("meta_ate_agora")) null else h.optInt("meta_ate_agora"),
+                nivel = h.texto("nivel"),
+            )
+        },
+        metaTurno = if (!it.has("meta_turno") || it.isNull("meta_turno")) null else it.optInt("meta_turno"),
+        metaPorHora = it.optJSONArray("por_hora")?.optJSONObject(0)?.has("meta") == true,
         pecasTurno = it.optInt("pecas_turno"),
         cicloMedio = if (it.isNull("ciclo_medio")) null else it.optInt("ciclo_medio"),
         cicloMedioTexto = if (!it.has("ciclo_medio_texto") || it.isNull("ciclo_medio_texto")) null else it.optString("ciclo_medio_texto"),

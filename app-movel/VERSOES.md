@@ -1,5 +1,16 @@
 # Versões do aplicativo
 
+## 0.13.2 (build 25)
+
+- Produção do turno (tela da máquina): a meta agora é a de **cada hora**, mandada pelo portal (mesma regra da
+  Produção por hora): segue a OP que a máquina tinha em cada momento — trocar a OP no meio da hora divide a meta
+  daquela hora entre as duas OPs e só muda dali para frente; as horas que passaram não mudam.
+  - traço tracejado da meta sobre cada barra (hora sem meta = sem traço) e "meta do turno" na legenda;
+  - cor de cada barra pelo nível do portal (≥ 90% verde, ≥ 50% amarela, abaixo vermelha; na hora atual, a meta só
+    até agora);
+  - "% da meta até agora" = peças das horas com meta ÷ soma das metas até agora.
+- Com o portal antigo (sem a meta por hora), o gráfico continua como na 0.12.5.
+
 ## 0.13.1 (build 24)
 
 - Máquinas › tela da máquina: tocar num **apontamento real** abre o detalhe dele — legenda, dia, início, fim e

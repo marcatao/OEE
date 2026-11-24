@@ -443,15 +443,23 @@ private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
     val horas = p.porHora
     // Hora atual = a última que já começou.
     val atual = horas.indexOfLast { (paraMs(it.inicioUtc) ?: Long.MAX_VALUE) <= agora }
-    val metaHora = p.metaPorMinuto?.let { it * 60 }
-    val maximo = maxOf(horas.maxOfOrNull { it.pecas } ?: 0, metaHora?.toInt() ?: 0, 1) * 1.15f
+    // Portal novo: meta de CADA hora (pela OP de cada momento; trocar a OP só muda dali para frente). Portal antigo:
+    // meta da OP atual × 60 em todas as horas.
+    val porHora = p.metaPorHora
+    val metaHora = if (porHora) null else p.metaPorMinuto?.let { it * 60 }
+    val maiorMeta = if (porHora) horas.maxOfOrNull { it.meta ?: 0 } ?: 0 else metaHora?.toInt() ?: 0
+    val maximo = maxOf(horas.maxOfOrNull { it.pecas } ?: 0, maiorMeta, 1) * 1.15f
     // Meta até agora (como a Produção por hora do portal): minutos já passados de cada hora × meta por minuto.
     val minutosPassados = horas.map { h ->
         val ini = paraMs(h.inicioUtc) ?: return@map 0.0
         ((agora - ini) / 60_000.0).coerceIn(0.0, 60.0)
     }
-    val metaAteAgora = p.metaPorMinuto?.let { m -> m * minutosPassados.sum() }?.takeIf { it > 0 }
-    val pctMeta = metaAteAgora?.let { p.pecasTurno / it }
+    val comMeta = horas.filter { it.metaAteAgora != null }
+    val metaAteAgora: Double? = if (porHora) comMeta.sumOf { it.metaAteAgora!! }.toDouble().takeIf { it > 0 }
+        else p.metaPorMinuto?.let { m -> m * minutosPassados.sum() }?.takeIf { it > 0 }
+    // Peças só das horas que têm meta (hora sem OP / sem meta não entra na conta).
+    val pecasComMeta = if (porHora) comMeta.sumOf { it.pecas } else p.pecasTurno
+    val pctMeta = metaAteAgora?.let { pecasComMeta / it }
     val cores = CoresOee.atual
     /** ≥ 90% da meta verde, ≥ 50% amarela, abaixo vermelha (mesma regra das barras do portal). */
     fun corDoNivel(pct: Double) = when {
@@ -505,7 +513,7 @@ private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
                     style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = corDoNivel(pctMeta),
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("(${numero(p.pecasTurno.toDouble())} de ${numero(Math.round(metaAteAgora).toDouble())} pç)",
+                Text("(${numero(pecasComMeta.toDouble())} de ${numero(Math.round(metaAteAgora!!).toDouble())} pç)",
                     style = MaterialTheme.typography.labelSmall, color = corTexto)
             }
         }
@@ -532,7 +540,12 @@ private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
                 val alt = (h.pecas / maximo) * alturaUtil
                 if (h.pecas > 0) {
                     drawRect(
-                        p.metaPorMinuto?.takeIf { minutosPassados[i] > 0 }?.let { m -> corDoNivel(h.pecas / (m * minutosPassados[i])) }
+                        (if (porHora) when (h.nivel) {
+                            "boa" -> cores.ok
+                            "media" -> cores.alerta
+                            "ruim" -> cores.erro
+                            else -> null
+                        } else p.metaPorMinuto?.takeIf { minutosPassados[i] > 0 }?.let { m -> corDoNivel(h.pecas / (m * minutosPassados[i])) })
                             ?: if (i == atual) corBarra else if (i > atual && atual >= 0) corBarraClara else corBarra.copy(alpha = .75f),
                         topLeft = Offset(x, topoLivre + alturaUtil - alt),
                         size = Size(largura, alt),
@@ -545,6 +558,12 @@ private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
                 }
                 if (i == atual) {
                     drawRect(corBarra, topLeft = Offset(x, size.height - 3.dp.toPx()), size = Size(largura, 3.dp.toPx()))
+                }
+                // Meta da hora: traço só sobre a barra dela (cada hora pode ter outra meta).
+                h.meta?.takeIf { porHora && it > 0 }?.let { meta ->
+                    val y = topoLivre + alturaUtil - (meta / maximo) * alturaUtil
+                    drawLine(corMeta, Offset(i * passo + 1f, y), Offset((i + 1) * passo - 1f, y), strokeWidth = 2.dp.toPx(),
+                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(8f, 5f)))
                 }
             }
             metaHora?.let { meta ->
@@ -576,6 +595,9 @@ private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
         if (metaHora != null) {
             Text("— — meta por hora (%s pç)".format(numero(metaHora)), style = MaterialTheme.typography.labelSmall, color = corMeta,
                 modifier = Modifier.padding(top = 6.dp))
+        } else if (porHora && horas.any { (it.meta ?: 0) > 0 }) {
+            Text("— — meta de cada hora (pela OP de cada momento)" + (p.metaTurno?.let { " · meta do turno ${numero(it.toDouble())} pç" } ?: ""),
+                style = MaterialTheme.typography.labelSmall, color = corMeta, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }

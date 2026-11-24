@@ -66,9 +66,14 @@ class CapturasMaquinasTest {
         legendasMotivo = motivos, servidorAgora = "", segundosAtualizacao = 10,
         periodoDe = iso(11 * 3_600_000L + 20 * 60_000), periodoAte = iso(-(4 * 3_600_000L + 41 * 60_000)), periodoRotulo = "Turno de hoje, 17/11 · 06:00 às 22:00",
         producao = ProducaoApp(
+            // Meta de cada hora: OP 1 (450/h) até 10:30, OP 2 (300/h) depois; hora 11 (atual) só até agora.
             porHora = listOf(310, 120, 0, 420, 455, 440, 470, 430, 210, 0, 0, 0, 0, 0, 0, 0).mapIndexed { i, p ->
-                HoraProducao("%02d:00".format(6 + i), iso((11 * 3_600_000L + 20 * 60_000) - i * 3_600_000L), p)
+                val meta = when { i < 4 -> 450; i == 4 -> 375; else -> 300 }
+                val ateAgora = when { i < 11 -> meta; i == 11 -> 100; else -> null }
+                val nivel = ateAgora?.takeIf { it > 0 }?.let { a -> val pct = p.toDouble() / a; if (pct >= .9) "boa" else if (pct >= .5) "media" else "ruim" }
+                HoraProducao("%02d:00".format(6 + i), iso((11 * 3_600_000L + 20 * 60_000) - i * 3_600_000L), p, meta, ateAgora, nivel)
             },
+            metaTurno = 5175, metaPorHora = true,
             pecasTurno = 2855, cicloMedio = 50, cavidades = 6, pecasPorMinuto = 7.2, metaPorMinuto = 7.5,
             moldeConserto = MoldeConserto("M001", "MOLDE TAMPA 8 CAV", 6, 8),
         ),
