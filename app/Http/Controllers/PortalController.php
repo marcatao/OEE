@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\DispositivoIot;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
-use App\Models\Parada;
 use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
 use App\Services\CalculadoraOee;
-use App\Services\IndicadoresOee;
+use App\Services\PanoramaMaquinas;
 use App\Services\Periodo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +19,7 @@ class PortalController extends Controller
 {
     private const OPS_NA_INICIAL = 30;
 
-    public function inicio(Request $request, IndicadoresOee $indicadores): View
+    public function inicio(Request $request, PanoramaMaquinas $panorama): View
     {
         $usuario = $request->user();
         if (! $usuario?->temAcesso()) {
@@ -45,13 +44,25 @@ class PortalController extends Controller
                 ->get()->keyBy(fn ($p) => $p->codigo());
         }
 
+        // OEE de hoje (D × P × Q pelos apontamentos reais, o IoT e as perdas) e máquinas paradas agora: o mesmo panorama do
+        // Dashboard por máquina (máquinas ativas com IoT ativo; fábrica pelas somas).
+        $oeeHoje = null;
+        $paradasAgora = null;
+        if ($usuario->pode('dashboard_maquina')) {
+            $maquinas = Maquina::where('ativo', true)->comIotAtivo()->get();
+            $dados = $panorama->montar($maquinas, $hoje->inicio, $hoje->fim);
+            $oeeHoje = $dados['geral'] + ['maquinas' => $maquinas->count()];
+            $paradasAgora = $dados['contagem']['parada'] ?? 0;
+        }
+
         return view('inicio', [
             'opsAbertas' => $opsAbertas,
             'contagemOps' => $contagemOps,
             'produtosOps' => $produtosOps,
-            'hoje' => $usuario->pode('dashboard_maquina') ? $indicadores->geral($hoje->inicio, $hoje->fim) : null,
+            'oeeHoje' => $oeeHoje,
             'maquinasAtivas' => Maquina::where('ativo', true)->count(),
-            'paradasAbertas' => Parada::whereNull('fim')->count(),
+            // máquinas paradas agora (situação pelo apontamento real mais recente); sem o dashboard, pelo cadastro
+            'paradasAbertas' => $paradasAgora ?? Maquina::where('ativo', true)->where('situacao', 'parada')->count(),
             'iotAtivos' => DispositivoIot::where('ativo', true)->count(),
             'iotOnline' => DispositivoIot::where('ativo', true)
                 ->where('ultimo_sinal_em', '>=', now()->subMinutes(config('oee.iot_minutos_sem_sinal', 5)))->count(),

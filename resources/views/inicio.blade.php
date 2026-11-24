@@ -73,10 +73,14 @@
     @endif
 
     <div class="kpis">
-      @if ($hoje !== null)
-        <a class="kpi {{ Formato::nivel($hoje->oee()) }}" href="{{ route('dashboard.maquinas') }}">
-          <div class="medidor pequeno" style="--pct: {{ Formato::pct100($hoje->oee()) }}"><div><strong>{{ Formato::pct($hoje->oee(), 0) }}</strong></div></div>
-          <div><span>OEE de hoje</span><small>{{ $hoje->temDados() ? 'todas as máquinas' : 'sem apontamentos hoje' }}</small></div>
+      @if ($oeeHoje !== null)
+        {{-- OEE da fábrica hoje: D × P × Q pelas somas das máquinas (o mesmo do Dashboard por máquina) --}}
+        <a class="kpi {{ Formato::nivel($oeeHoje['oeeIot']) }}" href="{{ route('dashboard.maquinas') }}"
+           title="Disponibilidade {{ Formato::pct($oeeHoje['disponibilidade']) }} × performance {{ Formato::pct($oeeHoje['performance']) }} × qualidade {{ Formato::pct($oeeHoje['qualidade']) }}">
+          <div class="medidor pequeno" style="--pct: {{ Formato::pct100($oeeHoje['oeeIot']) }}"><div><strong>{{ Formato::pct($oeeHoje['oeeIot'], 0) }}</strong></div></div>
+          <div><span>OEE de hoje</span><small>@if ($oeeHoje['oeeIot'] !== null)D {{ Formato::pct($oeeHoje['disponibilidade'], 0) }} · P {{ Formato::pct($oeeHoje['performance'], 0) }} · Q {{ Formato::pct($oeeHoje['qualidade'] ?? 1, 0) }} · {{ $oeeHoje['maquinas'] }} máquinas
+            @elseif ($oeeHoje['disponibilidade'] !== null)disponibilidade {{ Formato::pct($oeeHoje['disponibilidade'], 0) }} · sem meta nas OPs de hoje (sem performance)
+            @else sem apontamentos reais hoje @endif</small></div>
         </a>
       @endif
       <div class="kpi">
@@ -85,7 +89,7 @@
       </div>
       <div class="kpi">
         <div @class(['kpi-icone', 'alerta' => $paradasAbertas > 0])>@include('layouts.partials.icone', ['nome' => 'relogio'])</div>
-        <div><span>Paradas em andamento</span><strong>{{ Formato::inteiro($paradasAbertas) }}</strong></div>
+        <div title="Máquinas paradas agora (situação pelo apontamento real mais recente)"><span>Máquinas paradas agora</span><strong>{{ Formato::inteiro($paradasAbertas) }}</strong></div>
       </div>
       <div class="kpi">
         <div class="kpi-icone">@include('layouts.partials.icone', ['nome' => 'sinal'])</div>
