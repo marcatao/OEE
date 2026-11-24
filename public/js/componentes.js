@@ -309,5 +309,10 @@
     });
     var pedida = (location.hash.match(/^#aba-([\w-]+)/) || [])[1];
     if (!pedida || !abrir(pedida, false)) abrir(caixa.dataset.abaInicial || botoes[0].dataset.aba, false);
+    // Link para #aba-x na mesma página (ex.: o cartão "Perda da OP") abre a aba.
+    window.addEventListener('hashchange', function () {
+      var nome = (location.hash.match(/^#aba-([\w-]+)/) || [])[1];
+      if (nome && abrir(nome, false)) caixa.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 })();

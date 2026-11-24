@@ -65,6 +65,12 @@
           <div><span>Contadas hoje</span><strong>{{ Formato::inteiro($contagemIot['hoje']) }}<small> pç</small></strong>
             <small>{{ $contagemIot['ultima'] ? 'última contagem '.\App\Providers\AppServiceProvider::dataHora($contagemIot['ultima']) : 'sem contagem do IoT ainda' }}</small></div>
         </div>
+        {{-- Perda da OP: soma das perdas apontadas (aba Apontamento de perdas), em peças e kg; clicar abre a aba. --}}
+        <a class="kpi kpi-link" href="#aba-perdas" title="Perdas apontadas nesta OP (portal e aplicativo); clique para ver e apontar">
+          <div class="kpi-icone">@include('layouts.partials.icone', ['nome' => 'alerta'])</div>
+          <div><span>Perda da OP</span><strong>{{ Formato::quantidade($resumoPerdas['total_quantidade']) }}<small> pç</small></strong>
+            <small>{{ Formato::quantidade($resumoPerdas['total_peso']) }} kg @if ($op->c2_quant > 0)· {{ Formato::pct($resumoPerdas['total_quantidade'] / $op->c2_quant) }} da OP @endif· {{ $resumoPerdas['apontamentos'] }} {{ $resumoPerdas['apontamentos'] === 1 ? 'apontamento' : 'apontamentos' }}</small></div>
+        </a>
         @foreach (array_slice($contagemIot['por_maquina'], 0, 3) as $pm)
           <div class="kpi">
             <div class="kpi-icone">@include('layouts.partials.icone', ['nome' => 'maquina'])</div>

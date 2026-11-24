@@ -54,7 +54,8 @@ class PerdasOpTest extends TestCase
         $this->delete(route('perdas-op.destroy', $perda))->assertRedirect($url.'#aba-perdas');
         $this->assertEquals(100, $this->op->fresh()->quantidade_perda);
         $this->assertNotNull($perda->fresh()->excluido_em);
-        $this->get($url)->assertSee('Excluído por Bruno')->assertSee('perda-excluida', false);
+        $this->get($url)->assertSee('Excluído por Bruno')->assertSee('perda-excluida', false)
+            ->assertSee('Perda da OP')->assertSee('href="#aba-perdas"', false)->assertSee('1,25 kg · 10,0% da OP'); // cartão na aba OP
 
         // Dia no futuro e nada informado: recusa, com a mensagem na aba.
         $this->post(route('perdas-op.store', $this->op), ['quantidade' => '5', 'dia' => now()->addDays(2)->format('Y-m-d')])->assertSessionHasErrors('dia');
