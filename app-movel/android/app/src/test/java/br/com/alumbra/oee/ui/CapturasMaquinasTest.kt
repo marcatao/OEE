@@ -32,6 +32,7 @@ import br.com.alumbra.oee.maquinas.LegendaApp
 import br.com.alumbra.oee.maquinas.MaquinaResumo
 import br.com.alumbra.oee.maquinas.MoldeApp
 import br.com.alumbra.oee.maquinas.MoldeConserto
+import br.com.alumbra.oee.maquinas.OeeApp
 import br.com.alumbra.oee.maquinas.OpDetalhe
 import br.com.alumbra.oee.maquinas.OpResumo
 import br.com.alumbra.oee.maquinas.OperacaoApp
@@ -83,6 +84,7 @@ class CapturasMaquinasTest {
             pecasTurno = 2855, cicloMedio = 50, cavidades = 6, pecasPorMinuto = 7.2, metaPorMinuto = 7.5,
             moldeConserto = MoldeConserto("M001", "MOLDE TAMPA 8 CAV", 6, 8),
         ),
+        oee = if (pendente) OeeApp(null, 0.93, null, 1.0, "—", "sem") else OeeApp(0.77, 0.93, 0.87, 0.95, "77%", "medio"),
     )
 
     @Test

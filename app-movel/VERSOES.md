@@ -1,5 +1,12 @@
 # Versões do aplicativo
 
+## 0.14.1 (build 27)
+
+- Tela da máquina: **termômetro do OEE** no canto direito do primeiro cartão (o de Produzindo/Parada) — medidor
+  circular com o % no meio, cor pelo nível do portal (bom ≥ 85% verde, médio ≥ 60% amarelo, ruim vermelho) e
+  embaixo "D · P · Q". É o OEE (IoT) do turno de hoje (D × P × Q, com as perdas apontadas). Sem meta na OP: anel
+  vazio com "—" e "sem meta".
+
 ## 0.14.0 (build 26)
 
 - **Apontamento de perdas** (botão "Apontar perdas" no cartão da OP, na tela da máquina; perfil Operador, permissão

@@ -71,6 +71,22 @@ data class HoraProducao(
     val nivel: String? = null,
 )
 
+/** OEE (IoT) do turno de hoje da máquina: D × P × Q (0 a 1; performance pode passar de 1); null = sem meta/dados. */
+data class OeeApp(
+    val oee: Double?,
+    val disponibilidade: Double?,
+    val performance: Double?,
+    val qualidade: Double?,
+    val texto: String,
+    /** "bom" (≥ 85%), "medio" (≥ 60%), "ruim" ou "sem". */
+    val nivel: String,
+)
+
+fun oeeDe(j: JSONObject?): OeeApp? = j?.let {
+    fun d(n: String) = if (!it.has(n) || it.isNull(n)) null else it.optDouble(n)
+    OeeApp(d("oee"), d("disponibilidade"), d("performance"), d("qualidade"), it.optString("texto", "—"), it.optString("nivel", "sem"))
+}
+
 /** Molde com cavidades desativadas e produção abaixo da meta: indicar para conserto. */
 data class MoldeConserto(val codigo: String, val descricao: String?, val ativas: Int, val total: Int)
 
@@ -160,6 +176,7 @@ data class DetalheMaquina(
     val periodoAte: String? = null,
     val periodoRotulo: String = "Hoje",
     val producao: ProducaoApp? = null,
+    val oee: OeeApp? = null,
 )
 
 private fun JSONObject.texto(nome: String): String? = if (isNull(nome)) null else optString(nome)
@@ -253,5 +270,6 @@ fun detalheDe(j: JSONObject): DetalheMaquina {
         periodoAte = j.optJSONObject("periodo")?.texto("ate_utc"),
         periodoRotulo = j.optJSONObject("periodo")?.optString("rotulo", "Hoje") ?: "Hoje",
         producao = producaoDe(j.optJSONObject("producao")),
+        oee = oeeDe(j.optJSONObject("oee")),
     )
 }

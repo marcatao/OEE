@@ -385,7 +385,48 @@ private fun CartaoSituacao(d: DetalheMaquina, atualizadoEm: Long, hora: SimpleDa
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // Termômetro do OEE (IoT) do turno de hoje, no canto direito.
+            d.oee?.let { MedidorOee(it, Modifier.padding(top = 14.dp, end = 14.dp, bottom = 14.dp)) }
         }
+    }
+}
+
+/** Medidor circular do OEE: anel com o % no meio, cor pelo nível; embaixo D · P · Q. Sem OEE: anel vazio com "—". */
+@Composable
+private fun MedidorOee(o: OeeApp, modifier: Modifier = Modifier) {
+    val c = CoresOee.atual
+    val cor = when (o.nivel) {
+        "bom" -> c.ok
+        "medio" -> c.alerta
+        "ruim" -> c.erro
+        else -> MaterialTheme.colorScheme.outline
+    }
+    val trilho = MaterialTheme.colorScheme.surfaceVariant
+    val fracao = (o.oee ?: 0.0).coerceIn(0.0, 1.0).toFloat()
+    fun p(v: Double?) = v?.let { "${Math.round(it * 100)}%" } ?: "—"
+    Column(modifier.width(92.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("OEE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(Modifier.size(78.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val traco = 9.dp.toPx()
+                val area = Size(size.width - traco, size.height - traco)
+                val origem = Offset(traco / 2, traco / 2)
+                // Arco de 270° (abre embaixo), como um termômetro de painel.
+                drawArc(trilho, 135f, 270f, false, origem, area, style = androidx.compose.ui.graphics.drawscope.Stroke(traco, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                if (fracao > 0f) {
+                    drawArc(cor, 135f, 270f * fracao, false, origem, area, style = androidx.compose.ui.graphics.drawscope.Stroke(traco, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                }
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(if (o.oee == null) "—" else o.texto, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
+                    color = if (o.oee == null) MaterialTheme.colorScheme.onSurfaceVariant else cor, maxLines = 1)
+                if (o.oee == null) Text("sem meta", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+        }
+        Text("D ${p(o.disponibilidade)} · P ${p(o.performance)}", style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
+        Text("Q ${p(o.qualidade)}", style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
     }
 }
 
