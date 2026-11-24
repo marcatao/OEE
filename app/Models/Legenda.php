@@ -27,13 +27,13 @@ class Legenda extends Model
 
     protected $table = 'legendas';
 
-    protected $fillable = ['unidade', 'codigo', 'descricao', 'tipo', 'cor', 'ordem', 'ativo', 'exige_op', 'abre_ss_unidade', 'abre_ss_area_executante_id'];
+    protected $fillable = ['unidade', 'codigo', 'descricao', 'tipo', 'cor', 'ordem', 'ativo', 'exige_op', 'exibir_dashboards', 'abre_ss_unidade', 'abre_ss_area_executante_id'];
 
-    protected $attributes = ['ativo' => true, 'ordem' => 0];
+    protected $attributes = ['ativo' => true, 'ordem' => 0, 'exibir_dashboards' => true];
 
     protected function casts(): array
     {
-        return ['exige_op' => 'boolean', 'ativo' => 'boolean', 'ordem' => 'integer'];
+        return ['exige_op' => 'boolean', 'ativo' => 'boolean', 'ordem' => 'integer', 'exibir_dashboards' => 'boolean'];
     }
 
     /** Área executante para a qual o apontamento desta legenda abre uma SS automática (null = não abre). */

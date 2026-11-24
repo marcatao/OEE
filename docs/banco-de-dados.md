@@ -270,6 +270,7 @@ erDiagram
         bit exige_op
         nvarchar(20) abre_ss_unidade
         bigint abre_ss_area_executante_id FK
+        bit exibir_dashboards
     }
     linhas {
         bigint id PK
@@ -1130,7 +1131,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`grupos`](#grupos) | Sistema | `id` | 8 | 2 |
 | [`job_batches`](#job_batches) | Infra | `id` | 10 | 0 |
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
-| [`legendas`](#legendas) | Sistema | `id` | 15 | 3 |
+| [`legendas`](#legendas) | Sistema | `id` | 16 | 3 |
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
 | [`maos_de_obra`](#maos_de_obra) | Sistema | `id` | 8 | 2 |
 | [`maquinas`](#maquinas) | Mista | `id` | 44 | 9 |
@@ -1640,6 +1641,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `exige_op` | `bit` | não | `'0'` |  |
 | `abre_ss_unidade` | `nvarchar(20)` | sim |  |  |
 | `abre_ss_area_executante_id` | `bigint` | sim |  | FK → `os_areas_executantes.id` |
+| `exibir_dashboards` | `bit` | não | `'1'` |  |
 
 **Índices:** `legendas_codigo_unique` único (codigo) · `legendas_unidade_index` (unidade)
 

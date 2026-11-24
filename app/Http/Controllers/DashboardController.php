@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Apontamento;
 use App\Models\ApontamentoEstado;
+use App\Models\Legenda;
 use App\Models\Maquina;
 use App\Models\Parada;
 use App\Services\HorarioApontamento;
@@ -57,7 +58,9 @@ class DashboardController extends Controller
                 ->setTimezone(HorarioApontamento::fuso())->startOfDay(),
             'producaoHora' => $producaoHora->montar(new Collection([$maquina->loadMissing('ordemProducao')]), $dia)['maquinas'][0] ?? null,
             // Apontamentos reais (Timeline) que tocam o período, do mais recente para o mais antigo.
+            // (sem as legendas com "Exibir em dashboards" = Não; a Timeline mostra todas)
             'apontamentosReais' => ApontamentoEstado::with(['legenda', 'ordemProducao'])->where('maquina_id', $maquina->id)
+                ->whereNotIn('legenda_id', Legenda::withoutGlobalScopes()->where('exibir_dashboards', false)->select('id'))
                 ->tocando($periodo->inicio, $periodo->fim)
                 ->orderByDesc('inicio')->limit(50)->get(),
             'ind' => $indicadores->daMaquina($maquina->id, $periodo->inicio, $periodo->fim),

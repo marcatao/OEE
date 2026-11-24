@@ -55,7 +55,7 @@ class LegendaController extends Controller
     private function salvar(Request $request, Legenda $legenda): void
     {
         $request->merge(['codigo' => mb_strtoupper(trim((string) $request->input('codigo'))), 'cor' => strtolower((string) $request->input('cor'))]);
-        $request->mergeIfMissing(['exige_op' => (int) $legenda->exige_op]);
+        $request->mergeIfMissing(['exige_op' => (int) $legenda->exige_op, 'exibir_dashboards' => (int) ($legenda->exibir_dashboards ?? true)]);
         $dados = $request->validate([
             'unidade' => Unidades::regras($request->user(), $legenda->exists ? $legenda->unidade : null),
             'codigo' => ['required', 'string', 'max:12', Rule::unique('legendas', 'codigo')->ignore($legenda->id)],
@@ -65,6 +65,7 @@ class LegendaController extends Controller
             'ordem' => ['nullable', 'integer', 'between:0,9999'],
             'ativo' => ['required', 'boolean'],
             'exige_op' => ['required', 'boolean'],
+            'exibir_dashboards' => ['required', 'boolean'],
             'abre_ss_unidade' => ['nullable', Rule::in(AcessoOs::unidadesHabilitadas($request->user()))],
             'abre_ss_area_executante_id' => ['nullable', 'integer', 'required_with:abre_ss_unidade'],
         ], [

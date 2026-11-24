@@ -169,4 +169,40 @@ class PainelTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_legenda_com_exibir_em_dashboards_nao_fica_fora_dos_dashboards_e_dos_calculos(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-05 15:00', 'UTC'));
+        $maquina = $this->maquina();
+        $produz = Legenda::create(['codigo' => '1', 'descricao' => 'Produzindo', 'tipo' => 'produzindo', 'cor' => '#2e7d32']);
+        $ferramentaria = Legenda::create(['codigo' => '9', 'descricao' => 'Ferramentaria', 'tipo' => 'parada', 'cor' => '#6d4c41']);
+        $this->assertTrue($ferramentaria->fresh()->exibir_dashboards); // toda legenda nasce "Sim"
+        // 2 h produzindo + 1 h na Ferramentaria (parada): disponibilidade 66,7% com ela; 100% sem ela.
+        foreach ([['12:00', '13:59:59', $produz], ['14:00', null, $ferramentaria]] as [$ini, $fim, $leg]) {
+            ApontamentoEstado::create(['maquina_id' => $maquina->id, 'legenda_id' => $leg->id,
+                'inicio' => Carbon::parse("2026-11-05 {$ini}", 'UTC'), 'fim' => $fim ? Carbon::parse("2026-11-05 {$fim}", 'UTC') : null]);
+        }
+        $montar = fn () => app(PanoramaMaquinas::class)->montar(Maquina::whereKey($maquina->id)->get(),
+            Carbon::parse('2026-11-05 03:00', 'UTC'), Carbon::parse('2026-11-06 03:00', 'UTC'));
+        $this->assertEqualsWithDelta(2 / 3, $montar()['maquinas'][$maquina->id]['disponibilidade'], 0.001);
+
+        // Cadastro: "Exibir em dashboards" = Não.
+        $this->actingAs($this->usuario('admin', 'adm@empresa.com'));
+        $this->put("/admin/legendas/{$ferramentaria->id}", ['codigo' => '9', 'descricao' => 'Ferramentaria', 'tipo' => 'parada',
+            'cor' => '#6d4c41', 'ativo' => '1', 'exige_op' => '0', 'exibir_dashboards' => '0'])->assertSessionHasNoErrors();
+        $this->assertFalse($ferramentaria->fresh()->exibir_dashboards);
+
+        $dados = $montar();
+        $this->assertEqualsWithDelta(1.0, $dados['maquinas'][$maquina->id]['disponibilidade'], 0.001); // fora da conta
+        $this->assertSame(0, $dados['maquinas'][$maquina->id]['segundos']['parada']);
+        $this->assertNull($dados['maquinas'][$maquina->id]['maiorParada']);
+        $this->assertSame(['1'], array_map(fn ($t) => $t['legenda']->codigo, $dados['geral']['totais']));
+        $tela = $this->get("/producao/dashboard/{$maquina->id}")->assertOk();
+        $this->assertSame(['1'], array_map(fn ($t) => $t['legenda']->codigo, $tela->viewData('panorama')['geral']['totais']));
+        $this->assertSame(['1'], $tela->viewData('apontamentosReais')->map(fn ($a) => $a->legenda->codigo)->all());
+        // A Timeline continua mostrando.
+        $this->get('/dashboards/timeline?parcial=1')->assertOk()->assertSee('<b>9</b>', false);
+
+        Carbon::setTestNow();
+    }
 }

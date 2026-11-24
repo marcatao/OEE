@@ -17,6 +17,10 @@ use Illuminate\Support\Collection;
  * Performance (IoT) = peças reais ÷ peças na meta, só dos apontamentos cuja OP tem meta (MetaProducao): peças na meta
  * = meta da OP × tempo PRODUZINDO; peças reais = peças do IoT de todos os apontamentos dessas OPs (qualquer legenda,
  * repartidas pelo tempo dentro do período). OEE (IoT) = disponibilidade × performance (CalculadoraOee::oeeIot).
+ *
+ * Legenda com "Exibir em dashboards" = Não (pedido do usuário em 24/11/2026): o tempo dela fica FORA daqui — não aparece
+ * no tempo por legenda, na barra nem na maior parada e não entra na disponibilidade nem na performance. A Timeline
+ * continua mostrando tudo (ela usa a Timeline direto, não este panorama).
  */
 class PanoramaMaquinas
 {
@@ -33,12 +37,14 @@ class PanoramaMaquinas
         $situacoes = $this->timeline->situacoes($maquinas);
 
         $porMaquina = [];
+        $porLegenda = [];
+        $porTipo = array_fill_keys(array_keys(Legenda::TIPOS), 0);
         foreach ($maquinas as $m) {
             $segundos = array_fill_keys(array_keys(Legenda::TIPOS), 0);
             $paradas = [];
             $pecas = 0.0;
             $pecasNaMeta = 0.0;
-            $blocos = $dados['linhas'][$m->id] ?? [];
+            $blocos = array_values(array_filter($dados['linhas'][$m->id] ?? [], fn ($b) => self::exibe($b['legenda'])));
             foreach ($blocos as $b) {
                 $s = $b['fim'] - $b['inicio'];
                 $meta = $this->metas->porMinuto($b['apontamento']->ordemProducao, $b['apontamento']->inicio); // a meta da época
@@ -50,6 +56,9 @@ class PanoramaMaquinas
                 }
                 $tipo = $b['legenda']->tipo;
                 $segundos[$tipo] = ($segundos[$tipo] ?? 0) + $s;
+                $porTipo[$tipo] = ($porTipo[$tipo] ?? 0) + $s;
+                $porLegenda[$b['legenda']->id] ??= ['legenda' => $b['legenda'], 'segundos' => 0];
+                $porLegenda[$b['legenda']->id]['segundos'] += $s;
                 if ($tipo !== 'produzindo') {
                     $paradas[$b['legenda']->id] ??= ['legenda' => $b['legenda'], 'segundos' => 0];
                     $paradas[$b['legenda']->id]['segundos'] += $s;
@@ -80,8 +89,29 @@ class PanoramaMaquinas
             'maquinas' => $porMaquina,
             'situacoes' => $situacoes,
             'contagem' => $contagem,
-            'geral' => ['disponibilidade' => $dados['disponibilidade'], 'segundos' => $dados['segundos'], 'totais' => $dados['totais']],
+            'geral' => self::geral($porLegenda, $porTipo),
         ];
+    }
+
+    /** A legenda aparece (e conta) nos dashboards de máquinas? */
+    public static function exibe(?Legenda $legenda): bool
+    {
+        return $legenda === null || $legenda->exibir_dashboards === null || (bool) $legenda->exibir_dashboards;
+    }
+
+    /**
+     * Tempo por legenda e disponibilidade do conjunto, só com as legendas exibidas (mesma regra da Timeline).
+     *
+     * @return array{disponibilidade: ?float, segundos: array<string, int>, totais: list<array>}
+     */
+    private static function geral(array $porLegenda, array $porTipo): array
+    {
+        $total = array_sum($porTipo);
+        $totais = array_map(fn ($t) => $t + ['pct' => $total > 0 ? $t['segundos'] / $total : 0.0], array_values($porLegenda));
+        usort($totais, fn ($a, $b) => [$a['legenda']->ordem, $a['legenda']->codigo] <=> [$b['legenda']->ordem, $b['legenda']->codigo]);
+        $base = $porTipo['produzindo'] + $porTipo['parada'];
+
+        return ['disponibilidade' => $base > 0 ? $porTipo['produzindo'] / $base : null, 'segundos' => $porTipo, 'totais' => $totais];
     }
 
     /** Peças do apontamento dentro do bloco (cortado no período): repartidas pelo tempo do apontamento. */

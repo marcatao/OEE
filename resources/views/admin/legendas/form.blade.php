@@ -49,6 +49,12 @@
       <label class="opcao"><input type="radio" name="exige_op" value="0" @checked(old('exige_op', (int) $legenda->exige_op) == 0)> <span>Não</span></label>
     </fieldset>
 
+    <fieldset class="opcoes-linha">
+      <legend>Exibir em dashboards</legend>
+      <label class="opcao"><input type="radio" name="exibir_dashboards" value="1" @checked(old('exibir_dashboards', (int) ($legenda->exibir_dashboards ?? true)) == 1)> <span>Sim</span></label>
+      <label class="opcao"><input type="radio" name="exibir_dashboards" value="0" @checked(old('exibir_dashboards', (int) ($legenda->exibir_dashboards ?? true)) == 0)> <span>Não <small>o tempo desta legenda não aparece nem entra nos cálculos dos dashboards de máquinas (disponibilidade, performance, tempo por legenda); a Timeline continua mostrando</small></span></label>
+    </fieldset>
+
     <fieldset>
       <legend>Abre SS</legend>
       <p class="suave">Toda vez que esta legenda for apontada numa máquina (no portal, no aplicativo ou pelo IoT), uma solicitação de serviço
