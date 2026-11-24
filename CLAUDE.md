@@ -276,8 +276,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `desligada` = "Fora de turno": nunca conta como parada (nem na disponibilidade). Legenda com **Exibir em dashboards**
   = Não (`legendas.exibir_dashboards`, nasce Sim; pedido do usuário em 24/11/2026): fora do Dashboard por máquina —
   tempo por legenda, barra, maior parada, disponibilidade, performance e lista de apontamentos (`PanoramaMaquinas::exibe`);
-  a Timeline continua mostrando tudo. O OEE completo
-  (performance e qualidade) ainda vem das tabelas antigas de peças (`apontamentos`, `paradas`) e só aparece com dados.
+  a Timeline continua mostrando tudo. A tela da máquina mostra o OEE (IoT) D × P × Q do período (medidor + barras e
+  tempos/peças/perdas; sem OEE explica o que falta: apontamentos ou meta). O "OEE completo" antigo das tabelas de peças
+  do sistema anterior (`apontamentos`, `paradas`) saiu da tela da máquina (continua só como bloco "tabelas antigas" na lista).
 - Canais IoT da máquina usam `iotN_dispositivo_id` (FK para `dispositivos_iot`). As colunas antigas `iotN_id`
   (texto) só são lidas, para mostrar o valor antigo; não grave nelas. O canal é um dos 6 de `config('oee.iot_canais')`
   (chd1_value…chd6_value; dados virão de MQTT.dbo.IOT001). Dispositivo + canal só em UMA máquina (todas as unidades).

@@ -5,7 +5,6 @@
 @use('App\Support\Formato')
 
 @section('conteudo')
-@php($oee = $ind->oee())
 <section class="cartao">
   <p class="trilha">Produção › <a href="{{ route('dashboard.maquinas', ['periodo' => $periodo->chave]) }}">Dashboard por máquina</a></p>
   <div class="titulo-com-acao">
@@ -35,9 +34,6 @@
   @if ($paradaAberta)
     <p class="aviso alerta" role="status">@include('layouts.partials.icone', ['nome' => 'alerta'])
       <strong>Máquina parada</strong> desde @dataHora($paradaAberta->inicio) — {{ $paradaAberta->motivo?->descricao ?? 'sem justificativa' }}.</p>
-  @endif
-  @if ($ind->performanceAcimaDoIdeal())
-    <p class="aviso alerta">A produção passou do ciclo ideal cadastrado (performance acima de 100%). Revise o ciclo ideal da máquina.</p>
   @endif
 </section>
 
@@ -130,90 +126,59 @@
   </div>
 </section>
 
-@if (! $ind->temDados())
-  <section class="cartao vazio" style="margin-top:1.25rem">
-    @include('layouts.partials.icone', ['nome' => 'dashboard'])
-    <p>OEE completo (performance e qualidade): ainda sem contagem de peças desta máquina em <strong>{{ mb_strtolower($periodo->rotulo()) }}</strong>.</p>
-    <p><small>A contagem de peças chegará pelos dispositivos IoT ligados à máquina. A disponibilidade acima vem dos apontamentos reais.</small></p>
+{{-- OEE (IoT) da máquina no período: D × P × Q pelos apontamentos reais, o IoT e as perdas apontadas (PanoramaMaquinas).
+     Substitui o "OEE completo" antigo, que lia as tabelas de peças do sistema anterior (vazias). --}}
+@php($oeeIot = $dadosMaq['oeeIot'] ?? null)
+@php($semMeta = ($dadosMaq['pecasNaMeta'] ?? null) === null)
+<div class="grade duas" style="margin-top:1.25rem">
+  <section class="cartao {{ Formato::nivel($oeeIot) }}">
+    <h3>OEE (IoT) — {{ $periodo->rotulo() }}</h3>
+    <div class="painel-oee">
+      <div class="medidor" style="--pct: {{ Formato::pct100($oeeIot) }}"><div><strong>{{ Formato::pct($oeeIot) }}</strong><span>OEE</span></div></div>
+      <div class="barras">
+        @foreach (['Disponibilidade' => $dadosMaq['disponibilidade'], 'Performance' => $dadosMaq['performance'] ?? null, 'Qualidade' => $dadosMaq['qualidade'] ?? null] as $rotulo => $valor)
+          <div class="{{ Formato::nivel($valor === null ? null : min($valor, 1)) }}">
+            <div class="barra-rotulo"><span>{{ $rotulo }}</span><strong>{{ Formato::pct($valor) }}</strong></div>
+            <div class="barra"><i style="width: {{ Formato::pct100($valor) }}%"></i></div>
+          </div>
+        @endforeach
+      </div>
+    </div>
+    @if ($oeeIot === null)
+      <p class="suave" style="margin-bottom:0">
+        @if ($dadosMaq['apontado'] <= 0)
+          Sem apontamentos reais desta máquina em {{ mb_strtolower($periodo->rotulo()) }}.
+        @elseif ($semMeta)
+          Falta a <strong>meta</strong> para a performance: as OPs produzidas no período não têm item MO na estrutura (Produção › Mão de obra / estrutura no Protheus).
+        @endif
+      </p>
+    @endif
   </section>
-@else
-  <div class="grade duas">
-    <section class="cartao {{ Formato::nivel($oee) }}">
-      <h3>OEE — {{ $periodo->rotulo() }}</h3>
-      <div class="painel-oee">
-        <div class="medidor" style="--pct: {{ Formato::pct100($oee) }}"><div><strong>{{ Formato::pct($oee) }}</strong><span>OEE</span></div></div>
-        <div class="barras">
-          @foreach (['Disponibilidade' => $ind->disponibilidade(), 'Performance' => $ind->performance(), 'Qualidade' => $ind->qualidade()] as $rotulo => $valor)
-            <div class="{{ Formato::nivel($valor) }}">
-              <div class="barra-rotulo"><span>{{ $rotulo }}</span><strong>{{ Formato::pct($valor) }}</strong></div>
-              <div class="barra"><i style="width: {{ Formato::pct100($valor) }}%"></i></div>
-            </div>
-          @endforeach
-        </div>
-      </div>
-    </section>
 
-    <section class="cartao">
-      <h3>Tempos e produção</h3>
-      <div class="numeros">
-        <div><span>Tempo planejado</span><strong>{{ Formato::minutos($ind->tempoPlanejadoMin()) }}</strong></div>
-        <div><span>Tempo operando</span><strong>{{ Formato::minutos($ind->tempoOperandoMin()) }}</strong></div>
-        <div><span>Paradas não planejadas</span><strong>{{ Formato::minutos($ind->paradasNaoPlanejadasMin) }}</strong></div>
-        <div><span>Paradas planejadas</span><strong>{{ Formato::minutos($ind->paradasPlanejadasMin) }}</strong></div>
-        <div><span>Total produzido</span><strong>{{ Formato::inteiro($ind->totalProduzido) }}</strong></div>
-        <div><span>Peças boas</span><strong>{{ Formato::inteiro($ind->pecasBoas) }}</strong></div>
-        <div><span>Refugo</span><strong>{{ Formato::inteiro($ind->refugo()) }}</strong></div>
-        <div><span>Apontamentos</span><strong>{{ Formato::inteiro($ind->apontamentos) }}</strong></div>
-      </div>
-    </section>
-  </div>
-
-  <div class="grade duas" style="margin-top:1.25rem">
-    <section class="cartao">
-      <h3>Paradas por motivo</h3>
-      @php($maior = max(array_column($ind->pareto, 'minutos') ?: [0]))
-      @forelse ($ind->pareto as $linha)
-        <div style="margin-top:.75rem">
-          <div class="barra-rotulo"><span>{{ $linha['motivo'] }} @if ($linha['planejada'])<small class="suave">(planejada)</small>@endif</span>
-            <strong>{{ Formato::minutos($linha['minutos']) }} · {{ $linha['ocorrencias'] }}×</strong></div>
-          <div class="barra {{ $linha['planejada'] ? 'nivel-sem' : 'nivel-ruim' }}"><i style="width: {{ $maior > 0 ? round($linha['minutos'] / $maior * 100, 1) : 0 }}%"></i></div>
-        </div>
-      @empty
-        <p class="suave">Nenhuma parada no período.</p>
-      @endforelse
-    </section>
-
-    <section class="cartao">
-      <h3>Dispositivos IoT</h3>
-      @forelse ($maquina->dispositivos as $d)
-        <p style="display:flex;justify-content:space-between;gap:1rem;margin:.6rem 0">
-          <span>{{ $d->nome }} <small class="suave">{{ $d->rotuloProtocolo() }}</small></span>
-          <span class="etiqueta situacao-{{ $d->situacao() }}"><i class="ponto"></i>{{ $d->rotuloSituacao() }}</span>
-        </p>
-      @empty
-        <p class="suave">Nenhum dispositivo ligado a esta máquina.</p>
-      @endforelse
-    </section>
-  </div>
-
-  <section class="cartao" style="margin-top:1.25rem">
-    <h3>Últimos apontamentos</h3>
-    <div class="rolagem">
-    <table class="tabela">
-      <thead><tr><th>Início</th><th>Fim</th><th class="num">Ciclo ideal (s)</th><th class="num">Produzido</th><th class="num">Boas</th><th class="num">Refugo</th></tr></thead>
-      <tbody>
-      @foreach ($apontamentos as $a)
-        <tr>
-          <td>@dataHora($a->inicio)</td><td>@dataHora($a->fim)</td>
-          <td class="num">{{ number_format($a->ciclo_ideal_s, 1, ',', '.') }}</td>
-          <td class="num">{{ Formato::inteiro($a->total_produzido) }}</td>
-          <td class="num">{{ Formato::inteiro($a->pecas_boas) }}</td>
-          <td class="num">{{ Formato::inteiro($a->total_produzido - $a->pecas_boas) }}</td>
-        </tr>
-      @endforeach
-      </tbody>
-    </table>
+  <section class="cartao">
+    <h3>Tempos e produção</h3>
+    <div class="numeros">
+      <div><span>Tempo produzindo</span><strong>{{ Formato::minutos(($dadosMaq['segundos']['produzindo'] ?? 0) / 60) }}</strong></div>
+      <div title="Só paradas não planejadas"><span>Paradas não planejadas</span><strong>{{ Formato::minutos(($dadosMaq['segundos']['parada'] ?? 0) / 60) }}</strong></div>
+      <div><span>Paradas planejadas</span><strong>{{ Formato::minutos(($dadosMaq['segundos']['planejada'] ?? 0) / 60) }}</strong></div>
+      <div><span>Fora de turno</span><strong>{{ Formato::minutos(($dadosMaq['segundos']['desligada'] ?? 0) / 60) }}</strong></div>
+      <div title="Peças contadas pelo IoT (inclui as perdidas)"><span>Peças (IoT)</span><strong>{{ Formato::inteiro($dadosMaq['pecasTodas'] ?? 0) }}</strong></div>
+      <div title="Meta da OP × tempo produzindo (só OPs com meta)"><span>Peças na meta</span><strong>{{ ($dadosMaq['pecasNaMeta'] ?? null) === null ? '—' : Formato::inteiro($dadosMaq['pecasNaMeta']) }}</strong></div>
+      <div title="Perdas apontadas (aba Apontamento de perdas da OP / app) desta máquina no período"><span>Perdas</span><strong>{{ Formato::quantidade($dadosMaq['perdas'] ?? 0) }}</strong></div>
+      <div><span>Peças boas</span><strong>{{ Formato::inteiro(max(0, ($dadosMaq['pecasTodas'] ?? 0) - ($dadosMaq['perdas'] ?? 0))) }}</strong></div>
     </div>
   </section>
-@endif
+</div>
+
+<section class="cartao" style="margin-top:1.25rem">
+  <h3>Dispositivos IoT</h3>
+  @forelse ($maquina->dispositivos as $d)
+    <p style="display:flex;justify-content:space-between;gap:1rem;margin:.6rem 0">
+      <span>{{ $d->nome }} <small class="suave">{{ $d->rotuloProtocolo() }}</small></span>
+      <span class="etiqueta situacao-{{ $d->situacao() }}"><i class="ponto"></i>{{ $d->rotuloSituacao() }}</span>
+    </p>
+  @empty
+    <p class="suave">Nenhum dispositivo ligado a esta máquina.</p>
+  @endforelse
+</section>
 @endsection

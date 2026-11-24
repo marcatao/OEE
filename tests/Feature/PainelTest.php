@@ -124,9 +124,10 @@ class PainelTest extends TestCase
         $this->actingAs($this->usuario('operador', 'op@empresa.com', ['dashboard_maquina']));
         $this->get('/producao/dashboard')->assertOk()->assertSee('Injetora 01')->assertSee('100%');
         $this->get("/producao/dashboard/{$maquina->id}?periodo=hoje")->assertOk()
-            ->assertSee('100,0%')->assertSee('Tempo operando')->assertSee('2 h 00 min')
+            ->assertSee('OEE (IoT) — Hoje')->assertSee('Sem apontamentos reais desta máquina em hoje') // OEE novo (o antigo das tabelas de peças saiu)
+            ->assertDontSee('OEE completo (performance e qualidade)')
             ->assertSee('Produção por hora — hoje')->assertSee('Peças no turno')->assertSee('pç/min agora'); // cartão da Produção por hora
-        $this->get("/producao/dashboard/{$maquina->id}?periodo=ontem")->assertOk()->assertSee('sem contagem de peças')
+        $this->get("/producao/dashboard/{$maquina->id}?periodo=ontem")->assertOk()->assertSee('Sem apontamentos reais desta máquina em ontem')
             ->assertSee('Produção por hora — 04/11/2026'); // período passado: o turno do último dia dele
 
         Carbon::setTestNow();
