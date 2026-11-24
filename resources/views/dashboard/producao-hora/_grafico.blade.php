@@ -18,7 +18,7 @@
     @php($x = $i * $passo + ($passo - $barra) / 2)
     @php($nivel = \App\Services\ProducaoPorHora::nivelMeta($h))
     <g class="ph-hora {{ $h['atual'] ? 'atual' : '' }} {{ $h['futura'] ? 'futura' : '' }} {{ $nivel ? 'meta-'.$nivel : '' }}">
-      <title>{{ $h['hora'] }} — {{ \App\Support\Formato::inteiro($h['pecas']) }} peças{{ $h['meta'] !== null ? ' · meta '.\App\Support\Formato::inteiro($h['meta']) : '' }}{{ $nivel ? ' · '.\App\Support\Formato::pct($h['pecas'] / $h['metaAteAgora'], 0).' da meta'.($h['atual'] ? ' até agora' : '') : '' }}{{ $h['atual'] ? ' (hora atual)' : '' }}</title>
+      <title>{{ $h['hora'] }} — {{ \App\Support\Formato::inteiro($h['pecas']) }} peças{{ $h['meta'] !== null ? ' · meta '.\App\Support\Formato::inteiro($h['meta']) : '' }}{{ $nivel ? ' · '.\App\Support\Formato::pct($h['pecas'] / $h['metaAteAgora'], 0).' da meta'.($h['atual'] ? ' até agora' : '') : '' }}{{ $h['atual'] ? ' (hora atual)' : '' }}@foreach ($h['ops'] ?? [] as $o)@if ($o['numero'])&#10;OP {{ $o['numero'] }}: {{ \App\Support\Formato::inteiro($o['pecas']) }} pç{{ $o['meta'] !== null ? ' · meta '.\App\Support\Formato::inteiro($o['meta']).' ('.\App\Support\Formato::quantidade($o['meta_por_minuto']).' pç/min)' : ' · sem meta' }}@endif @endforeach</title>
       <rect class="ph-trilho" x="{{ $x }}" y="{{ $topo }}" width="{{ $barra }}" height="{{ $util }}" rx="5"/>
       @if ($h['pecas'] > 0)
         <rect class="ph-barra" x="{{ $x }}" y="{{ $y($h['pecas']) }}" width="{{ $barra }}" height="{{ round($topo + $util - $y($h['pecas']), 2) }}" rx="5"/>

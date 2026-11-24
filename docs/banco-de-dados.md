@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **61** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **62** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -339,6 +339,18 @@ erDiagram
         float(53) por_minuto
         datetime vigente_desde
         datetime registrado_em
+    }
+    metas_producao_horas {
+        bigint id PK
+        bigint maquina_id FK
+        bigint ordem_producao_id FK
+        date dia
+        datetime hora_inicio
+        float(53) meta_por_minuto
+        int segundos
+        float(53) meta
+        int pecas
+        datetime atualizado_em
     }
     motivos_parada {
         bigint id PK
@@ -967,6 +979,8 @@ erDiagram
     legendas |o--o{ maquinas : "situacao_legenda_id"
     ordens_producao |o--o{ maquinas : "ordem_producao_id"
     calendarios |o--o{ maquinas : "calendario_id"
+    maquinas ||--o{ metas_producao_horas : "maquina_id"
+    ordens_producao ||--o{ metas_producao_horas : "ordem_producao_id"
     solicitacoes_servico |o--o{ ordens_servico : "solicitacao_id"
     os_planos_preventiva |o--o{ ordens_servico : "plano_preventiva_id"
     maquinas |o--o{ ordens_servico : "maquina_id"
@@ -1109,6 +1123,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
 | [`maquinas`](#maquinas) | Mista | `id` | 44 | 9 |
 | [`metas_producao`](#metas_producao) | Sistema | `id` | 9 | 0 |
+| [`metas_producao_horas`](#metas_producao_horas) | Sistema | `id` | 10 | 2 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
@@ -1711,6 +1726,25 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `registrado_em` | `datetime` | não |  |  |
 
 **Índices:** `metas_producao_produto_revisao_vigente_desde_index` (produto, revisao, vigente_desde)
+
+### metas_producao_horas
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `maquina_id` | `bigint` | não |  | FK → `maquinas.id` |
+| `ordem_producao_id` | `bigint` | não |  | FK → `ordens_producao.id` |
+| `dia` | `date` | não |  |  |
+| `hora_inicio` | `datetime` | não |  |  |
+| `meta_por_minuto` | `float(53)` | sim |  |  |
+| `segundos` | `int` | não | `'0'` |  |
+| `meta` | `float(53)` | sim |  |  |
+| `pecas` | `int` | não | `'0'` |  |
+| `atualizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `metas_producao_horas_maquina_id_hora_inicio_ordem_producao_id_unique` único (maquina_id, hora_inicio, ordem_producao_id) · `metas_producao_horas_dia_maquina_id_index` (dia, maquina_id)
 
 ### motivos_parada
 

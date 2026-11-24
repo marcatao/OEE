@@ -14,11 +14,13 @@ use App\Services\InfoBanco;
 use App\Services\Manutencao\GeradorPreventivas;
 use App\Services\Manutencao\SsAutomatica;
 use App\Services\MaquinasSemIot;
+use App\Services\MetaPorHora;
 use App\Services\MetaProducao;
 use App\Services\PecasProduzidas;
 use App\Services\Protheus\AgendaSincronizacoes;
 use App\Services\Protheus\SincronizadorProtheus;
 use App\Services\SituacaoMaquina;
+use App\Services\TurnoDaMaquina;
 use App\Support\ProceduresBanco;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -187,8 +189,25 @@ Artisan::command('metas:registrar', function (MetaProducao $metas) {
             $metas->registrar($op);
             $n++;
         });
-    $this->info("Metas conferidas de {$n} OP(s).");
-})->purpose('Registra as metas de produção (item MO da estrutura) das OPs atuais das máquinas quando mudam');
+    // Meta e peças de cada hora do turno de hoje, por OP (metas_producao_horas), mesmo sem ninguém abrir as telas.
+    $turno = app(TurnoDaMaquina::class);
+    $pecas = app(PecasProduzidas::class);
+    $porHora = app(MetaPorHora::class);
+    $fuso = HorarioApontamento::fuso();
+    $maquinas = 0;
+    Maquina::withoutGlobalScopes()->where('ativo', true)->comIotAtivo()->with('ordemProducao')->get()
+        ->each(function ($m) use ($turno, $pecas, $porHora, $fuso, &$maquinas) {
+            [$de, $ate] = $turno->periodo($m);
+            if (now()->lessThan($de)) {
+                return;
+            }
+            $aps = ApontamentoEstado::where('maquina_id', $m->id)->tocando($de, $ate)
+                ->get(['id', 'maquina_id', 'ordem_producao_id', 'inicio', 'fim', 'pecas', 'atualizado_em']);
+            $porHora->completar($m, $pecas->porHora($m, $de, $ate, $fuso, $aps), $de, $ate, $fuso, $aps, $m->ordemProducao);
+            $maquinas++;
+        });
+    $this->info("Metas conferidas de {$n} OP(s); metas por hora gravadas de {$maquinas} máquina(s).");
+})->purpose('Registra as metas de produção (item MO da estrutura) das OPs atuais e a meta/peças de cada hora do turno');
 Schedule::command('metas:registrar')->everyFiveMinutes()->withoutOverlapping()->runInBackground();
 
 // SS automática: paradas EM ABERTO com legenda que abre SS e sem chamado (aviso do integrador perdido). Idempotente.

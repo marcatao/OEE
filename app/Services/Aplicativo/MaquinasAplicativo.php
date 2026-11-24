@@ -12,10 +12,12 @@ use App\Services\CustoOrdemProducao;
 use App\Services\EngenhariaOrdemProducao;
 use App\Services\HorarioApontamento;
 use App\Services\Manutencao\ChamadoDaParada;
+use App\Services\MetaPorHora;
 use App\Services\MetaProducao;
 use App\Services\MotivoParada;
 use App\Services\OpDoApontamento;
 use App\Services\PecasProduzidas;
+use App\Services\ProducaoPorHora;
 use App\Services\SituacaoMaquina;
 use App\Services\StatusOrdemProducao;
 use App\Services\TrocaOpMaquina;
@@ -249,12 +251,24 @@ class MaquinasAplicativo
     /**
      * Produção do turno para o gráfico do app: peças por hora (repartidas pelo tempo de cada apontamento de produção),
      * total do turno e peças por minuto agora (60 ÷ ciclo médio × cavidades). Meta (pç/min) do item MO da estrutura da
-     * OP (MetaProducao; null sem OP ou sem MO) e o molde indicado para conserto (cavidades desativadas abaixo da meta).
+     * OP atual (MetaProducao; null sem OP ou sem MO), a meta de cada hora pela OP de cada momento (por_hora[].meta,
+     * MetaPorHora) e o molde indicado para conserto (cavidades desativadas abaixo da meta).
      */
     private function producao(Maquina $maquina, ?OrdemProducao $op, ?array $dadosOp, $apontamentos, CarbonImmutable $de, CarbonImmutable $ate, string $fuso): array
     {
         // Reaproveita os apontamentos já lidos (a tela é consultada a cada poucos segundos) e os moldes da OP.
         $porHora = $this->pecas->porHora($maquina, $de, $ate, $fuso, $apontamentos);
+        // Meta de CADA hora pela OP de cada momento (a mesma do portal, MetaPorHora): meta (peças), meta até agora,
+        // nível da cor (boa ≥ 90%, media ≥ 50%, ruim) e as OPs da hora.
+        $agoraTs = now()->getTimestamp();
+        $porHora = array_map(fn ($h) => [
+            'hora' => $h['hora'], 'inicio' => $h['inicio'], 'pecas' => $h['pecas'], 'meta' => $h['meta'],
+            'meta_ate_agora' => $h['metaAteAgora'] === null ? null : (int) round($h['metaAteAgora']),
+            'nivel' => ProducaoPorHora::nivelMeta($h + ['futura' => CarbonImmutable::parse($h['inicio'])->getTimestamp() > $agoraTs]),
+            'ops' => array_map(fn ($o) => ['op_id' => $o['op_id'], 'numero' => $o['numero'], 'meta_por_minuto' => $o['meta_por_minuto'],
+                'meta' => $o['meta'] === null ? null : (int) round($o['meta']), 'pecas' => $o['pecas'], 'minutos' => round($o['segundos'] / 60, 1)], $h['ops']),
+        ], app(MetaPorHora::class)->completar($maquina, $porHora, $de, $ate, $fuso, $apontamentos, $op));
+        $metaTurno = array_filter(array_column($porHora, 'meta'), fn ($v) => $v !== null);
         $ultimo = $apontamentos->first();
         $ciclo = $ultimo ? ApontamentoEstado::cicloEmSegundos($ultimo->ciclo_medio_ms, $ultimo->ciclo_medio) : null; // s, com fração
         $cavidades = 1;
@@ -277,6 +291,7 @@ class MaquinasAplicativo
         return [
             'por_hora' => $porHora,
             'pecas_turno' => array_sum(array_column($porHora, 'pecas')),
+            'meta_turno' => $metaTurno ? (int) round(array_sum($metaTurno)) : null,
             // ciclo_medio: segundos inteiros (versões antigas do app); ciclo_medio_s: com milissegundos (0.04 = 40 ms)
             'ciclo_medio' => $ciclo === null ? null : (int) round($ciclo),
             'ciclo_medio_s' => $ciclo === null ? null : round($ciclo, 3),

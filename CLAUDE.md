@@ -138,7 +138,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   REGISTRADA em `metas_producao` (modelo `MetaRegistrada`, por produto + C2_REVISAO): cada mudança da meta calculada
   ganha uma linha `vigente_desde` agora (estrutura sem MO = linha sem meta); o passado usa a meta vigente na época
   (`porMinuto($op, $em)`; antes do 1º registro, o 1º) — mudar a estrutura NUNCA muda a meta para trás. Registra ao
-  calcular e pelo agendador `metas:registrar` (5 min, OPs atuais das máquinas). Produção por hora: barras pela meta
+  calcular e pelo agendador `metas:registrar` (5 min, OPs atuais das máquinas). **Meta de cada HORA** pela OP de
+  cada momento (`App\Services\MetaPorHora`): o turno é dividido nos trechos dos apontamentos (sem OP = a do trecho
+  anterior; depois do último até o fim do turno = OP atual), meta do trecho = meta da OP no início do trecho × minutos;
+  trocar a OP no meio da hora = proporcional, e só muda dali para frente. Meta e peças de cada hora por OP gravadas em
+  `metas_producao_horas` (`MetaHora`; horas já começadas, só o que mudou; também pelo `metas:registrar`). App:
+  `producao.por_hora[]` com `meta`, `meta_ate_agora`, `nivel` e `ops`, e `producao.meta_turno`. Produção por hora: barras pela meta
   até agora (`ProducaoPorHora::nivelMeta`: ≥ 90% verde, ≥ 50% amarela, abaixo vermelha; variáveis `--meta-*`).
   Performance (IoT) = peças reais ÷ (meta da época × tempo produzindo), só dos apontamentos cuja OP tem meta
   (`CalculadoraOee::performancePelaMeta`, mostrada real, no OEE limitada a 100%); OEE (IoT) = D × P
@@ -249,7 +254,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `App\Services\ProducaoPorHora`): máquina a máquina (as da Timeline), peças do IoT por hora do TURNO da máquina no dia
   (`App\Services\TurnoDaMaquina`, o mesmo do app; `PecasProduzidas::porHora`), total, média e melhor hora, OP atual e
   produto, OPs do turno e gráfico em SVG (`dashboard.producao-hora._grafico`); o operador vê (só as máquinas das unidades
-  dos perfis dele, como no app); meta em pç/min da OP ATUAL da máquina (linha tracejada, meta do turno e % por hora). Filtro `FiltroProducaoHora` (dia, plantas, linhas, máquinas; salvos na tela `producao_hora`).
+  dos perfis dele, como no app); meta de cada hora pela OP de cada momento (`MetaPorHora`: linha tracejada, meta do turno e % por hora). Filtro `FiltroProducaoHora` (dia, plantas, linhas, máquinas; salvos na tela `producao_hora`).
 - **Dashboard por máquina** (`DashboardController`): só máquinas ativas com IoT ATIVO (`Maquina::comIotAtivo()`).
   Panorama pelos APONTAMENTOS REAIS (`App\Services\PanoramaMaquinas`, sobre a `Timeline`): situação agora, OP,
   produto, molde e cavidades, tempos por tipo e disponibilidade (partial `dashboard._cartao-maquina`) + o cartão da Produção por hora da máquina (partial `dashboard.producao-hora._maquina`, o mesmo da tela Produção por hora; turno de hoje ou do último dia do período). Legenda do tipo

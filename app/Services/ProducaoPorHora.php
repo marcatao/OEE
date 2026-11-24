@@ -14,8 +14,8 @@ use Illuminate\Support\Collection;
  * app), o total do turno, as OPs que produziram no turno (com o produto) e a situação agora (OP atual, produto,
  * molde, cavidades e peças por minuto, de Timeline::situacoes).
  *
- * Meta em peças por minuto: a da OP ATUAL da máquina (MetaProducao, item MO da estrutura); cada hora ganha a meta
- * (meta × minutos da hora no turno) e o % atingido. Molde com cavidades desativadas abaixo da meta: indicado para conserto.
+ * Meta: cada hora tem a meta da OP que a máquina tinha em cada momento (MetaPorHora; troca no meio da hora =
+ * proporcional; gravada em metas_producao_horas) e o % atingido. Molde com cavidades desativadas abaixo da meta: indicado para conserto.
  */
 class ProducaoPorHora
 {
@@ -24,7 +24,7 @@ class ProducaoPorHora
         private PecasProduzidas $pecas,
         private Timeline $timeline,
         private CustoOrdemProducao $custo,
-        private MetaProducao $metas,
+        private MetaPorHora $metaPorHora,
     ) {}
 
     /**
@@ -48,7 +48,6 @@ class ProducaoPorHora
 
         // Uma consulta para todas as máquinas (pelo índice do período); cada máquina usa só os seus.
         $lidos = ApontamentoEstado::whereIntegerInRaw('maquina_id', $maquinas->map(fn ($m) => (int) $m->id)->all())
-            ->whereNotNull('pecas')->where('pecas', '>', 0)
             ->tocando(CarbonImmutable::createFromTimestamp($de), CarbonImmutable::createFromTimestamp($ate))
             ->get(['id', 'maquina_id', 'ordem_producao_id', 'inicio', 'fim', 'pecas', 'atualizado_em'])
             ->groupBy(fn ($a) => (int) $a->maquina_id);
@@ -63,11 +62,15 @@ class ProducaoPorHora
         foreach ($maquinas as $m) {
             $id = (int) $m->id;
             [$inicio, $fim, $rotulo] = $periodos[$id];
-            $aps = $lidos->get($id, collect());
+            $todos = $lidos->get($id, collect()); // todos os apontamentos do turno (a meta segue a OP de cada um)
+            $aps = $todos->filter(fn ($a) => $a->pecas > 0)->values();
             $sit = $situacoes[$id] ?? [];
-            // Hoje: a meta de agora; dia passado: a meta registrada vigente no fim daquele turno.
-            $metaPorMinuto = $fim->lessThan($agora) ? $this->metas->porMinuto($sit['op'] ?? null, $fim) : ($sit['metaPorMinuto'] ?? null);
-            $horas = $this->horas($this->pecas->porHora($m, $inicio, $fim, $fuso, $aps), $fim, $agora, $metaPorMinuto);
+            // Meta de cada hora pela OP de cada momento (troca no meio da hora = proporcional), gravada por hora e OP.
+            $passado = $fim->lessThan($agora);
+            $horas = $this->horas($this->metaPorHora->completar($m, $this->pecas->porHora($m, $inicio, $fim, $fuso, $aps),
+                $inicio, $fim, $fuso, $todos, $passado ? null : ($sit['op'] ?? null)), $fim, $agora);
+            $metaPorMinuto = $passado ? null : ($sit['metaPorMinuto'] ?? null);
+            $comMeta = array_filter($horas, fn ($h) => $h['meta'] !== null);
 
             // OPs que produziram no turno (peças repartidas pelo tempo dentro do turno, como as horas).
             $porOp = [];
@@ -98,7 +101,7 @@ class ProducaoPorHora
                 'cicloMedio' => $sit['cicloMedio'] ?? null,
                 'pecasPorMinuto' => (float) ($sit['pecasPorMinuto'] ?? 0),
                 'metaPorMinuto' => $metaPorMinuto,
-                'metaTurno' => $metaPorMinuto !== null ? (int) round(array_sum(array_column($horas, 'meta'))) : null,
+                'metaTurno' => $comMeta ? (int) round(array_sum(array_column($comMeta, 'meta'))) : null,
                 'moldeConserto' => $sit['moldeConserto'] ?? null,
                 'produto' => $opAtual ? ($produtos->get(rtrim((string) $opAtual->c2_produto)) ?? ($sit['produto'] ?? null)) : null,
                 'ops' => $porOp,
@@ -109,25 +112,22 @@ class ProducaoPorHora
     }
 
     /**
-     * Horas do gráfico com a hora atual e as futuras marcadas; com meta, a meta da hora (meta × minutos da hora no turno).
+     * Horas do gráfico com a hora atual e as futuras marcadas (a meta de cada hora já veio de MetaPorHora: meta,
+     * metaAteAgora para a cor da barra e ops).
      *
-     * @param  list<array{hora: string, inicio: string, pecas: int}>  $porHora
+     * @param  list<array>  $porHora
      */
-    private function horas(array $porHora, CarbonImmutable $fim, CarbonImmutable $agora, ?float $metaPorMinuto): array
+    private function horas(array $porHora, CarbonImmutable $fim, CarbonImmutable $agora): array
     {
         $agoraTs = $agora->getTimestamp();
 
-        return array_map(function ($h) use ($agoraTs, $metaPorMinuto, $fim) {
+        return array_map(function ($h) use ($agoraTs, $fim) {
             $ini = CarbonImmutable::parse($h['inicio'])->getTimestamp();
             $fimHora = min($ini + 3600, $fim->getTimestamp());
 
             return $h + [
                 'atual' => $agoraTs >= $ini && $agoraTs < $fimHora,
                 'futura' => $agoraTs < $ini,
-                'meta' => $metaPorMinuto !== null ? round($metaPorMinuto * max(0, $fimHora - $ini) / 60) : null,
-                // Meta até agora (cor da barra): a hora inteira se já passou; a atual só até agora; futura, nenhuma.
-                'metaAteAgora' => $metaPorMinuto !== null && $agoraTs >= $ini
-                    ? $metaPorMinuto * max(0, min($fimHora, $agoraTs) - $ini) / 60 : null,
             ];
         }, $porHora);
     }

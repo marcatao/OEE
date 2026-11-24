@@ -7,6 +7,7 @@ use App\Models\Ferramenta;
 use App\Models\Legenda;
 use App\Models\Linha;
 use App\Models\Maquina;
+use App\Models\MetaHora;
 use App\Models\MetaRegistrada;
 use App\Models\OrdemProducao;
 use App\Models\Planta;
@@ -222,5 +223,55 @@ class MetaProducaoTest extends TestCase
             ->assertSee('meta-media')->assertSee('meta-ruim')->viewData('maquinas')[0];
         $this->assertSame('media', ProducaoPorHora::nivelMeta(collect($dados['horas'])->firstWhere('hora', '09:00')));
         $this->assertSame('ruim', ProducaoPorHora::nivelMeta(collect($dados['horas'])->firstWhere('hora', '08:00')));
+    }
+
+    public function test_meta_de_cada_hora_segue_a_op_de_cada_momento_e_fica_gravada(): void
+    {
+        // OP 2: outro produto, MO de 0,001 h → 16,67 pç/min. Troca de OP às 08:30.
+        ProdutoProtheus::forceCreate(['b1_filial' => '', 'b1_cod' => 'PB2', 'b1_desc' => 'PB2', 'b1_tipo' => 'PA', 'd_e_l_e_t_' => ' ']);
+        EstruturaProduto::forceCreate(['g1_filial' => '', 'g1_cod' => 'PB2', 'g1_comp' => 'MO-1135', 'g1_trt' => '', 'g1_quant' => 0.001, 'd_e_l_e_t_' => ' ']);
+        $op2 = OrdemProducao::create(['numero' => '00020001001', 'c2_num' => '000200', 'c2_item' => '01', 'c2_sequen' => '001',
+            'c2_produto' => 'PB2', 'c2_datrf' => '', 'status' => 'aberta', 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 2]);
+        $this->apontamento('06:00:00', '08:29:59', 3000, 2, 3); // OP 1
+        $fuso = config('oee.fuso_exibicao');
+        DB::table('apontamentos_estado')->insert(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id,
+            'ordem_producao_id' => $op2->id, 'inicio' => Carbon::parse('2026-11-17 08:30:00', $fuso)->utc(), 'fim' => null,
+            'ciclos' => 100, 'cavidades' => 1, 'pecas' => 100, 'ciclo_medio' => 30, 'observacao' => 'Troca de OP',
+            'criado_em' => now(), 'atualizado_em' => now()]);
+        $this->maquina->update(['ordem_producao_id' => $op2->id]);
+
+        $admin = $this->admin();
+        $dados = $this->actingAs($admin)->get(route('producao-hora'))->assertOk()->viewData('maquinas')[0];
+        $meta = collect($dados['horas'])->pluck('meta', 'hora');
+        $this->assertEquals(2941, $meta['06:00']);  // OP 1 inteira (não mudou com a troca)
+        $this->assertEquals(2941, $meta['07:00']);
+        $this->assertEquals(1971, $meta['08:00']);  // metade OP 1 (1.470,6) + metade OP 2 (500,1)
+        $this->assertEquals(1000, $meta['09:00']);  // OP 2
+        $this->assertEquals(1000, $meta['15:00']);  // futuro: OP atual
+        $oito = collect($dados['horas'])->firstWhere('hora', '08:00');
+        $this->assertSame(['00010001001', '00020001001'], array_column($oito['ops'], 'numero'));
+
+        // Gravadas por hora e OP (só as horas que já começaram).
+        $hora8 = Carbon::parse('2026-11-17 08:00', $fuso)->utc();
+        $linhas = MetaHora::where('hora_inicio', $hora8)->orderBy('ordem_producao_id')->get();
+        $this->assertCount(2, $linhas);
+        $this->assertEqualsWithDelta(1470.6, $linhas[0]->meta, 0.1);
+        $this->assertSame(1800, $linhas[0]->segundos);
+        $this->assertEqualsWithDelta(500.1, $linhas[1]->meta, 0.1);
+        $this->assertSame(0, MetaHora::where('hora_inicio', '>', now())->count());
+        $total = MetaHora::count();
+        $this->actingAs($admin)->get(route('producao-hora'))->assertOk();
+        $this->assertSame($total, MetaHora::count()); // sem duplicar
+
+        // App: a mesma meta por hora.
+        $porHora = collect(app(MaquinasAplicativo::class)->detalhe($this->maquina->fresh())['producao']['por_hora'])->keyBy('hora');
+        $this->assertSame(1971, $porHora['08:00']['meta']);
+        $this->assertSame(2941, $porHora['06:00']['meta']);
+        $this->assertCount(2, $porHora['08:00']['ops']);
+
+        // O agendador grava as horas mesmo sem ninguém abrir as telas.
+        MetaHora::query()->delete();
+        $this->artisan('metas:registrar')->assertSuccessful();
+        $this->assertSame($total, MetaHora::count());
     }
 }
