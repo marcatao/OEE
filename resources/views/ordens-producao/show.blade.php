@@ -86,7 +86,9 @@
           @if (abs((float) $op->c2_quje - $resumo->producaoQtd) > 0.0001)<small>na OP do Protheus (C2_QUJE): {{ Formato::quantidade($op->c2_quje) }}</small>@endif</dd></div>
         <div title="Peças contadas pelo IoT (ciclos do contador × cavidades ativas do molde). Campo do portal: não altera a quantidade da OP do Protheus"><dt>Contagem IoT</dt><dd>{{ Formato::quantidade((float) $op->quantidade_real) }} pç
           @if ($op->c2_quant > 0 && $op->quantidade_real)<small>{{ Formato::pct($op->quantidade_real / $op->c2_quant) }}</small>@endif</dd></div>
-        <div><dt>Perda</dt><dd>{{ Formato::quantidade($op->c2_perda) }}</dd></div>
+        {{-- C2_PERDA vem do Protheus (só leitura); a perda apontada no portal/app é o cartão "Perda da OP". --}}
+        <div title="Campo C2_PERDA da OP no Protheus (o portal não altera). As perdas apontadas no portal e no aplicativo estão no cartão Perda da OP."><dt>Perda no Protheus (C2_PERDA)</dt><dd>{{ Formato::quantidade($op->c2_perda) }}
+          <small>apontada no portal: {{ Formato::quantidade($resumoPerdas['total_quantidade']) }}</small></dd></div>
         <div><dt>Emissão</dt><dd>{{ OrdemProducao::data($op->c2_emissao) ?: '-' }}</dd></div>
         <div><dt>Previsão</dt><dd>{{ OrdemProducao::data($op->c2_datpri) ?: '-' }} a {{ OrdemProducao::data($op->c2_datprf) ?: '-' }}</dd></div>
         <div><dt>Encerrada em</dt><dd>{{ trim($op->c2_datrf) !== '' ? OrdemProducao::data($op->c2_datrf) : '-' }}</dd></div>
