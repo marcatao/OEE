@@ -56,9 +56,27 @@ class CalculadoraOee
         return $pecasNaMeta > 0 ? max(0.0, $pecas) / $pecasNaMeta : null;
     }
 
-    /** OEE pelos apontamentos reais e o IoT = disponibilidade × performance (limitada a 100%); sem qualidade ainda. */
-    public static function oeeIot(?float $disponibilidade, ?float $performance): ?float
+    /**
+     * Qualidade pelo IoT e as perdas apontadas (24/11/2026): o contador do IoT conta TODA peça, inclusive as perdidas,
+     * então peças boas = peças do IoT − perdas, e qualidade = boas ÷ peças do IoT. Perda maior que a contagem = 0%.
+     * null sem peças contadas no período.
+     */
+    public static function qualidadePelasPerdas(float $pecas, float $perdas): ?float
     {
-        return $disponibilidade !== null && $performance !== null ? $disponibilidade * min($performance, 1.0) : null;
+        if ($pecas <= 0) {
+            return null;
+        }
+
+        return max(0.0, $pecas - max(0.0, $perdas)) / $pecas;
+    }
+
+    /**
+     * OEE pelos apontamentos reais e o IoT = disponibilidade × performance (limitada a 100%) × qualidade. Sem qualidade
+     * (nenhuma peça contada) a qualidade não entra (vale 100%).
+     */
+    public static function oeeIot(?float $disponibilidade, ?float $performance, ?float $qualidade = null): ?float
+    {
+        return $disponibilidade !== null && $performance !== null
+            ? $disponibilidade * min($performance, 1.0) * ($qualidade ?? 1.0) : null;
     }
 }

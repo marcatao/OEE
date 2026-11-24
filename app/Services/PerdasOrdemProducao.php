@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\PerdaOp;
 use App\Models\ProdutoProtheus;
@@ -17,6 +18,7 @@ use Illuminate\Validation\ValidationException;
  * - PU (peso unitário, kg por peça) = B1_PESO do produto da OP na SB1 (produtos_protheus.b1_peso).
  * - Calculadora: informada a QUANTIDADE, peso = quantidade × PU; informado só o PESO, quantidade = peso ÷ PU (sem PU,
  *   só pela quantidade). O PU usado fica gravado na perda (mudar a SB1 depois não muda o que já foi apontado).
+ * - Máquina obrigatória: a qualidade do OEE (PanoramaMaquinas) desconta a perda da máquina e do dia.
  * - Total: ordens_producao.quantidade_perda = soma das perdas NÃO excluídas (campo só do portal; C2_PERDA não muda).
  * - Excluir não apaga: grava quem e quando; a lista mostra "Excluído por Fulano" e o total desconta.
  */
@@ -58,6 +60,10 @@ class PerdasOrdemProducao
         if ($quantidade > 9_999_999 || ($peso ?? 0) > 99_999_999) {
             throw ValidationException::withMessages(['quantidade' => 'Quantidade ou peso grande demais: confira o valor digitado.']);
         }
+        // Máquina obrigatória (24/11/2026): a qualidade do OEE desconta a perda da máquina em que ela aconteceu.
+        if (empty($dados['maquina_id']) || ! Maquina::withoutGlobalScopes()->whereKey((int) $dados['maquina_id'])->exists()) {
+            throw ValidationException::withMessages(['maquina_id' => 'Escolha a máquina em que a perda aconteceu.']);
+        }
         $fuso = HorarioApontamento::fuso();
         $dia = isset($dados['dia']) && $dados['dia'] !== '' ? CarbonImmutable::parse($dados['dia'], $fuso)->startOfDay() : CarbonImmutable::now($fuso)->startOfDay();
         if ($dia->greaterThan(CarbonImmutable::now($fuso)->startOfDay())) {
@@ -67,7 +73,7 @@ class PerdasOrdemProducao
         return DB::transaction(function () use ($op, $usuario, $dados, $origem, $pu, $quantidade, $peso, $dia) {
             $perda = new PerdaOp([
                 'ordem_producao_id' => $op->id,
-                'maquina_id' => ! empty($dados['maquina_id']) ? (int) $dados['maquina_id'] : null,
+                'maquina_id' => (int) $dados['maquina_id'],
                 'dia' => $dia->format('Y-m-d'),
                 'quantidade' => $quantidade,
                 'peso' => $peso,

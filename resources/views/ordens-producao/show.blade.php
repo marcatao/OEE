@@ -428,9 +428,9 @@
             <label>Dia
               <input type="date" name="dia" value="{{ old('dia', now(config('oee.fuso_exibicao'))->format('Y-m-d')) }}" max="{{ now(config('oee.fuso_exibicao'))->format('Y-m-d') }}" required>
             </label>
-            <label>Máquina <small>(opcional)</small>
-              <select name="maquina_id" data-busca>
-                <option value="">— sem máquina —</option>
+            <label>Máquina
+              <select name="maquina_id" data-busca required>
+                <option value="">— escolha a máquina —</option>
                 @foreach ($maquinasPerda as $m)
                   <option value="{{ $m->id }}" @selected((string) old('maquina_id', (int) $m->ordem_producao_id === (int) $op->id && $loop->first ? $m->id : '') === (string) $m->id)>{{ $m->codigo }} — {{ $m->nome }}{{ (int) $m->ordem_producao_id === (int) $op->id ? ' (com esta OP)' : '' }}</option>
                 @endforeach

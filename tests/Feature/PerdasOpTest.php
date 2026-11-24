@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Grupo;
+use App\Models\Linha;
+use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\PerdaOp;
+use App\Models\Planta;
 use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,10 +20,14 @@ class PerdasOpTest extends TestCase
 
     private OrdemProducao $op;
 
+    private Maquina $maquina;
+
     protected function setUp(): void
     {
         parent::setUp();
         ProdutoProtheus::create(['b1_filial' => '', 'b1_cod' => 'PA1', 'b1_desc' => 'TAMPA 28MM', 'b1_um' => 'UN', 'b1_peso' => 0.0125, 'd_e_l_e_t_' => ' ']);
+        $linha = Linha::create(['planta_id' => Planta::create(['codigo' => 'P', 'nome' => 'Planta'])->id, 'codigo' => 'L', 'nome' => 'Linha']);
+        $this->maquina = Maquina::create(['codigo' => 'INJ-01', 'nome' => 'Injetora 01', 'linha_id' => $linha->id, 'ativo' => false]);
         $this->op = OrdemProducao::create(['numero' => '00010001001', 'c2_num' => '000100', 'c2_item' => '01', 'c2_sequen' => '001',
             'c2_produto' => 'PA1', 'c2_datrf' => '', 'status' => 'aberta', 'd_e_l_e_t_' => ' ', 'r_e_c_n_o_' => 1, 'c2_quant' => 1000, 'c2_perda' => 3]);
     }
@@ -41,9 +48,10 @@ class PerdasOpTest extends TestCase
             ->assertSee('Apontar perda');
 
         // Peso com vírgula (brasileiro): quantidade = 1,25 kg ÷ 0,0125 = 100 peças.
-        $this->post(route('perdas-op.store', $this->op), ['peso' => '1,25', 'dia' => now(config('oee.fuso_exibicao'))->format('Y-m-d'), 'observacao' => 'Rebarba'])
+        $this->post(route('perdas-op.store', $this->op), ['peso' => '1,25', 'maquina_id' => $this->maquina->id, 'dia' => now(config('oee.fuso_exibicao'))->format('Y-m-d'), 'observacao' => 'Rebarba'])
             ->assertRedirect($url.'#aba-perdas')->assertSessionHas('ok', fn ($m) => str_contains($m, '100 pç'));
-        $this->post(route('perdas-op.store', $this->op), ['quantidade' => '20'])->assertRedirect();
+        $this->post(route('perdas-op.store', $this->op), ['quantidade' => '20', 'maquina_id' => $this->maquina->id])->assertRedirect();
+        $this->post(route('perdas-op.store', $this->op), ['quantidade' => '9'])->assertSessionHasErrors('maquina_id'); // máquina obrigatória
         $perda = PerdaOp::where('quantidade', 20)->sole();
         $this->assertEqualsWithDelta(0.25, $perda->peso, 0.0001);
         $this->assertEquals(120, $this->op->fresh()->quantidade_perda);
@@ -58,8 +66,8 @@ class PerdasOpTest extends TestCase
             ->assertSee('Perda da OP')->assertSee('href="#aba-perdas"', false)->assertSee('1,25 kg · 10,0% da OP'); // cartão na aba OP
 
         // Dia no futuro e nada informado: recusa, com a mensagem na aba.
-        $this->post(route('perdas-op.store', $this->op), ['quantidade' => '5', 'dia' => now()->addDays(2)->format('Y-m-d')])->assertSessionHasErrors('dia');
-        $this->post(route('perdas-op.store', $this->op), ['quantidade' => '', 'peso' => ''])->assertSessionHasErrors('quantidade');
+        $this->post(route('perdas-op.store', $this->op), ['quantidade' => '5', 'maquina_id' => $this->maquina->id, 'dia' => now()->addDays(2)->format('Y-m-d')])->assertSessionHasErrors('dia');
+        $this->post(route('perdas-op.store', $this->op), ['quantidade' => '', 'peso' => '', 'maquina_id' => $this->maquina->id])->assertSessionHasErrors('quantidade');
     }
 
     public function test_sem_permissao_ve_a_lista_mas_nao_aponta(): void

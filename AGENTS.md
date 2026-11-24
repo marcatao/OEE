@@ -149,8 +149,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `producao.por_hora[]` com `meta`, `meta_ate_agora`, `nivel` e `ops`, e `producao.meta_turno`. Produção por hora: barras pela meta
   até agora (`ProducaoPorHora::nivelMeta`: ≥ 90% verde, ≥ 50% amarela, abaixo vermelha; variáveis `--meta-*`).
   Performance (IoT) = peças reais ÷ (meta da época × tempo produzindo), só dos apontamentos cuja OP tem meta
-  (`CalculadoraOee::performancePelaMeta`, mostrada real, no OEE limitada a 100%); OEE (IoT) = D × P
-  (`CalculadoraOee::oeeIot`, `PanoramaMaquinas`), sem qualidade ainda.
+  (`CalculadoraOee::performancePelaMeta`, mostrada real, no OEE limitada a 100%). **Qualidade** (24/11/2026) = (peças do
+  IoT − perdas apontadas) ÷ peças do IoT (`CalculadoraOee::qualidadePelasPerdas`; o contador conta TAMBÉM as peças
+  perdidas, confirmado pelo usuário): perdas não excluídas da máquina com o dia no período (a perda tem só o dia; máquina
+  obrigatória na perda). OEE (IoT) = D × P × Q (`CalculadoraOee::oeeIot`, `PanoramaMaquinas`); OEE da FÁBRICA pelas
+  SOMAS de tempos e peças de todas as máquinas (`geral`), nunca a média dos OEEs.
 - **Milissegundos** (23/11/2026, máquinas com mais de uma peça por segundo): micro/macro parada do cadastro em segundos
   com até 3 casas (0.5 = 500 ms) → `maquinas.micro_parada_ms|macro_parada_ms` (valem mais; `Maquina::microParadaSegundos()`)
   + as antigas `*_s` arredondadas (mín. 1, macro > micro) para integradores antigos (`MaquinaController::temposDeParada`).

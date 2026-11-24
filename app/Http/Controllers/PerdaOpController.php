@@ -22,13 +22,13 @@ class PerdaOpController extends Controller
             'quantidade' => ['nullable', 'string', 'max:20'],
             'peso' => ['nullable', 'string', 'max:20'],
             'dia' => ['nullable', 'date_format:Y-m-d'],
-            'maquina_id' => ['nullable', 'integer', function ($campo, $valor, $falhar) {
+            'maquina_id' => ['required', 'integer', function ($campo, $valor, $falhar) {
                 if ($valor && ! Maquina::whereKey((int) $valor)->exists()) {
                     $falhar('Máquina não encontrada.');
                 }
             }],
             'observacao' => ['nullable', 'string', 'max:500'],
-        ], ['dia.date_format' => 'Dia inválido.', '*.max' => 'Texto muito longo.']);
+        ], ['dia.date_format' => 'Dia inválido.', 'maquina_id.required' => 'Escolha a máquina em que a perda aconteceu.', '*.max' => 'Texto muito longo.']);
         $perda = $perdas->registrar($ordem, $request->user(), $dados);
 
         return redirect()->to(route('ordens-producao.show', $ordem).'#aba-perdas')

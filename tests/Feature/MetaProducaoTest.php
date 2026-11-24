@@ -11,6 +11,7 @@ use App\Models\Maquina;
 use App\Models\MetaHora;
 use App\Models\MetaRegistrada;
 use App\Models\OrdemProducao;
+use App\Models\PerdaOp;
 use App\Models\Planta;
 use App\Models\ProdutoProtheus;
 use App\Models\RoteiroOperacao;
@@ -173,6 +174,26 @@ class MetaProducaoTest extends TestCase
         $this->assertSame(1.2, CalculadoraOee::performancePelaMeta(120, 100)); // mostrado acima de 100%...
         $this->assertSame(0.9, CalculadoraOee::oeeIot(0.9, 1.2));              // ...mas no OEE limitado a 100%
         $this->assertSame(98.04, round(CalculadoraOee::pecasNaMeta(49.02, 120), 2));
+
+        // Qualidade (24/11/2026): o IoT conta também as perdidas → (2.400 − 120 perdas) ÷ 2.400 = 95%; OEE = D × P × Q.
+        PerdaOp::forceCreate(['ordem_producao_id' => $this->op->id, 'maquina_id' => $this->maquina->id, 'dia' => '2026-11-17', 'quantidade' => 100]);
+        PerdaOp::forceCreate(['ordem_producao_id' => $this->op->id, 'maquina_id' => $this->maquina->id, 'dia' => '2026-11-17', 'quantidade' => 20]);
+        PerdaOp::forceCreate(['ordem_producao_id' => $this->op->id, 'maquina_id' => $this->maquina->id, 'dia' => '2026-11-17', 'quantidade' => 500, 'excluido_em' => now()]); // excluída: não conta
+        PerdaOp::forceCreate(['ordem_producao_id' => $this->op->id, 'maquina_id' => $this->maquina->id, 'dia' => '2026-11-16', 'quantidade' => 300]); // outro dia: fora do período
+        $panorama = app(PanoramaMaquinas::class)->montar(Maquina::whereKey($this->maquina->id)->get(),
+            Carbon::parse('2026-11-17 06:00', $fuso)->utc(), Carbon::parse('2026-11-17 10:00', $fuso)->utc());
+        $d = $panorama['maquinas'][$this->maquina->id];
+        $this->assertEquals(120, $d['perdas']);
+        $this->assertEqualsWithDelta(0.95, $d['qualidade'], 0.0001);
+        $this->assertEqualsWithDelta(0.816 * 0.95, $d['oeeIot'], 0.001);
+        // Fábrica: pelas somas.
+        $this->assertEqualsWithDelta(0.95, $panorama['geral']['qualidade'], 0.0001);
+        $this->assertSame([2400, 2280], [$panorama['geral']['pecas'], $panorama['geral']['pecasBoas']]);
+        $this->assertEqualsWithDelta(0.816 * 0.95, $panorama['geral']['oeeIot'], 0.001);
+
+        $this->assertNull(CalculadoraOee::qualidadePelasPerdas(0, 5));
+        $this->assertSame(0.0, CalculadoraOee::qualidadePelasPerdas(10, 50));  // perda maior que a contagem = 0%
+        $this->assertSame(0.81, CalculadoraOee::oeeIot(0.9, 1.0, 0.9));
     }
 
     public function test_meta_registrada_nao_muda_para_tras_quando_a_estrutura_muda(): void

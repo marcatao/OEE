@@ -47,7 +47,10 @@
       <span>Performance</span><strong class="texto-nivel">{{ ($dados['performance'] ?? null) === null ? '—' : \App\Support\Formato::pct($dados['performance'], 0) }}</strong></div>
   </div>
   @if (($dados['oeeIot'] ?? null) !== null)
-    <small class="pm-rodape" title="Disponibilidade × performance pelos apontamentos reais e o IoT (a qualidade ainda não é apontada)">OEE (IoT) {{ \App\Support\Formato::pct($dados['oeeIot'], 0) }} · D × P</small>
+    <small class="pm-rodape" title="Disponibilidade × performance (limitada a 100%) × qualidade, pelos apontamentos reais, o IoT e as perdas apontadas">OEE (IoT) <strong>{{ \App\Support\Formato::pct($dados['oeeIot'], 0) }}</strong> · D × P × Q</small>
+  @endif
+  @if (($dados['qualidade'] ?? null) !== null)
+    <small class="pm-rodape" title="Qualidade = (peças do IoT − perdas apontadas) ÷ peças do IoT (o contador conta também as peças perdidas)">Qualidade {{ \App\Support\Formato::pct($dados['qualidade'], 0) }} · {{ \App\Support\Formato::inteiro($dados['pecasTodas']) }} pç, {{ \App\Support\Formato::quantidade($dados['perdas']) }} perdidas</small>
   @endif
   @if (! empty($sit['moldeConserto']))
     <small class="pm-rodape texto-alerta">Molde {{ $sit['moldeConserto']['codigo'] }} com {{ $sit['moldeConserto']['ativas'] }}/{{ $sit['moldeConserto']['total'] }} cavidades abaixo da meta: indicar para conserto</small>

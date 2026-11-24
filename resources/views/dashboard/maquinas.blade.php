@@ -33,6 +33,20 @@
     <div title="Só paradas não planejadas: parada planejada e fora de turno não contam"><span>Tempo parado</span><strong>{{ Formato::minutos(($g['segundos']['parada'] ?? 0) / 60) }}</strong></div>
   </div>
 
+  {{-- OEE (IoT) da fábrica: somas de tempos e peças de todas as máquinas (D × P × Q), nunca a média dos OEEs --}}
+  @if ($g['oeeIot'] !== null || $g['pecas'] > 0)
+    <p class="suave" style="margin:.9rem 0 .4rem">OEE da fábrica (apontamentos reais, IoT e perdas apontadas):</p>
+    <div class="numeros">
+      <div class="{{ Formato::nivel($g['oeeIot']) }}" title="Disponibilidade × performance (limitada a 100%) × qualidade, pelas somas de todas as máquinas"><span>OEE (IoT)</span><strong class="texto-nivel">{{ Formato::pct($g['oeeIot']) }}</strong></div>
+      <div class="{{ Formato::nivel($g['disponibilidade']) }}"><span>Disponibilidade</span><strong class="texto-nivel">{{ Formato::pct($g['disponibilidade']) }}</strong></div>
+      <div title="Peças do IoT ÷ peças na meta (só das OPs com meta)"><span>Performance</span><strong>{{ Formato::pct($g['performance']) }}</strong></div>
+      <div title="(Peças do IoT − perdas apontadas) ÷ peças do IoT"><span>Qualidade</span><strong>{{ Formato::pct($g['qualidade']) }}</strong></div>
+      <div><span>Peças (IoT)</span><strong>{{ Formato::inteiro($g['pecas']) }}</strong></div>
+      <div><span>Perdas</span><strong>{{ Formato::quantidade($g['perdas']) }}</strong></div>
+      <div><span>Peças boas</span><strong>{{ Formato::inteiro($g['pecasBoas']) }}</strong></div>
+    </div>
+  @endif
+
   @if ($g['totais'])
     <div class="tl-resumo" style="margin-top:.9rem">
       <span class="suave">Por legenda:</span>
@@ -44,7 +58,7 @@
   @endif
 
   @if ($geral->temDados())
-    <p class="suave" style="margin:.9rem 0 .4rem">OEE pela contagem de peças:</p>
+    <p class="suave" style="margin:.9rem 0 .4rem">OEE pela contagem de peças (tabelas antigas):</p>
     <div class="numeros">
       <div class="{{ Formato::nivel($geral->oee()) }}"><span>OEE geral</span><strong class="texto-nivel">{{ Formato::pct($geral->oee()) }}</strong></div>
       <div><span>Performance</span><strong>{{ Formato::pct($geral->performance()) }}</strong></div>

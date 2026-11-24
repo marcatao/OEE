@@ -470,7 +470,7 @@ class AplicativoMaquinasTest extends TestCase
         $this->assertSame([0.025, 100.0, 2.5, 1], [$r->json('peso_unitario'), (float) $r->json('total_quantidade'), (float) $r->json('total_peso'), $r->json('apontamentos')]);
         $this->assertSame('aplicativo', $r->json('perdas.0.origem'));
         // Quantidade: peso = quantidade × PU.
-        $r = $this->api('POST', "ops/{$this->op1->id}/perdas", ['quantidade' => 40])->assertCreated();
+        $r = $this->api('POST', "ops/{$this->op1->id}/perdas", ['quantidade' => 40, 'maquina_id' => $this->maquina->id])->assertCreated();
         $this->assertEquals([140, 3.5], [$r->json('total_quantidade'), $r->json('total_peso')]);
         $this->assertEquals(140, $this->op1->fresh()->quantidade_perda);
 
@@ -485,8 +485,9 @@ class AplicativoMaquinasTest extends TestCase
 
         // Sem quantidade nem peso: recusa.
         $this->api('POST', "ops/{$this->op1->id}/perdas", [])->assertStatus(422);
+        $this->api('POST', "ops/{$this->op1->id}/perdas", ['quantidade' => 3])->assertStatus(422)->assertJsonValidationErrors('maquina_id'); // máquina obrigatória
         // Produto sem PU: só pela quantidade.
-        $this->api('POST', "ops/{$this->op2->id}/perdas", ['peso' => 3])->assertStatus(422)->assertJsonPath('errors.quantidade.0', fn ($m) => str_contains($m, 'B1_PESO'));
-        $this->api('POST', "ops/{$this->op2->id}/perdas", ['quantidade' => 7])->assertCreated()->assertJsonPath('peso_unitario', null);
+        $this->api('POST', "ops/{$this->op2->id}/perdas", ['peso' => 3, 'maquina_id' => $this->maquina->id])->assertStatus(422)->assertJsonPath('errors.quantidade.0', fn ($m) => str_contains($m, 'B1_PESO'));
+        $this->api('POST', "ops/{$this->op2->id}/perdas", ['quantidade' => 7, 'maquina_id' => $this->maquina->id])->assertCreated()->assertJsonPath('peso_unitario', null);
     }
 }
