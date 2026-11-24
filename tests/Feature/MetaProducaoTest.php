@@ -6,6 +6,7 @@ use App\Models\EstruturaProduto;
 use App\Models\Ferramenta;
 use App\Models\Legenda;
 use App\Models\Linha;
+use App\Models\MaoDeObra;
 use App\Models\Maquina;
 use App\Models\MetaHora;
 use App\Models\MetaRegistrada;
@@ -108,7 +109,7 @@ class MetaProducaoTest extends TestCase
         $this->assertSame(49.02, $meta['por_minuto']);
 
         // Quantidade base do produto (B1_QB): 0,00034 h para 10 peças → 490,2 pç/min.
-        $this->assertSame(490.2, MetaProducao::calcular(0.00034, 10)['por_minuto']);
+        $this->assertSame(490.21, MetaProducao::calcular(0.00034, 10)['por_minuto']); // (constante 1,6667 da fórmula)
         $this->assertNull(MetaProducao::calcular(0));
 
         // Sem item MO na estrutura: sem meta.
@@ -273,5 +274,38 @@ class MetaProducaoTest extends TestCase
         MetaHora::query()->delete();
         $this->artisan('metas:registrar')->assertSuccessful();
         $this->assertSame($total, MetaHora::count());
+    }
+
+    public function test_fator_de_servico_da_mao_de_obra_entra_na_meta_dali_para_frente(): void
+    {
+        // Fórmula do usuário: ((0,00034 + 5%) × 100) ÷ 1,6667 = 0,0214196 h; × 60 = 1,285176 s; 60 ÷ 1,285176 = 46,69.
+        $conta = MetaProducao::calcular(0.00034, 1, 'MO-1135', 5);
+        $this->assertEqualsWithDelta(0.0214196, $conta['segundos_por_peca'] / 60, 0.0000001);
+        $this->assertEqualsWithDelta(1.285176, $conta['segundos_por_peca'], 0.00001);
+        $this->assertSame(46.69, $conta['por_minuto']);
+        $this->assertSame(49.02, MetaProducao::calcular(0.00034)['por_minuto']); // fator 0 = conta anterior
+
+        // A tela lista os MO da SB1 com fator 0 (os novos entram sozinhos) e o administrador altera o fator.
+        $antes = now()->subMinute();
+        $this->assertSame(49.02, app(MetaProducao::class)->porMinuto($this->op)); // registra a meta com fator 0
+        $admin = $this->admin();
+        $this->actingAs($admin)->get(route('mao-de-obra.index'))->assertOk()->assertSee('MO-1135')->assertSee('MO-9999');
+        $mo = MaoDeObra::where('b1_cod', 'MO-1135')->sole();
+        $this->assertSame(0.0, $mo->fator_servico);
+        $this->put(route('mao-de-obra.update', $mo), ['fator_servico' => 150])->assertSessionHasErrors('fator_servico');
+        Carbon::setTestNow(now()->addHour());
+        app()->forgetScopedInstances();
+        $this->put(route('mao-de-obra.update', $mo), ['fator_servico' => 5])->assertSessionHasNoErrors();
+        $this->assertSame(5.0, $mo->fresh()->fator_servico);
+
+        app()->forgetScopedInstances();
+        $metas = app(MetaProducao::class);
+        $this->assertSame(46.69, $metas->porMinuto($this->op));          // dali para frente
+        $this->assertSame(49.02, $metas->porMinuto($this->op, $antes));  // o passado não muda
+        $this->assertSame(5.0, (float) MetaRegistrada::latest('id')->value('fator_servico'));
+
+        // Quem não é administrador só consulta.
+        $operador = Usuario::create(['entra_oid' => 'op', 'nome' => 'Operador', 'email' => 'op@alumbra.com.br', 'perfil' => 'operador']);
+        $this->actingAs($operador)->put(route('mao-de-obra.update', $mo), ['fator_servico' => 1])->assertForbidden();
     }
 }

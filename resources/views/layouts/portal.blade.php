@@ -43,7 +43,7 @@
           </div>
         @endif
 
-        @if ($u->pode('apontamentos') || $u->pode('apontamentos_producao') || $u->pode('empenhos_op') || $u->pode('falta_produtos') || $u->pode('ordens_producao') || $u->pode('estruturas') || $u->pode('roteiros') || $u->pode('ferramentas') || $u->pode('calculadora') || $u->ehAdmin())
+        @if ($u->pode('apontamentos') || $u->pode('apontamentos_producao') || $u->pode('empenhos_op') || $u->pode('falta_produtos') || $u->pode('ordens_producao') || $u->pode('estruturas') || $u->pode('roteiros') || $u->pode('ferramentas') || $u->pode('mao_obra') || $u->pode('calculadora') || $u->ehAdmin())
           <div class="menu-bloco" data-bloco="producao">
             @include('layouts.partials.menu-secao', ['titulo' => 'Produção'])
             <div class="menu-itens">
@@ -70,6 +70,9 @@
               @endif
               @if ($u->pode('ferramentas'))
                 @include('layouts.partials.menu-link', ['rota' => 'ferramentas.index', 'rotulo' => 'Ferramentas', 'icone' => 'ferramenta', 'ativo' => 'ferramentas.*'])
+              @endif
+              @if ($u->pode('mao_obra'))
+                @include('layouts.partials.menu-link', ['rota' => 'mao-de-obra.index', 'rotulo' => 'Mão de obra', 'icone' => 'relogio', 'ativo' => 'mao-de-obra.*'])
               @endif
               @if ($u->ehAdmin())
                 @include('layouts.partials.menu-link', ['rota' => 'admin.legendas.index', 'rotulo' => 'Legendas', 'icone' => 'legenda', 'ativo' => 'admin.legendas.*'])

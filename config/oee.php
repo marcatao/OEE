@@ -53,6 +53,7 @@ return [
         'estruturas' => 'Estruturas de produto (SG1, consulta)',
         'roteiros' => 'Roteiros de operação (SG2, consulta)',
         'ferramentas' => 'Ferramentas (SH4: consulta; administradores editam as cavidades ativas)',
+        'mao_obra' => 'Mão de obra (SB1 tipo MO: consulta; administradores editam o fator de serviço da meta de produção)',
         'calculadora' => 'Calculadora de OEE',
         'assistente' => 'Pergunte para Alumbra (assistente de IA na página inicial; responde só com os dados que o usuário pode ver)',
         // Ordens de serviço (manutenção de produção e de tecnologia; cada um vê a fila da sua unidade)

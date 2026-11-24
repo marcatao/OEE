@@ -131,8 +131,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   o apontamento com observação começando por "Troca de OP": o integrador corta o trecho ali e mantém a OP nova.
 - **Meta de produção** (pç/min, `App\Services\MetaProducao`, scoped por requisição): vem do item do TIPO MO (B1_TIPO
   = 'MO' na SB1) da estrutura vigente da OP (`EngenhariaOrdemProducao::linhasVigentes`): G1_QUANT = horas CENTESIMAIS
-  por peça para a quantidade base B1_QB → meta = 1 ÷ (G1_QUANT ÷ B1_QB × 60) (ex.: 0130066, MO-1135 0,00034 h ≈ 49
-  pç/min). Só um MO: com mais de um vale o PRIMEIRO (TRT, código), nunca soma; sem MO = sem meta. A meta é FIXA (não
+  por peça para a quantidade base B1_QB, + o **fator de serviço** do MO (Produção › Mão de obra, `maos_de_obra` /
+  `MaoDeObra`, 0 a 100%, nasce 0; `MaoDeObraController`, permissão `mao_obra`, administradores editam; MO novos entram
+  com 0 ao abrir a tela). Fórmula do usuário (`MetaProducao::calcular`): horas por peça = ((G1_QUANT ÷ B1_QB) × (1 +
+  fator%)) × 100 ÷ 1,6667; segundos por peça = × 60; meta = 60 ÷ segundos (0,00034 com 5% = 46,69 pç/min; com 0% =
+  49,02). Mudar o fator = novo registro em `metas_producao` (coluna `fator_servico`), vale só dali para frente. Só um MO: com mais de um vale o PRIMEIRO (TRT, código), nunca soma; sem MO = sem meta. A meta é FIXA (não
   cai com cavidades desativadas): molde com ativas < H4_QTDCAV e pç/min abaixo da meta = "indicar para conserto"
   (`MetaProducao::moldeParaConserto`; Produção por hora, Dashboard por máquina e app `molde_conserto`; na Timeline SEM o texto: mostra a meta e o cartão fica amarelo, `tl-meta-amarelo`).
   REGISTRADA em `metas_producao` (modelo `MetaRegistrada`, por produto + C2_REVISAO): cada mudança da meta calculada

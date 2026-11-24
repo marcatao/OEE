@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **62** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **63** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -283,6 +283,16 @@ erDiagram
         bigint atualizado_por_id FK
         nvarchar(20) unidade
     }
+    maos_de_obra {
+        bigint id PK
+        nvarchar(30) b1_cod UK
+        decimal(6, fator_servico
+        nvarchar(20) unidade
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     maquinas {
         bigint id PK
         bigint linha_id FK
@@ -339,6 +349,7 @@ erDiagram
         float(53) por_minuto
         datetime vigente_desde
         datetime registrado_em
+        float(53) fator_servico
     }
     metas_producao_horas {
         bigint id PK
@@ -1121,8 +1132,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`jobs`](#jobs) | Infra | `id` | 7 | 0 |
 | [`legendas`](#legendas) | Sistema | `id` | 15 | 3 |
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
+| [`maos_de_obra`](#maos_de_obra) | Sistema | `id` | 8 | 2 |
 | [`maquinas`](#maquinas) | Mista | `id` | 44 | 9 |
-| [`metas_producao`](#metas_producao) | Sistema | `id` | 9 | 0 |
+| [`metas_producao`](#metas_producao) | Sistema | `id` | 10 | 0 |
 | [`metas_producao_horas`](#metas_producao_horas) | Sistema | `id` | 10 | 2 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
@@ -1654,6 +1666,23 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Regras (CHECK, só no SQL Server):** `ck_linhas_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
 
+### maos_de_obra
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `b1_cod` | `nvarchar(30)` | não |  |  |
+| `fator_servico` | `decimal(6,` | sim | `'0'` |  |
+| `unidade` | `nvarchar(20)` | não | `'manutencao'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `maos_de_obra_b1_cod_unique` único (b1_cod)
+
 ### maquinas
 
 **Origem:** Mista — parte dos campos vem de `Compras.SHB` (Protheus), o resto é do Sistema OEE · **Chave primária:** `id`
@@ -1724,6 +1753,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `por_minuto` | `float(53)` | sim |  |  |
 | `vigente_desde` | `datetime` | não |  |  |
 | `registrado_em` | `datetime` | não |  |  |
+| `fator_servico` | `float(53)` | sim |  |  |
 
 **Índices:** `metas_producao_produto_revisao_vigente_desde_index` (produto, revisao, vigente_desde)
 

@@ -32,6 +32,7 @@ use App\Http\Controllers\Manutencao\PlanoPreventivaController;
 use App\Http\Controllers\Manutencao\RelatorioManutencaoController;
 use App\Http\Controllers\Manutencao\SolicitacaoController;
 use App\Http\Controllers\Manutencao\SolicitacaoMaterialController;
+use App\Http\Controllers\MaoDeObraController;
 use App\Http\Controllers\OrdemProducaoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PortalController;
@@ -115,6 +116,12 @@ Route::middleware('auth')->group(function () {
             Route::get('{ferramenta}/editar', [FerramentaController::class, 'edit'])->name('edit');
             Route::put('{ferramenta}', [FerramentaController::class, 'update'])->name('update');
         });
+    });
+    // Mão de obra (SB1 tipo MO): consulta; administradores editam o fator de serviço (entra na meta de produção).
+    Route::middleware('permissao:mao_obra')->prefix('producao/mao-de-obra')->name('mao-de-obra.')->group(function () {
+        Route::get('/', [MaoDeObraController::class, 'index'])->name('index');
+        Route::put('{maoDeObra}', [MaoDeObraController::class, 'update'])->whereNumber('maoDeObra')
+            ->middleware('perfil:admin_producao,admin_tecnologia,admin_ferramentaria')->name('update');
     });
     // Busca de OP dos campos de seleção (apontamento real, cadastro de máquinas): JSON, quem aponta ou administra.
     Route::get('producao/ordens-de-producao/busca', [OrdemProducaoController::class, 'busca'])->name('ordens-producao.busca');
