@@ -172,13 +172,20 @@
 
 <section class="cartao" style="margin-top:1.25rem">
   <h3>Dispositivos IoT</h3>
-  @forelse ($maquina->dispositivos as $d)
-    <p style="display:flex;justify-content:space-between;gap:1rem;margin:.6rem 0">
-      <span>{{ $d->nome }} <small class="suave">{{ $d->rotuloProtocolo() }}</small></span>
-      <span class="etiqueta situacao-{{ $d->situacao() }}"><i class="ponto"></i>{{ $d->rotuloSituacao() }}</span>
+  {{-- Os canais IoT do cadastro da máquina (iotN_dispositivo_id + canal + tipo), não o vínculo antigo dispositivos_iot.maquina_id --}}
+  @forelse ($maquina->canaisIot() as $c)
+    @php($d = $c['dispositivo'])
+    <p style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:.6rem 0;flex-wrap:wrap">
+      <span><strong>IoT {{ $c['numero'] }}</strong> · {{ $c['id'] }}@if ($d) <small class="suave">({{ $d->codigo }})</small>@endif
+        <small class="suave">· {{ $c['canal'] ?: 'sem canal' }} · {{ \App\Models\Maquina::TIPOS_CANAL[$c['tipo']] ?? 'Produção' }}@if ($d && $d->ultimo_sinal_em) · último sinal @dataHora($d->ultimo_sinal_em)@endif</small></span>
+      @if ($d)
+        <span class="etiqueta situacao-{{ $d->ativo ? $d->situacao() : 'inativo' }}"><i class="ponto"></i>{{ $d->ativo ? $d->rotuloSituacao() : 'Dispositivo inativo' }}</span>
+      @else
+        <span class="etiqueta situacao-sem_sinal">Texto antigo, sem dispositivo</span>
+      @endif
     </p>
   @empty
-    <p class="suave">Nenhum dispositivo ligado a esta máquina.</p>
+    <p class="suave">Nenhum canal IoT no cadastro desta máquina.</p>
   @endforelse
 </section>
 @endsection

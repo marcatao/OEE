@@ -126,6 +126,7 @@ class PainelTest extends TestCase
         $this->get("/producao/dashboard/{$maquina->id}?periodo=hoje")->assertOk()
             ->assertSee('OEE (IoT) — Hoje')->assertSee('Sem apontamentos reais desta máquina em hoje') // OEE novo (o antigo das tabelas de peças saiu)
             ->assertDontSee('OEE completo (performance e qualidade)')
+            ->assertSee('IoT 1')->assertSee('chd1_value')->assertDontSee('Nenhum canal IoT') // dispositivos pelos canais do cadastro
             ->assertSee('Produção por hora — hoje')->assertSee('Peças no turno')->assertSee('pç/min agora'); // cartão da Produção por hora
         $this->get("/producao/dashboard/{$maquina->id}?periodo=ontem")->assertOk()->assertSee('Sem apontamentos reais desta máquina em ontem')
             ->assertSee('Produção por hora — 04/11/2026'); // período passado: o turno do último dia dele

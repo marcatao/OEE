@@ -45,7 +45,7 @@ class DashboardController extends Controller
     {
         $periodo = Periodo::de($request->query('periodo'));
         HorarioApontamento::fecharAbertosAnteriores((int) $maquina->id); // só o mais recente fica em aberto
-        $maquina->load(['linha.planta', 'dispositivos' => fn ($q) => $q->orderBy('nome')]);
+        $maquina->load(['linha.planta', 'iot1Dispositivo', 'iot2Dispositivo', 'iot3Dispositivo']);
 
         return view('dashboard.maquina', [
             'periodo' => $periodo,
