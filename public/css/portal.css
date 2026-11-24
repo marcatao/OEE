@@ -1306,3 +1306,16 @@ a.kpi:hover { border-color:var(--primaria); transform:translateY(-1px); }
 /* Número da OP com link para a tela da OP (Timeline, Produção por hora): mesmo texto, sublinhado leve. */
 a.link-op { color:inherit; text-decoration:underline; text-decoration-color:var(--borda-forte); text-underline-offset:2px; }
 a.link-op:hover { color:var(--primaria); text-decoration-color:var(--primaria); }
+
+/* Apontamento de perdas da OP (aba da tela da OP): calculadora quantidade ⇄ peso pelo PU */
+.perda-form { margin:0 0 1rem; padding:1rem 1.15rem; border:1px solid var(--borda); border-radius:12px; background:var(--cartao); }
+.perda-form h3 { margin:0 0 .75rem; }
+.perda-calculadora { display:flex; align-items:end; gap:.75rem; flex-wrap:wrap; }
+.perda-campo { display:flex; flex-direction:column; gap:.3rem; flex:1 1 12rem; color:var(--suave); font-size:.9rem; font-weight:600; }
+.perda-campo input { font-size:1.6rem; font-weight:700; padding:.55rem .75rem; text-align:right; }
+.perda-campo input:disabled { opacity:.5; }
+.perda-troca { font-size:1.6rem; color:var(--suave); padding-bottom:.55rem; }
+.perda-conta { margin:.5rem 0 1rem; font-size:.95rem; }
+.perda-conta.perda-conta-ok { color:var(--texto); font-weight:600; }
+.perdas-tabela tr.perda-excluida td { color:var(--suave); }
+.perdas-tabela tr.perda-excluida td:not(:last-child) { text-decoration:line-through; }

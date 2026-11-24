@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **63** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **64** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -450,6 +450,7 @@ erDiagram
         nvarchar(2) c2_roteiro
         nvarchar(3) c2_revisao
         decimal(18, quantidade_real
+        decimal(18, quantidade_perda
     }
     ordens_servico {
         bigint id PK
@@ -755,6 +756,23 @@ erDiagram
         bigint atualizado_por_id FK
         nvarchar(10) pedido_gerado
     }
+    perdas_op {
+        bigint id PK
+        bigint ordem_producao_id FK
+        bigint maquina_id FK
+        date dia
+        decimal(18, quantidade
+        decimal(18, peso
+        decimal(18, peso_unitario
+        nvarchar(12) origem
+        nvarchar(500) observacao
+        datetime excluido_em
+        bigint excluido_por_id FK
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     plantas {
         bigint id PK
         nvarchar(20) codigo UK
@@ -789,6 +807,7 @@ erDiagram
         int r_e_c_n_o_
         datetime sincronizado_em
         float(53) b1_qb
+        float(53) b1_peso
     }
     registros_login {
         bigint id PK
@@ -1039,6 +1058,9 @@ erDiagram
     ordens_servico |o--o{ pedidos_compra : "ordem_servico_id"
     pedidos_compra ||--o{ pedidos_compra_itens : "pedido_compra_id"
     solicitacoes_material_itens |o--o{ pedidos_compra_itens : "solicitacao_material_item_id"
+    ordens_producao ||--o{ perdas_op : "ordem_producao_id"
+    maquinas |o--o{ perdas_op : "maquina_id"
+    usuarios |o--o{ perdas_op : "excluido_por_id"
     usuarios |o--o{ registros_login : "usuario_id"
     usuarios |o--o{ sincronizacoes : "usuario_id"
     usuarios ||--o{ solicitacoes_material : "solicitante_id"
@@ -1140,7 +1162,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
-| [`ordens_producao`](#ordens_producao) | Protheus | `id` | 29 | 0 |
+| [`ordens_producao`](#ordens_producao) | Protheus | `id` | 30 | 0 |
 | [`ordens_servico`](#ordens_servico) | Sistema | `id` | 36 | 12 |
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
 | [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 11 | 2 |
@@ -1163,9 +1185,10 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`pedidos_compra`](#pedidos_compra) | Sistema | `id` | 22 | 4 |
 | [`pedidos_compra_itens`](#pedidos_compra_itens) | Sistema | `id` | 17 | 4 |
+| [`perdas_op`](#perdas_op) | Sistema | `id` | 15 | 5 |
 | [`plantas`](#plantas) | Sistema | `id` | 9 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
-| [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 12 | 0 |
+| [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 13 | 0 |
 | [`registros_login`](#registros_login) | Sistema | `id` | 8 | 1 |
 | [`roteiros_operacao`](#roteiros_operacao) | Protheus | `id` | 17 | 0 |
 | [`sessions`](#sessions) | Infra | `id` | 6 | 0 |
@@ -1890,6 +1913,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `c2_roteiro` | `nvarchar(2)` | não | `''` |  |
 | `c2_revisao` | `nvarchar(3)` | não | `''` |  |
 | `quantidade_real` | `decimal(18,` | sim |  |  |
+| `quantidade_perda` | `decimal(18,` | sim |  |  |
 
 **Índices:** `ordens_producao_c2_filial_c2_num_c2_item_c2_sequen_unique` único (c2_filial, c2_num, c2_item, c2_sequen) · `ordens_producao_numero_index` (numero) · `ordens_producao_status_c2_datprf_index` (status, c2_datprf) · `ordens_producao_c2_produto_index` (c2_produto) · `ordens_producao_r_e_c_n_o__index` (r_e_c_n_o_)
 
@@ -2381,6 +2405,30 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Regras (CHECK, só no SQL Server):** `ck_pedidos_compra_itens_quantidade`: `quantidade > 0`
 
+### perdas_op
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `ordem_producao_id` | `bigint` | não |  | FK → `ordens_producao.id` |
+| `maquina_id` | `bigint` | sim |  | FK → `maquinas.id` |
+| `dia` | `date` | não |  |  |
+| `quantidade` | `decimal(18,` | sim |  |  |
+| `peso` | `decimal(18,` | sim |  |  |
+| `peso_unitario` | `decimal(18,` | sim |  |  |
+| `origem` | `nvarchar(12)` | não | `'portal'` |  |
+| `observacao` | `nvarchar(500)` | sim |  |  |
+| `excluido_em` | `datetime` | sim |  |  |
+| `excluido_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `perdas_op_ordem_producao_id_excluido_em_index` (ordem_producao_id, excluido_em)
+
 ### plantas
 
 **Origem:** Sistema OEE · **Chave primária:** `id`
@@ -2436,6 +2484,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `r_e_c_n_o_` | `int` | sim |  |  |
 | `sincronizado_em` | `datetime` | sim |  |  |
 | `b1_qb` | `float(53)` | sim |  |  |
+| `b1_peso` | `float(53)` | sim |  |  |
 
 **Índices:** `produtos_protheus_b1_filial_b1_cod_unique` único (b1_filial, b1_cod) · `produtos_protheus_b1_cod_index` (b1_cod)
 

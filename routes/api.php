@@ -3,6 +3,7 @@
 use App\Http\Controllers\Aplicativo\ApiAplicativoController;
 use App\Http\Controllers\Aplicativo\MaquinasAplicativoController;
 use App\Http\Controllers\Aplicativo\OrdensServicoAplicativoController as OsApp;
+use App\Http\Controllers\Aplicativo\PerdasAplicativoController;
 use App\Http\Controllers\IntegradorIotController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,12 @@ Route::prefix('app')->name('api.app.')->group(function () {
             // Detalhes da OP (kardex, empenhos, engenharia): a mesma permissão da tela da OP no portal.
             Route::get('ops/{ordem}/detalhes', [MaquinasAplicativoController::class, 'detalhesOp'])->whereNumber('ordem')
                 ->middleware('permissao:ordens_producao')->name('ops.detalhes');
+            // Apontamento de perdas da OP (calculadora pelo PU): a mesma regra e permissão da aba da OP no portal.
+            Route::middleware('permissao:perdas_op')->group(function () {
+                Route::get('ops/{ordem}/perdas', [PerdasAplicativoController::class, 'index'])->whereNumber('ordem')->name('ops.perdas');
+                Route::post('ops/{ordem}/perdas', [PerdasAplicativoController::class, 'store'])->whereNumber('ordem')->name('ops.perdas.store');
+                Route::delete('perdas/{perda}', [PerdasAplicativoController::class, 'destroy'])->whereNumber('perda')->name('perdas.destroy');
+            });
         });
 
         // Ordens de serviço: só quem tem um perfil de MANTENEDOR no login (oee.mantenedores_area), mais as mesmas

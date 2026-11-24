@@ -11,6 +11,10 @@
  * 3) [data-abas] — abas: botões [data-aba="x"] em .abas-lista e painéis [data-painel="x"]. Abre a aba do endereço
  *    (#aba-x), senão a de data-aba-inicial; trocar de aba atualiza o endereço (o link e o voltar levam à mesma aba).
  *
+ * 4) [data-calculadora-pu="0.025"] — calculadora do apontamento de perdas: campos [data-campo="quantidade"] e
+ *    [data-campo="peso"]; digitar um calcula o outro pelo PU (kg por peça), em formato brasileiro; [data-conta] mostra a
+ *    conta. Sem PU (atributo vazio), só a quantidade vale. O botão [data-confirmar-perda] pede confirmação com a conta.
+ *
  * 2) [data-escolha] — escolha de vários com busca (partial partials/escolha-multipla): <details> com o resumo do que
  *    está marcado; ao abrir, busca por nome e a lista de caixas de marcar.
  */
@@ -232,6 +236,49 @@
     (raiz || document).querySelectorAll('select[data-busca]').forEach(montarBusca);
     (raiz || document).querySelectorAll('[data-escolha]').forEach(montarEscolha);
     (raiz || document).querySelectorAll('[data-abas]').forEach(function (c) { if (!c.dataset.abasProntas) { c.dataset.abasProntas = '1'; montarAbas(c); } });
+    (raiz || document).querySelectorAll('[data-calculadora-pu]').forEach(function (f) { if (!f.dataset.calcPronta) { f.dataset.calcPronta = '1'; montarCalculadoraPu(f); } });
+  }
+
+  // ---------- 4) Calculadora de perdas pelo PU ----------
+  function lerNumero(texto) {
+    texto = (texto || '').trim();
+    if (texto.indexOf(',') >= 0) texto = texto.replace(/\./g, '').replace(',', '.');
+    var n = parseFloat(texto);
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+  function numeroBr(n, casas) {
+    return n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: casas });
+  }
+  function montarCalculadoraPu(form) {
+    var pu = lerNumero(form.dataset.calculadoraPu);
+    var qtd = form.querySelector('[data-campo="quantidade"]');
+    var peso = form.querySelector('[data-campo="peso"]');
+    var conta = form.querySelector('[data-conta]');
+    var botao = form.querySelector('[data-confirmar-perda]');
+    var textoInicial = conta ? conta.textContent : '';
+    function mostrar() {
+      var q = lerNumero(qtd.value), p = peso ? lerNumero(peso.value) : 0;
+      if (!conta) return;
+      conta.classList.toggle('perda-conta-ok', q > 0);
+      conta.textContent = q > 0 ? (numeroBr(q, 4) + ' peças' + (pu ? ' × ' + numeroBr(pu, 6) + ' kg = ' + numeroBr(p, 4) + ' kg' : '')) : textoInicial;
+    }
+    qtd.addEventListener('input', function () {
+      var q = lerNumero(qtd.value);
+      if (peso && pu) peso.value = q > 0 ? numeroBr(q * pu, 4) : '';
+      mostrar();
+    });
+    if (peso) peso.addEventListener('input', function () {
+      var p = lerNumero(peso.value);
+      if (pu) qtd.value = p > 0 ? numeroBr(p / pu, 4) : '';
+      mostrar();
+    });
+    form.addEventListener('submit', function (e) {
+      var q = lerNumero(qtd.value);
+      if (q <= 0) { e.preventDefault(); qtd.focus(); if (conta) { conta.textContent = 'Informe a quantidade de peças' + (pu ? ' ou o peso' : '') + '.'; conta.classList.add('texto-alerta'); } return; }
+      var p = peso ? lerNumero(peso.value) : 0;
+      if (!confirm('Apontar perda de ' + numeroBr(q, 4) + ' peças' + (p > 0 ? ' (' + numeroBr(p, 4) + ' kg)' : '') + '?')) e.preventDefault();
+    });
+    mostrar();
   }
 
   window.OeeComponentes = { iniciar: iniciar };

@@ -34,6 +34,7 @@ use App\Http\Controllers\Manutencao\SolicitacaoController;
 use App\Http\Controllers\Manutencao\SolicitacaoMaterialController;
 use App\Http\Controllers\MaoDeObraController;
 use App\Http\Controllers\OrdemProducaoController;
+use App\Http\Controllers\PerdaOpController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ProducaoPorHoraController;
@@ -128,6 +129,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permissao:ordens_producao')->prefix('producao/ordens-de-producao')->name('ordens-producao.')->group(function () {
         Route::get('/', [OrdemProducaoController::class, 'index'])->name('index');
         Route::get('{ordem}', [OrdemProducaoController::class, 'show'])->whereNumber('ordem')->name('show'); // kardex da OP
+    });
+    // Apontamento de perdas da OP (aba da tela da OP; o aplicativo usa a mesma regra pela API)
+    Route::middleware('permissao:perdas_op')->group(function () {
+        Route::post('producao/ordens-de-producao/{ordem}/perdas', [PerdaOpController::class, 'store'])->whereNumber('ordem')->name('perdas-op.store');
+        Route::delete('producao/perdas-op/{perda}', [PerdaOpController::class, 'destroy'])->whereNumber('perda')->name('perdas-op.destroy');
     });
     // Pergunte para Alumbra (assistente de IA da página inicial; JSON, em etapas curtas)
     Route::middleware('permissao:assistente')->prefix('assistente')->name('assistente.')->controller(AssistenteController::class)->group(function () {

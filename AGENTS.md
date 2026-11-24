@@ -158,6 +158,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `ApontamentoEstado::cicloEmSegundos`; exibir com `App\Support\Segundos::ciclo` ("0,040 s"); pç/min =
   `PecasProduzidas::porMinuto` com segundos fracionados; API do app: `ciclo_medio` (int, antigo), `ciclo_medio_s` e
   `ciclo_medio_texto`. O integrador usa micro ≥ 1,5 × o intervalo entre leituras do aparelho (o `ts_unix` é de segundos).
+- **Apontamento de perdas** (pedido do usuário em 24/11/2026; aba "Apontamento de perdas" da tela da OP e botão no app;
+  permissão `perdas_op`, no perfil operador): regra única em `App\Services\PerdasOrdemProducao` — PU = `B1_PESO` da
+  SB1 (`produtos_protheus.b1_peso`, lido pela sincronização se existir); quantidade ⇄ peso pelo PU (só peso sem PU =
+  recusa); dia nunca no futuro; perdas em `perdas_op` (`PerdaOp`, PU usado gravado); total em
+  `ordens_producao.quantidade_perda` (campo SÓ do portal; `C2_PERDA` nunca muda). Excluir NÃO apaga: `excluido_em/por`,
+  sai do total e a lista mostra "Excluído por Fulano". Calculadora da tela: `[data-calculadora-pu]` em `componentes.js`.
+  API do app: `GET|POST /api/app/ops/{id}/perdas`, `DELETE /api/app/perdas/{id}` (`PerdasAplicativoController`).
 - **Link da OP**: onde aparece o número da OP (Timeline, Produção por hora, Dashboard por máquina) use
   `@include('partials.link-op', ['op' => $op])` — abre a tela da OP em NOVA aba (só para quem tem `ordens_producao`).
 - **Busca de OP** (todas: lista de OPs, campo de OP do apontamento/máquina/Timeline e app): escopo

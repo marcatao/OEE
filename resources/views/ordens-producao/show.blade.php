@@ -17,7 +17,9 @@
 @php
   $u = auth()->user();
   $podeEditarCavidades = $u->ehAdmin();
-  $abaInicial = $errors->has('h4_qtdcavativas') ? 'ferramenta' : 'op';
+  $abaInicial = $errors->has('h4_qtdcavativas') ? 'ferramenta' : ($errors->hasAny(['quantidade', 'peso', 'dia', 'maquina_id', 'perda']) ? 'perdas' : 'op');
+  $podePerdas = $u->pode('perdas_op');
+  $pu = $resumoPerdas['peso_unitario'];
 @endphp
 <section class="cartao">
   <p class="trilha"><a href="{{ route('ordens-producao.index') }}">Ordens de produção</a></p>
@@ -46,6 +48,7 @@
       <button type="button" role="tab" data-aba="estrutura">Estrutura <span class="abas-contador">{{ $estrutura->count() }}</span></button>
       <button type="button" role="tab" data-aba="roteiro">Roteiro <span class="abas-contador">{{ $roteiro['operacoes']->count() }}</span></button>
       <button type="button" role="tab" data-aba="ferramenta">Ferramenta <span class="abas-contador">{{ count($roteiro['ferramentas_codigos']) }}</span></button>
+      <button type="button" role="tab" data-aba="perdas">Apontamento de perdas <span class="abas-contador">{{ $resumoPerdas['apontamentos'] }}</span></button>
     </div>
 
     {{-- OP: dados da SC2 e custo --}}
@@ -370,6 +373,101 @@
         </div>
       @else
         <p class="suave">O roteiro desta OP não cita ferramenta/molde.</p>
+      @endif
+    </div>
+
+    {{-- Apontamento de perdas: PU do produto (B1_PESO), calculadora peso ⇄ quantidade, lista com as excluídas --}}
+    <div class="abas-painel" role="tabpanel" data-painel="perdas" hidden>
+      <div class="kpis" style="margin-top:0;margin-bottom:1.25rem">
+        <div class="kpi" title="Peso unitário do produto na SB1 (B1_PESO)">
+          <div class="kpi-icone">@include('layouts.partials.icone', ['nome' => 'ferramenta'])</div>
+          <div><span>Peso unitário (PU)</span><strong>{{ $pu ? Formato::quantidade($pu) : '—' }}<small> kg/pç</small></strong>
+            <small>{{ $pu ? 'do cadastro do produto (SB1)' : 'produto sem peso na SB1' }}</small></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-icone">@include('layouts.partials.icone', ['nome' => 'alerta'])</div>
+          <div><span>Perda total</span><strong>{{ Formato::quantidade($resumoPerdas['total_quantidade']) }}<small> pç</small></strong>
+            <small>@if ($op->c2_quant > 0){{ Formato::pct($resumoPerdas['total_quantidade'] / $op->c2_quant) }} da quantidade da OP · @endif{{ $resumoPerdas['apontamentos'] }} {{ $resumoPerdas['apontamentos'] === 1 ? 'apontamento' : 'apontamentos' }}</small></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-icone">@include('layouts.partials.icone', ['nome' => 'barras'])</div>
+          <div><span>Peso perdido</span><strong>{{ Formato::quantidade($resumoPerdas['total_peso']) }}<small> kg</small></strong>
+            <small>soma dos apontamentos ativos</small></div>
+        </div>
+      </div>
+
+      @if ($podePerdas)
+        <form method="post" action="{{ route('perdas-op.store', $op) }}" class="perda-form" data-calculadora-pu="{{ $pu ?? '' }}">
+          @csrf
+          <h3>Apontar perda</h3>
+          @if ($errors->hasAny(['quantidade', 'peso', 'dia', 'maquina_id', 'perda']))
+            <p class="aviso erro">{{ $errors->first('quantidade') ?: $errors->first('peso') ?: $errors->first('dia') ?: $errors->first('maquina_id') ?: $errors->first('perda') }}</p>
+          @endif
+          @unless ($pu)
+            <p class="aviso alerta">Este produto não tem peso unitário (B1_PESO) no Protheus: informe a <strong>quantidade de peças</strong>.</p>
+          @endunless
+          <div class="perda-calculadora">
+            <label class="perda-campo">Quantidade <small>peças</small>
+              <input type="text" inputmode="decimal" name="quantidade" data-campo="quantidade" autocomplete="off" placeholder="0" value="{{ old('quantidade') }}" autofocus>
+            </label>
+            <span class="perda-troca" aria-hidden="true">⇄</span>
+            <label class="perda-campo">Peso <small>kg</small>
+              <input type="text" inputmode="decimal" name="peso" data-campo="peso" autocomplete="off" placeholder="0" value="{{ old('peso') }}" @disabled(! $pu)>
+            </label>
+          </div>
+          <p class="perda-conta suave" data-conta>{{ $pu ? 'Digite a quantidade ou o peso: o outro é calculado pelo PU ('.Formato::quantidade($pu).' kg por peça).' : 'Sem PU: só pela quantidade.' }}</p>
+          <div class="formulario">
+            <label>Dia
+              <input type="date" name="dia" value="{{ old('dia', now(config('oee.fuso_exibicao'))->format('Y-m-d')) }}" max="{{ now(config('oee.fuso_exibicao'))->format('Y-m-d') }}" required>
+            </label>
+            <label>Máquina <small>(opcional)</small>
+              <select name="maquina_id" data-busca>
+                <option value="">— sem máquina —</option>
+                @foreach ($maquinasPerda as $m)
+                  <option value="{{ $m->id }}" @selected((string) old('maquina_id', (int) $m->ordem_producao_id === (int) $op->id && $loop->first ? $m->id : '') === (string) $m->id)>{{ $m->codigo }} — {{ $m->nome }}{{ (int) $m->ordem_producao_id === (int) $op->id ? ' (com esta OP)' : '' }}</option>
+                @endforeach
+              </select>
+            </label>
+            <label>Observação <small>(opcional)</small>
+              <input type="text" name="observacao" maxlength="500" value="{{ old('observacao') }}" placeholder="Ex.: rebarba, bolha, setup">
+            </label>
+          </div>
+          <div class="acoes"><button class="botao" type="submit" data-confirmar-perda>@include('layouts.partials.icone', ['nome' => 'mais']) Apontar perda</button></div>
+        </form>
+      @endif
+
+      <h3 style="margin-top:1.5rem">Perdas apontadas</h3>
+      @if ($perdas->isEmpty())
+        <p class="suave">Nenhuma perda apontada nesta OP.</p>
+      @else
+        <div class="rolagem">
+        <table class="tabela perdas-tabela">
+          <thead><tr><th>Dia</th><th class="num">Quantidade</th><th class="num">Peso</th><th class="num">PU</th><th>Máquina</th><th>Apontado por</th><th>Observação</th><th></th></tr></thead>
+          <tbody>
+          @foreach ($perdas as $p)
+            <tr @class(['perda-excluida' => $p->excluida()])>
+              <td>{{ $p->dia->format('d/m/Y') }}</td>
+              <td class="num"><strong>{{ Formato::quantidade($p->quantidade) }}</strong> pç</td>
+              <td class="num">{{ $p->peso !== null ? Formato::quantidade($p->peso).' kg' : '—' }}</td>
+              <td class="num suave">{{ $p->peso_unitario ? Formato::quantidade($p->peso_unitario) : '—' }}</td>
+              <td>{{ $p->maquina ? $p->maquina->codigo : '—' }}</td>
+              <td>{{ $p->criadoPor?->nome ?? '-' }} <small class="suave">@dataHora($p->criado_em){{ $p->origem === 'aplicativo' ? ' · app' : '' }}</small></td>
+              <td>{{ $p->observacao ?? '' }}</td>
+              <td>
+                @if ($p->excluida())
+                  <span class="etiqueta situacao-inativo">Excluído por {{ $p->excluidoPor?->nome ?? '-' }}</span> <small class="suave">@dataHora($p->excluido_em)</small>
+                @elseif ($podePerdas)
+                  <form method="post" action="{{ route('perdas-op.destroy', $p) }}" onsubmit="return confirm(@js('Excluir a perda de '.Formato::quantidade($p->quantidade).' peças de '.$p->dia->format('d/m/Y').'? Ela sai do total da OP e fica na lista como excluída.'))">
+                    @csrf @method('delete')
+                    <button class="botao secundario pequeno" type="submit">@include('layouts.partials.icone', ['nome' => 'lixeira']) Excluir</button>
+                  </form>
+                @endif
+              </td>
+            </tr>
+          @endforeach
+          </tbody>
+        </table>
+        </div>
       @endif
     </div>
   </div>

@@ -48,6 +48,7 @@ return [
         'apontamentos' => 'Apontamento real (registrar estados das máquinas)',
         'apontamentos_producao' => 'Apontamentos OP (produções, baixas e notas das OPs no Protheus)',
         'ordens_producao' => 'Ordens de produção (consulta, custos e kardex)',
+        'perdas_op' => 'Apontamento de perdas (registrar e excluir perdas das OPs, no portal e no aplicativo)',
         'empenhos_op' => 'Empenhos OP (SD4: materiais reservados para cada OP, consulta)',
         'falta_produtos' => 'Falta de produtos (ZB5: produtos faltando, com OP, máquina e apontamento real; painéis)',
         'estruturas' => 'Estruturas de produto (SG1, consulta)',
@@ -107,7 +108,7 @@ return [
             'area' => 'manutencao',
             'descricao' => 'Informa o apontamento real, vê as ordens de produção e a produção por hora das máquinas da unidade.',
             'unidades' => ['manutencao'],
-            'permissoes' => ['apontamentos', 'ordens_producao', 'producao_hora'],
+            'permissoes' => ['apontamentos', 'ordens_producao', 'producao_hora', 'perdas_op'],
         ],
         'solicitante_manutencao' => [
             'rotulo' => 'Solicitante de Manutenção',

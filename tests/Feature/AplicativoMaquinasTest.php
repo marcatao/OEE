@@ -461,4 +461,32 @@ class AplicativoMaquinasTest extends TestCase
         $this->api('POST', "apontamentos/{$deOutra->id}/op", ['numero' => '00020001001'])->assertNotFound();
         $this->assertNull($deOutra->fresh()->ordem_producao_id);
     }
+
+    public function test_perdas_da_op_pelo_aplicativo_com_a_calculadora_do_pu(): void
+    {
+        ProdutoProtheus::create(['b1_filial' => '', 'b1_cod' => 'PA1', 'b1_desc' => 'TAMPA', 'b1_um' => 'UN', 'b1_peso' => 0.025, 'd_e_l_e_t_' => ' ']);
+        // Só o peso: quantidade = peso ÷ PU (2,5 kg ÷ 0,025 = 100 peças).
+        $r = $this->api('POST', "ops/{$this->op1->id}/perdas", ['peso' => 2.5, 'maquina_id' => $this->maquina->id])->assertCreated();
+        $this->assertSame([0.025, 100.0, 2.5, 1], [$r->json('peso_unitario'), (float) $r->json('total_quantidade'), (float) $r->json('total_peso'), $r->json('apontamentos')]);
+        $this->assertSame('aplicativo', $r->json('perdas.0.origem'));
+        // Quantidade: peso = quantidade × PU.
+        $r = $this->api('POST', "ops/{$this->op1->id}/perdas", ['quantidade' => 40])->assertCreated();
+        $this->assertEquals([140, 3.5], [$r->json('total_quantidade'), $r->json('total_peso')]);
+        $this->assertEquals(140, $this->op1->fresh()->quantidade_perda);
+
+        // Excluir: sai do total e a lista mostra quem excluiu.
+        $id = $r->json('perdas.0.id');
+        $r = $this->api('DELETE', "perdas/{$id}")->assertOk();
+        $this->assertEquals(100, $r->json('total_quantidade'));
+        $this->assertSame([true, 'Operador'], [$r->json('perdas.0.excluida'), $r->json('perdas.0.excluido_por')]);
+        $this->assertEquals(100, $this->op1->fresh()->quantidade_perda);
+        $this->api('DELETE', "perdas/{$id}")->assertStatus(422); // já excluída
+        $this->api('GET', "ops/{$this->op1->id}/perdas")->assertOk()->assertJsonCount(2, 'perdas');
+
+        // Sem quantidade nem peso: recusa.
+        $this->api('POST', "ops/{$this->op1->id}/perdas", [])->assertStatus(422);
+        // Produto sem PU: só pela quantidade.
+        $this->api('POST', "ops/{$this->op2->id}/perdas", ['peso' => 3])->assertStatus(422)->assertJsonPath('errors.quantidade.0', fn ($m) => str_contains($m, 'B1_PESO'));
+        $this->api('POST', "ops/{$this->op2->id}/perdas", ['quantidade' => 7])->assertCreated()->assertJsonPath('peso_unitario', null);
+    }
 }

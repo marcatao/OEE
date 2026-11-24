@@ -11,13 +11,17 @@ class ImportadorProdutos extends ImportadorEspelho
 {
     public const CAMPOS = ['B1_FILIAL', 'B1_COD', 'B1_DESC', 'B1_TIPO', 'B1_UM', 'B1_GRUPO', 'B1_MSBLQL', 'D_E_L_E_T_', 'R_E_C_N_O_'];
 
-    /** Campos lidos: os de CAMPOS e, se a tabela de origem tiver, B1_QB (quantidade base da estrutura). */
+    /**
+     * Campos lidos: os de CAMPOS e, se a tabela de origem tiver, B1_QB (quantidade base da estrutura) e B1_PESO (peso
+     * unitário, kg: o PU do apontamento de perdas).
+     */
     public function campos(): array
     {
         $tabela = (string) config('protheus.sincronizacoes.produtos.tabela_origem', 'SB1');
-        $temBase = rescue(fn () => Schema::connection('protheus')->hasColumn($tabela, 'B1_QB'), false, report: false);
+        $extras = array_filter(['B1_QB', 'B1_PESO'],
+            fn ($c) => rescue(fn () => Schema::connection('protheus')->hasColumn($tabela, $c), false, report: false));
 
-        return $temBase ? [...self::CAMPOS, 'B1_QB'] : self::CAMPOS;
+        return [...self::CAMPOS, ...$extras];
     }
 
     protected function tabela(): string
@@ -50,6 +54,7 @@ class ImportadorProdutos extends ImportadorEspelho
             'b1_um' => self::texto($l, 'B1_UM', 2),
             'b1_grupo' => self::texto($l, 'B1_GRUPO', 10),
             'b1_qb' => isset($l['B1_QB']) && (float) $l['B1_QB'] > 0 ? (float) $l['B1_QB'] : null,
+            'b1_peso' => isset($l['B1_PESO']) && (float) $l['B1_PESO'] > 0 ? (float) $l['B1_PESO'] : null,
             'b1_msblql' => ($l['B1_MSBLQL'] ?? '') === '1' ? '1' : '2',
             'd_e_l_e_t_' => self::excluida($l),
             'r_e_c_n_o_' => isset($l['R_E_C_N_O_']) ? (int) $l['R_E_C_N_O_'] : null,
