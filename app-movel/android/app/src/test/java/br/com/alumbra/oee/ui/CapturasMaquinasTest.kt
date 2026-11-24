@@ -4,6 +4,12 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import br.com.alumbra.oee.maquinas.ApontamentoApp
 import br.com.alumbra.oee.maquinas.ApontamentoDetalhe
+import br.com.alumbra.oee.maquinas.ConteudoPerdas
+import br.com.alumbra.oee.maquinas.FormPerda
+import br.com.alumbra.oee.maquinas.LinhaPerda
+import androidx.compose.foundation.layout.padding
+import br.com.alumbra.oee.maquinas.PerdaApp
+import br.com.alumbra.oee.maquinas.PerdasOp
 import br.com.alumbra.oee.maquinas.ConteudoApontamento
 import br.com.alumbra.oee.maquinas.ComponenteCusto
 import br.com.alumbra.oee.maquinas.ConteudoDetalhesOp
@@ -194,6 +200,31 @@ class CapturasMaquinasTest {
                 ),
                 null, true, {}, {},
             )
+        }
+    }
+
+    private val perdas = PerdasOp(1, "06267801001", "PA0910755", 12000.0, 0.0125, 140.0, 1.75, 2, listOf(
+        PerdaApp(3, "2026-11-17", 100.0, 1.25, 0.0125, "100 pç · 1,25 kg", "INJ-01 Injetora 01", "Rebarba no lote da manhã", "aplicativo",
+            "Maria Souza", "2026-11-17T13:10:00Z", false, null, null),
+        PerdaApp(2, "2026-11-17", 25.0, 0.3125, 0.0125, "25 pç · 0,3125 kg", "INJ-01 Injetora 01", null, "aplicativo",
+            "Maria Souza", "2026-11-17T12:00:00Z", true, "João Lima", "2026-11-17T12:30:00Z"),
+        PerdaApp(1, "2026-11-16", 40.0, 0.5, 0.0125, "40 pç · 0,5 kg", null, null, "portal", "Carlos Dias", "2026-11-16T18:00:00Z", false, null, null),
+    ))
+
+    @Test
+    fun perdas_da_op() = paparazzi.snapshot {
+        TemaOee(escuro = false) {
+            ConteudoPerdas("06267801001", "Injetora 01", perdas, null, FormPerda(quantidade = "40", peso = "0,5"), {}, null, null, {}, {}, {}, {})
+        }
+    }
+
+    @Test
+    fun perdas_lista() = paparazzi.snapshot {
+        TemaOee(escuro = false) {
+            androidx.compose.foundation.layout.Column(
+                androidx.compose.ui.Modifier.padding(androidx.compose.ui.unit.Dp(16f)),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(androidx.compose.ui.unit.Dp(12f)),
+            ) { perdas.perdas.forEach { LinhaPerda(it) {} } }
         }
     }
 }

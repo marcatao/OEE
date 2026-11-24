@@ -34,6 +34,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -101,6 +102,7 @@ fun TelaMaquina(
     aoPerderAcesso: (String) -> Unit,
     aoDetalhesOp: (OpResumo) -> Unit = {},
     aoAbrirApontamento: (ApontamentoApp) -> Unit = {},
+    aoPerdas: (OpResumo) -> Unit = {},
 ) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
@@ -231,6 +233,7 @@ fun TelaMaquina(
         aoAlterarCavidades = { erroAcao = null; molde = it },
         aoDetalhesOp = aoDetalhesOp,
         aoAbrirApontamento = aoAbrirApontamento,
+        aoPerdas = aoPerdas,
     )
     if (esmaecida && !alerta) {
         // Tela escura: o primeiro toque só acende.
@@ -281,6 +284,7 @@ fun ConteudoMaquina(
     aoAlterarCavidades: (MoldeApp) -> Unit,
     aoDetalhesOp: (OpResumo) -> Unit = {},
     aoAbrirApontamento: (ApontamentoApp) -> Unit = {},
+    aoPerdas: (OpResumo) -> Unit = {},
     agora: Long = System.currentTimeMillis(),
 ) {
     val hora = SimpleDateFormat("HH:mm:ss", Locale("pt", "BR"))
@@ -312,7 +316,7 @@ fun ConteudoMaquina(
             detalhe.producao?.let { CartaoProducao(it, agora, detalhe.situacao == "produzindo") }
 
             TituloSecao("Ordem de produção")
-            CartaoOp(detalhe.op, podeAlterar, aoTrocarOp, aoDetalhesOp)
+            CartaoOp(detalhe.op, podeAlterar, aoTrocarOp, aoDetalhesOp, aoPerdas)
             if (detalhe.op != null) {
                 CartaoMoldes(detalhe.op.moldes, podeAlterar, aoAlterarCavidades)
                 CartaoRoteiro(detalhe.op)
@@ -603,7 +607,7 @@ private fun CartaoProducao(p: ProducaoApp, agora: Long, produzindo: Boolean) {
 }
 
 @Composable
-private fun CartaoOp(op: OpDetalhe?, podeAlterar: Boolean, aoTrocarOp: () -> Unit, aoDetalhesOp: (OpResumo) -> Unit) {
+private fun CartaoOp(op: OpDetalhe?, podeAlterar: Boolean, aoTrocarOp: () -> Unit, aoDetalhesOp: (OpResumo) -> Unit, aoPerdas: (OpResumo) -> Unit) {
     Cartao {
         if (op == null) {
             Aviso("Nenhuma ordem de produção nesta máquina.", Situacao.ALERTA)
@@ -653,6 +657,19 @@ private fun CartaoOp(op: OpDetalhe?, podeAlterar: Boolean, aoTrocarOp: () -> Uni
                 Icon(Icons.Filled.Info, null, Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Detalhes da OP")
+            }
+        }
+        if (op != null && podeAlterar) {
+            Spacer(Modifier.height(8.dp))
+            androidx.compose.material3.OutlinedButton(
+                onClick = { aoPerdas(op.resumo) },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = MaterialTheme.shapes.medium,
+                border = androidx.compose.foundation.BorderStroke(1.dp, CoresOee.atual.erro.copy(alpha = .6f)),
+            ) {
+                Icon(Icons.Filled.Delete, null, Modifier.size(20.dp), tint = CoresOee.atual.erro)
+                Spacer(Modifier.width(8.dp))
+                Text("Apontar perdas", color = CoresOee.atual.erro)
             }
         }
         if (podeAlterar) {

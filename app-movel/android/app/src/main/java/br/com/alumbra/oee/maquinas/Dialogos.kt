@@ -67,7 +67,7 @@ import kotlinx.coroutines.delay
  * Obrigatória = não fecha tocando fora nem com o botão voltar.
  */
 @Composable
-private fun JanelaMaquina(
+internal fun JanelaMaquina(
     obrigatorio: Boolean,
     aoFechar: () -> Unit,
     conteudo: @Composable () -> Unit,
@@ -98,7 +98,7 @@ private fun JanelaMaquina(
 }
 
 @Composable
-private fun CabecalhoDialogo(titulo: String, detalhe: String?, situacao: Situacao) {
+internal fun CabecalhoDialogo(titulo: String, detalhe: String?, situacao: Situacao) {
     val c = CoresOee.atual
     val (cor, fundo) = when (situacao) {
         Situacao.ERRO -> c.erro to c.erroSuave

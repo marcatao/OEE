@@ -57,6 +57,18 @@ class RepositorioMaquinas(private val pastaGuardada: java.io.File? = null, priva
     suspend fun alterarOpDoApontamento(id: Int, numero: String): ApontamentoDetalhe =
         apontamentoDetalheDe(ApiPortal.post("apontamentos/$id/op", token(), JSONObject().put("numero", numero)))
 
+    suspend fun perdas(opId: Int): PerdasOp = perdasOpDe(ApiPortal.get("ops/$opId/perdas", token()))
+
+    /** Inclui uma perda: só a quantidade OU só o peso (o portal calcula o outro pelo PU). Devolve a lista atualizada. */
+    suspend fun apontarPerda(opId: Int, quantidade: Double?, peso: Double?, dia: String, maquinaId: Int, observacao: String?): PerdasOp {
+        val corpo = JSONObject().put("dia", dia).put("maquina_id", maquinaId)
+        if (quantidade != null) corpo.put("quantidade", quantidade) else if (peso != null) corpo.put("peso", peso)
+        if (!observacao.isNullOrBlank()) corpo.put("observacao", observacao.trim())
+        return perdasOpDe(ApiPortal.post("ops/$opId/perdas", token(), corpo))
+    }
+
+    suspend fun excluirPerda(id: Int): PerdasOp = perdasOpDe(ApiPortal.delete("perdas/$id", token()))
+
     suspend fun buscarOps(busca: String): List<OpResumo> =
         opsDe(ApiPortal.get("ops?busca=" + URLEncoder.encode(busca, "UTF-8"), token()))
 }

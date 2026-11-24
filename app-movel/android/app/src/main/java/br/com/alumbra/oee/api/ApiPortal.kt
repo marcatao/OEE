@@ -17,6 +17,8 @@ object ApiPortal {
 
     suspend fun get(caminho: String, token: String?): JSONObject = chamar("GET", caminho, token, null)
 
+    suspend fun delete(caminho: String, token: String?): JSONObject = chamar("DELETE", caminho, token, null)
+
     suspend fun post(caminho: String, token: String?, corpo: JSONObject = JSONObject()): JSONObject =
         chamar("POST", caminho, token, corpo)
 

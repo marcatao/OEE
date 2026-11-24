@@ -1,5 +1,18 @@
 # Versões do aplicativo
 
+## 0.14.0 (build 26)
+
+- **Apontamento de perdas** (botão "Apontar perdas" no cartão da OP, na tela da máquina; perfil Operador, permissão
+  "Perdas da OP"), com a mesma regra da aba da OP no portal:
+  - resumo da OP: total de perdas em peças e kg, % da quantidade da OP e o PU (peso de 1 peça, B1_PESO);
+  - calculadora pelo PU: digite a quantidade OU o peso e o outro é calculado na hora, com a conta embaixo
+    ("40 pç × 0,0125 kg = 0,5 kg"); produto sem PU = só a quantidade (peso desabilitado, com aviso);
+  - dia da perda em três botões (hoje, ontem, anteontem; nunca no futuro), observação opcional e a máquina da tela;
+  - confirmação antes de gravar e antes de excluir;
+  - lista das perdas da OP (mais recentes primeiro), com quem apontou, se foi pelo app ou pelo portal; as excluídas
+    ficam riscadas com "Excluído por Fulano" e saem do total.
+- Gravar e excluir precisam da rede da fábrica (a tela avisa).
+
 ## 0.13.2 (build 25)
 
 - Produção do turno (tela da máquina): a meta agora é a de **cada hora**, mandada pelo portal (mesma regra da

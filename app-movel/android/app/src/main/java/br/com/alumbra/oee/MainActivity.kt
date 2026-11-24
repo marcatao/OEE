@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
         data class Maquina(val id: Int, val nome: String) : Tela
         data class DetalhesOp(val opId: Int, val numero: String, val maquinaId: Int, val maquinaNome: String) : Tela
         data class Apontamento(val id: Int, val maquinaId: Int, val maquinaNome: String) : Tela
+        data class Perdas(val opId: Int, val numero: String, val maquinaId: Int, val maquinaNome: String) : Tela
         data object Os : Tela
         data class OsDetalhe(val id: Int) : Tela
         data object AbrirSs : Tela
@@ -100,6 +101,7 @@ class MainActivity : ComponentActivity() {
         is Tela.Maquina -> Tela.Maquinas
         is Tela.DetalhesOp -> Tela.Maquina(maquinaId, maquinaNome)
         is Tela.Apontamento -> Tela.Maquina(maquinaId, maquinaNome)
+        is Tela.Perdas -> Tela.Maquina(maquinaId, maquinaNome)
         is Tela.OsDetalhe, Tela.AbrirSs, is Tela.Avaliacao -> Tela.Os
         else -> Tela.Principal
     }
@@ -238,6 +240,16 @@ class MainActivity : ComponentActivity() {
                 aoPerderAcesso = ::perderAcesso,
                 aoDetalhesOp = { op -> tela = Tela.DetalhesOp(op.id, op.numero, atual.id, atual.nome) },
                 aoAbrirApontamento = { a -> tela = Tela.Apontamento(a.id, atual.id, atual.nome) },
+                aoPerdas = { op -> tela = Tela.Perdas(op.id, op.numero, atual.id, atual.nome) },
+            )
+            is Tela.Perdas -> br.com.alumbra.oee.maquinas.TelaPerdas(
+                repositorio = repositorioMaquinas,
+                opId = atual.opId,
+                numero = atual.numero,
+                maquinaId = atual.maquinaId,
+                maquinaNome = atual.maquinaNome,
+                aoVoltar = { tela = Tela.Maquina(atual.maquinaId, atual.maquinaNome) },
+                aoPerderAcesso = ::perderAcesso,
             )
             is Tela.Apontamento -> br.com.alumbra.oee.maquinas.TelaApontamento(
                 repositorio = repositorioMaquinas,
