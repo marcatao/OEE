@@ -153,7 +153,13 @@ class PainelTest extends TestCase
             ->assertSee('Injetora 01')->assertDontSee('Torno sem IoT')->assertDontSee('Prensa IoT desligado')
             ->assertSee('Produzindo agora')->assertSee('83,3%')->assertSee('2 h 30 min')->assertSee('Maior parada: 31');
         $this->get("/producao/dashboard/{$maquina->id}")->assertOk()
-            ->assertSee('Apontamentos reais')->assertSee('Manutenção corretiva')->assertSee('em aberto');
+            ->assertSee('Apontamentos reais')->assertSee('Manutenção corretiva')->assertSee('em aberto')
+            ->assertSee('Timeline — Hoje')->assertSee('class="tl-bloco', false)->assertSee('class="tl-marca', false) // timeline no período
+            ->assertDontSee('Editar o cadastro da máquina'); // operador: sem a engrenagem
+        $this->actingAs($this->usuario('admin', 'chefe@empresa.com'));
+        $this->get("/producao/dashboard/{$maquina->id}")->assertOk()
+            ->assertSee('href="'.route('admin.maquinas.edit', $maquina).'"', false)->assertSee('Editar o cadastro da máquina');
+        $this->actingAs($this->usuario('operador', 'op2@empresa.com', ['dashboard_maquina']));
 
         // Fora de turno (tipo "desligada") não conta como parada: a máquina fica "Fora de turno" e a parada não muda.
         $foraTurno = Legenda::create(['codigo' => '96', 'descricao' => 'Fora de Turno', 'tipo' => 'desligada', 'cor' => '#eadfc4']);

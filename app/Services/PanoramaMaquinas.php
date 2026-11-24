@@ -90,6 +90,8 @@ class PanoramaMaquinas
             'situacoes' => $situacoes,
             'contagem' => $contagem,
             'geral' => self::geral($porLegenda, $porTipo),
+            // Blocos da Timeline (todas as legendas, como na tela Timeline): a faixa da máquina no Dashboard.
+            'linhas' => $dados['linhas'],
         ];
     }
 

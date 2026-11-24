@@ -267,7 +267,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   dos perfis dele, como no app); meta de cada hora pela OP de cada momento (`MetaPorHora`: linha tracejada, meta do turno e % por hora). Filtro `FiltroProducaoHora` (dia, plantas, linhas, máquinas; salvos na tela `producao_hora`).
 - **Dashboard por máquina** (`DashboardController`): só máquinas ativas com IoT ATIVO (`Maquina::comIotAtivo()`).
   Panorama pelos APONTAMENTOS REAIS (`App\Services\PanoramaMaquinas`, sobre a `Timeline`): situação agora, OP,
-  produto, molde e cavidades, tempos por tipo e disponibilidade (partial `dashboard._cartao-maquina`) + o cartão da Produção por hora da máquina (partial `dashboard.producao-hora._maquina`, o mesmo da tela Produção por hora; turno de hoje ou do último dia do período). Legenda do tipo
+  produto, molde e cavidades, tempos por tipo e disponibilidade (partial `dashboard._cartao-maquina`) + a timeline da máquina no período do filtro (todas as legendas; `timelineMaquina`) + engrenagem para o cadastro da máquina (só `ehAdmin()`) + o cartão da Produção por hora da máquina (partial `dashboard.producao-hora._maquina`, o mesmo da tela Produção por hora; turno de hoje ou do último dia do período). Legenda do tipo
   `desligada` = "Fora de turno": nunca conta como parada (nem na disponibilidade). Legenda com **Exibir em dashboards**
   = Não (`legendas.exibir_dashboards`, nasce Sim; pedido do usuário em 24/11/2026): fora do Dashboard por máquina —
   tempo por legenda, barra, maior parada, disponibilidade, performance e lista de apontamentos (`PanoramaMaquinas::exibe`);

@@ -12,6 +12,7 @@ use App\Services\IndicadoresOee;
 use App\Services\PanoramaMaquinas;
 use App\Services\Periodo;
 use App\Services\ProducaoPorHora;
+use App\Services\Timeline;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -51,7 +52,14 @@ class DashboardController extends Controller
             'maquina' => $maquina,
             'maquinas' => Maquina::where(fn ($q) => $q->where('ativo', true)->comIotAtivo())->orWhere('id', $maquina->id)
                 ->orderBy('nome')->get(['id', 'codigo', 'nome']),
-            'panorama' => $panorama->montar(new Collection([$maquina]), $periodo->inicio, $periodo->fim),
+            'panorama' => $dadosPanorama = $panorama->montar(new Collection([$maquina]), $periodo->inicio, $periodo->fim),
+            // Timeline da máquina no período do filtro (todas as legendas, como a tela Timeline).
+            'timelineMaquina' => [
+                'blocos' => $dadosPanorama['linhas'][$maquina->id] ?? [],
+                'marcas' => app(Timeline::class)->marcas($periodo->inicio, $periodo->fim),
+                'agora' => ($agora = now()->getTimestamp()) > $periodo->inicio->getTimestamp() && $agora < $periodo->fim->getTimestamp()
+                    ? round(($agora - $periodo->inicio->getTimestamp()) / ($periodo->fim->getTimestamp() - $periodo->inicio->getTimestamp()) * 100, 3) : null,
+            ],
             // Produção por hora desta máquina (o mesmo cartão de Dashboards › Produção por hora): o turno de hoje ou,
             // num período que já terminou, o do último dia dele.
             'diaProducao' => $dia = ($periodo->fim->subSecond()->lessThan(CarbonImmutable::now()) ? $periodo->fim->subSecond() : CarbonImmutable::now())

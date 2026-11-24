@@ -1319,3 +1319,11 @@ a.link-op:hover { color:var(--primaria); text-decoration-color:var(--primaria); 
 .perda-conta.perda-conta-ok { color:var(--texto); font-weight:600; }
 .perdas-tabela tr.perda-excluida td { color:var(--suave); }
 .perdas-tabela tr.perda-excluida td:not(:last-child) { text-decoration:line-through; }
+
+/* Dashboard por máquina: engrenagem para o cadastro e a timeline da máquina no período */
+.dm-engrenagem { display:inline-flex; vertical-align:middle; margin-left:.4rem; padding:.3rem; border-radius:8px; color:var(--suave); }
+.dm-engrenagem:hover { color:var(--primaria); background:var(--fundo); }
+.dm-engrenagem .icone { width:1.15rem; height:1.15rem; }
+.dm-timeline { margin-top:.5rem; padding:0 1rem; } /* espaço para a 1ª e a última marca de hora não cortarem */
+.dm-timeline .tl-faixa { min-height:3.25rem; }
+.dm-timeline-vazia { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.85rem; }

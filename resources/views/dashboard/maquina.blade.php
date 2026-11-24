@@ -10,7 +10,11 @@
   <p class="trilha">Produção › <a href="{{ route('dashboard.maquinas', ['periodo' => $periodo->chave]) }}">Dashboard por máquina</a></p>
   <div class="titulo-com-acao">
     <div>
-      <h1>{{ $maquina->nome }}</h1>
+      <h1>{{ $maquina->nome }}
+        @if (auth()->user()->ehAdmin())
+          <a class="dm-engrenagem" href="{{ route('admin.maquinas.edit', $maquina) }}" title="Editar o cadastro da máquina" aria-label="Editar o cadastro da máquina">@include('layouts.partials.icone', ['nome' => 'engrenagem'])</a>
+        @endif
+      </h1>
       <p class="suave" style="margin:0">{{ $maquina->codigo }}@if ($maquina->localizacao()) · {{ $maquina->localizacao() }}@endif
         @if ($maquina->fabricante || $maquina->modelo) · {{ trim($maquina->fabricante.' '.$maquina->modelo) }}@endif</p>
     </div>
@@ -56,6 +60,40 @@
     @endforelse
   </section>
 </div>
+
+{{-- Timeline da máquina no período do filtro (todas as legendas, como a tela Timeline) --}}
+@php($fusoTl = config('oee.fuso_exibicao'))
+@php($podeApontarTl = auth()->user()->pode('apontamentos'))
+<section class="cartao" style="margin-top:1.25rem">
+  <h3 style="margin-top:0">Timeline — {{ $periodo->rotulo() }}</h3>
+  <div class="tl-grade dm-timeline">
+    <div class="tl-faixa">
+      @forelse ($timelineMaquina['blocos'] as $b)
+        @php($legenda = $b['legenda'])
+        @php($dica = $legenda->codigo.' · '.$legenda->descricao.' · '
+            .\Carbon\Carbon::createFromTimestamp($b['inicio'], $fusoTl)->format('d/m H:i').'–'
+            .($b['aberto'] && $b['fim'] >= now()->getTimestamp() - 60 ? 'agora' : \Carbon\Carbon::createFromTimestamp($b['fim'], $fusoTl)->format('H:i'))
+            .' ('.Formato::minutos(($b['fim'] - $b['inicio']) / 60).')'
+            .($b['apontamento']->ordemProducao ? ' · OP '.$b['apontamento']->ordemProducao->numero : ''))
+        @php($estilo = 'left: '.$b['esquerda'].'%; width: '.$b['largura'].'%; background-color: '.$legenda->cor)
+        @if ($podeApontarTl)
+          <a class="tl-bloco {{ $legenda->classeTexto() }} {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="{{ $dica }}"
+             href="{{ route('apontamentos.edit', ['apontamento' => $b['apontamento']]) }}"><span><b>{{ $b['apontamento']->rotuloBarra() }}</b><em class="tl-desc"> · {{ $legenda->descricao }}</em></span></a>
+        @else
+          <div class="tl-bloco {{ $legenda->classeTexto() }} {{ $b['aberto'] ? 'aberto' : '' }}" style="{{ $estilo }}" title="{{ $dica }}"><span><b>{{ $b['apontamento']->rotuloBarra() }}</b><em class="tl-desc"> · {{ $legenda->descricao }}</em></span></div>
+        @endif
+      @empty
+        <span class="dm-timeline-vazia suave">Nenhum apontamento real em {{ mb_strtolower($periodo->rotulo()) }}.</span>
+      @endforelse
+      @if ($timelineMaquina['agora'] !== null)<i class="tl-agora" style="left: {{ $timelineMaquina['agora'] }}%" title="Agora"></i>@endif
+    </div>
+    <div class="tl-eixo">
+      @foreach ($timelineMaquina['marcas'] as $marca)
+        <span @class(['tl-marca', 'virada' => $marca['virada']]) style="left: {{ $marca['esquerda'] }}%">{{ $marca['rotulo'] }}</span>
+      @endforeach
+    </div>
+  </div>
+</section>
 
 {{-- Produção por hora desta máquina (o mesmo cartão de Dashboards › Produção por hora) --}}
 @if ($producaoHora)
