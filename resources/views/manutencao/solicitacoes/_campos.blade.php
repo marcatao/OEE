@@ -1,7 +1,9 @@
 {{-- Campos da SS (abertura, edição e revisão do aprovador no detalhe), em etapas: para quem → onde → o que → detalhes.
-     Variáveis: $ss, $unidadesSs, $maquinas, $areas, $centros, $ccUsuario, $sugestoes. Precisa estar dentro de um <form>. --}}
+     Variáveis: $ss, $unidadesSs, $maquinas, $ferramentas, $areas, $centros, $ccUsuario, $sugestoes. Precisa estar dentro de um <form>. --}}
 @use('App\Models\Manutencao\SolicitacaoServico')
 @php($unidadeAtual = (string) old('unidade', $ss->unidade ?: (count($unidadesSs) === 1 ? $unidadesSs[0] : '')))
+@php($ferramentas ??= collect())
+@php($recursoAtual = old('recurso', old('ferramenta_id', $ss->ferramenta_id) ? 'ferramenta' : 'maquina'))
     <input type="hidden" name="apontamento_estado_id" value="{{ old('apontamento_estado_id', $ss->apontamento_estado_id) }}">
     <input type="hidden" name="ordem_producao_id" value="{{ old('ordem_producao_id', $ss->ordem_producao_id) }}">
 
@@ -29,9 +31,22 @@
 
     <fieldset class="ss-etapa">
       <legend><span class="ss-passo">2</span> Onde</legend>
-      <p class="suave ss-ajuda">Com máquina, o centro de custo vem do cadastro dela. Sem máquina, é um serviço geral: informe o centro de custo.</p>
+      <p class="suave ss-ajuda">Com máquina, o centro de custo vem do cadastro dela. Sem máquina (ou para ferramenta/molde), informe o centro de custo.</p>
+      <div class="ss-recurso" id="ss-recurso" role="radiogroup" aria-label="O chamado é para" data-unidades="{{ implode(',', config('oee.os_unidades_ferramenta')) }}" hidden>
+        <label><input type="radio" name="recurso" value="maquina" @checked($recursoAtual !== 'ferramenta')> Máquina / equipamento</label>
+        <label><input type="radio" name="recurso" value="ferramenta" @checked($recursoAtual === 'ferramenta')> Ferramenta / molde</label>
+      </div>
       <div class="campos ss-campos alinhar-topo">
-        <label class="largo-2">Máquina / equipamento
+        <label class="largo-2" id="ss-ferramenta-campo" hidden>Ferramenta / molde
+          <select name="ferramenta_id" id="ss-ferramenta" data-busca="Buscar ferramenta/molde por código ou descrição…">
+            <option value="">Escolha a ferramenta/molde…</option>
+            @foreach ($ferramentas as $f)
+              <option value="{{ $f->id }}" data-unidade="{{ $f->unidade }}" @selected((int) old('ferramenta_id', $ss->ferramenta_id) === $f->id)>{{ $f->codigo() }} — {{ trim($f->h4_descri) }}</option>
+            @endforeach
+          </select>
+          <small id="ss-ferramenta-info" class="suave"></small>
+        </label>
+        <label class="largo-2" id="ss-maquina-campo">Máquina / equipamento
           <select name="maquina_id" id="ss-maquina" data-busca="Buscar máquina por código ou nome…">
             <option value="" data-cc="">Sem máquina (serviço geral)</option>
             @foreach ($maquinas as $m)
@@ -129,7 +144,25 @@
         return cabem.length;
       };
     }
-    var filtrarAreas = filtro(area), filtrarMaquinas = filtro(maquina);
+    var ferramenta = document.getElementById('ss-ferramenta'), recurso = document.getElementById('ss-recurso');
+    var campoFerramenta = document.getElementById('ss-ferramenta-campo'), campoMaquina = document.getElementById('ss-maquina-campo');
+    var ferramentaInfo = document.getElementById('ss-ferramenta-info');
+    var filtrarAreas = filtro(area), filtrarMaquinas = filtro(maquina), filtrarFerramentas = filtro(ferramenta);
+    var unidadesFerramenta = recurso.dataset.unidades.split(',');
+
+    // Máquina OU ferramenta/molde (só nas unidades que aceitam): o campo que não vale fica escondido e vazio.
+    function aplicarRecurso(inicio) {
+      var un = unidade.value, nFerr = filtrarFerramentas(un, inicio);
+      var aceita = un && unidadesFerramenta.indexOf(un) >= 0;
+      recurso.hidden = !aceita;
+      var ehFerramenta = aceita && recurso.querySelector('input[value="ferramenta"]').checked;
+      campoFerramenta.hidden = !ehFerramenta; campoMaquina.hidden = ehFerramenta;
+      ferramenta.required = ehFerramenta;
+      ferramentaInfo.textContent = ehFerramenta ? (nFerr ? nFerr + ' ferramenta(s)/molde(s) desta unidade.' : 'Nenhuma ferramenta/molde cadastrada nesta unidade.') : '';
+      if (ehFerramenta) { if (maquina.value) { maquina.value = ''; maquina.dispatchEvent(new Event('change')); } }
+      else if (ferramenta.value) { ferramenta.value = ''; ferramenta.dispatchEvent(new Event('change')); }
+    }
+    recurso.querySelectorAll('input').forEach(function (r) { r.addEventListener('change', function () { aplicarRecurso(false); }); });
     var semMaquina = maquina.options[0];
 
     function aplicarUnidade(inicio) {
@@ -142,10 +175,11 @@
       maquinaInfo.textContent = un ? (nMaquinas ? nMaquinas + ' máquina(s) desta unidade.' : 'Nenhuma máquina cadastrada nesta unidade.') : '';
       if (!inicio && nAreas === 1) { area.value = area.options[1].value; }
     }
-    unidade.addEventListener('change', function () { aplicarUnidade(false); });
+    unidade.addEventListener('change', function () { aplicarUnidade(false); aplicarRecurso(false); });
     maquina.addEventListener('change', function () { aplicarMaquina(false); });
     cc.addEventListener('change', function () { if (!cc.disabled && cc.value) info.textContent = cc.value === ccUsuario ? 'Centro de custo do seu cadastro.' : ''; });
     aplicarUnidade(true);
+    aplicarRecurso(true);
     aplicarMaquina(true);
 
     // Os avisos ficam destacados quando marcados.

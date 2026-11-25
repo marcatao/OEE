@@ -241,7 +241,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Geração de preventivas (agendador × botão "Gerar agora") roda sob a trava `os-gerar-preventivas` e não duplica OS.
   Custo da OS (card na tela da OS): `App\Services\Manutencao\CustoOrdemServico`.
 - **Abertura de SS**: em etapas (unidade → área executante → máquina/CC → o que precisa → descrição); a unidade só
-  lista as liberadas ao login (`SolicitacaoController::unidadesPermitidas`) e filtra áreas e máquinas; flags "máquina
+  lista as liberadas ao login (`SolicitacaoController::unidadesPermitidas`) e filtra áreas e máquinas; recurso = MÁQUINA ou FERRAMENTA/MOLDE (SH4, `ferramenta_id` na SS e na OS, só nas unidades de
+  `oee.os_unidades_ferramenta` = Manutenção e Ferramentaria, da mesma unidade; nunca os dois; `AcessoOs::ferramentas()`); flags "máquina
   parada" e **"oferece risco à integridade"**; prioridade só **Alta | Baixa** (SS, OS e planos de preventiva;
   `SolicitacaoServico::PRIORIDADES`; "urgente" e "média" antigas só aparecem com "(antiga)", plano antigo gera OS
   pela `prioridadeAtual`; painéis contam `PRIORIDADES_ALTAS`) (`risco_integridade`, copiado para a OS). **SS automática**: legenda com

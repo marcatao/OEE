@@ -17,6 +17,7 @@ use App\Models\Manutencao\SolicitacaoServico;
 use App\Models\Maquina;
 use App\Models\Planta;
 use App\Models\Usuario;
+use App\Services\Manutencao\FluxoOrdemServico;
 use App\Services\Manutencao\GeradorPreventivas;
 use App\Services\Manutencao\PainelManutencao;
 use App\Support\AcessoOs;
@@ -90,6 +91,34 @@ class OrdensServicoTest extends TestCase
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         return SolicitacaoServico::latest('id')->firstOrFail();
+    }
+
+    public function test_chamado_para_ferramenta_molde_na_manutencao_e_ferramentaria(): void
+    {
+        $molde = \App\Models\Ferramenta::forceCreate(['h4_filial' => '', 'h4_codigo' => 'M123', 'h4_descri' => 'MOLDE TAMPA 28MM', 'unidade' => 'manutencao']);
+        $doFerr = \App\Models\Ferramenta::forceCreate(['h4_filial' => '', 'h4_codigo' => 'F900', 'h4_descri' => 'ESTAMPO', 'unidade' => 'ferramentaria']);
+        $sol = $this->usuario(['solicitante_manutencao', 'solicitante_tecnologia'], 'sol-molde@empresa.com');
+        $this->actingAs($sol)->get('/ordens-de-servico/solicitacoes/nova')->assertOk()->assertSee('Ferramenta / molde')->assertSee('M123')
+            ->assertDontSee('F900'); // não é solicitante da Ferramentaria
+
+        $base = ['unidade' => 'manutencao', 'titulo' => 'Molde vazando', 'tipo' => 'corretiva', 'area_executante_id' => $this->mecanica->id,
+            'prioridade' => 'alta', 'descricao' => 'Rebarba na cavidade 3', 'centro_custo' => '1001'];
+        $ss = $this->abrirSs($sol, $base + ['maquina_id' => null, 'ferramenta_id' => $molde->id]);
+        $this->assertSame([null, $molde->id], [$ss->maquina_id, (int) $ss->ferramenta_id]);
+        $this->get("/ordens-de-servico/solicitacoes/{$ss->id}")->assertOk()->assertSee('Ferramenta/molde')->assertSee('MOLDE TAMPA 28MM');
+
+        // Máquina e ferramenta juntas, ferramenta de outra unidade, ou na Tecnologia: recusado.
+        $this->post('/ordens-de-servico/solicitacoes', $base + ['maquina_id' => $this->injetora->id, 'ferramenta_id' => $molde->id])->assertSessionHasErrors('ferramenta_id');
+        $this->post('/ordens-de-servico/solicitacoes', $base + ['ferramenta_id' => $doFerr->id])->assertSessionHasErrors('ferramenta_id');
+        $this->post('/ordens-de-servico/solicitacoes', ['unidade' => 'tecnologia', 'area_executante_id' => $this->ti->id, 'ferramenta_id' => $molde->id] + $base)
+            ->assertSessionHasErrors('ferramenta_id');
+
+        // Aprovada: a OS leva a ferramenta.
+        $os = app(FluxoOrdemServico::class)->aprovar($ss->fresh(), $this->usuario(['admin_producao'], 'adm-molde@empresa.com'));
+        $this->assertSame($molde->id, (int) $os->ferramenta_id);
+        $this->actingAs($this->usuario(['admin_producao'], 'adm2-molde@empresa.com'))->get("/ordens-de-servico/ordens/{$os->id}")->assertOk()
+            ->assertSee('Ferramenta/molde')->assertSee('M123');
+        $this->get('/ordens-de-servico/ordens')->assertOk()->assertSee('MOLDE TAMPA 28MM');
     }
 
     public function test_fluxo_completo_da_corretiva(): void

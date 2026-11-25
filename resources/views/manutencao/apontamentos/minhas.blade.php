@@ -38,7 +38,7 @@
     <article class="cartao">
       <div class="os-cabecalho"><a href="{{ route('os.ordens.show', $os) }}"><strong>{{ $os->numeroFormatado() }}</strong></a>
         <span class="etiqueta os-{{ $os->status }}">{{ $os->rotuloStatus() }}</span><span class="prioridade-{{ $os->prioridade }}">{{ $os->rotuloPrioridade() }}</span></div>
-      <div>@include('manutencao._maquina', ['maquina' => $os->maquina])@if ($os->maquina_parada) <span class="os-parada">parada</span>@endif</div>
+      <div>@include('manutencao._maquina', ['maquina' => $os->maquina, 'ferramenta' => $os->ferramenta])@if ($os->maquina_parada) <span class="os-parada">parada</span>@endif</div>
       @if ($os->titulo)<strong>{{ $os->titulo }}</strong>@endif
       <div class="suave">{{ \Illuminate\Support\Str::limit($os->descricao, 140) }}</div>
       @if ($mantenedor && ! $rodando)

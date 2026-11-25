@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manutencao;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApontamentoEstado;
+use App\Models\Ferramenta;
 use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
@@ -31,7 +32,7 @@ class SolicitacaoController extends Controller
         $u = $request->user();
         $status = $request->input('status', AcessoOs::podeAprovar($u) ? 'pendente' : '');
         $consulta = AcessoOs::filtrar(SolicitacaoServico::query(), $u)
-            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante', 'ordemServico']);
+            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'ferramenta', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante', 'ordemServico']);
         if ($status !== '' && isset(SolicitacaoServico::STATUS[$status])) {
             $consulta->where('status', $status);
         }
@@ -166,7 +167,7 @@ class SolicitacaoController extends Controller
     private function buscar(Request $request, int $id): SolicitacaoServico
     {
         return AcessoOs::filtrar(SolicitacaoServico::query(), $request->user())
-            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante', 'analisadoPor', 'ordemServico'])
+            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'ferramenta', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante', 'analisadoPor', 'ordemServico'])
             ->findOrFail($id);
     }
 
@@ -240,6 +241,8 @@ class SolicitacaoController extends Controller
             'unidadesSs' => $this->unidadesPermitidas($request, $ss),
             // Só as máquinas das áreas que a pessoa pode escolher (a tela ainda filtra pela unidade escolhida).
             'maquinas' => AcessoOs::maquinasDasAreas($areas),
+            // Ferramentas/moldes: só nas unidades de oee.os_unidades_ferramenta (a tela filtra pela unidade escolhida).
+            'ferramentas' => AcessoOs::ferramentas(),
             'areas' => $areas,
             'centros' => AcessoOs::centrosCusto(),
             'ccUsuario' => AcessoOs::centroCustoDo($autor),
@@ -254,6 +257,7 @@ class SolicitacaoController extends Controller
             'titulo' => ['required', 'string', 'max:120'],
             'tipo' => ['required', Rule::in(array_keys(SolicitacaoServico::TIPOS))],
             'maquina_id' => ['nullable', 'integer', Rule::exists('maquinas', 'id')],
+            'ferramenta_id' => ['nullable', 'integer', Rule::exists('ferramentas', 'id')],
             'area_executante_id' => ['required', 'integer', Rule::exists('os_areas_executantes', 'id')],
             'centro_custo' => ['nullable', 'string', 'max:20'],
             'prioridade' => ['required', Rule::in(array_keys(SolicitacaoServico::PRIORIDADES))],
@@ -294,6 +298,23 @@ class SolicitacaoController extends Controller
         if ($maquina && ! in_array($maquina->unidade, [$unidade, 'ambos'], true)) {
             throw ValidationException::withMessages(['maquina_id' => 'Esta máquina não é da unidade escolhida.']);
         }
+        // Ferramenta/molde no lugar da máquina: só nas unidades que aceitam (Manutenção e Ferramentaria) e da mesma unidade.
+        $ferramenta = isset($dados['ferramenta_id']) ? Ferramenta::withoutGlobalScopes()->validas()->find($dados['ferramenta_id']) : null;
+        if (isset($dados['ferramenta_id']) && ! $ferramenta) {
+            throw ValidationException::withMessages(['ferramenta_id' => 'Escolha uma ferramenta/molde da lista.']);
+        }
+        if ($ferramenta) {
+            if ($maquina) {
+                throw ValidationException::withMessages(['ferramenta_id' => 'Escolha a máquina OU a ferramenta/molde, não os dois.']);
+            }
+            if (! in_array($unidade, config('oee.os_unidades_ferramenta'), true)) {
+                throw ValidationException::withMessages(['ferramenta_id' => 'Chamado para ferramenta/molde só na Manutenção ou na Ferramentaria.']);
+            }
+            if (! in_array($ferramenta->unidade, [$unidade, 'ambos'], true)) {
+                throw ValidationException::withMessages(['ferramenta_id' => 'Esta ferramenta/molde não é da unidade escolhida.']);
+            }
+        }
+        $dados['ferramenta_id'] = $ferramenta?->id;
 
         // Centro de custo: o da máquina (travado); sem máquina ou máquina sem CC, o informado ou o do autor; senão é obrigatório.
         $ccMaquina = trim((string) $maquina?->centro_custo);

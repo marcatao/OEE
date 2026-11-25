@@ -62,7 +62,7 @@ class OrdemServicoController extends Controller
             ->when($de, fn ($q) => $q->where('ordens_servico.criado_em', '>=', $de->startOfDay()->utc()))
             ->when($ate, fn ($q) => $q->where('ordens_servico.criado_em', '<', $ate->addDay()->startOfDay()->utc()));
         $consulta = $base()
-            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
+            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'ferramenta', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
                 'responsavel' => fn ($q) => $q->withoutGlobalScopes(), 'mantenedores.usuario', 'solicitante']);
         if ($f['status'] === 'em_aberto') {
             $consulta->whereIn('status', self::EM_ABERTO);
@@ -357,7 +357,7 @@ class OrdemServicoController extends Controller
     private function buscar(Request $request, int $id): OrdemServico
     {
         return AcessoOs::filtrar(OrdemServico::query(), $request->user())
-            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
+            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'ferramenta', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
                 'responsavel' => fn ($q) => $q->withoutGlobalScopes(), 'mantenedores.usuario', 'solicitante', 'aprovadoPor', 'solicitacao', 'plano' => fn ($q) => $q->withoutGlobalScopes(), 'checklist'])
             ->findOrFail($id);
     }

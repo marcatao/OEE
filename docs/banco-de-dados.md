@@ -490,6 +490,7 @@ erDiagram
         bit risco_integridade
         bit automatica
         nvarchar(120) origem_iot
+        bigint ferramenta_id FK
     }
     os_apontamentos_horas {
         bigint id PK
@@ -915,6 +916,7 @@ erDiagram
         bit risco_integridade
         bit automatica
         nvarchar(120) origem_iot
+        bigint ferramenta_id FK
     }
     tokens_aplicativo {
         bigint id PK
@@ -1024,6 +1026,7 @@ erDiagram
     usuarios |o--o{ ordens_servico : "aceite_por_id"
     ordens_producao |o--o{ ordens_servico : "ordem_producao_id"
     apontamentos_estado |o--o{ ordens_servico : "apontamento_estado_id"
+    ferramentas |o--o{ ordens_servico : "ferramenta_id"
     ordens_servico ||--o{ os_apontamentos_horas : "ordem_servico_id"
     os_mantenedores ||--o{ os_apontamentos_horas : "mantenedor_id"
     ordens_servico ||--o{ os_assinaturas : "ordem_servico_id"
@@ -1074,6 +1077,7 @@ erDiagram
     usuarios |o--o{ solicitacoes_servico : "analisado_por_id"
     apontamentos_estado |o--o{ solicitacoes_servico : "apontamento_estado_id"
     ordens_producao |o--o{ solicitacoes_servico : "ordem_producao_id"
+    ferramentas |o--o{ solicitacoes_servico : "ferramenta_id"
     usuarios ||--o{ tokens_aplicativo : "usuario_id"
     usuarios ||--o{ usuario_perfis : "usuario_id"
     centros_custo |o..o{ maquinas : "centro_custo (código)"
@@ -1165,7 +1169,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
 | [`ordens_producao`](#ordens_producao) | Protheus | `id` | 30 | 0 |
-| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 36 | 12 |
+| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 37 | 13 |
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
 | [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 11 | 2 |
 | [`os_assinaturas`](#os_assinaturas) | Sistema | `id` | 8 | 3 |
@@ -1197,7 +1201,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 16 | 1 |
 | [`solicitacoes_material`](#solicitacoes_material) | Sistema | `id` | 9 | 3 |
 | [`solicitacoes_material_itens`](#solicitacoes_material_itens) | Sistema | `id` | 18 | 4 |
-| [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 25 | 8 |
+| [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 26 | 9 |
 | [`tokens_aplicativo`](#tokens_aplicativo) | Sistema | `id` | 8 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
@@ -1964,8 +1968,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `risco_integridade` | `bit` | não | `'0'` |  |
 | `automatica` | `bit` | não | `'0'` |  |
 | `origem_iot` | `nvarchar(120)` | sim |  |  |
+| `ferramenta_id` | `bigint` | sim |  | FK → `ferramentas.id` |
 
-**Índices:** `ux_ordens_servico_solicitacao` único (solicitacao_id) filtrado `WHERE solicitacao_id IS NOT NULL` (só SQL Server) · `ux_ordens_servico_plano_prevista` único (plano_preventiva_id, prevista_para) filtrado `WHERE plano_preventiva_id IS NOT NULL` (só SQL Server) · `ordens_servico_unidade_status_id_index` (unidade, status, id) · `ordens_servico_responsavel_id_status_index` (responsavel_id, status) · `ordens_servico_maquina_id_criado_em_index` (maquina_id, criado_em) · `ordens_servico_status_prevista_para_index` (status, prevista_para) · `ordens_servico_solicitante_id_index` (solicitante_id)
+**Índices:** `ux_ordens_servico_solicitacao` único (solicitacao_id) filtrado `WHERE solicitacao_id IS NOT NULL` (só SQL Server) · `ux_ordens_servico_plano_prevista` único (plano_preventiva_id, prevista_para) filtrado `WHERE plano_preventiva_id IS NOT NULL` (só SQL Server) · `ordens_servico_unidade_status_id_index` (unidade, status, id) · `ordens_servico_responsavel_id_status_index` (responsavel_id, status) · `ordens_servico_maquina_id_criado_em_index` (maquina_id, criado_em) · `ordens_servico_status_prevista_para_index` (status, prevista_para) · `ordens_servico_solicitante_id_index` (solicitante_id) · `ordens_servico_ferramenta_id_index` (ferramenta_id)
 
 **Regras (CHECK, só no SQL Server):** `ck_ordens_servico_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_ordens_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_ordens_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_ordens_servico_status`: `status IN ('aberta', 'em_execucao', 'aguardando_material', 'concluida', 'encerrada', 'cancelada')` · `ck_ordens_servico_total_minutos`: `total_minutos >= 0` · `ck_ordens_servico_avaliacao`: `avaliacao IS NULL OR avaliacao IN ('excelente', 'boa', 'ruim')`
 
@@ -2659,8 +2664,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `risco_integridade` | `bit` | não | `'0'` |  |
 | `automatica` | `bit` | não | `'0'` |  |
 | `origem_iot` | `nvarchar(120)` | sim |  |  |
+| `ferramenta_id` | `bigint` | sim |  | FK → `ferramentas.id` |
 
-**Índices:** `solicitacoes_servico_unidade_status_id_index` (unidade, status, id) · `solicitacoes_servico_solicitante_id_id_index` (solicitante_id, id) · `solicitacoes_servico_maquina_id_index` (maquina_id)
+**Índices:** `solicitacoes_servico_unidade_status_id_index` (unidade, status, id) · `solicitacoes_servico_solicitante_id_id_index` (solicitante_id, id) · `solicitacoes_servico_maquina_id_index` (maquina_id) · `solicitacoes_servico_ferramenta_id_index` (ferramenta_id)
 
 **Regras (CHECK, só no SQL Server):** `ck_solicitacoes_servico_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_solicitacoes_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_solicitacoes_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_solicitacoes_servico_status`: `status IN ('pendente', 'aprovada', 'rejeitada', 'cancelada')`
 

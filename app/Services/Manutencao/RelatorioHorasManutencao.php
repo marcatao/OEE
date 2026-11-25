@@ -51,7 +51,7 @@ final class RelatorioHorasManutencao
                 }
             })
             ->when(! empty($filtros['mantenedor']), fn ($q) => $q->where('mantenedor_id', $filtros['mantenedor']))
-            ->with(['ordemServico.maquina' => fn ($q) => $q->withoutGlobalScopes(),
+            ->with(['ordemServico.maquina' => fn ($q) => $q->withoutGlobalScopes(), 'ordemServico.ferramenta',
                 'ordemServico.areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'mantenedor' => fn ($q) => $q->withoutGlobalScopes(), 'criadoPor'])
             ->orderBy('inicio');
     }

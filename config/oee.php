@@ -101,6 +101,9 @@ return [
     // Solicitantes e os Administradores, cada um para a sua área); "permissoes" = telas ('*' = todas). Os grupos
     // continuam somando permissões. Três áreas: Manutenção, Tecnologia e Ferramentaria. O Administrador de Tecnologia vê
     // tudo de tudo, inclusive a Segurança.
+    // Unidades em que a SS/OS pode ser aberta para uma FERRAMENTA/MOLDE (SH4) no lugar da máquina.
+    'os_unidades_ferramenta' => ['manutencao', 'ferramentaria'],
+
     'perfis_acesso' => [
         // ----- Área Manutenção (produção) -----
         'operador' => [

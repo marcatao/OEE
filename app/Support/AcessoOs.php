@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\CentroCusto;
+use App\Models\Ferramenta;
 use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\OrdemServico;
@@ -306,6 +307,14 @@ final class AcessoOs
     public static function maquinas(): Collection
     {
         return self::daUnidadeDoUsuario(Maquina::withoutGlobalScope('unidade'))->where('ativo', true)->orderBy('codigo')->get(['id', 'codigo', 'nome', 'centro_custo', 'unidade']);
+    }
+
+    /** Ferramentas/moldes (SH4) válidas das unidades do usuário logado que abrem chamado (`oee.os_unidades_ferramenta`) e as de "Todas". */
+    public static function ferramentas(): Collection
+    {
+        return self::daUnidadeDoUsuario(Ferramenta::withoutGlobalScope('unidade'))->validas()
+            ->whereIn('unidade', [...config('oee.os_unidades_ferramenta'), 'ambos'])
+            ->orderBy('h4_codigo')->get(['id', 'h4_codigo', 'h4_descri', 'unidade']);
     }
 
     /** A máquina é da área executante? Mesma unidade, ou uma das duas cadastrada para "Todas" (ambos). */
