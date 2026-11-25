@@ -342,6 +342,11 @@ class InventarioTiTest extends TestCase
         $this->post('/tecnologia/inventario/descricoes', ['descricao' => 'Notebook Dell Latitude 5440', 'ativo' => 1, 'unidade' => 'tecnologia'])
             ->assertSessionHasErrors('descricao');
         $this->get('/tecnologia/inventario/descricoes')->assertOk()->assertSee('Notebook Dell Latitude 5440');
+        $this->post('/tecnologia/inventario/descricoes', ['descricao' => 'Monitor LG 24', 'ativo' => 1, 'unidade' => 'tecnologia'])->assertSessionHasNoErrors();
+        $this->get('/tecnologia/inventario/descricoes?busca=dell+5440')->assertOk()->assertSee('value="Notebook Dell Latitude 5440"', false)
+            ->assertDontSee('value="Monitor LG 24"', false);
+        $this->get('/tecnologia/inventario/descricoes?tipo=sem')->assertOk()->assertSee('value="Monitor LG 24"', false)
+            ->assertDontSee('value="Notebook Dell Latitude 5440"', false);
         $this->get('/tecnologia/inventario/novo')->assertOk()->assertSee('Notebook Dell Latitude 5440');
 
         $base = ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'situacao' => 'estoque'];

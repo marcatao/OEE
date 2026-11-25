@@ -24,6 +24,21 @@
     <button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'mais']) Acrescentar</button>
   </form>
 
+  <h2>Descrições cadastradas</h2>
+  <form method="get" class="filtros">
+    <label>Buscar <input type="search" name="busca" value="{{ $busca }}" placeholder="Parte da descrição (ex.: dell 5440)" autofocus></label>
+    <label>Tipo
+      <select name="tipo"><option value="">Todos</option><option value="sem" @selected($tipoFiltro === 'sem')>Qualquer tipo (sem tipo)</option>
+        @foreach ($tipos as $t)<option value="{{ $t->id }}" @selected($tipoFiltro === (string) $t->id)>{{ $t->nome }}</option>@endforeach
+      </select></label>
+    <label>Situação
+      <select name="situacao"><option value="">Todas</option>
+        <option value="ativas" @selected($situacao === 'ativas')>Ativas</option><option value="inativas" @selected($situacao === 'inativas')>Inativas</option>
+      </select></label>
+    <button class="botao secundario" type="submit">Buscar</button>
+    @if ($busca !== '' || $tipoFiltro !== '' || $situacao !== '')<a href="{{ route('inventario-ti.descricoes') }}">Limpar</a>@endif
+  </form>
+
   <div class="rolagem">
   <table class="tabela tabela-form">
     <thead><tr><th>Descrição</th><th>Tipo</th><th>Unidade</th><th>Situação</th><th>Itens</th><th></th></tr></thead>
@@ -40,10 +55,11 @@
         <td><form method="post" id="descricao-{{ $d->id }}" action="{{ route('inventario-ti.descricoes.update', $d) }}">@csrf @method('put')<button class="botao pequeno secundario" type="submit">Salvar</button></form></td>
       </tr>
     @empty
-      <tr><td colspan="6" class="suave">Nenhuma descrição cadastrada. Cadastre acima antes de incluir itens.</td></tr>
+      <tr><td colspan="6" class="suave">{{ $busca !== '' || $tipoFiltro !== '' || $situacao !== '' ? 'Nenhuma descrição encontrada.' : 'Nenhuma descrição cadastrada. Cadastre acima antes de incluir itens.' }}</td></tr>
     @endforelse
     </tbody>
   </table>
   </div>
+  {{ $descricoes->links('partials.paginacao') }}
 </section>
 @endsection

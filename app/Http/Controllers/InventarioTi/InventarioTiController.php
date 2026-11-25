@@ -189,11 +189,26 @@ class InventarioTiController extends Controller
     }
 
     // ---------- Descrições padrão ----------
-    public function descricoes(): View
+    public function descricoes(Request $request): View
     {
+        $busca = trim((string) $request->input('busca', ''));
+        $tipo = $request->input('tipo', '');
+        $situacao = (string) $request->input('situacao', '');
+
         return view('inventario-ti.descricoes', [
             'descricoes' => DescricaoItemTi::with('tipo')->withCount(['itens' => fn ($q) => $q->withoutGlobalScopes()])
-                ->orderByDesc('ativo')->orderBy('descricao')->orderBy('id')->get(),
+                // Cada palavra em qualquer parte do texto (ex.: "dell 5440").
+                ->when($busca !== '', function ($q) use ($busca) {
+                    foreach (preg_split('/\s+/', $busca) as $palavra) {
+                        $q->where('descricao', 'like', "%{$palavra}%");
+                    }
+                })
+                ->when($tipo === 'sem', fn ($q) => $q->whereNull('tipo_id'))
+                ->when(ctype_digit((string) $tipo), fn ($q) => $q->where('tipo_id', (int) $tipo))
+                ->when($situacao === 'ativas', fn ($q) => $q->where('ativo', true))
+                ->when($situacao === 'inativas', fn ($q) => $q->where('ativo', false))
+                ->orderByDesc('ativo')->orderBy('descricao')->orderBy('id')->paginate(100)->withQueryString(),
+            'busca' => $busca, 'tipoFiltro' => (string) $tipo, 'situacao' => $situacao,
             'tipos' => TipoItemTi::orderBy('categoria')->orderBy('nome')->get(),
             'nova' => new DescricaoItemTi,
         ]);
