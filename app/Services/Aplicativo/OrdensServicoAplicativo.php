@@ -13,6 +13,7 @@ use App\Services\HorarioApontamento;
 use App\Services\Manutencao\FluxoOrdemServico;
 use App\Services\Manutencao\SsAutomatica;
 use App\Support\AcessoOs;
+use App\Support\AssinaturaPng;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -364,13 +365,7 @@ class OrdensServicoAplicativo
     /** PNG em base64 (com ou sem "data:image/png;base64,"), até 600 KB. */
     private function conferirAssinatura(string $assinatura): string
     {
-        $base64 = preg_replace('#^data:image/png;base64,#', '', trim($assinatura));
-        $bytes = base64_decode((string) $base64, true);
-        if ($bytes === false || ! str_starts_with($bytes, "\x89PNG") || strlen($bytes) > 600 * 1024 || strlen($bytes) < 100) {
-            throw ValidationException::withMessages(['assinatura' => 'Peça para o solicitante assinar no quadro.']);
-        }
-
-        return base64_encode($bytes);
+        return AssinaturaPng::conferir($assinatura, 'assinatura', 'Peça para o solicitante assinar no quadro.');
     }
 
     private function relacoes(): array

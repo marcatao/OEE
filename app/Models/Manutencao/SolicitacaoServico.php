@@ -5,6 +5,7 @@ namespace App\Models\Manutencao;
 use App\Models\ApontamentoEstado;
 use App\Models\Concerns\Auditavel;
 use App\Models\Ferramenta;
+use App\Models\InventarioTi\ItemTi;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\Usuario;
@@ -59,7 +60,7 @@ class SolicitacaoServico extends Model
 
     protected $table = 'solicitacoes_servico';
 
-    protected $fillable = ['titulo', 'unidade', 'solicitante_id', 'tipo', 'maquina_id', 'ferramenta_id', 'area_executante_id', 'centro_custo',
+    protected $fillable = ['titulo', 'unidade', 'solicitante_id', 'tipo', 'maquina_id', 'ferramenta_id', 'item_ti_id', 'area_executante_id', 'centro_custo',
         'centro_custo_solicitante', 'prioridade', 'maquina_parada', 'descricao', 'status', 'analisado_por_id',
         'analisado_em', 'motivo_rejeicao', 'apontamento_estado_id', 'ordem_producao_id', 'risco_integridade', 'automatica', 'origem_iot'];
 
@@ -115,6 +116,12 @@ class SolicitacaoServico extends Model
     public function ferramenta(): BelongsTo
     {
         return $this->belongsTo(Ferramenta::class, 'ferramenta_id')->withoutGlobalScopes();
+    }
+
+    /** Item do inventário de TI do chamado (no lugar da máquina; só Tecnologia). */
+    public function itemTi(): BelongsTo
+    {
+        return $this->belongsTo(ItemTi::class, 'item_ti_id')->withoutGlobalScopes();
     }
 
     public function maquina(): BelongsTo

@@ -66,6 +66,8 @@ return [
         'os_almoxarifado' => 'Ordens de serviço: atender requisições de material (almoxarifado e compras)',
         'os_preventivas' => 'Ordens de serviço: preventivas (PAMP, planos e checklist)',
         'os_relatorios' => 'Ordens de serviço: relatórios de horas (intranet, contabilidade e diretoria)',
+        // Tecnologia
+        'inventario_ti' => 'Inventário de TI (equipamentos, licenças e linhas; consulta — os administradores da unidade cadastram)',
     ],
 
     // Prioridades da solicitação de material (código => descrição), na ordem da lista. "nivel" pinta a prioridade na tela:
@@ -103,6 +105,8 @@ return [
     // tudo de tudo, inclusive a Segurança.
     // Unidades em que a SS/OS pode ser aberta para uma FERRAMENTA/MOLDE (SH4) no lugar da máquina.
     'os_unidades_ferramenta' => ['manutencao', 'ferramentaria'],
+    // Unidades em que a SS/OS pode ser aberta para um ITEM DO INVENTÁRIO DE TI no lugar da máquina.
+    'os_unidades_item_ti' => ['tecnologia'],
 
     'perfis_acesso' => [
         // ----- Área Manutenção (produção) -----
@@ -148,9 +152,9 @@ return [
         'mantenedor_tecnologia' => [
             'rotulo' => 'Mantenedor de Tecnologia',
             'area' => 'tecnologia',
-            'descricao' => 'Vê, aprova e executa as SS/OS das áreas executantes dele e vê equipamentos e dashboards de tecnologia.',
+            'descricao' => 'Vê, aprova e executa as SS/OS das áreas executantes dele e vê equipamentos, o inventário de TI e dashboards de tecnologia.',
             'unidades' => ['tecnologia'],
-            'permissoes' => ['dashboard_maquina', 'timeline', 'producao_hora', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material'],
+            'permissoes' => ['dashboard_maquina', 'timeline', 'producao_hora', 'solicitacoes_manutencao', 'os_aprovar', 'os_painel', 'os_material', 'inventario_ti'],
         ],
         'admin_tecnologia' => [
             'rotulo' => 'Administrador de Tecnologia',
@@ -206,6 +210,17 @@ return [
         'manutencao' => 'mantenedor_producao',
         'tecnologia' => 'mantenedor_tecnologia',
         'ferramentaria' => 'mantenedor_ferramentaria',
+    ],
+
+    // Inventário de TI: texto do termo de responsabilidade (cada item é um parágrafo; o termo mostra antes os dados do
+    // equipamento e o nome de quem recebe). O termo assinado guarda os dados do item daquele momento.
+    'inventario_ti' => [
+        'termo_titulo' => 'Termo de responsabilidade pelo uso de equipamento',
+        'termo' => [
+            'Recebi da empresa, para uso exclusivo nas minhas atividades de trabalho, o equipamento descrito acima, em perfeito estado de funcionamento e com os acessórios relacionados.',
+            'Comprometo-me a zelar pela guarda e conservação do equipamento, a não emprestá-lo nem cedê-lo a terceiros, a não instalar programas sem autorização da Tecnologia e a comunicar imediatamente qualquer defeito, perda, furto ou roubo.',
+            'Estou ciente de que o equipamento é de propriedade da empresa, pode ser recolhido a qualquer momento e deve ser devolvido nas mesmas condições ao fim do uso ou do meu vínculo com a empresa. Danos causados por mau uso ou negligência poderão ser cobrados, na forma da lei.',
+        ],
     ],
 
     // Hora em que o "dia de produção" começa na Timeline (o dia vai desta hora até a mesma hora do dia seguinte).

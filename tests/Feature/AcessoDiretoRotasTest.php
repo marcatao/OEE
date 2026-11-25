@@ -22,7 +22,9 @@ class AcessoDiretoRotasTest extends TestCase
     private const SO_LOGIN = ['aguardando', 'app.entrar.concluir', 'logout', 'perfil', 'perfil.update', 'perfil.entra',
         'ordens-producao.busca', 'usuarios.foto', 'api.app.eu', 'api.app.sair',
         // Atualização do app: todo usuário logado no app precisa saber da versão nova e baixá-la.
-        'api.app.versao', 'api.app.versao.apk'];
+        'api.app.versao', 'api.app.versao.apk',
+        // Inventário de TI: quem recebe um equipamento (mesmo sem perfil) vê os seus itens e assina o termo dele.
+        'inventario-ti.meus', 'inventario-ti.termos.show', 'inventario-ti.termos.assinar'];
 
     private function usuario(array $perfis, string $email): Usuario
     {

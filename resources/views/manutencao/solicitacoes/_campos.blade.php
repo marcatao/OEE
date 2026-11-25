@@ -1,9 +1,10 @@
 {{-- Campos da SS (abertura, edição e revisão do aprovador no detalhe), em etapas: para quem → onde → o que → detalhes.
-     Variáveis: $ss, $unidadesSs, $maquinas, $ferramentas, $areas, $centros, $ccUsuario, $sugestoes. Precisa estar dentro de um <form>. --}}
+     Variáveis: $ss, $unidadesSs, $maquinas, $ferramentas, $itensTi, $areas, $centros, $ccUsuario, $sugestoes. Precisa estar dentro de um <form>. --}}
 @use('App\Models\Manutencao\SolicitacaoServico')
 @php($unidadeAtual = (string) old('unidade', $ss->unidade ?: (count($unidadesSs) === 1 ? $unidadesSs[0] : '')))
 @php($ferramentas ??= collect())
-@php($recursoAtual = old('recurso', old('ferramenta_id', $ss->ferramenta_id) ? 'ferramenta' : 'maquina'))
+@php($itensTi ??= collect())
+@php($recursoAtual = old('recurso', old('ferramenta_id', $ss->ferramenta_id) ? 'ferramenta' : (old('item_ti_id', $ss->item_ti_id) ? 'item_ti' : 'maquina')))
     <input type="hidden" name="apontamento_estado_id" value="{{ old('apontamento_estado_id', $ss->apontamento_estado_id) }}">
     <input type="hidden" name="ordem_producao_id" value="{{ old('ordem_producao_id', $ss->ordem_producao_id) }}">
 
@@ -31,12 +32,23 @@
 
     <fieldset class="ss-etapa">
       <legend><span class="ss-passo">2</span> Onde</legend>
-      <p class="suave ss-ajuda">Com máquina, o centro de custo vem do cadastro dela. Sem máquina (ou para ferramenta/molde), informe o centro de custo.</p>
-      <div class="ss-recurso" id="ss-recurso" role="radiogroup" aria-label="O chamado é para" data-unidades="{{ implode(',', config('oee.os_unidades_ferramenta')) }}" hidden>
-        <label><input type="radio" name="recurso" value="maquina" @checked($recursoAtual !== 'ferramenta')> Máquina / equipamento</label>
-        <label><input type="radio" name="recurso" value="ferramenta" @checked($recursoAtual === 'ferramenta')> Ferramenta / molde</label>
+      <p class="suave ss-ajuda">Com máquina, o centro de custo vem do cadastro dela. Sem máquina (ou para ferramenta/molde ou item de TI), informe o centro de custo.</p>
+      {{-- O chamado é para: máquina (sempre) ou, nas unidades que aceitam, ferramenta/molde ou item do inventário de TI. --}}
+      <div class="ss-recurso" id="ss-recurso" role="radiogroup" aria-label="O chamado é para" hidden>
+        <label data-unidades="*"><input type="radio" name="recurso" value="maquina" @checked(! in_array($recursoAtual, ['ferramenta', 'item_ti'], true))> Máquina / equipamento</label>
+        <label data-unidades="{{ implode(',', config('oee.os_unidades_ferramenta')) }}"><input type="radio" name="recurso" value="ferramenta" @checked($recursoAtual === 'ferramenta')> Ferramenta / molde</label>
+        <label data-unidades="{{ implode(',', config('oee.os_unidades_item_ti')) }}"><input type="radio" name="recurso" value="item_ti" @checked($recursoAtual === 'item_ti')> Item do inventário de TI</label>
       </div>
       <div class="campos ss-campos alinhar-topo">
+        <label class="largo-2" id="ss-item-campo" hidden>Item do inventário de TI
+          <select name="item_ti_id" id="ss-item" data-busca="Buscar item por patrimônio ou descrição…">
+            <option value="">Escolha o item…</option>
+            @foreach ($itensTi as $it)
+              <option value="{{ $it->id }}" data-unidade="{{ $it->unidade }}" data-cc="{{ trim((string) $it->centro_custo) }}" @selected((int) old('item_ti_id', $ss->item_ti_id) === $it->id)>{{ $it->codigo() }} — {{ $it->descricao }}{{ (int) $it->responsavel_id === (int) auth()->id() ? ' (está com você)' : '' }}</option>
+            @endforeach
+          </select>
+          <small id="ss-item-info" class="suave"></small>
+        </label>
         <label class="largo-2" id="ss-ferramenta-campo" hidden>Ferramenta / molde
           <select name="ferramenta_id" id="ss-ferramenta" data-busca="Buscar ferramenta/molde por código ou descrição…">
             <option value="">Escolha a ferramenta/molde…</option>
@@ -145,24 +157,37 @@
       };
     }
     var ferramenta = document.getElementById('ss-ferramenta'), recurso = document.getElementById('ss-recurso');
-    var campoFerramenta = document.getElementById('ss-ferramenta-campo'), campoMaquina = document.getElementById('ss-maquina-campo');
+    var itemTi = document.getElementById('ss-item'), itemInfo = document.getElementById('ss-item-info');
+    var campos = { maquina: document.getElementById('ss-maquina-campo'), ferramenta: document.getElementById('ss-ferramenta-campo'), item_ti: document.getElementById('ss-item-campo') };
+    var selects = { maquina: maquina, ferramenta: ferramenta, item_ti: itemTi };
     var ferramentaInfo = document.getElementById('ss-ferramenta-info');
-    var filtrarAreas = filtro(area), filtrarMaquinas = filtro(maquina), filtrarFerramentas = filtro(ferramenta);
-    var unidadesFerramenta = recurso.dataset.unidades.split(',');
+    var filtrarAreas = filtro(area), filtrarMaquinas = filtro(maquina), filtrarFerramentas = filtro(ferramenta), filtrarItens = filtro(itemTi);
 
-    // Máquina OU ferramenta/molde (só nas unidades que aceitam): o campo que não vale fica escondido e vazio.
+    // Máquina OU ferramenta/molde OU item de TI (cada um só nas unidades que aceitam): o campo que não vale fica escondido e vazio.
     function aplicarRecurso(inicio) {
-      var un = unidade.value, nFerr = filtrarFerramentas(un, inicio);
-      var aceita = un && unidadesFerramenta.indexOf(un) >= 0;
-      recurso.hidden = !aceita;
-      var ehFerramenta = aceita && recurso.querySelector('input[value="ferramenta"]').checked;
-      campoFerramenta.hidden = !ehFerramenta; campoMaquina.hidden = ehFerramenta;
-      ferramenta.required = ehFerramenta;
-      ferramentaInfo.textContent = ehFerramenta ? (nFerr ? nFerr + ' ferramenta(s)/molde(s) desta unidade.' : 'Nenhuma ferramenta/molde cadastrada nesta unidade.') : '';
-      if (ehFerramenta) { if (maquina.value) { maquina.value = ''; maquina.dispatchEvent(new Event('change')); } }
-      else if (ferramenta.value) { ferramenta.value = ''; ferramenta.dispatchEvent(new Event('change')); }
+      var un = unidade.value, nFerr = filtrarFerramentas(un, inicio), nItens = filtrarItens(un, inicio), disponiveis = 0;
+      recurso.querySelectorAll('label').forEach(function (l) {
+        var cabe = l.dataset.unidades === '*' || (un && l.dataset.unidades.split(',').indexOf(un) >= 0);
+        l.hidden = !cabe;
+        if (cabe) disponiveis++;
+        else if (l.querySelector('input').checked) recurso.querySelector('input[value="maquina"]').checked = true;
+      });
+      recurso.hidden = disponiveis < 2;
+      var escolhido = recurso.querySelector('input:checked').value;
+      Object.keys(campos).forEach(function (k) {
+        campos[k].hidden = k !== escolhido;
+        if (k !== 'maquina') selects[k].required = k === escolhido;
+        if (k !== escolhido && selects[k].value) { selects[k].value = ''; selects[k].dispatchEvent(new Event('change')); }
+      });
+      ferramentaInfo.textContent = escolhido === 'ferramenta' ? (nFerr ? nFerr + ' ferramenta(s)/molde(s) desta unidade.' : 'Nenhuma ferramenta/molde cadastrada nesta unidade.') : '';
+      itemInfo.textContent = escolhido === 'item_ti' ? (nItens ? nItens + ' item(ns) do inventário desta unidade. Os que estão com você aparecem primeiro.' : 'Nenhum item do inventário nesta unidade.') : '';
     }
     recurso.querySelectorAll('input').forEach(function (r) { r.addEventListener('change', function () { aplicarRecurso(false); }); });
+    // Item de TI com centro de custo: sugere o dele (pode trocar).
+    itemTi.addEventListener('change', function () {
+      var ccItem = itemTi.selectedOptions[0] ? itemTi.selectedOptions[0].dataset.cc : '';
+      if (ccItem && !cc.disabled && temOpcao(ccItem)) { cc.value = ccItem; cc.dispatchEvent(new Event('change')); info.textContent = 'Centro de custo do cadastro do item.'; }
+    });
     var semMaquina = maquina.options[0];
 
     function aplicarUnidade(inicio) {

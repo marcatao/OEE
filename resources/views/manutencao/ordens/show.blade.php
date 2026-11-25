@@ -174,7 +174,7 @@
       <div class="os-ficha-bloco">
         <h3>Equipamento</h3>
         <dl>
-          <dt>{{ $os->ferramenta_id ? 'Ferramenta/molde' : 'Máquina' }}</dt><dd>@include('manutencao._maquina', ['maquina' => $os->maquina, 'ferramenta' => $os->ferramenta])</dd>
+          <dt>{{ $os->ferramenta_id ? 'Ferramenta/molde' : ($os->item_ti_id ? 'Item de TI' : 'Máquina') }}</dt><dd>@include('manutencao._maquina', ['maquina' => $os->maquina, 'ferramenta' => $os->ferramenta, 'itemTi' => $os->itemTi])</dd>
           <dt>Centro de custo</dt><dd>{{ $os->centro_custo ?: '—' }}@if ($ccDescricao) <small class="suave">{{ $ccDescricao }}</small>@endif</dd>
         </dl>
       </div>

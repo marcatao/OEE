@@ -15,6 +15,7 @@
   --falta-verde:#067647; --falta-amarelo:#a15c07; --falta-vermelho:#b42318; --falta-preto:#1f2a24; /* legendas da ZB5 (falta de produtos) */
   --meta-boa:#16a34a; --meta-media:#eab308; --meta-ruim:#dc2626; /* barras da produção por hora × meta (≥ 90%, ≥ 50%, abaixo) */
   --falta-faltantes:#d97706; --falta-atendidas:#008650; /* gráfico faltantes × atendidas */
+  --assinatura-fundo:#ffffff; --assinatura-tinta:#111111; /* quadro de assinatura (sempre claro: vira a imagem do termo) */
   --largura-menu:clamp(14.5rem, 13vw, 16.5rem); --largura-menu-recolhido:4.25rem; --altura-topo:3.75rem;
 }
 @media (prefers-color-scheme: dark) {
@@ -1347,3 +1348,43 @@ a.kpi-link:hover { border-color:var(--primaria); }
 .medidor.mini { width:3.6rem; height:3.6rem; }
 .medidor.mini > div { width:2.8rem; height:2.8rem; }
 .medidor.mini strong { font-size:.82rem; }
+/* ---------- Inventário de TI ---------- */
+.ss-recurso label[hidden] { display:none; }
+.os-item-ti { display:inline-block; padding:0 .4rem; border-radius:.3rem; font-size:.75rem; font-weight:600; background:var(--protheus-suave); color:var(--protheus); }
+.ti-situacao-em_uso { color:var(--ok); background:var(--ok-suave); border-color:transparent; }
+.ti-situacao-estoque { color:var(--protheus); background:var(--protheus-suave); border-color:transparent; }
+.ti-situacao-manutencao { color:var(--alerta); background:var(--alerta-suave); border-color:transparent; }
+.ti-situacao-baixado { color:var(--suave); background:var(--fundo); border-color:var(--borda); }
+.ti-termo-pendente { color:var(--alerta); background:var(--alerta-suave); border-color:transparent; }
+.ti-termo-assinado { color:var(--ok); background:var(--ok-suave); border-color:transparent; }
+.ti-termo-cancelado { color:var(--suave); background:var(--fundo); border-color:var(--borda); }
+.ti-vencido { color:var(--erro); font-weight:600; }
+.ti-grade { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap:1rem; margin-top:1rem; }
+.ti-grade > section { margin:0; }
+.ti-grade h2 { margin-top:0; }
+.ti-campos-categoria[hidden] { display:none; }
+.ti-especificacao { white-space:pre-line; }
+.ti-acoes { display:flex; flex-wrap:wrap; gap:.5rem; }
+/* Termo de responsabilidade (tela e impressão) */
+.termo { max-width:52rem; margin:0 auto; }
+.termo h1 { text-align:center; }
+.termo-dados { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap:.5rem 1.5rem; margin:1rem 0; padding:1rem; border:1px solid var(--borda); border-radius:12px; background:var(--fundo); }
+.termo-dados dt { font-size:.8rem; color:var(--suave); margin:0; }
+.termo-dados dd { margin:0; font-weight:600; white-space:pre-line; }
+.termo-texto p { text-align:justify; }
+.termo-assinado { display:flex; flex-direction:column; align-items:center; gap:.3rem; margin:2rem auto 0; max-width:22rem; }
+.termo-assinado img { width:100%; height:auto; background:var(--assinatura-fundo); border-bottom:1px solid var(--texto); }
+.termo-assinado figcaption { text-align:center; font-size:.85rem; }
+.termo-assinado figcaption small { display:block; color:var(--suave); }
+/* Quadro de assinatura com o dedo ou o mouse ([data-assinatura] em componentes.js) */
+.assinatura-quadro { display:flex; flex-direction:column; gap:.5rem; margin:1rem 0; }
+.assinatura-quadro canvas { width:100%; height:13rem; background:var(--assinatura-fundo); color:var(--assinatura-tinta); border:2px dashed var(--borda-forte); border-radius:12px; touch-action:none; cursor:crosshair; }
+.assinatura-quadro.assinado canvas { border-style:solid; border-color:var(--primaria); }
+.assinatura-acoes { display:flex; justify-content:space-between; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.aviso-termos { display:flex; gap:.75rem; align-items:flex-start; padding:.75rem 1rem; margin-bottom:1rem; border-radius:12px; background:var(--alerta-suave); color:var(--texto); border:1px solid var(--alerta); }
+.aviso-termos .icone { color:var(--alerta); }
+.aviso-termos span { display:flex; flex-wrap:wrap; gap:.25rem 1rem; }
+@media print {
+  .assinatura-quadro, .aviso-termos { display:none !important; }
+  .termo-dados { background:var(--branco); }
+}

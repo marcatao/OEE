@@ -15,6 +15,10 @@
  *    [data-campo="peso"]; digitar um calcula o outro pelo PU (kg por peça), em formato brasileiro; [data-conta] mostra a
  *    conta. Sem PU (atributo vazio), só a quantidade vale. O botão [data-confirmar-perda] pede confirmação com a conta.
  *
+ * 5) [data-assinatura] — quadro de assinatura com o dedo (celular) ou o mouse: um <canvas> e um campo escondido
+ *    [data-assinatura-campo] que recebe a imagem (PNG em base64) ao soltar; [data-assinatura-limpar] apaga. O formulário
+ *    não é enviado com o quadro em branco. Mesma ideia do quadro da avaliação da OS no aplicativo.
+ *
  * 2) [data-escolha] — escolha de vários com busca (partial partials/escolha-multipla): <details> com o resumo do que
  *    está marcado; ao abrir, busca por nome e a lista de caixas de marcar.
  */
@@ -236,6 +240,7 @@
     (raiz || document).querySelectorAll('select[data-busca]').forEach(montarBusca);
     (raiz || document).querySelectorAll('[data-escolha]').forEach(montarEscolha);
     (raiz || document).querySelectorAll('[data-abas]').forEach(function (c) { if (!c.dataset.abasProntas) { c.dataset.abasProntas = '1'; montarAbas(c); } });
+    (raiz || document).querySelectorAll('[data-assinatura]').forEach(montarAssinatura);
     (raiz || document).querySelectorAll('[data-calculadora-pu]').forEach(function (f) { if (!f.dataset.calcPronta) { f.dataset.calcPronta = '1'; montarCalculadoraPu(f); } });
   }
 
@@ -279,6 +284,56 @@
       if (!confirm('Apontar perda de ' + numeroBr(q, 4) + ' peças' + (p > 0 ? ' (' + numeroBr(p, 4) + ' kg)' : '') + '?')) e.preventDefault();
     });
     mostrar();
+  }
+
+  // ---------- 5) Quadro de assinatura ----------
+  function montarAssinatura(caixa) {
+    if (caixa.dataset.assinaturaPronta) return;
+    caixa.dataset.assinaturaPronta = '1';
+    var canvas = caixa.querySelector('canvas'), campo = caixa.querySelector('[data-assinatura-campo]');
+    var ctx = canvas.getContext('2d'), desenhando = false, riscou = false, ultimo = null, tinta = 'black';
+    function ajustar() {
+      var r = canvas.getBoundingClientRect(), escala = window.devicePixelRatio || 1;
+      if (!r.width) return;
+      canvas.width = Math.round(r.width * escala); canvas.height = Math.round(r.height * escala);
+      ctx.setTransform(escala, 0, 0, escala, 0, 0);
+      tinta = getComputedStyle(canvas).color || 'black';
+      ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = tinta;
+      limpar();
+    }
+    function ponto(e) { var r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+    function limpar() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      riscou = false; campo.value = ''; caixa.classList.remove('assinado');
+    }
+    canvas.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); desenhando = true; ultimo = ponto(e);
+      try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
+      ctx.beginPath(); ctx.arc(ultimo.x, ultimo.y, 1.1, 0, Math.PI * 2); ctx.fillStyle = tinta; ctx.fill();
+    });
+    canvas.addEventListener('pointermove', function (e) {
+      if (!desenhando) return;
+      e.preventDefault();
+      var p = ponto(e);
+      ctx.beginPath(); ctx.moveTo(ultimo.x, ultimo.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+      ultimo = p; riscou = true;
+    });
+    function soltar() {
+      if (!desenhando) return;
+      desenhando = false;
+      if (riscou) { campo.value = canvas.toDataURL('image/png'); caixa.classList.add('assinado'); }
+    }
+    canvas.addEventListener('pointerup', soltar);
+    canvas.addEventListener('pointercancel', soltar);
+    canvas.addEventListener('pointerleave', soltar);
+    var botao = caixa.querySelector('[data-assinatura-limpar]');
+    if (botao) botao.addEventListener('click', limpar);
+    var form = caixa.closest('form');
+    if (form) form.addEventListener('submit', function (e) {
+      if (!campo.value) { e.preventDefault(); alert('Assine no quadro antes de confirmar.'); }
+    });
+    window.addEventListener('resize', function () { if (!riscou) ajustar(); });
+    ajustar();
   }
 
   window.OeeComponentes = { iniciar: iniciar };

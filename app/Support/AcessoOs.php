@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\CentroCusto;
 use App\Models\Ferramenta;
+use App\Models\InventarioTi\ItemTi;
 use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\OrdemServico;
@@ -315,6 +316,21 @@ final class AcessoOs
         return self::daUnidadeDoUsuario(Ferramenta::withoutGlobalScope('unidade'))->validas()
             ->whereIn('unidade', [...config('oee.os_unidades_ferramenta'), 'ambos'])
             ->orderBy('h4_codigo')->get(['id', 'h4_codigo', 'h4_descri', 'unidade']);
+    }
+
+    /**
+     * Itens ativos do inventário de TI das unidades do usuário logado que abrem chamado para item de TI
+     * (`oee.os_unidades_item_ti`) e os de "Todas"; os que estão com o próprio usuário vêm primeiro.
+     */
+    public static function itensTi(): Collection
+    {
+        $u = Auth::user();
+
+        return self::daUnidadeDoUsuario(ItemTi::withoutGlobalScopes())->ativos()
+            ->whereIn('unidade', [...config('oee.os_unidades_item_ti'), 'ambos'])
+            ->orderBy('descricao')->orderBy('id')
+            ->get(['id', 'patrimonio', 'descricao', 'categoria', 'linha_numero', 'unidade', 'centro_custo', 'responsavel_id'])
+            ->sortBy(fn ($i) => $u && (int) $i->responsavel_id === (int) $u->id ? 0 : 1)->values();
     }
 
     /** A máquina é da área executante? Mesma unidade, ou uma das duas cadastrada para "Todas" (ambos). */

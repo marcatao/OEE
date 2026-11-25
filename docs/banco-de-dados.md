@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **64** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **69** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -491,6 +491,7 @@ erDiagram
         bit automatica
         nvarchar(120) origem_iot
         bigint ferramenta_id FK
+        bigint item_ti_id FK
     }
     os_apontamentos_horas {
         bigint id PK
@@ -917,6 +918,95 @@ erDiagram
         bit automatica
         nvarchar(120) origem_iot
         bigint ferramenta_id FK
+        bigint item_ti_id FK
+    }
+    ti_itens {
+        bigint id PK
+        nvarchar(20) unidade
+        nvarchar(20) categoria
+        bigint tipo_id FK
+        nvarchar(30) patrimonio
+        nvarchar(150) descricao
+        nvarchar(60) marca
+        nvarchar(80) modelo
+        nvarchar(80) numero_serie
+        nvarchar(60) hostname
+        nvarchar(max) especificacao
+        nvarchar(255) acessorios
+        nvarchar(20) centro_custo
+        nvarchar(100) local
+        bigint responsavel_id FK
+        datetime responsavel_desde
+        nvarchar(20) situacao
+        date data_compra
+        nvarchar(30) nota_fiscal
+        nvarchar(100) fornecedor
+        date garantia_ate
+        decimal(14, valor
+        nvarchar(255) licenca_chave
+        int quantidade_licencas
+        date vencimento
+        nvarchar(20) linha_numero
+        nvarchar(40) operadora
+        nvarchar(80) plano
+        bigint vinculado_item_id FK
+        nvarchar(500) observacao
+        datetime baixado_em
+        nvarchar(255) motivo_baixa
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
+    ti_licenca_atribuicoes {
+        bigint id PK
+        bigint licenca_id FK
+        bigint item_id FK
+        bigint usuario_id FK
+        datetime atribuida_em
+        bigint atribuida_por_id FK
+        datetime removida_em
+        bigint removida_por_id FK
+        nvarchar(255) observacao
+    }
+    ti_movimentacoes {
+        bigint id PK
+        bigint item_id FK
+        nvarchar(30) campo
+        nvarchar(255) valor_anterior
+        nvarchar(255) valor_novo
+        nvarchar(500) observacao
+        bigint usuario_id FK
+        datetime criado_em
+    }
+    ti_termos {
+        bigint id PK
+        bigint item_id FK
+        bigint usuario_id FK
+        nvarchar(20) status
+        nvarchar(max) conteudo
+        bigint gerado_por_id FK
+        datetime criado_em
+        datetime assinado_em
+        nvarchar(120) nome_assinante
+        nvarchar(max) imagem_png
+        bigint registrado_por_id FK
+        bit presencial
+        nvarchar(45) assinado_ip
+        nvarchar(255) assinado_navegador
+        datetime cancelado_em
+        nvarchar(255) motivo_cancelamento
+    }
+    ti_tipos {
+        bigint id PK
+        nvarchar(20) unidade
+        nvarchar(20) categoria
+        nvarchar(60) nome
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
     }
     tokens_aplicativo {
         bigint id PK
@@ -1027,6 +1117,7 @@ erDiagram
     ordens_producao |o--o{ ordens_servico : "ordem_producao_id"
     apontamentos_estado |o--o{ ordens_servico : "apontamento_estado_id"
     ferramentas |o--o{ ordens_servico : "ferramenta_id"
+    ti_itens |o--o{ ordens_servico : "item_ti_id"
     ordens_servico ||--o{ os_apontamentos_horas : "ordem_servico_id"
     os_mantenedores ||--o{ os_apontamentos_horas : "mantenedor_id"
     ordens_servico ||--o{ os_assinaturas : "ordem_servico_id"
@@ -1078,6 +1169,21 @@ erDiagram
     apontamentos_estado |o--o{ solicitacoes_servico : "apontamento_estado_id"
     ordens_producao |o--o{ solicitacoes_servico : "ordem_producao_id"
     ferramentas |o--o{ solicitacoes_servico : "ferramenta_id"
+    ti_itens |o--o{ solicitacoes_servico : "item_ti_id"
+    ti_tipos ||--o{ ti_itens : "tipo_id"
+    usuarios |o--o{ ti_itens : "responsavel_id"
+    ti_itens |o--o{ ti_itens : "vinculado_item_id"
+    ti_itens ||--o{ ti_licenca_atribuicoes : "licenca_id"
+    ti_itens |o--o{ ti_licenca_atribuicoes : "item_id"
+    usuarios |o--o{ ti_licenca_atribuicoes : "usuario_id"
+    usuarios |o--o{ ti_licenca_atribuicoes : "atribuida_por_id"
+    usuarios |o--o{ ti_licenca_atribuicoes : "removida_por_id"
+    ti_itens ||--o{ ti_movimentacoes : "item_id"
+    usuarios |o--o{ ti_movimentacoes : "usuario_id"
+    ti_itens ||--o{ ti_termos : "item_id"
+    usuarios ||--o{ ti_termos : "usuario_id"
+    usuarios |o--o{ ti_termos : "gerado_por_id"
+    usuarios |o--o{ ti_termos : "registrado_por_id"
     usuarios ||--o{ tokens_aplicativo : "usuario_id"
     usuarios ||--o{ usuario_perfis : "usuario_id"
     centros_custo |o..o{ maquinas : "centro_custo (código)"
@@ -1169,7 +1275,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`movimentos_producao`](#movimentos_producao) | Protheus | `id` | 20 | 0 |
 | [`notas_fiscais_op`](#notas_fiscais_op) | Protheus | `id` | 20 | 0 |
 | [`ordens_producao`](#ordens_producao) | Protheus | `id` | 30 | 0 |
-| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 37 | 13 |
+| [`ordens_servico`](#ordens_servico) | Sistema | `id` | 38 | 14 |
 | [`os_apontamentos_horas`](#os_apontamentos_horas) | Sistema | `id` | 12 | 4 |
 | [`os_areas_executantes`](#os_areas_executantes) | Sistema | `id` | 11 | 2 |
 | [`os_assinaturas`](#os_assinaturas) | Sistema | `id` | 8 | 3 |
@@ -1201,7 +1307,12 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 16 | 1 |
 | [`solicitacoes_material`](#solicitacoes_material) | Sistema | `id` | 9 | 3 |
 | [`solicitacoes_material_itens`](#solicitacoes_material_itens) | Sistema | `id` | 18 | 4 |
-| [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 26 | 9 |
+| [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 27 | 10 |
+| [`ti_itens`](#ti_itens) | Sistema | `id` | 36 | 5 |
+| [`ti_licenca_atribuicoes`](#ti_licenca_atribuicoes) | Sistema | `id` | 9 | 5 |
+| [`ti_movimentacoes`](#ti_movimentacoes) | Sistema | `id` | 8 | 2 |
+| [`ti_termos`](#ti_termos) | Sistema | `id` | 16 | 4 |
+| [`ti_tipos`](#ti_tipos) | Sistema | `id` | 9 | 2 |
 | [`tokens_aplicativo`](#tokens_aplicativo) | Sistema | `id` | 8 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
@@ -1969,8 +2080,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `automatica` | `bit` | não | `'0'` |  |
 | `origem_iot` | `nvarchar(120)` | sim |  |  |
 | `ferramenta_id` | `bigint` | sim |  | FK → `ferramentas.id` |
+| `item_ti_id` | `bigint` | sim |  | FK → `ti_itens.id` |
 
-**Índices:** `ux_ordens_servico_solicitacao` único (solicitacao_id) filtrado `WHERE solicitacao_id IS NOT NULL` (só SQL Server) · `ux_ordens_servico_plano_prevista` único (plano_preventiva_id, prevista_para) filtrado `WHERE plano_preventiva_id IS NOT NULL` (só SQL Server) · `ordens_servico_unidade_status_id_index` (unidade, status, id) · `ordens_servico_responsavel_id_status_index` (responsavel_id, status) · `ordens_servico_maquina_id_criado_em_index` (maquina_id, criado_em) · `ordens_servico_status_prevista_para_index` (status, prevista_para) · `ordens_servico_solicitante_id_index` (solicitante_id) · `ordens_servico_ferramenta_id_index` (ferramenta_id)
+**Índices:** `ux_ordens_servico_solicitacao` único (solicitacao_id) filtrado `WHERE solicitacao_id IS NOT NULL` (só SQL Server) · `ux_ordens_servico_plano_prevista` único (plano_preventiva_id, prevista_para) filtrado `WHERE plano_preventiva_id IS NOT NULL` (só SQL Server) · `ordens_servico_unidade_status_id_index` (unidade, status, id) · `ordens_servico_responsavel_id_status_index` (responsavel_id, status) · `ordens_servico_maquina_id_criado_em_index` (maquina_id, criado_em) · `ordens_servico_status_prevista_para_index` (status, prevista_para) · `ordens_servico_solicitante_id_index` (solicitante_id) · `ordens_servico_ferramenta_id_index` (ferramenta_id) · `ordens_servico_item_ti_id_index` (item_ti_id)
 
 **Regras (CHECK, só no SQL Server):** `ck_ordens_servico_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_ordens_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_ordens_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_ordens_servico_status`: `status IN ('aberta', 'em_execucao', 'aguardando_material', 'concluida', 'encerrada', 'cancelada')` · `ck_ordens_servico_total_minutos`: `total_minutos >= 0` · `ck_ordens_servico_avaliacao`: `avaliacao IS NULL OR avaliacao IN ('excelente', 'boa', 'ruim')`
 
@@ -2665,10 +2777,134 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `automatica` | `bit` | não | `'0'` |  |
 | `origem_iot` | `nvarchar(120)` | sim |  |  |
 | `ferramenta_id` | `bigint` | sim |  | FK → `ferramentas.id` |
+| `item_ti_id` | `bigint` | sim |  | FK → `ti_itens.id` |
 
-**Índices:** `solicitacoes_servico_unidade_status_id_index` (unidade, status, id) · `solicitacoes_servico_solicitante_id_id_index` (solicitante_id, id) · `solicitacoes_servico_maquina_id_index` (maquina_id) · `solicitacoes_servico_ferramenta_id_index` (ferramenta_id)
+**Índices:** `solicitacoes_servico_unidade_status_id_index` (unidade, status, id) · `solicitacoes_servico_solicitante_id_id_index` (solicitante_id, id) · `solicitacoes_servico_maquina_id_index` (maquina_id) · `solicitacoes_servico_ferramenta_id_index` (ferramenta_id) · `solicitacoes_servico_item_ti_id_index` (item_ti_id)
 
 **Regras (CHECK, só no SQL Server):** `ck_solicitacoes_servico_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_solicitacoes_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_solicitacoes_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_solicitacoes_servico_status`: `status IN ('pendente', 'aprovada', 'rejeitada', 'cancelada')`
+
+### ti_itens
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não | `'tecnologia'` |  |
+| `categoria` | `nvarchar(20)` | não |  |  |
+| `tipo_id` | `bigint` | não |  | FK → `ti_tipos.id` |
+| `patrimonio` | `nvarchar(30)` | sim |  |  |
+| `descricao` | `nvarchar(150)` | não |  |  |
+| `marca` | `nvarchar(60)` | sim |  |  |
+| `modelo` | `nvarchar(80)` | sim |  |  |
+| `numero_serie` | `nvarchar(80)` | sim |  |  |
+| `hostname` | `nvarchar(60)` | sim |  |  |
+| `especificacao` | `nvarchar(max)` | sim |  |  |
+| `acessorios` | `nvarchar(255)` | sim |  |  |
+| `centro_custo` | `nvarchar(20)` | sim |  |  |
+| `local` | `nvarchar(100)` | sim |  |  |
+| `responsavel_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `responsavel_desde` | `datetime` | sim |  |  |
+| `situacao` | `nvarchar(20)` | não | `'estoque'` |  |
+| `data_compra` | `date` | sim |  |  |
+| `nota_fiscal` | `nvarchar(30)` | sim |  |  |
+| `fornecedor` | `nvarchar(100)` | sim |  |  |
+| `garantia_ate` | `date` | sim |  |  |
+| `valor` | `decimal(14,` | sim |  |  |
+| `licenca_chave` | `nvarchar(255)` | sim |  |  |
+| `quantidade_licencas` | `int` | sim |  |  |
+| `vencimento` | `date` | sim |  |  |
+| `linha_numero` | `nvarchar(20)` | sim |  |  |
+| `operadora` | `nvarchar(40)` | sim |  |  |
+| `plano` | `nvarchar(80)` | sim |  |  |
+| `vinculado_item_id` | `bigint` | sim |  | FK → `ti_itens.id` |
+| `observacao` | `nvarchar(500)` | sim |  |  |
+| `baixado_em` | `datetime` | sim |  |  |
+| `motivo_baixa` | `nvarchar(255)` | sim |  |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `ti_itens_unidade_situacao_index` (unidade, situacao) · `ti_itens_tipo_id_index` (tipo_id) · `ti_itens_responsavel_id_index` (responsavel_id) · `ti_itens_patrimonio_index` (patrimonio) · `ti_itens_vinculado_item_id_index` (vinculado_item_id)
+
+### ti_licenca_atribuicoes
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `licenca_id` | `bigint` | não |  | FK → `ti_itens.id` |
+| `item_id` | `bigint` | sim |  | FK → `ti_itens.id` |
+| `usuario_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atribuida_em` | `datetime` | sim |  |  |
+| `atribuida_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `removida_em` | `datetime` | sim |  |  |
+| `removida_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `observacao` | `nvarchar(255)` | sim |  |  |
+
+**Índices:** `ti_licenca_atribuicoes_licenca_id_removida_em_index` (licenca_id, removida_em) · `ti_licenca_atribuicoes_item_id_index` (item_id) · `ti_licenca_atribuicoes_usuario_id_index` (usuario_id)
+
+### ti_movimentacoes
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `item_id` | `bigint` | não |  | FK → `ti_itens.id` |
+| `campo` | `nvarchar(30)` | não |  |  |
+| `valor_anterior` | `nvarchar(255)` | sim |  |  |
+| `valor_novo` | `nvarchar(255)` | sim |  |  |
+| `observacao` | `nvarchar(500)` | sim |  |  |
+| `usuario_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `criado_em` | `datetime` | sim |  |  |
+
+**Índices:** `ti_movimentacoes_item_id_criado_em_index` (item_id, criado_em)
+
+### ti_termos
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `item_id` | `bigint` | não |  | FK → `ti_itens.id` |
+| `usuario_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `status` | `nvarchar(20)` | não | `'pendente'` |  |
+| `conteudo` | `nvarchar(max)` | não |  |  |
+| `gerado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `criado_em` | `datetime` | sim |  |  |
+| `assinado_em` | `datetime` | sim |  |  |
+| `nome_assinante` | `nvarchar(120)` | sim |  |  |
+| `imagem_png` | `nvarchar(max)` | sim |  |  |
+| `registrado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `presencial` | `bit` | não | `'0'` |  |
+| `assinado_ip` | `nvarchar(45)` | sim |  |  |
+| `assinado_navegador` | `nvarchar(255)` | sim |  |  |
+| `cancelado_em` | `datetime` | sim |  |  |
+| `motivo_cancelamento` | `nvarchar(255)` | sim |  |  |
+
+**Índices:** `ti_termos_usuario_id_status_index` (usuario_id, status) · `ti_termos_item_id_status_index` (item_id, status)
+
+### ti_tipos
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não | `'tecnologia'` |  |
+| `categoria` | `nvarchar(20)` | não |  |  |
+| `nome` | `nvarchar(60)` | não |  |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `ti_tipos_categoria_ativo_index` (categoria, ativo)
 
 ### tokens_aplicativo
 

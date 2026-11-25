@@ -14,7 +14,7 @@
     <div><dt>Tipo</dt><dd>{{ $os->rotuloTipo() }}</dd></div>
     <div><dt>Situação</dt><dd>{{ $os->rotuloStatus() }}</dd></div>
     <div><dt>Prioridade</dt><dd>{{ $os->rotuloPrioridade() }}</dd></div>
-    <div><dt>{{ $os->ferramenta_id ? 'Ferramenta/molde' : 'Máquina' }}</dt><dd>@include('manutencao._maquina', ['maquina' => $os->maquina, 'ferramenta' => $os->ferramenta]){{ $os->maquina_parada ? ' (parada)' : '' }}{{ $os->risco_integridade ? ' — oferece risco à integridade' : '' }}</dd></div>
+    <div><dt>{{ $os->ferramenta_id ? 'Ferramenta/molde' : ($os->item_ti_id ? 'Item de TI' : 'Máquina') }}</dt><dd>@include('manutencao._maquina', ['maquina' => $os->maquina, 'ferramenta' => $os->ferramenta, 'itemTi' => $os->itemTi]){{ $os->maquina_parada ? ' (parada)' : '' }}{{ $os->risco_integridade ? ' — oferece risco à integridade' : '' }}</dd></div>
     <div><dt>Área executante</dt><dd>{{ $os->areaExecutante?->nome }}</dd></div>
     <div><dt>Mantenedores</dt><dd>{{ $os->mantenedoresAtribuidos()->map->nomeExibicao()->join(', ') ?: '—' }}</dd></div>
     <div><dt>Centro de custo</dt><dd>{{ $os->centro_custo ?: '—' }}</dd></div>

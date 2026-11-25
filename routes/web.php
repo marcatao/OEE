@@ -21,6 +21,8 @@ use App\Http\Controllers\EmpenhoOpController;
 use App\Http\Controllers\EstruturaProdutoController;
 use App\Http\Controllers\FaltaProdutoController;
 use App\Http\Controllers\FerramentaController;
+use App\Http\Controllers\InventarioTi\InventarioTiController;
+use App\Http\Controllers\InventarioTi\TermoResponsabilidadeController;
 use App\Http\Controllers\Manutencao\ApontamentoHorasController;
 use App\Http\Controllers\Manutencao\CadastroManutencaoController;
 use App\Http\Controllers\Manutencao\InteracaoController;
@@ -243,6 +245,30 @@ Route::middleware('auth')->group(function () {
             Route::put('sugestoes/{sugestao}', [CadastroManutencaoController::class, 'salvarSugestao'])->whereNumber('sugestao')->name('sugestoes.update');
         });
     });
+
+    // Tecnologia › Inventário de TI: consulta com a permissão; cadastro e movimentação só pelo administrador da unidade
+    // do item (o controlador confere a unidade). "Meus equipamentos" e o termo de responsabilidade: só login (quem
+    // recebe o equipamento pode não ter perfil; o termo só abre para o responsável ou quem vê o inventário da unidade).
+    Route::middleware('permissao:inventario_ti')->prefix('tecnologia/inventario')->name('inventario-ti.')->group(function () {
+        Route::get('/', [InventarioTiController::class, 'index'])->name('index');
+        Route::middleware('perfil:admin_producao,admin_tecnologia,admin_ferramentaria')->group(function () {
+            Route::get('novo', [InventarioTiController::class, 'create'])->name('create');
+            Route::post('/', [InventarioTiController::class, 'store'])->name('store');
+            Route::get('{item}/editar', [InventarioTiController::class, 'edit'])->whereNumber('item')->name('edit');
+            Route::put('{item}', [InventarioTiController::class, 'update'])->whereNumber('item')->name('update');
+            Route::post('{item}/termo', [InventarioTiController::class, 'gerarTermo'])->whereNumber('item')->name('gerar-termo');
+            Route::post('{item}/licencas', [InventarioTiController::class, 'atribuirLicenca'])->whereNumber('item')->name('licencas.store');
+            Route::post('{item}/licencas/{atribuicao}/remover', [InventarioTiController::class, 'removerAtribuicao'])->whereNumber(['item', 'atribuicao'])->name('licencas.remover');
+            Route::get('tipos', [InventarioTiController::class, 'tipos'])->name('tipos');
+            Route::post('tipos', [InventarioTiController::class, 'salvarTipo'])->name('tipos.store');
+            Route::put('tipos/{tipo}', [InventarioTiController::class, 'salvarTipo'])->whereNumber('tipo')->name('tipos.update');
+        });
+        Route::get('{item}', [InventarioTiController::class, 'show'])->whereNumber('item')->name('show');
+    });
+    Route::get('tecnologia/meus-equipamentos', [TermoResponsabilidadeController::class, 'meus'])->name('inventario-ti.meus');
+    Route::get('tecnologia/termos/{termo}', [TermoResponsabilidadeController::class, 'show'])->whereNumber('termo')->name('inventario-ti.termos.show');
+    Route::post('tecnologia/termos/{termo}/assinar', [TermoResponsabilidadeController::class, 'assinar'])->whereNumber('termo')
+        ->middleware('throttle:30,1')->name('inventario-ti.termos.assinar');
 
     // Administração > Logins (só administradores; as URLs antigas "cadastros/logins" foram mantidas)
     // Segurança (só Administrador de Tecnologia): usuários, grupos, histórico de acessos e banco de dados.

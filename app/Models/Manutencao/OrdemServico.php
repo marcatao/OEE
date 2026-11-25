@@ -5,6 +5,7 @@ namespace App\Models\Manutencao;
 use App\Models\ApontamentoEstado;
 use App\Models\Concerns\Auditavel;
 use App\Models\Ferramenta;
+use App\Models\InventarioTi\ItemTi;
 use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Models\Usuario;
@@ -43,7 +44,7 @@ class OrdemServico extends Model
 
     protected $table = 'ordens_servico';
 
-    protected $fillable = ['avaliacao', 'titulo', 'unidade', 'solicitacao_id', 'plano_preventiva_id', 'prevista_para', 'tipo', 'maquina_id', 'ferramenta_id',
+    protected $fillable = ['avaliacao', 'titulo', 'unidade', 'solicitacao_id', 'plano_preventiva_id', 'prevista_para', 'tipo', 'maquina_id', 'ferramenta_id', 'item_ti_id',
         'area_executante_id', 'centro_custo', 'centro_custo_solicitante', 'prioridade', 'maquina_parada', 'descricao',
         'solicitante_id', 'aprovado_por_id', 'responsavel_id', 'status', 'iniciada_em', 'concluida_em', 'solucao',
         'aceite_por_id', 'aceite_em', 'aceite_observacao', 'cancelamento_motivo', 'ordem_producao_id',
@@ -135,6 +136,12 @@ class OrdemServico extends Model
     public function ferramenta(): BelongsTo
     {
         return $this->belongsTo(Ferramenta::class, 'ferramenta_id')->withoutGlobalScopes();
+    }
+
+    /** Item do inventário de TI do chamado (no lugar da máquina; só Tecnologia). */
+    public function itemTi(): BelongsTo
+    {
+        return $this->belongsTo(ItemTi::class, 'item_ti_id')->withoutGlobalScopes();
     }
 
     public function maquina(): BelongsTo

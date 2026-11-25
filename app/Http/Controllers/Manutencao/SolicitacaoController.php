@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Manutencao;
 use App\Http\Controllers\Controller;
 use App\Models\ApontamentoEstado;
 use App\Models\Ferramenta;
+use App\Models\InventarioTi\ItemTi;
 use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
@@ -32,7 +33,7 @@ class SolicitacaoController extends Controller
         $u = $request->user();
         $status = $request->input('status', AcessoOs::podeAprovar($u) ? 'pendente' : '');
         $consulta = AcessoOs::filtrar(SolicitacaoServico::query(), $u)
-            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'ferramenta', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante', 'ordemServico']);
+            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'ferramenta', 'itemTi', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante', 'ordemServico']);
         if ($status !== '' && isset(SolicitacaoServico::STATUS[$status])) {
             $consulta->where('status', $status);
         }
@@ -61,6 +62,14 @@ class SolicitacaoController extends Controller
             }
         } elseif ($request->filled('maquina')) {
             $ss->maquina_id = $request->integer('maquina');
+        } elseif ($request->filled('item_ti')) {
+            // Aberta pela tela do item do inventário de TI: o item e a unidade dele já vêm escolhidos.
+            $item = AcessoOs::itensTi()->firstWhere('id', $request->integer('item_ti'));
+            if ($item) {
+                $ss->item_ti_id = $item->id;
+                $ss->unidade = $item->unidade !== 'ambos' ? $item->unidade : null;
+                $ss->centro_custo = $item->centro_custo;
+            }
         }
 
         return view('manutencao.solicitacoes.form', $this->dadosFormulario($ss, $request));
@@ -167,7 +176,7 @@ class SolicitacaoController extends Controller
     private function buscar(Request $request, int $id): SolicitacaoServico
     {
         return AcessoOs::filtrar(SolicitacaoServico::query(), $request->user())
-            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'ferramenta', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante', 'analisadoPor', 'ordemServico'])
+            ->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'ferramenta', 'itemTi', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(), 'solicitante', 'analisadoPor', 'ordemServico'])
             ->findOrFail($id);
     }
 
@@ -243,6 +252,8 @@ class SolicitacaoController extends Controller
             'maquinas' => AcessoOs::maquinasDasAreas($areas),
             // Ferramentas/moldes: só nas unidades de oee.os_unidades_ferramenta (a tela filtra pela unidade escolhida).
             'ferramentas' => AcessoOs::ferramentas(),
+            // Itens do inventário de TI: só nas unidades de oee.os_unidades_item_ti (Tecnologia).
+            'itensTi' => AcessoOs::itensTi(),
             'areas' => $areas,
             'centros' => AcessoOs::centrosCusto(),
             'ccUsuario' => AcessoOs::centroCustoDo($autor),
@@ -258,6 +269,7 @@ class SolicitacaoController extends Controller
             'tipo' => ['required', Rule::in(array_keys(SolicitacaoServico::TIPOS))],
             'maquina_id' => ['nullable', 'integer', Rule::exists('maquinas', 'id')],
             'ferramenta_id' => ['nullable', 'integer', Rule::exists('ferramentas', 'id')],
+            'item_ti_id' => ['nullable', 'integer', Rule::exists('ti_itens', 'id')],
             'area_executante_id' => ['required', 'integer', Rule::exists('os_areas_executantes', 'id')],
             'centro_custo' => ['nullable', 'string', 'max:20'],
             'prioridade' => ['required', Rule::in(array_keys(SolicitacaoServico::PRIORIDADES))],
@@ -315,11 +327,28 @@ class SolicitacaoController extends Controller
             }
         }
         $dados['ferramenta_id'] = $ferramenta?->id;
+        // Item do inventário de TI no lugar da máquina: só nas unidades que aceitam (Tecnologia), da mesma unidade e ativo.
+        $itemTi = isset($dados['item_ti_id']) ? ItemTi::withoutGlobalScopes()->find($dados['item_ti_id']) : null;
+        if ($itemTi) {
+            if ($maquina || $ferramenta) {
+                throw ValidationException::withMessages(['item_ti_id' => 'Escolha a máquina, a ferramenta OU o item de TI, não mais de um.']);
+            }
+            if (! in_array($unidade, config('oee.os_unidades_item_ti'), true)) {
+                throw ValidationException::withMessages(['item_ti_id' => 'Chamado para item do inventário de TI só na Tecnologia.']);
+            }
+            if (! in_array($itemTi->unidade, [$unidade, 'ambos'], true)) {
+                throw ValidationException::withMessages(['item_ti_id' => 'Este item não é da unidade escolhida.']);
+            }
+            if ($itemTi->situacao === 'baixado' && (int) $ss->item_ti_id !== (int) $itemTi->id) {
+                throw ValidationException::withMessages(['item_ti_id' => 'Este item está baixado.']);
+            }
+        }
+        $dados['item_ti_id'] = $itemTi?->id;
 
         // Centro de custo: o da máquina (travado); sem máquina ou máquina sem CC, o informado ou o do autor; senão é obrigatório.
         $ccMaquina = trim((string) $maquina?->centro_custo);
         $autor = $ss->exists ? ($ss->solicitante ?? $request->user()) : $request->user();
-        $cc = $ccMaquina !== '' ? $ccMaquina : (trim((string) ($dados['centro_custo'] ?? '')) ?: (string) AcessoOs::centroCustoDo($autor));
+        $cc = $ccMaquina !== '' ? $ccMaquina : (trim((string) ($dados['centro_custo'] ?? '')) ?: (trim((string) $itemTi?->centro_custo) ?: (string) AcessoOs::centroCustoDo($autor)));
         if ($cc === '') {
             throw ValidationException::withMessages(['centro_custo' => 'Selecione o centro de custo.']);
         }

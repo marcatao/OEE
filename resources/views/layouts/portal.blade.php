@@ -121,6 +121,21 @@
           </div>
         @endif
 
+        @php($temMeusEquipamentos = rescue(fn () => \App\Services\InventarioTi\TermosResponsabilidade::temEquipamentos($u), false, false))
+        @if ($u->pode('inventario_ti') || $temMeusEquipamentos)
+          <div class="menu-bloco" data-bloco="tecnologia">
+            @include('layouts.partials.menu-secao', ['titulo' => 'Tecnologia'])
+            <div class="menu-itens">
+              @if ($u->pode('inventario_ti'))
+                @include('layouts.partials.menu-link', ['rota' => 'inventario-ti.index', 'rotulo' => 'Inventário de TI', 'icone' => 'caixa', 'ativo' => ['inventario-ti.index', 'inventario-ti.show', 'inventario-ti.create', 'inventario-ti.edit', 'inventario-ti.tipos']])
+              @endif
+              @if ($temMeusEquipamentos)
+                @include('layouts.partials.menu-link', ['rota' => 'inventario-ti.meus', 'rotulo' => 'Meus equipamentos', 'icone' => 'celular', 'ativo' => ['inventario-ti.meus', 'inventario-ti.termos.*']])
+              @endif
+            </div>
+          </div>
+        @endif
+
         @if ($u->ehAdmin())
           <div class="menu-bloco" data-bloco="administracao">
             @include('layouts.partials.menu-secao', ['titulo' => 'Administração'])
@@ -183,6 +198,7 @@
       <main>
         @include('layouts.partials.avisos')
         @include('manutencao._aviso-avaliacao')
+        @include('inventario-ti._aviso-termos')
         @yield('conteudo')
       </main>
     </div>
@@ -214,6 +230,12 @@
   </header>
   <main class="sozinho">
     @include('layouts.partials.avisos')
+    @if ($u)
+      @include('inventario-ti._aviso-termos')
+      @if (! request()->routeIs('inventario-ti.*') && rescue(fn () => \App\Services\InventarioTi\TermosResponsabilidade::temEquipamentos($u), false, false))
+        <p><a href="{{ route('inventario-ti.meus') }}">Meus equipamentos</a></p>
+      @endif
+    @endif
     @yield('conteudo')
   </main>
 @endif

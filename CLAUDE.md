@@ -304,6 +304,24 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (`MetaPorHora::completar(..., $turnos)`); o integrador lê `turnos_semana` e o intervalo entre turnos vira 96. Mantenedor
   continua com 1 horário por dia (`partials.jornada-semanal`). Perda tem `turno` (portal: escolhido; app: `turnoEm` no
   horário do lançamento).
+- **Inventário de TI** (Tecnologia › Inventário de TI, permissão `inventario_ti`, no perfil `mantenedor_tecnologia`;
+  pedido do usuário em 25/11/2026): tudo cadastrado no portal (sem SN1). `ti_itens` (`App\Models\InventarioTi\ItemTi`,
+  TemUnidade + Auditavel, unidade padrão `tecnologia`) em 3 categorias FIXAS — `hardware` (equipamento), `licenca`
+  (licença de software, `ti_licenca_atribuicoes`: em um computador e/ou para uma pessoa, sem passar de
+  `quantidade_licencas`) e `linha` (linha/chip, `vinculado_item_id` = aparelho) — e tipos editáveis em `ti_tipos`
+  (categoria do tipo não muda). Situação `em_uso | estoque | manutencao | baixado` (nunca exclui; baixar exige motivo,
+  tira o responsável e libera as licenças instaladas). Só o administrador da unidade do item edita (`ItemTi::podeEditar`).
+  Toda gravação pela regra única `App\Services\InventarioTi\MovimentacaoInventario` (histórico em `ti_movimentacoes`:
+  responsável, local, centro de custo, situação, aparelho, licença, termo). **Termo de responsabilidade** (`ti_termos`,
+  `App\Services\InventarioTi\TermosResponsabilidade`): trocar o responsável de equipamento/linha cancela o pendente e
+  gera outro (dados do item congelados em `conteudo`; texto em `config('oee.inventario_ti')`); o responsável assina no
+  portal (celular ou computador, quadro `[data-assinatura]` de `componentes.js`; PNG conferido por `App\Support\AssinaturaPng`,
+  o mesmo do app) ou o administrador colhe na hora (`presencial`). Aviso no topo de todas as telas
+  (`inventario-ti._aviso-termos`) e "Meus equipamentos": rotas só com login (SO_LOGIN; quem recebe pode não ter perfil;
+  o termo só abre para o responsável ou quem vê o inventário da unidade, o resto 404). **SS/OS para item de TI**:
+  `item_ti_id` na SS e na OS, só nas unidades de `oee.os_unidades_item_ti` (Tecnologia), nunca junto com máquina ou
+  ferramenta; sem CC informado vale o do item; "Abrir SS para este item" na tela do item (`?item_ti=`); a tela do item
+  lista os chamados (`AcessoOs::filtrar`). Listas em `AcessoOs::itensTi()`.
 - **Pergunte para Alumbra** (box da página inicial, `partials.assistente` + `public/js/assistente.js`, permissão
   `assistente`): IA com a Claude (SDK `anthropic-ai/sdk`, `config/assistente.php`, chave `ANTHROPIC_API_KEY` só no
   `.env`). Só responde sobre o portal e só com os dados do usuário logado: as consultas ficam em

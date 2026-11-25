@@ -38,7 +38,7 @@
         <td><span class="prioridade-{{ $ss->prioridade }}">{{ $ss->rotuloPrioridade() }}</span>@if ($ss->maquina_parada)<br><small class="os-parada">máquina parada</small>@endif
           @if ($ss->risco_integridade)<br><small class="os-parada">risco à integridade</small>@endif
           @if ($ss->automatica)<br><small class="suave">automática</small>@endif</td>
-        <td>@include('manutencao._maquina', ['maquina' => $ss->maquina, 'ferramenta' => $ss->ferramenta])</td>
+        <td>@include('manutencao._maquina', ['maquina' => $ss->maquina, 'ferramenta' => $ss->ferramenta, 'itemTi' => $ss->itemTi])</td>
         <td>{{ $ss->areaExecutante?->nome }} <span class="etiqueta unidade-{{ $ss->unidade }}">{{ config('oee.unidades')[$ss->unidade] ?? $ss->unidade }}</span></td>
         <td><strong>{{ $ss->titulo ?: \Illuminate\Support\Str::limit($ss->descricao, 60) }}</strong>@if ($ss->titulo)<br><small class="suave">{{ \Illuminate\Support\Str::limit($ss->descricao, 80) }}</small>@endif</td>
         <td>{{ $ss->solicitante?->nome }}</td>

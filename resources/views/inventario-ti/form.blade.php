@@ -1,0 +1,135 @@
+@extends('layouts.portal')
+
+@section('titulo', $i->exists ? 'Item '.$i->codigo() : 'Novo item do inventário')
+
+@use('App\Models\InventarioTi\ItemTi')
+
+@section('conteudo')
+<section class="cartao">
+  <p class="trilha">Tecnologia › <a href="{{ route('inventario-ti.index') }}">Inventário de TI</a>@if ($i->exists) › <a href="{{ route('inventario-ti.show', $i) }}">{{ $i->codigo() }}</a>@endif</p>
+  <h1>{{ $i->exists ? $i->identificacao() : 'Novo item do inventário' }}</h1>
+  @include('manutencao._erros')
+  <form method="post" class="formulario-vertical" action="{{ $i->exists ? route('inventario-ti.update', $i) : route('inventario-ti.store') }}">
+    @csrf
+    @if ($i->exists) @method('put') @endif
+
+    <fieldset class="cartao">
+      <legend>Identificação</legend>
+      <div class="campos">
+        @include('partials.campo-unidade', ['registro' => $i])
+        <label>Tipo
+          <select name="tipo_id" id="ti-tipo" required>
+            <option value="">Escolha o tipo…</option>
+            @foreach ($tipos->groupBy('categoria') as $categoria => $doGrupo)
+              <optgroup label="{{ ItemTi::CATEGORIAS[$categoria] ?? $categoria }}">
+                @foreach ($doGrupo as $t)<option value="{{ $t->id }}" data-categoria="{{ $t->categoria }}" @selected((int) old('tipo_id', $i->tipo_id) === $t->id)>{{ $t->nome }}</option>@endforeach
+              </optgroup>
+            @endforeach
+          </select>
+          @if ($i->exists)<small class="suave">A categoria ({{ $i->rotuloCategoria() }}) não muda.</small>@endif
+        </label>
+        <label>Patrimônio <input name="patrimonio" maxlength="30" value="{{ old('patrimonio', $i->patrimonio) }}" style="text-transform:uppercase" placeholder="Plaqueta ou código interno"></label>
+        <label class="largo">Descrição <input name="descricao" required maxlength="150" value="{{ old('descricao', $i->descricao) }}" placeholder="Ex.: Notebook do comercial, Microsoft 365 Business, Linha do supervisor"></label>
+        <label>Marca <input name="marca" maxlength="60" value="{{ old('marca', $i->marca) }}"></label>
+        <label>Modelo <input name="modelo" maxlength="80" value="{{ old('modelo', $i->modelo) }}"></label>
+        <label><span data-rotulo-serie>Nº de série</span> <input name="numero_serie" maxlength="80" value="{{ old('numero_serie', $i->numero_serie) }}"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cartao ti-campos-categoria" data-categoria-campos="hardware">
+      <legend>Equipamento</legend>
+      <div class="campos">
+        <label>Nome na rede (hostname) <input name="hostname" maxlength="60" value="{{ old('hostname', $i->hostname) }}"></label>
+        <label class="largo">Acessórios <input name="acessorios" maxlength="255" value="{{ old('acessorios', $i->acessorios) }}" placeholder="Ex.: carregador, mouse, mochila (vão no termo)"></label>
+        <label class="largo">Especificação <textarea name="especificacao" rows="3" maxlength="2000" placeholder="Processador, memória, disco, sistema operacional…">{{ old('especificacao', $i->especificacao) }}</textarea></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cartao ti-campos-categoria" data-categoria-campos="licenca">
+      <legend>Licença de software</legend>
+      <div class="campos">
+        <label class="largo">Chave, contrato ou conta <input name="licenca_chave" maxlength="255" value="{{ old('licenca_chave', $i->licenca_chave) }}" autocomplete="off"></label>
+        <label>Quantidade de licenças <input name="quantidade_licencas" type="number" min="1" step="1" value="{{ old('quantidade_licencas', $i->quantidade_licencas) }}" placeholder="Em branco = sem limite"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cartao ti-campos-categoria" data-categoria-campos="linha">
+      <legend>Linha / chip</legend>
+      <div class="campos">
+        <label>Número da linha <input name="linha_numero" maxlength="20" value="{{ old('linha_numero', $i->linha_numero) }}" placeholder="(11) 99999-0000"></label>
+        <label>Operadora <input name="operadora" maxlength="40" value="{{ old('operadora', $i->operadora) }}"></label>
+        <label>Plano <input name="plano" maxlength="80" value="{{ old('plano', $i->plano) }}"></label>
+        <label class="largo">Aparelho onde está o chip
+          <select name="vinculado_item_id" data-busca="Buscar aparelho por patrimônio ou descrição…">
+            <option value="">Nenhum (chip guardado)</option>
+            @foreach ($equipamentos as $e)<option value="{{ $e->id }}" @selected((int) old('vinculado_item_id', $i->vinculado_item_id) === $e->id)>{{ $e->identificacao() }}</option>@endforeach
+          </select></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cartao">
+      <legend>Com quem e onde está</legend>
+      <div class="campos">
+        <label class="largo">Responsável
+          <select name="responsavel_id" data-busca="Buscar usuário do portal por nome…">
+            <option value="">Ninguém</option>
+            @foreach ($usuarios as $usu)<option value="{{ $usu->id }}" @selected((int) old('responsavel_id', $i->responsavel_id) === $usu->id)>{{ $usu->nome }} — {{ $usu->email }}</option>@endforeach
+          </select>
+          <small class="suave">Trocar o responsável de um equipamento ou linha gera um termo de responsabilidade para ele assinar pelo portal.</small>
+        </label>
+        <label>Local / setor <input name="local" maxlength="100" list="ti-locais" value="{{ old('local', $i->local) }}" placeholder="Ex.: Expedição, Sala de reunião 2"></label>
+        <datalist id="ti-locais">@foreach ($locais as $l)<option value="{{ $l }}">@endforeach</datalist>
+        <label class="largo">Centro de custo
+          <select name="centro_custo" data-busca="Buscar centro de custo por código ou nome…">
+            <option value="">Nenhum</option>
+            @foreach ($centros as $c)<option value="{{ $c->codigo() }}" @selected(old('centro_custo', $i->centro_custo) === $c->codigo())>{{ $c->codigo() }} — {{ $c->descricao() }}</option>@endforeach
+          </select></label>
+        <label>Situação
+          <select name="situacao" id="ti-situacao" required>
+            @foreach (ItemTi::SITUACOES as $valor => $rotulo)<option value="{{ $valor }}" @selected(old('situacao', $i->situacao) === $valor)>{{ $rotulo }}</option>@endforeach
+          </select></label>
+        <label class="largo" id="ti-motivo-baixa">Motivo da baixa <input name="motivo_baixa" maxlength="255" value="{{ old('motivo_baixa', $i->motivo_baixa) }}" placeholder="Ex.: descarte, furto, vendido, sem conserto"></label>
+        <label class="largo">Observação da movimentação <input name="observacao_movimentacao" maxlength="500" placeholder="Opcional: fica no histórico junto com o que mudou"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="cartao">
+      <legend>Compra e garantia</legend>
+      <div class="campos">
+        <label>Data da compra <input type="date" name="data_compra" value="{{ old('data_compra', $i->data_compra?->format('Y-m-d')) }}"></label>
+        <label>Nota fiscal <input name="nota_fiscal" maxlength="30" value="{{ old('nota_fiscal', $i->nota_fiscal) }}"></label>
+        <label>Fornecedor <input name="fornecedor" maxlength="100" value="{{ old('fornecedor', $i->fornecedor) }}"></label>
+        <label>Valor (R$) <input name="valor" type="number" min="0" step="0.01" value="{{ old('valor', $i->valor) }}"></label>
+        <label>Garantia até <input type="date" name="garantia_ate" value="{{ old('garantia_ate', $i->garantia_ate?->format('Y-m-d')) }}"></label>
+        <label data-vencimento>Vencimento <input type="date" name="vencimento" value="{{ old('vencimento', $i->vencimento?->format('Y-m-d')) }}"><small class="suave">Da assinatura da licença ou do plano da linha.</small></label>
+        <label class="largo">Observação <input name="observacao" maxlength="500" value="{{ old('observacao', $i->observacao) }}"></label>
+      </div>
+    </fieldset>
+
+    <div class="acoes">
+      <button class="botao" type="submit">Salvar</button>
+      <a class="botao secundario" href="{{ $i->exists ? route('inventario-ti.show', $i) : route('inventario-ti.index') }}">Cancelar</a>
+    </div>
+  </form>
+</section>
+<script>
+  (function () {
+    // Mostra só os campos da categoria do tipo escolhido (o servidor também limpa os que não valem).
+    var tipo = document.getElementById('ti-tipo'), situacao = document.getElementById('ti-situacao');
+    var serie = document.querySelector('[data-rotulo-serie]'), vencimento = document.querySelector('[data-vencimento]');
+    function aplicar() {
+      var cat = tipo.selectedOptions[0] ? tipo.selectedOptions[0].dataset.categoria || '' : '';
+      document.querySelectorAll('[data-categoria-campos]').forEach(function (f) { f.hidden = f.dataset.categoriaCampos !== cat; });
+      serie.textContent = cat === 'linha' ? 'ICCID do chip' : 'Nº de série';
+      vencimento.hidden = cat === 'hardware';
+    }
+    function aplicarSituacao() {
+      var baixa = document.getElementById('ti-motivo-baixa');
+      baixa.hidden = situacao.value !== 'baixado';
+      baixa.querySelector('input').required = situacao.value === 'baixado';
+    }
+    tipo.addEventListener('change', aplicar); situacao.addEventListener('change', aplicarSituacao);
+    aplicar(); aplicarSituacao();
+  })();
+</script>
+@endsection

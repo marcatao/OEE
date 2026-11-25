@@ -60,7 +60,7 @@
         <td><a href="{{ route('os.ordens.show', $os) }}">{{ $os->numeroFormatado() }}</a></td>
         <td>{{ $a->inicio->setTimezone(config('oee.fuso_exibicao'))->format('d/m/Y') }}</td>
         <td>{{ $os->areaExecutante?->nome ?? '—' }}@if (count($unidades) > 1)<br><small class="suave">{{ config('oee.unidades')[$os->unidade] ?? $os->unidade }}</small>@endif</td>
-        <td>@include('manutencao._maquina', ['maquina' => $os->maquina, 'ferramenta' => $os->ferramenta])</td>
+        <td>@include('manutencao._maquina', ['maquina' => $os->maquina, 'ferramenta' => $os->ferramenta, 'itemTi' => $os->itemTi])</td>
         <td>{{ $os->rotuloTipo() }}</td>
         <td>{{ $a->inicio->setTimezone(config('oee.fuso_exibicao'))->format('H:i') }}</td>
         <td>{{ $a->fim->setTimezone(config('oee.fuso_exibicao'))->format('H:i') }}</td>

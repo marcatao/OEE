@@ -79,6 +79,7 @@ final class FluxoOrdemServico
                 'tipo' => $ss->tipo,
                 'maquina_id' => $ss->maquina_id,
                 'ferramenta_id' => $ss->ferramenta_id,
+                'item_ti_id' => $ss->item_ti_id,
                 'area_executante_id' => $ss->area_executante_id,
                 'centro_custo' => $ss->centro_custo,
                 'centro_custo_solicitante' => $ss->centro_custo_solicitante,

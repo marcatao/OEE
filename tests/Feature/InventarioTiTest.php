@@ -1,0 +1,214 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\CentroCusto;
+use App\Models\InventarioTi\AtribuicaoLicenca;
+use App\Models\InventarioTi\ItemTi;
+use App\Models\InventarioTi\TermoResponsabilidade;
+use App\Models\InventarioTi\TipoItemTi;
+use App\Models\Manutencao\AreaExecutante;
+use App\Models\Manutencao\SolicitacaoServico;
+use App\Models\Usuario;
+use App\Services\Manutencao\FluxoOrdemServico;
+use App\Support\AcessoOs;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+/**
+ * Inventário de TI: cadastro e histórico, termo de responsabilidade com assinatura no portal, licenças, escopo de
+ * unidade e chamado (SS/OS) para um item.
+ */
+class InventarioTiTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Usuario $admin;
+
+    private Usuario $ana;
+
+    private TipoItemTi $notebook;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        AcessoOs::limparCache();
+        CentroCusto::create(['ctt_custo' => '3003', 'ctt_desc01' => 'TI']);
+        $this->admin = $this->usuario(['admin_tecnologia'], 'admti@empresa.com');
+        $this->ana = $this->usuario([], 'ana@empresa.com'); // sem perfil: recebe o notebook e assina mesmo assim
+        $this->notebook = TipoItemTi::withoutGlobalScopes()->where('nome', 'Notebook')->firstOrFail();
+    }
+
+    private function usuario(array $perfis, string $email): Usuario
+    {
+        $u = Usuario::create(['entra_oid' => "oid-{$email}", 'nome' => ucfirst(strtok($email, '@')), 'email' => $email]);
+        $u->definirPerfis($perfis);
+
+        return $u->fresh();
+    }
+
+    private function png(): string
+    {
+        $img = imagecreatetruecolor(40, 20);
+        imagefill($img, 0, 0, imagecolorallocate($img, 255, 255, 255));
+        ob_start();
+        imagepng($img);
+
+        return 'data:image/png;base64,'.base64_encode((string) ob_get_clean());
+    }
+
+    private function cadastrar(array $dados = []): ItemTi
+    {
+        $this->actingAs($this->admin)->post('/tecnologia/inventario', $dados + [
+            'unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'patrimonio' => 'ti-0001', 'descricao' => 'Notebook do comercial',
+            'marca' => 'Dell', 'modelo' => 'Latitude 5440', 'numero_serie' => 'ABC123', 'acessorios' => 'Carregador e mochila',
+            'situacao' => 'em_uso', 'responsavel_id' => $this->ana->id, 'centro_custo' => '3003', 'garantia_ate' => '2028-01-31',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        return ItemTi::withoutGlobalScopes()->latest('id')->firstOrFail();
+    }
+
+    public function test_cadastro_gera_historico_e_termo_que_o_responsavel_assina_pelo_portal(): void
+    {
+        $item = $this->cadastrar();
+        $this->assertSame(['TI-0001', 'hardware', 'em_uso'], [$item->patrimonio, $item->categoria, $item->situacao]);
+        $this->assertSame(['cadastro', 'responsavel', 'centro_custo'], $item->movimentacoes()->orderBy('id')->pluck('campo')->take(3)->all());
+        $termo = TermoResponsabilidade::where('item_id', $item->id)->firstOrFail();
+        $this->assertSame(['pendente', $this->ana->id, 'ABC123'], [$termo->status, (int) $termo->usuario_id, $termo->conteudo['numero_serie']]);
+        $this->get("/tecnologia/inventario/{$item->id}")->assertOk()->assertSee('Notebook do comercial')->assertSee($termo->numeroFormatado());
+
+        // A Ana (sem perfil) vê o aviso, os itens dela e assina com o dedo.
+        $this->actingAs($this->ana)->get('/tecnologia/meus-equipamentos')->assertOk()->assertSee('TI-0001')->assertSee('Ler e assinar');
+        $this->get("/tecnologia/termos/{$termo->id}")->assertOk()->assertSee('Carregador e mochila')->assertSee('data-assinatura', false);
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => 'nao-e-png', 'aceite' => '1'])->assertSessionHasErrors('assinatura');
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png()])->assertSessionHasErrors('aceite');
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1'])->assertRedirect()->assertSessionHasNoErrors();
+        $termo->refresh();
+        $this->assertSame(['assinado', false, 'Ana'], [$termo->status, $termo->presencial, $termo->nome_assinante]);
+        $this->get("/tecnologia/termos/{$termo->id}")->assertOk()->assertSee('Assinado eletronicamente');
+        // Assinado não assina de novo.
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1'])->assertForbidden();
+
+        // Outro usuário (sem o inventário) não abre o termo da Ana; nem o inventário.
+        $this->actingAs($this->usuario(['operador'], 'op@empresa.com'))->get("/tecnologia/termos/{$termo->id}")->assertNotFound();
+        $this->get('/tecnologia/inventario')->assertForbidden();
+    }
+
+    public function test_trocar_responsavel_cancela_o_termo_pendente_e_gera_outro_e_baixa_tira_o_responsavel(): void
+    {
+        $item = $this->cadastrar();
+        $bruno = $this->usuario([], 'bruno@empresa.com');
+        $base = ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'patrimonio' => $item->patrimonio, 'descricao' => $item->descricao, 'situacao' => 'em_uso',
+            'local' => 'Comercial', 'observacao_movimentacao' => 'Ana saiu de férias'];
+        $this->actingAs($this->admin)->put("/tecnologia/inventario/{$item->id}", $base + ['responsavel_id' => $bruno->id])->assertSessionHasNoErrors();
+
+        $termos = TermoResponsabilidade::where('item_id', $item->id)->orderBy('id')->get();
+        $this->assertSame(['cancelado', 'pendente'], $termos->pluck('status')->all());
+        $this->assertSame($bruno->id, (int) $termos[1]->usuario_id);
+        $mov = $item->movimentacoes()->where('campo', 'responsavel')->latest('id')->first();
+        $this->assertSame(['Ana', 'Bruno', 'Ana saiu de férias'], [$mov->valor_anterior, $mov->valor_novo, $mov->observacao]);
+
+        // O administrador colhe a assinatura do Bruno na hora (presencial).
+        $this->post("/tecnologia/termos/{$termos[1]->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1', 'nome' => 'Bruno Souza'])->assertSessionHasNoErrors();
+        $this->assertSame([true, 'Bruno Souza', $this->admin->id], [$termos[1]->fresh()->presencial, $termos[1]->fresh()->nome_assinante, (int) $termos[1]->fresh()->registrado_por_id]);
+
+        // Baixa exige motivo, tira o responsável e não apaga nada.
+        $this->put("/tecnologia/inventario/{$item->id}", ['situacao' => 'baixado', 'responsavel_id' => $bruno->id] + $base)->assertSessionHasErrors('motivo_baixa');
+        $this->put("/tecnologia/inventario/{$item->id}", ['situacao' => 'baixado', 'motivo_baixa' => 'Tela quebrada'] + $base)->assertSessionHasNoErrors();
+        $item->refresh();
+        $this->assertSame(['baixado', null], [$item->situacao, $item->responsavel_id]);
+        $this->assertNotNull($item->baixado_em);
+        $this->get('/tecnologia/inventario')->assertOk()->assertDontSee('<strong>TI-0001</strong>', false);
+        $this->get('/tecnologia/inventario?situacao=baixado')->assertOk()->assertSee('TI-0001');
+    }
+
+    public function test_validacoes_do_cadastro(): void
+    {
+        $this->cadastrar();
+        $this->actingAs($this->admin)->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id,
+            'patrimonio' => 'TI-0001', 'descricao' => 'Outro', 'situacao' => 'estoque'])->assertSessionHasErrors('patrimonio');
+        $this->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'descricao' => 'Sem dono',
+            'situacao' => 'em_uso'])->assertSessionHasErrors('responsavel_id');
+        $this->post('/tecnologia/inventario', ['unidade' => 'manutencao', 'tipo_id' => $this->notebook->id, 'descricao' => 'Outra unidade',
+            'situacao' => 'estoque'])->assertSessionHasErrors('unidade');
+    }
+
+    public function test_licenca_respeita_a_quantidade_e_linha_fica_no_aparelho(): void
+    {
+        $note = $this->cadastrar(['responsavel_id' => null, 'situacao' => 'estoque']);
+        $tipoLicenca = TipoItemTi::withoutGlobalScopes()->where('categoria', 'licenca')->firstOrFail();
+        $this->actingAs($this->admin)->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $tipoLicenca->id,
+            'descricao' => 'Office 365', 'situacao' => 'em_uso', 'quantidade_licencas' => 1, 'licenca_chave' => 'XXXX', 'hostname' => 'nao-vale'])
+            ->assertSessionHasNoErrors();
+        $licenca = ItemTi::withoutGlobalScopes()->latest('id')->firstOrFail();
+        $this->assertSame(['licenca', null], [$licenca->categoria, $licenca->hostname]);
+        $this->assertSame(0, TermoResponsabilidade::where('item_id', $licenca->id)->count());
+
+        $this->post("/tecnologia/inventario/{$licenca->id}/licencas", ['item_id' => $note->id])->assertSessionHasNoErrors();
+        $this->post("/tecnologia/inventario/{$licenca->id}/licencas", ['usuario_id' => $this->ana->id])->assertSessionHasErrors('item_id');
+        $a = AtribuicaoLicenca::firstOrFail();
+        $this->get("/tecnologia/inventario/{$note->id}")->assertOk()->assertSee('Office 365');
+        $this->post("/tecnologia/inventario/{$licenca->id}/licencas/{$a->id}/remover")->assertSessionHasNoErrors();
+        $this->post("/tecnologia/inventario/{$licenca->id}/licencas", ['usuario_id' => $this->ana->id])->assertSessionHasNoErrors();
+        $this->actingAs($this->ana)->get('/tecnologia/meus-equipamentos')->assertOk()->assertSee('Office 365');
+
+        $tipoLinha = TipoItemTi::withoutGlobalScopes()->where('categoria', 'linha')->firstOrFail();
+        $this->actingAs($this->admin)->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $tipoLinha->id,
+            'descricao' => 'Linha do supervisor', 'situacao' => 'em_uso', 'linha_numero' => '11999990000', 'operadora' => 'Vivo',
+            'vinculado_item_id' => $note->id, 'responsavel_id' => $this->ana->id])->assertSessionHasNoErrors();
+        $linha = ItemTi::withoutGlobalScopes()->latest('id')->firstOrFail();
+        $this->assertSame($note->id, (int) $linha->vinculado_item_id);
+        $this->assertSame(1, TermoResponsabilidade::where('item_id', $linha->id)->pendentes()->count());
+    }
+
+    public function test_escopo_de_unidade_e_quem_edita(): void
+    {
+        $item = $this->cadastrar();
+        $mantenedor = $this->usuario(['mantenedor_tecnologia'], 'mant@empresa.com');
+        $this->actingAs($mantenedor)->get('/tecnologia/inventario')->assertOk()->assertSee('TI-0001')->assertDontSee('Novo item');
+        $this->get("/tecnologia/inventario/{$item->id}")->assertOk()->assertDontSee('Editar / movimentar');
+        $this->get("/tecnologia/inventario/{$item->id}/editar")->assertForbidden();
+
+        // Administrador de Produção abre a tela (permissões '*'), mas não vê nem altera o item da Tecnologia.
+        $adminProducao = $this->usuario(['admin_producao'], 'admprod@empresa.com');
+        $this->actingAs($adminProducao)->get('/tecnologia/inventario')->assertOk()->assertDontSee('TI-0001');
+        $this->get("/tecnologia/inventario/{$item->id}/editar")->assertNotFound();
+    }
+
+    public function test_chamado_para_item_do_inventario_na_tecnologia(): void
+    {
+        $item = $this->cadastrar();
+        $suporte = AreaExecutante::create(['codigo' => 'TI', 'nome' => 'Suporte de TI', 'unidade' => 'tecnologia']);
+        $mecanica = AreaExecutante::create(['codigo' => 'MEC', 'nome' => 'Mecânica', 'unidade' => 'manutencao']);
+        $sol = $this->usuario(['solicitante_tecnologia', 'solicitante_manutencao'], 'sol@empresa.com');
+        $this->actingAs($sol)->get("/ordens-de-servico/solicitacoes/nova?item_ti={$item->id}")->assertOk()
+            ->assertSee('Item do inventário de TI')->assertSee('TI-0001');
+
+        $base = ['unidade' => 'tecnologia', 'titulo' => 'Notebook não liga', 'tipo' => 'corretiva', 'area_executante_id' => $suporte->id,
+            'prioridade' => 'alta', 'descricao' => 'Não liga desde ontem'];
+        $this->post('/ordens-de-servico/solicitacoes', $base + ['item_ti_id' => $item->id])->assertSessionHasNoErrors();
+        $ss = SolicitacaoServico::latest('id')->firstOrFail();
+        $this->assertSame([$item->id, '3003'], [(int) $ss->item_ti_id, trim($ss->centro_custo)]); // CC do item
+        $this->get("/ordens-de-servico/solicitacoes/{$ss->id}")->assertOk()->assertSee('Inventário de TI')->assertSee('TI-0001');
+
+        // Na Manutenção não aceita item de TI.
+        $this->post('/ordens-de-servico/solicitacoes', ['unidade' => 'manutencao', 'area_executante_id' => $mecanica->id, 'item_ti_id' => $item->id,
+            'centro_custo' => '3003'] + $base)->assertSessionHasErrors('item_ti_id');
+
+        $os = app(FluxoOrdemServico::class)->aprovar($ss->fresh(), $this->admin);
+        $this->assertSame($item->id, (int) $os->item_ti_id);
+        $this->actingAs($this->admin)->get("/tecnologia/inventario/{$item->id}")->assertOk()->assertSee($ss->numeroFormatado())->assertSee($os->numeroFormatado());
+    }
+
+    public function test_tipos_de_item(): void
+    {
+        $this->actingAs($this->admin)->get('/tecnologia/inventario/tipos')->assertOk()->assertSee('Notebook');
+        $this->post('/tecnologia/inventario/tipos', ['categoria' => 'hardware', 'nome' => 'Leitor de código de barras', 'ativo' => 1, 'unidade' => 'tecnologia'])
+            ->assertSessionHasNoErrors();
+        $t = TipoItemTi::latest('id')->firstOrFail();
+        $this->put("/tecnologia/inventario/tipos/{$t->id}", ['categoria' => 'licenca', 'nome' => 'X', 'ativo' => 1])->assertSessionHasErrors('categoria');
+        $this->put("/tecnologia/inventario/tipos/{$t->id}", ['nome' => 'Leitor', 'ativo' => 0])->assertSessionHasNoErrors();
+        $this->assertFalse($t->fresh()->ativo);
+        $this->get('/tecnologia/inventario/novo')->assertOk()->assertDontSee('>Leitor<', false);
+    }
+}
