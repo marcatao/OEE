@@ -264,6 +264,7 @@ Route::middleware('auth')->group(function () {
             Route::put('tipos/{tipo}', [InventarioTiController::class, 'salvarTipo'])->whereNumber('tipo')->name('tipos.update');
             // Testemunhas do contrato de comodato (o controlador confere se é o administrador da unidade do item).
             Route::post('termos/{termo}/testemunhas', [TermoResponsabilidadeController::class, 'definirTestemunhas'])->whereNumber('termo')->name('termos.testemunhas');
+            Route::post('termos/{termo}/anular', [TermoResponsabilidadeController::class, 'anular'])->whereNumber('termo')->name('termos.anular');
         });
         Route::get('{item}', [InventarioTiController::class, 'show'])->whereNumber('item')->name('show');
     });

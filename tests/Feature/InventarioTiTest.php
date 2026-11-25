@@ -123,7 +123,9 @@ class InventarioTiTest extends TestCase
         $this->assertSame(['Ana', 'Bruno', 'Ana saiu de férias'], [$mov->valor_anterior, $mov->valor_novo, $mov->observacao]);
 
         // O administrador colhe a assinatura do Bruno na hora (presencial).
-        $this->post("/tecnologia/termos/{$termos[1]->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1', 'nome' => 'Bruno Souza'] + $this->qualificacao())->assertSessionHasNoErrors();
+        $this->post("/tecnologia/termos/{$termos[1]->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1', 'nome' => 'Bruno Souza'] + $this->qualificacao())
+            ->assertSessionHasErrors('confirmo_presencial'); // presencial exige confirmar quem assina
+        $this->post("/tecnologia/termos/{$termos[1]->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1', 'nome' => 'Bruno Souza', 'confirmo_presencial' => '1'] + $this->qualificacao())->assertSessionHasNoErrors();
         $this->assertSame([true, 'Bruno Souza', $this->admin->id], [$termos[1]->fresh()->presencial, $termos[1]->fresh()->nome_assinante, (int) $termos[1]->fresh()->registrado_por_id]);
 
         // Baixa exige motivo, tira o responsável e não apaga nada.
@@ -276,6 +278,8 @@ class InventarioTiTest extends TestCase
 
         // O administrador colhe a do Davi na hora; testemunha que assinou não é trocada.
         $this->actingAs($this->admin)->post("/tecnologia/termos/{$termo->id}/testemunhas/2/assinar", ['assinatura_testemunha' => $this->png(), 'rg' => '9'])
+            ->assertSessionHasErrors('confirmo_presencial');
+        $this->post("/tecnologia/termos/{$termo->id}/testemunhas/2/assinar", ['assinatura_testemunha' => $this->png(), 'rg' => '9', 'confirmo_presencial' => '1'])
             ->assertSessionHasNoErrors();
         $this->post($url, ['testemunha_1' => $this->admin->id, 'testemunha_2' => $davi->id])->assertSessionHasErrors('testemunhas');
         $ts = $termo->testemunhas()->get();
@@ -290,5 +294,35 @@ class InventarioTiTest extends TestCase
         $novo = TermoResponsabilidade::where('item_id', $item->id)->pendentes()->firstOrFail();
         $this->assertSame([$carla->id, $davi->id], $novo->testemunhas()->pluck('usuario_id')->map(fn ($id) => (int) $id)->all());
         $this->actingAs($carla)->get("/tecnologia/termos/{$novo->id}")->assertOk()->assertSee('value="33.081.668-8 SSP/SP"', false);
+    }
+
+    public function test_administrador_que_e_testemunha_assina_como_testemunha_e_anula_termo_errado(): void
+    {
+        $item = $this->cadastrar();
+        $termo = TermoResponsabilidade::where('item_id', $item->id)->firstOrFail();
+        $rafaela = $this->usuario([], 'rafaela@empresa.com');
+        $this->actingAs($this->admin)->post("/tecnologia/inventario/termos/{$termo->id}/testemunhas", ['testemunha_1' => $this->admin->id, 'testemunha_2' => $rafaela->id])
+            ->assertSessionHasNoErrors();
+
+        // O administrador logado é testemunha: o quadro DELE vem primeiro; o da Ana (presencial) fica recolhido e depois.
+        $html = $this->get("/tecnologia/termos/{$termo->id}")->assertOk()->getContent();
+        $this->assertLessThan(strpos($html, 'Colher na hora a assinatura de Ana'), strpos($html, 'Assinar como testemunha 1'));
+        // Mandar o formulário da Ana sem confirmar que é ela quem assina é recusado (o erro do dia 25/11).
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1'] + $this->qualificacao())
+            ->assertSessionHasErrors('confirmo_presencial');
+        $this->assertSame('pendente', $termo->fresh()->status);
+        $this->post("/tecnologia/termos/{$termo->id}/testemunhas/1/assinar", ['assinatura_testemunha' => $this->png(), 'rg' => '35.089.260-8'])
+            ->assertSessionHasNoErrors();
+
+        // Se mesmo assim ficou errado: anular cancela (sem apagar) e gera um termo novo com as mesmas testemunhas.
+        $this->post("/tecnologia/inventario/termos/{$termo->id}/anular", [])->assertSessionHasErrors('motivo');
+        $this->actingAs($this->usuario(['mantenedor_tecnologia'], 'mt2@empresa.com'))->post("/tecnologia/inventario/termos/{$termo->id}/anular", ['motivo' => 'x'])
+            ->assertForbidden();
+        $this->actingAs($this->admin)->post("/tecnologia/inventario/termos/{$termo->id}/anular", ['motivo' => 'Assinatura no lugar errado'])->assertRedirect();
+        $this->assertSame(['cancelado', 'Anulado: Assinatura no lugar errado'], [$termo->fresh()->status, $termo->fresh()->motivo_cancelamento]);
+        $this->assertNotNull($termo->testemunhas()->where('ordem', 1)->value('assinado_em')); // nada apagado
+        $novo = TermoResponsabilidade::where('item_id', $item->id)->pendentes()->firstOrFail();
+        $this->assertSame([$this->admin->id, $rafaela->id], $novo->testemunhas()->pluck('usuario_id')->map(fn ($id) => (int) $id)->all());
+        $this->assertSame(0, $novo->testemunhas()->whereNotNull('assinado_em')->count());
     }
 }

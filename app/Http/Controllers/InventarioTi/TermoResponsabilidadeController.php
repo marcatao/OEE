@@ -70,6 +70,7 @@ class TermoResponsabilidadeController extends Controller
             'nacionalidade.required' => 'Informe a nacionalidade.', 'cargo.required' => 'Informe o cargo.', 'rg.required' => 'Informe o RG.',
             'cpf.required' => 'Informe o CPF.', 'endereco.required' => 'Informe o endereço completo (rua, número, bairro, cidade/UF e CEP).',
         ]);
+        $this->exigirConfirmacaoPresencial($request, (int) $t->usuario_id, (string) $t->usuario?->nome);
         if (! TermosResponsabilidade::cpfValido($dados['cpf'])) {
             throw ValidationException::withMessages(['cpf' => 'CPF inválido: confira os números.']);
         }
@@ -97,9 +98,39 @@ class TermoResponsabilidadeController extends Controller
         $dados = $request->validate(['assinatura_testemunha' => ['required', 'string', 'max:900000'], 'rg' => ['required', 'string', 'max:30'],
             'nome' => ['nullable', 'string', 'max:120']], ['assinatura_testemunha.required' => 'Assine no quadro antes de confirmar.',
                 'rg.required' => 'Informe o RG da testemunha.']);
+        $slot = $t->testemunhas->firstWhere('ordem', $ordem);
+        abort_unless($slot && $this->termos->podeAssinarComoTestemunha($t, $slot, $request->user()), 403,
+            'Só a testemunha (ou o administrador da unidade, na frente dela) assina aqui.');
+        if ($slot) {
+            $this->exigirConfirmacaoPresencial($request, (int) $slot->usuario_id, (string) $slot->usuario?->nome);
+        }
         $te = $this->termos->assinarTestemunha($t, $ordem, $request->user(), $dados['assinatura_testemunha'], $dados['nome'] ?? null, $dados['rg'], $request->ip());
 
         return redirect()->route('inventario-ti.termos.show', $t)->with('ok', "Assinatura da testemunha {$te->nome} registrada.");
+    }
+
+    /** Administrador anula o termo (assinatura no lugar errado, dados errados): cancelado com motivo + termo novo. */
+    public function anular(Request $request, int $termo): RedirectResponse
+    {
+        $t = $this->buscar($request, $termo);
+        $dados = $request->validate(['motivo' => ['required', 'string', 'max:200']], ['motivo.required' => 'Informe o motivo.']);
+        $novo = $this->termos->anular($t, $dados['motivo'], $request->user());
+
+        return $novo
+            ? redirect()->route('inventario-ti.termos.show', $novo)->with('ok', "Termo {$t->numeroFormatado()} anulado. Este é o termo novo, para assinar de novo.")
+            : redirect()->route('inventario-ti.termos.show', $t)->with('ok', "Termo {$t->numeroFormatado()} anulado.");
+    }
+
+    /**
+     * Assinatura de OUTRA pessoa no aparelho de quem está logado (presencial): exige marcar que é mesmo ela que assina
+     * (evita a testemunha logada assinar sem querer no lugar do comodatário).
+     */
+    private function exigirConfirmacaoPresencial(Request $request, int $assinanteId, string $nome): void
+    {
+        if ($assinanteId !== (int) $request->user()->id && ! $request->boolean('confirmo_presencial')) {
+            throw ValidationException::withMessages(['confirmo_presencial' => "Assinatura presencial: marque que quem está assinando é {$nome}. "
+                .'Se você quer assinar como testemunha, use o quadro "Assinar como testemunha".']);
+        }
     }
 
     private function buscar(Request $request, int $id): TermoResponsabilidade

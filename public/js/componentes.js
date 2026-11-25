@@ -333,6 +333,9 @@
       if (!campo.value) { e.preventDefault(); alert('Assine no quadro antes de confirmar.'); }
     });
     window.addEventListener('resize', function () { if (!riscou) ajustar(); });
+    // Quadro dentro de um bloco que abre e fecha (<details>): só tem tamanho depois de aberto.
+    var bloco = caixa.closest('details');
+    if (bloco) bloco.addEventListener('toggle', function () { if (bloco.open && !riscou) ajustar(); });
     ajustar();
   }
 

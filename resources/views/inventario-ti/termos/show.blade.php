@@ -103,62 +103,49 @@
 
   @if ($t->status === 'cancelado')
     <p class="erro">Termo cancelado em @dataHora($t->cancelado_em){{ $t->motivo_cancelamento ? ' — '.$t->motivo_cancelamento : '' }}.</p>
-  @elseif ($t->status === 'pendente' && $podeAssinar)
-    <form method="post" action="{{ route('inventario-ti.termos.assinar', $t) }}" class="formulario-vertical nao-imprimir termo-assinar">
-      @csrf
-      <h2>Assinar o contrato</h2>
-      @if ($presencial)
-        <p class="aviso">Assinatura presencial: entregue o aparelho para <strong>{{ $t->usuario?->nome }}</strong> conferir os dados, ler e assinar. Fica registrado que foi no seu aparelho.</p>
-      @endif
-      <p class="suave">Seus dados completam o contrato (como no contrato em papel) e ficam guardados só neste termo.</p>
-      <div class="campos">
-        @if ($presencial)<label class="largo">Nome de quem assina <input name="nome" maxlength="120" value="{{ old('nome', $t->usuario?->nome) }}"></label>@endif
-        <label>Cargo <input name="cargo" maxlength="100" required value="{{ old('cargo', $comodatario['cargo'] ?? '') }}"></label>
-        <label>Nacionalidade <input name="nacionalidade" maxlength="40" required value="{{ old('nacionalidade', $comodatario['nacionalidade'] ?? 'Brasileiro(a)') }}"></label>
-        <label>RG <input name="rg" maxlength="30" required value="{{ old('rg', $comodatario['rg'] ?? '') }}" placeholder="00.000.000-0"></label>
-        <label>CPF <input name="cpf" maxlength="14" required inputmode="numeric" value="{{ old('cpf', $comodatario['cpf'] ?? '') }}" placeholder="000.000.000-00"></label>
-        <label class="largo">Endereço <input name="endereco" maxlength="255" required value="{{ old('endereco', $comodatario['endereco'] ?? '') }}" placeholder="Rua, número, bairro – cidade/UF – CEP"></label>
-      </div>
-      <div class="assinatura-quadro" data-assinatura>
-        <canvas aria-label="Quadro de assinatura: assine com o dedo ou o mouse"></canvas>
-        <input type="hidden" name="assinatura" data-assinatura-campo>
-        <div class="assinatura-acoes">
-          <small class="suave">Assine no quadro acima com o dedo (celular) ou o mouse.</small>
-          <button type="button" class="botao pequeno secundario" data-assinatura-limpar>Limpar</button>
-        </div>
-      </div>
-      <label class="opcao"><input type="checkbox" name="aceite" value="1" required> <span>Li e concordo com o contrato de comodato.</span></label>
-      <div class="acoes"><button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'check']) Assinar contrato</button></div>
-    </form>
-  @elseif ($t->status === 'pendente')
-    <p class="suave nao-imprimir">Aguardando a assinatura de {{ $t->usuario?->nome }} (pelo portal, em "Meus equipamentos").</p>
-  @endif
-
-  @if ($t->status !== 'cancelado')
+  @else
+    @php($euComodatario = (int) $t->usuario_id === (int) auth()->id())
+    {{-- 1) O que é do usuário logado assinar vem primeiro e aberto: como comodatário ou como testemunha. --}}
+    @if ($t->status === 'pendente' && $euComodatario && $podeAssinar)
+      @include('inventario-ti.termos._form-comodatario', ['presencial' => false])
+    @endif
     @foreach ($testemunhas as $te)
-      @continue($te->assinou() || ! ((int) $te->usuario_id === (int) auth()->id() || $podeDefinirTestemunhas))
-      @php($ehEla = (int) $te->usuario_id === (int) auth()->id())
-      <form method="post" action="{{ route('inventario-ti.termos.testemunha.assinar', [$t, $te->ordem]) }}" class="formulario-vertical nao-imprimir termo-assinar">
-        @csrf
-        <h2>Assinar como testemunha {{ $te->ordem }}{{ $ehEla ? '' : ' — '.$te->usuario?->nome }}</h2>
-        @unless ($ehEla)
-          <p class="aviso">Assinatura presencial: entregue o aparelho para <strong>{{ $te->usuario?->nome }}</strong> assinar. Fica registrado que foi no seu aparelho.</p>
-        @endunless
-        <div class="campos">
-          <label class="largo">Nome <input name="nome" maxlength="120" value="{{ old('nome', $te->usuario?->nome) }}"></label>
-          <label>RG <input name="rg" maxlength="30" required value="{{ old('rg', $ehEla ? $rgTestemunha : '') }}" placeholder="00.000.000-0 SSP/SP"></label>
-        </div>
-        <div class="assinatura-quadro" data-assinatura>
-          <canvas aria-label="Quadro de assinatura da testemunha: assine com o dedo ou o mouse"></canvas>
-          <input type="hidden" name="assinatura_testemunha" data-assinatura-campo>
-          <div class="assinatura-acoes">
-            <small class="suave">Assine no quadro acima com o dedo (celular) ou o mouse.</small>
-            <button type="button" class="botao pequeno secundario" data-assinatura-limpar>Limpar</button>
-          </div>
-        </div>
-        <div class="acoes"><button class="botao" type="submit">@include('layouts.partials.icone', ['nome' => 'check']) Assinar como testemunha</button></div>
-      </form>
+      @if (! $te->assinou() && (int) $te->usuario_id === (int) auth()->id())
+        @include('inventario-ti.termos._form-testemunha', ['ehEla' => true])
+      @endif
     @endforeach
+
+    {{-- 2) Assinatura presencial (o administrador colhe a de OUTRA pessoa no aparelho dele): recolhida, com confirmação. --}}
+    @if ($t->status === 'pendente' && ! $euComodatario && $podeAssinar)
+      <details class="termo-presencial nao-imprimir">
+        <summary>Colher na hora a assinatura de {{ $t->usuario?->nome }} (comodatário)</summary>
+        @include('inventario-ti.termos._form-comodatario', ['presencial' => true])
+      </details>
+    @elseif ($t->status === 'pendente' && ! $euComodatario)
+      <p class="suave nao-imprimir">Aguardando a assinatura de {{ $t->usuario?->nome }} (pelo portal, em "Meus equipamentos").</p>
+    @endif
+    @if ($podeDefinirTestemunhas)
+      @foreach ($testemunhas as $te)
+        @if (! $te->assinou() && (int) $te->usuario_id !== (int) auth()->id())
+          <details class="termo-presencial nao-imprimir">
+            <summary>Colher na hora a assinatura de {{ $te->usuario?->nome }} (testemunha {{ $te->ordem }})</summary>
+            @include('inventario-ti.termos._form-testemunha', ['ehEla' => false])
+          </details>
+        @endif
+      @endforeach
+      {{-- 3) Anular (assinatura errada, dados errados): o termo fica cancelado com o motivo e nasce um novo. --}}
+      <details class="termo-presencial nao-imprimir">
+        <summary>Anular este termo</summary>
+        <form method="post" action="{{ route('inventario-ti.termos.anular', $t) }}" class="formulario-vertical termo-assinar"
+          onsubmit="return confirm('Anular o termo {{ $t->numeroFormatado() }}? Ele fica cancelado (com as assinaturas, para consulta) e um termo novo é gerado.')">
+          @csrf
+          <p class="suave">Use quando alguém assinou no lugar errado ou os dados estão errados. Nada é apagado: este termo fica cancelado com o motivo
+            e, se o item continua com {{ $t->usuario?->nome }}, um termo novo (com as mesmas testemunhas) é gerado para assinar de novo.</p>
+          <label class="largo">Motivo <input name="motivo" maxlength="200" required placeholder="Ex.: assinatura da testemunha registrada no lugar do comodatário"></label>
+          <div class="acoes"><button class="botao secundario" type="submit">Anular e gerar termo novo</button></div>
+        </form>
+      </details>
+    @endif
   @endif
 </section>
 @endsection

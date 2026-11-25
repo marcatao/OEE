@@ -49,6 +49,37 @@ class TermosResponsabilidade
         });
     }
 
+    /**
+     * Anula o termo (pendente ou assinado) com o motivo — nada é apagado, as assinaturas ficam para consulta — e, se o
+     * item continua com o mesmo responsável, gera um termo novo (com as mesmas testemunhas) para assinar de novo.
+     */
+    public function anular(TermoResponsabilidade $termo, string $motivo, Usuario $por): ?TermoResponsabilidade
+    {
+        abort_unless((bool) $termo->item?->podeEditar($por), 403, 'Só o administrador da unidade do item anula o termo.');
+        if ($termo->status === 'cancelado') {
+            throw ValidationException::withMessages(['motivo' => 'Este termo já está cancelado.']);
+        }
+
+        return DB::transaction(function () use ($termo, $motivo, $por) {
+            $estava = $termo->rotuloStatus();
+            $testemunhas = $termo->testemunhas()->get();
+            $termo->update(['status' => 'cancelado', 'cancelado_em' => now(), 'motivo_cancelamento' => mb_substr('Anulado: '.$motivo, 0, 255)]);
+            $this->historico($termo->item, $termo->numeroFormatado().' '.mb_strtolower($estava), 'Anulado por '.$por->nome.': '.$motivo, $por);
+            $item = $termo->item;
+            if (! $item || (int) $item->responsavel_id !== (int) $termo->usuario_id || ! $item->temTermo()) {
+                return null;
+            }
+            $novo = $this->gerar($item, $por);
+            // As mesmas testemunhas do termo anulado (e não as do último termo com testemunhas).
+            TestemunhaTermo::where('termo_id', $novo->id)->delete();
+            foreach ($testemunhas as $te) {
+                TestemunhaTermo::create(['termo_id' => $novo->id, 'ordem' => $te->ordem, 'usuario_id' => $te->usuario_id, 'definido_por_id' => $por->id]);
+            }
+
+            return $novo;
+        });
+    }
+
     public function cancelarPendentes(ItemTi $item, string $motivo, ?Usuario $por): void
     {
         foreach (TermoResponsabilidade::pendentes()->where('item_id', $item->id)->get() as $t) {

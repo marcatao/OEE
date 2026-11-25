@@ -1380,6 +1380,9 @@ a.kpi-link:hover { border-color:var(--primaria); }
 .termo-linha { width:100%; border-top:1px solid var(--texto); }
 @media (max-width: 40rem) { .termo-texto p { text-align:left; } }
 .termo-testemunhas-titulo { margin:2rem 0 0; font-weight:650; }
+.termo-presencial { margin-top:1.25rem; padding:.75rem 1rem; border:1px solid var(--borda); border-radius:12px; background:var(--fundo); }
+.termo-presencial > summary { cursor:pointer; font-weight:600; color:var(--primaria-escura); }
+.termo-presencial .termo-assinar { margin-top:1rem; border-top:0; padding-top:0; }
 .termo-assinar { margin-top:2rem; padding-top:1rem; border-top:1px solid var(--borda); }
 /* Quadro de assinatura com o dedo ou o mouse ([data-assinatura] em componentes.js) */
 .assinatura-quadro { display:flex; flex-direction:column; gap:.5rem; margin:1rem 0; }

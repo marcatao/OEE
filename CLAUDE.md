@@ -319,7 +319,10 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   cláusulas — as de `telefonia` só para celular/tablet/linha —; objeto por `TermosResponsabilidade::descricaoComodato`).
   Duas TESTEMUNHAS por termo (`ti_termo_testemunhas`, usuários do portal; o administrador da unidade escolhe na tela do
   termo, o termo novo herda as do último; testemunha que assinou não troca; o comodatário não é testemunha) assinam no
-  portal com RG (ou presencial), com aviso no topo e em "Meus equipamentos"; `completo()` = comodatário + 2. Atributos
+  portal com RG (ou presencial), com aviso no topo e em "Meus equipamentos"; `completo()` = comodatário + 2. Na tela do
+  termo o que é do LOGADO assinar vem primeiro e aberto; assinatura presencial de outra pessoa fica recolhida e exige
+  `confirmo_presencial` (erro real de 25/11: testemunha logada assinou no quadro do comodatário). Anular termo (admin da
+  unidade, `TermosResponsabilidade::anular`): cancelado com motivo, nada apagado, e termo novo com as mesmas testemunhas. Atributos
   livres do item (nome + valor, `ti_item_atributos`, `ItemTi::gravarAtributos`, busca da lista procura neles). Ao assinar
   o comodatário informa cargo, nacionalidade, RG, CPF (dígitos conferidos) e endereço (`conteudo.comodatario`, só no
   termo; o próximo termo dele já vem preenchido); o responsável assina no
