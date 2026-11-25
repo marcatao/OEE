@@ -12,6 +12,7 @@
     @if ($podeCadastrar)
       <div class="ti-acoes">
         <a class="botao secundario" href="{{ route('inventario-ti.tipos') }}">Tipos de item</a>
+        <a class="botao secundario" href="{{ route('inventario-ti.descricoes') }}">Descrições</a>
         <a class="botao" href="{{ route('inventario-ti.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Novo item</a>
       </div>
     @endif

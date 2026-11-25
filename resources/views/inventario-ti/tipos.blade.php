@@ -6,7 +6,7 @@
 
 @section('conteudo')
 <section class="cartao">
-  <p class="trilha">Tecnologia › <a href="{{ route('inventario-ti.index') }}">Inventário de TI</a></p>
+  <p class="trilha">Tecnologia › <a href="{{ route('inventario-ti.index') }}">Inventário de TI</a> · <a href="{{ route('inventario-ti.descricoes') }}">Descrições</a></p>
   <h1>Tipos de item</h1>
   <p class="suave">Cada tipo pertence a uma categoria (equipamento, licença de software ou linha/chip), que define os campos do cadastro
     e se o item tem termo de responsabilidade. A categoria de um tipo não muda; tipo sem uso pode ser desativado.</p>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\InventarioTi;
 use App\Http\Controllers\Controller;
 use App\Models\InventarioTi\AtribuicaoLicenca;
 use App\Models\InventarioTi\AtributoItemTi;
+use App\Models\InventarioTi\DescricaoItemTi;
 use App\Models\InventarioTi\ItemTi;
 use App\Models\InventarioTi\TipoItemTi;
 use App\Models\Manutencao\OrdemServico;
@@ -187,6 +188,32 @@ class InventarioTiController extends Controller
         return redirect()->route('inventario-ti.tipos')->with('ok', "Tipo \"{$t->nome}\" salvo.");
     }
 
+    // ---------- Descrições padrão ----------
+    public function descricoes(): View
+    {
+        return view('inventario-ti.descricoes', [
+            'descricoes' => DescricaoItemTi::with('tipo')->withCount(['itens' => fn ($q) => $q->withoutGlobalScopes()])
+                ->orderByDesc('ativo')->orderBy('descricao')->orderBy('id')->get(),
+            'tipos' => TipoItemTi::orderBy('categoria')->orderBy('nome')->get(),
+            'nova' => new DescricaoItemTi,
+        ]);
+    }
+
+    public function salvarDescricao(Request $request, ?int $descricao = null): RedirectResponse
+    {
+        $d = $descricao ? DescricaoItemTi::findOrFail($descricao) : new DescricaoItemTi;
+        $request->merge(['descricao' => preg_replace('/\s+/', ' ', trim((string) $request->input('descricao')))]);
+        $dados = $request->validate([
+            'unidade' => Unidades::regras($request->user(), $d->exists ? $d->unidade : null),
+            'tipo_id' => ['nullable', 'integer', Rule::exists('ti_tipos', 'id')],
+            'descricao' => ['required', 'string', 'max:150', Rule::unique('ti_descricoes', 'descricao')->ignore($d->id)],
+            'ativo' => ['required', 'boolean'],
+        ], ['descricao.required' => 'Informe a descrição.', 'descricao.unique' => 'Essa descrição já está cadastrada.']);
+        $d->fill($dados)->save();
+
+        return redirect()->route('inventario-ti.descricoes')->with('ok', "Descrição \"{$d->descricao}\" salva. Os itens já gravados não mudam.");
+    }
+
     // ---------- Apoio ----------
     /** Abrir SS para o item: solicitante de uma unidade que aceita chamado para item de TI (a do item, ou qualquer uma se "Todas"). */
     private function podeAbrirSs(Usuario $u, ItemTi $i): bool
@@ -224,7 +251,7 @@ class InventarioTiController extends Controller
             'unidade' => Unidades::regras($request->user(), $i->exists ? $i->unidade : null),
             'tipo_id' => ['required', 'integer', Rule::exists('ti_tipos', 'id')],
             'patrimonio' => ['nullable', 'string', 'max:30', Rule::unique('ti_itens', 'patrimonio')->ignore($i->id)],
-            'descricao' => ['required', 'string', 'max:150'],
+            'descricao_id' => ['nullable', 'integer', Rule::exists('ti_descricoes', 'id')],
             'marca' => ['nullable', 'string', 'max:60'],
             'modelo' => ['nullable', 'string', 'max:80'],
             'numero_serie' => ['nullable', 'string', 'max:80'],
@@ -255,7 +282,7 @@ class InventarioTiController extends Controller
         ], [
             'atributos.*.nome.required_with' => 'Informe o nome do atributo (ex.: IP).', 'atributos.*.nome.max' => 'Nome do atributo: até 60 letras.',
             'atributos.*.valor.max' => 'Valor do atributo: até 255 letras.',
-            'tipo_id.required' => 'Escolha o tipo do item.', 'descricao.required' => 'Informe a descrição.',
+            'tipo_id.required' => 'Escolha o tipo do item.',
             'patrimonio.unique' => 'Já existe um item com esse patrimônio.', 'motivo_baixa.required_if' => 'Informe o motivo da baixa.',
             'data_compra.before_or_equal' => 'A data de compra não pode ser no futuro.',
         ]);
@@ -267,6 +294,21 @@ class InventarioTiController extends Controller
             throw ValidationException::withMessages(['tipo_id' => 'O tipo tem de ser da mesma categoria do item ('.$i->rotuloCategoria().').']);
         }
         $dados['categoria'] = $tipo->categoria;
+        // Descrição: só as cadastradas em "Descrições" (padronizar). Item antigo sem descrição padrão pode manter a dele.
+        $padrao = ! empty($dados['descricao_id']) ? DescricaoItemTi::find($dados['descricao_id']) : null;
+        if ($padrao) {
+            if (! $padrao->ativo && (int) $i->descricao_id !== (int) $padrao->id) {
+                throw ValidationException::withMessages(['descricao_id' => 'Esta descrição está desativada.']);
+            }
+            if ($padrao->tipo_id && (int) $padrao->tipo_id !== (int) $tipo->id) {
+                throw ValidationException::withMessages(['descricao_id' => 'Esta descrição é de outro tipo de item ('.$padrao->tipo?->nome.').']);
+            }
+            $dados['descricao'] = $padrao->descricao;
+        } elseif ($i->exists && ! $i->descricao_id && filled($i->descricao)) {
+            $dados['descricao_id'] = null; // mantém a descrição antiga
+        } else {
+            throw ValidationException::withMessages(['descricao_id' => 'Escolha a descrição da lista (cadastre em Inventário de TI › Descrições).']);
+        }
         $dados['atributos'] = $dados['atributos'] ?? [];
         $cc = trim((string) ($dados['centro_custo'] ?? ''));
         if ($cc !== '' && ! AcessoOs::centroCustoExiste($cc)) {
@@ -299,6 +341,8 @@ class InventarioTiController extends Controller
     {
         return [
             'i' => $i,
+            'descricoes' => DescricaoItemTi::where(fn ($q) => $q->where('ativo', true)->orWhere('id', (int) $i->descricao_id))
+                ->orderBy('descricao')->orderBy('id')->get(['id', 'descricao', 'tipo_id']),
             'tipos' => TipoItemTi::where(fn ($q) => $q->where('ativo', true)->orWhere('id', (int) $i->tipo_id))
                 ->when($i->exists, fn ($q) => $q->where('categoria', $i->categoria))->orderBy('categoria')->orderBy('nome')->get(),
             'usuarios' => $this->usuarios($i->responsavel_id),

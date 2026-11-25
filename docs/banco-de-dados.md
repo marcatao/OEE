@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **71** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **72** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -920,6 +920,17 @@ erDiagram
         bigint ferramenta_id FK
         bigint item_ti_id FK
     }
+    ti_descricoes {
+        bigint id PK
+        nvarchar(20) unidade
+        bigint tipo_id FK
+        nvarchar(150) descricao
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     ti_item_atributos {
         bigint id PK
         bigint item_id FK
@@ -966,6 +977,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        bigint descricao_id FK
     }
     ti_licenca_atribuicoes {
         bigint id PK
@@ -1194,10 +1206,12 @@ erDiagram
     ordens_producao |o--o{ solicitacoes_servico : "ordem_producao_id"
     ferramentas |o--o{ solicitacoes_servico : "ferramenta_id"
     ti_itens |o--o{ solicitacoes_servico : "item_ti_id"
+    ti_tipos |o--o{ ti_descricoes : "tipo_id"
     ti_itens ||--o{ ti_item_atributos : "item_id"
     ti_tipos ||--o{ ti_itens : "tipo_id"
     usuarios |o--o{ ti_itens : "responsavel_id"
     ti_itens |o--o{ ti_itens : "vinculado_item_id"
+    ti_descricoes |o--o{ ti_itens : "descricao_id"
     ti_itens ||--o{ ti_licenca_atribuicoes : "licenca_id"
     ti_itens |o--o{ ti_licenca_atribuicoes : "item_id"
     usuarios |o--o{ ti_licenca_atribuicoes : "usuario_id"
@@ -1337,8 +1351,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`solicitacoes_material`](#solicitacoes_material) | Sistema | `id` | 9 | 3 |
 | [`solicitacoes_material_itens`](#solicitacoes_material_itens) | Sistema | `id` | 18 | 4 |
 | [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 27 | 10 |
+| [`ti_descricoes`](#ti_descricoes) | Sistema | `id` | 9 | 3 |
 | [`ti_item_atributos`](#ti_item_atributos) | Sistema | `id` | 7 | 1 |
-| [`ti_itens`](#ti_itens) | Sistema | `id` | 36 | 5 |
+| [`ti_itens`](#ti_itens) | Sistema | `id` | 37 | 6 |
 | [`ti_licenca_atribuicoes`](#ti_licenca_atribuicoes) | Sistema | `id` | 9 | 5 |
 | [`ti_movimentacoes`](#ti_movimentacoes) | Sistema | `id` | 8 | 2 |
 | [`ti_termo_testemunhas`](#ti_termo_testemunhas) | Sistema | `id` | 13 | 4 |
@@ -2814,6 +2829,24 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Regras (CHECK, só no SQL Server):** `ck_solicitacoes_servico_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_solicitacoes_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_solicitacoes_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_solicitacoes_servico_status`: `status IN ('pendente', 'aprovada', 'rejeitada', 'cancelada')`
 
+### ti_descricoes
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `unidade` | `nvarchar(20)` | não | `'tecnologia'` |  |
+| `tipo_id` | `bigint` | sim |  | FK → `ti_tipos.id` |
+| `descricao` | `nvarchar(150)` | não |  |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `ti_descricoes_ativo_tipo_id_index` (ativo, tipo_id)
+
 ### ti_item_atributos
 
 **Origem:** Sistema OEE · **Chave primária:** `id`
@@ -2872,8 +2905,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `descricao_id` | `bigint` | sim |  | FK → `ti_descricoes.id` |
 
-**Índices:** `ti_itens_unidade_situacao_index` (unidade, situacao) · `ti_itens_tipo_id_index` (tipo_id) · `ti_itens_responsavel_id_index` (responsavel_id) · `ti_itens_patrimonio_index` (patrimonio) · `ti_itens_vinculado_item_id_index` (vinculado_item_id)
+**Índices:** `ti_itens_unidade_situacao_index` (unidade, situacao) · `ti_itens_tipo_id_index` (tipo_id) · `ti_itens_responsavel_id_index` (responsavel_id) · `ti_itens_patrimonio_index` (patrimonio) · `ti_itens_vinculado_item_id_index` (vinculado_item_id) · `ti_itens_descricao_id_index` (descricao_id)
 
 ### ti_licenca_atribuicoes
 

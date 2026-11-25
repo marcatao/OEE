@@ -127,7 +127,7 @@
             @include('layouts.partials.menu-secao', ['titulo' => 'Tecnologia'])
             <div class="menu-itens">
               @if ($u->pode('inventario_ti'))
-                @include('layouts.partials.menu-link', ['rota' => 'inventario-ti.index', 'rotulo' => 'Inventário de TI', 'icone' => 'caixa', 'ativo' => ['inventario-ti.index', 'inventario-ti.show', 'inventario-ti.create', 'inventario-ti.edit', 'inventario-ti.tipos']])
+                @include('layouts.partials.menu-link', ['rota' => 'inventario-ti.index', 'rotulo' => 'Inventário de TI', 'icone' => 'caixa', 'ativo' => ['inventario-ti.index', 'inventario-ti.show', 'inventario-ti.create', 'inventario-ti.edit', 'inventario-ti.tipos', 'inventario-ti.descricoes']])
               @endif
               @if ($temMeusEquipamentos)
                 @include('layouts.partials.menu-link', ['rota' => 'inventario-ti.meus', 'rotulo' => 'Meus equipamentos', 'icone' => 'celular', 'ativo' => ['inventario-ti.meus', 'inventario-ti.termos.*']])

@@ -28,7 +28,7 @@ class ItemTi extends Model
 
     protected $table = 'ti_itens';
 
-    protected $fillable = ['unidade', 'categoria', 'tipo_id', 'patrimonio', 'descricao', 'marca', 'modelo', 'numero_serie', 'hostname',
+    protected $fillable = ['unidade', 'categoria', 'tipo_id', 'patrimonio', 'descricao_id', 'descricao', 'marca', 'modelo', 'numero_serie', 'hostname',
         'especificacao', 'acessorios', 'centro_custo', 'local', 'responsavel_id', 'responsavel_desde', 'situacao', 'data_compra',
         'nota_fiscal', 'fornecedor', 'garantia_ate', 'valor', 'licenca_chave', 'quantidade_licencas', 'vencimento', 'linha_numero',
         'operadora', 'plano', 'vinculado_item_id', 'observacao', 'baixado_em', 'motivo_baixa'];
@@ -49,6 +49,12 @@ class ItemTi extends Model
     public function tipo(): BelongsTo
     {
         return $this->belongsTo(TipoItemTi::class, 'tipo_id')->withoutGlobalScopes();
+    }
+
+    /** Descrição padrão escolhida (o texto fica copiado em `descricao`). */
+    public function descricaoPadrao(): BelongsTo
+    {
+        return $this->belongsTo(DescricaoItemTi::class, 'descricao_id')->withoutGlobalScopes();
     }
 
     public function responsavel(): BelongsTo

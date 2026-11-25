@@ -29,7 +29,14 @@
           @if ($i->exists)<small class="suave">A categoria ({{ $i->rotuloCategoria() }}) não muda.</small>@endif
         </label>
         <label>Patrimônio <input name="patrimonio" maxlength="30" value="{{ old('patrimonio', $i->patrimonio) }}" style="text-transform:uppercase" placeholder="Plaqueta ou código interno"></label>
-        <label class="largo">Descrição <input name="descricao" required maxlength="150" value="{{ old('descricao', $i->descricao) }}" placeholder="Ex.: Notebook do comercial, Microsoft 365 Business, Linha do supervisor"></label>
+        @php($descricaoAntiga = $i->exists && ! $i->descricao_id && filled($i->descricao))
+        <label class="largo">Descrição
+          <select name="descricao_id" id="ti-descricao" data-busca="Buscar descrição…" @required(! $descricaoAntiga)>
+            <option value="">{{ $descricaoAntiga ? 'Manter a atual: '.$i->descricao : 'Escolha a descrição…' }}</option>
+            @foreach ($descricoes as $d)<option value="{{ $d->id }}" data-tipo="{{ $d->tipo_id }}" @selected((int) old('descricao_id', $i->descricao_id) === $d->id)>{{ $d->descricao }}</option>@endforeach
+          </select>
+          <small class="suave">Só as descrições padrão do tipo escolhido (ou de qualquer tipo). Falta uma? <a href="{{ route('inventario-ti.descricoes') }}" target="_blank" rel="noopener">Cadastre em Descrições</a>.</small>
+        </label>
         <label>Marca <input name="marca" maxlength="60" value="{{ old('marca', $i->marca) }}"></label>
         <label>Modelo <input name="modelo" maxlength="80" value="{{ old('modelo', $i->modelo) }}"></label>
         <label><span data-rotulo-serie>Nº de série</span> <input name="numero_serie" maxlength="80" value="{{ old('numero_serie', $i->numero_serie) }}"></label>
@@ -146,7 +153,19 @@
     // Mostra só os campos da categoria do tipo escolhido (o servidor também limpa os que não valem).
     var tipo = document.getElementById('ti-tipo'), situacao = document.getElementById('ti-situacao');
     var serie = document.querySelector('[data-rotulo-serie]'), vencimento = document.querySelector('[data-vencimento]');
+    // Descrições: só as do tipo escolhido e as de qualquer tipo (guarda as opções para poder voltar).
+    var descricao = document.getElementById('ti-descricao');
+    var todasDescricoes = Array.prototype.slice.call(descricao.options).filter(function (o) { return o.value !== ''; });
+    function filtrarDescricoes() {
+      var atual = descricao.value;
+      todasDescricoes.forEach(function (o) { if (o.parentNode) o.remove(); });
+      todasDescricoes.filter(function (o) { return !o.dataset.tipo || o.dataset.tipo === tipo.value; }).forEach(function (o) { descricao.add(o); });
+      var continua = Array.prototype.some.call(descricao.options, function (o) { return o.value === atual; });
+      descricao.value = continua ? atual : '';
+      descricao.dispatchEvent(new Event('change'));
+    }
     function aplicar() {
+      filtrarDescricoes();
       var cat = tipo.selectedOptions[0] ? tipo.selectedOptions[0].dataset.categoria || '' : '';
       document.querySelectorAll('[data-categoria-campos]').forEach(function (f) { f.hidden = f.dataset.categoriaCampos !== cat; });
       serie.textContent = cat === 'linha' ? 'ICCID do chip' : 'Nº de série';

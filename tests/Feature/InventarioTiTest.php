@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CentroCusto;
 use App\Models\InventarioTi\AtribuicaoLicenca;
+use App\Models\InventarioTi\DescricaoItemTi;
 use App\Models\InventarioTi\ItemTi;
 use App\Models\InventarioTi\TermoResponsabilidade;
 use App\Models\InventarioTi\TipoItemTi;
@@ -57,6 +58,12 @@ class InventarioTiTest extends TestCase
         return 'data:image/png;base64,'.base64_encode((string) ob_get_clean());
     }
 
+    /** Id da descrição padrão com este texto (cadastra se não existir). */
+    private function desc(string $texto): int
+    {
+        return DescricaoItemTi::withoutGlobalScopes()->firstOrCreate(['descricao' => $texto], ['unidade' => 'tecnologia'])->id;
+    }
+
     private function qualificacao(): array
     {
         return ['cargo' => 'Vendedora', 'nacionalidade' => 'Brasileira', 'rg' => '12.345.678-9', 'cpf' => '529.982.247-25',
@@ -66,7 +73,7 @@ class InventarioTiTest extends TestCase
     private function cadastrar(array $dados = []): ItemTi
     {
         $this->actingAs($this->admin)->post('/tecnologia/inventario', $dados + [
-            'unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'patrimonio' => 'ti-0001', 'descricao' => 'Notebook do comercial',
+            'unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'patrimonio' => 'ti-0001', 'descricao_id' => $this->desc('Notebook do comercial'),
             'marca' => 'Dell', 'modelo' => 'Latitude 5440', 'numero_serie' => 'ABC123', 'acessorios' => 'Carregador e mochila',
             'situacao' => 'em_uso', 'responsavel_id' => $this->ana->id, 'centro_custo' => '3003', 'garantia_ate' => '2028-01-31',
         ])->assertRedirect()->assertSessionHasNoErrors();
@@ -112,7 +119,7 @@ class InventarioTiTest extends TestCase
     {
         $item = $this->cadastrar();
         $bruno = $this->usuario([], 'bruno@empresa.com');
-        $base = ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'patrimonio' => $item->patrimonio, 'descricao' => $item->descricao, 'situacao' => 'em_uso',
+        $base = ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'patrimonio' => $item->patrimonio, 'descricao_id' => $this->desc($item->descricao), 'situacao' => 'em_uso',
             'local' => 'Comercial', 'observacao_movimentacao' => 'Ana saiu de férias'];
         $this->actingAs($this->admin)->put("/tecnologia/inventario/{$item->id}", $base + ['responsavel_id' => $bruno->id])->assertSessionHasNoErrors();
 
@@ -142,10 +149,10 @@ class InventarioTiTest extends TestCase
     {
         $this->cadastrar();
         $this->actingAs($this->admin)->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id,
-            'patrimonio' => 'TI-0001', 'descricao' => 'Outro', 'situacao' => 'estoque'])->assertSessionHasErrors('patrimonio');
-        $this->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'descricao' => 'Sem dono',
+            'patrimonio' => 'TI-0001', 'descricao_id' => $this->desc('Outro'), 'situacao' => 'estoque'])->assertSessionHasErrors('patrimonio');
+        $this->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'descricao_id' => $this->desc('Sem dono'),
             'situacao' => 'em_uso'])->assertSessionHasErrors('responsavel_id');
-        $this->post('/tecnologia/inventario', ['unidade' => 'manutencao', 'tipo_id' => $this->notebook->id, 'descricao' => 'Outra unidade',
+        $this->post('/tecnologia/inventario', ['unidade' => 'manutencao', 'tipo_id' => $this->notebook->id, 'descricao_id' => $this->desc('Outra unidade'),
             'situacao' => 'estoque'])->assertSessionHasErrors('unidade');
     }
 
@@ -154,7 +161,7 @@ class InventarioTiTest extends TestCase
         $note = $this->cadastrar(['responsavel_id' => null, 'situacao' => 'estoque']);
         $tipoLicenca = TipoItemTi::withoutGlobalScopes()->where('categoria', 'licenca')->firstOrFail();
         $this->actingAs($this->admin)->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $tipoLicenca->id,
-            'descricao' => 'Office 365', 'situacao' => 'em_uso', 'quantidade_licencas' => 1, 'licenca_chave' => 'XXXX', 'hostname' => 'nao-vale'])
+            'descricao_id' => $this->desc('Office 365'), 'situacao' => 'em_uso', 'quantidade_licencas' => 1, 'licenca_chave' => 'XXXX', 'hostname' => 'nao-vale'])
             ->assertSessionHasNoErrors();
         $licenca = ItemTi::withoutGlobalScopes()->latest('id')->firstOrFail();
         $this->assertSame(['licenca', null], [$licenca->categoria, $licenca->hostname]);
@@ -170,7 +177,7 @@ class InventarioTiTest extends TestCase
 
         $tipoLinha = TipoItemTi::withoutGlobalScopes()->where('categoria', 'linha')->firstOrFail();
         $this->actingAs($this->admin)->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $tipoLinha->id,
-            'descricao' => 'Linha do supervisor', 'situacao' => 'em_uso', 'linha_numero' => '11999990000', 'operadora' => 'Vivo',
+            'descricao_id' => $this->desc('Linha do supervisor'), 'situacao' => 'em_uso', 'linha_numero' => '11999990000', 'operadora' => 'Vivo',
             'vinculado_item_id' => $note->id, 'responsavel_id' => $this->ana->id])->assertSessionHasNoErrors();
         $linha = ItemTi::withoutGlobalScopes()->latest('id')->firstOrFail();
         $this->assertSame($note->id, (int) $linha->vinculado_item_id);
@@ -242,12 +249,12 @@ class InventarioTiTest extends TestCase
         $this->get("/tecnologia/inventario/{$item->id}")->assertOk()->assertSee('Memória')->assertSee('16 GB');
         $this->get('/tecnologia/inventario?busca=10.0.5')->assertOk()->assertSee('<strong>TI-0001</strong>', false);
         $this->get("/tecnologia/inventario/{$item->id}/editar")->assertOk()->assertSee('value="10.0.5.20"', false)->assertSee('<option value="IP">', false);
-        $this->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'descricao' => 'X', 'situacao' => 'estoque',
+        $this->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'descricao_id' => $this->desc('X'), 'situacao' => 'estoque',
             'atributos' => [['nome' => '', 'valor' => 'sem nome']]])->assertSessionHasErrors('atributos.0.nome');
 
         // Editar: remove um e troca o valor do outro.
         $this->put("/tecnologia/inventario/{$item->id}", ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'patrimonio' => 'TI-0001',
-            'descricao' => $item->descricao, 'situacao' => 'em_uso', 'responsavel_id' => $this->ana->id,
+            'descricao_id' => $this->desc($item->descricao), 'situacao' => 'em_uso', 'responsavel_id' => $this->ana->id,
             'atributos' => [['nome' => 'IP', 'valor' => '10.0.5.21']]])->assertSessionHasNoErrors();
         $this->assertSame(['IP' => '10.0.5.21'], $item->atributos()->pluck('valor', 'nome')->all());
     }
@@ -324,5 +331,39 @@ class InventarioTiTest extends TestCase
         $novo = TermoResponsabilidade::where('item_id', $item->id)->pendentes()->firstOrFail();
         $this->assertSame([$this->admin->id, $rafaela->id], $novo->testemunhas()->pluck('usuario_id')->map(fn ($id) => (int) $id)->all());
         $this->assertSame(0, $novo->testemunhas()->whereNotNull('assinado_em')->count());
+    }
+
+    public function test_descricao_vem_das_descricoes_padrao(): void
+    {
+        $this->actingAs($this->admin)->post('/tecnologia/inventario/descricoes', ['descricao' => '  Notebook   Dell Latitude 5440 ', 'tipo_id' => $this->notebook->id,
+            'ativo' => 1, 'unidade' => 'tecnologia'])->assertSessionHasNoErrors();
+        $d = DescricaoItemTi::firstOrFail();
+        $this->assertSame('Notebook Dell Latitude 5440', $d->descricao);
+        $this->post('/tecnologia/inventario/descricoes', ['descricao' => 'Notebook Dell Latitude 5440', 'ativo' => 1, 'unidade' => 'tecnologia'])
+            ->assertSessionHasErrors('descricao');
+        $this->get('/tecnologia/inventario/descricoes')->assertOk()->assertSee('Notebook Dell Latitude 5440');
+        $this->get('/tecnologia/inventario/novo')->assertOk()->assertSee('Notebook Dell Latitude 5440');
+
+        $base = ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'situacao' => 'estoque'];
+        $this->post('/tecnologia/inventario', $base)->assertSessionHasErrors('descricao_id'); // sem descrição
+        $monitor = TipoItemTi::withoutGlobalScopes()->where('nome', 'Monitor')->firstOrFail();
+        $this->post('/tecnologia/inventario', ['tipo_id' => $monitor->id, 'descricao_id' => $d->id] + $base)->assertSessionHasErrors('descricao_id'); // de outro tipo
+        $this->post('/tecnologia/inventario', ['descricao_id' => $d->id] + $base)->assertSessionHasNoErrors();
+        $item = ItemTi::withoutGlobalScopes()->latest('id')->firstOrFail();
+        $this->assertSame([$d->id, 'Notebook Dell Latitude 5440'], [(int) $item->descricao_id, $item->descricao]);
+
+        // Renomear a descrição padrão não muda o item já gravado; desativada some da lista dos novos.
+        $this->put("/tecnologia/inventario/descricoes/{$d->id}", ['descricao' => 'Notebook Dell 5440', 'tipo_id' => $this->notebook->id, 'ativo' => 0])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('Notebook Dell Latitude 5440', $item->fresh()->descricao);
+        $this->get('/tecnologia/inventario/novo')->assertOk()->assertDontSee('>Notebook Dell 5440</option>', false);
+        $this->get("/tecnologia/inventario/{$item->id}/editar")->assertOk()->assertSee('>Notebook Dell 5440</option>', false); // a dele continua na lista
+
+        // Item antigo (sem descrição padrão) mantém a descrição dele ao editar.
+        $antigo = ItemTi::withoutGlobalScopes()->create(['unidade' => 'tecnologia', 'categoria' => 'hardware', 'tipo_id' => $this->notebook->id,
+            'descricao' => 'Notebook velho', 'situacao' => 'estoque']);
+        $this->get("/tecnologia/inventario/{$antigo->id}/editar")->assertOk()->assertSee('Manter a atual: Notebook velho');
+        $this->put("/tecnologia/inventario/{$antigo->id}", $base + ['local' => 'TI'])->assertSessionHasNoErrors();
+        $this->assertSame('Notebook velho', $antigo->fresh()->descricao);
     }
 }
