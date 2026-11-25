@@ -291,6 +291,8 @@ fun ConteudoPerdas(
                         )
                     }
                 }
+                Text("Turno: definido pelo horário do lançamento", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = form.observacao,
@@ -337,7 +339,12 @@ internal fun LinhaPerda(p: PerdaApp, aoExcluir: () -> Unit) {
                 Text(p.texto, style = MaterialTheme.typography.titleMedium, color = corTexto,
                     textDecoration = if (apagada) TextDecoration.LineThrough else null)
                 Text(
-                    listOfNotNull(dataCurta(p.dia), p.maquina, if (p.origem == "aplicativo") "pelo app" else "pelo portal").joinToString(" · "),
+                    listOfNotNull(
+                        dataCurta(p.dia),
+                        if (p.temTurno) (p.turno?.let { "T$it" } ?: "fora de turno") else null,
+                        p.maquina,
+                        if (p.origem == "aplicativo") "pelo app" else "pelo portal",
+                    ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textDecoration = if (apagada) TextDecoration.LineThrough else null,
                 )

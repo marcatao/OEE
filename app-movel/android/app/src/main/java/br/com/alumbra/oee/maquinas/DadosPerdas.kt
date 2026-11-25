@@ -18,6 +18,10 @@ data class PerdaApp(
     val excluida: Boolean,
     val excluidoPor: String?,
     val excluidoEm: String?,
+    /** Turno da máquina no horário do lançamento: 1, 2, 3 ou null (fora de turno / portal antigo). */
+    val turno: Int? = null,
+    /** O portal mandou o campo "turno" (para não mostrar "fora de turno" com portal antigo). */
+    val temTurno: Boolean = false,
 )
 
 data class PerdasOp(
@@ -53,6 +57,8 @@ fun perdasOpDe(j: JSONObject): PerdasOp {
                 p.optInt("id"), p.optString("dia"), p.optDouble("quantidade", 0.0), p.d("peso"), p.d("peso_unitario"),
                 p.optString("texto"), p.t("maquina"), p.t("observacao"), p.optString("origem"), p.t("criado_por"),
                 p.t("criado_em"), p.optBoolean("excluida"), p.t("excluido_por"), p.t("excluido_em"),
+                turno = if (!p.has("turno") || p.isNull("turno")) null else p.optInt("turno"),
+                temTurno = p.has("turno"),
             )
         },
     )

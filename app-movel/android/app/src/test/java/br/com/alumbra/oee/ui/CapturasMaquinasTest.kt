@@ -71,7 +71,7 @@ class CapturasMaquinasTest {
             OperacaoApp("20", "MONTAGEM", "MON-02", "", false),
         ), listOf(MoldeApp(1, "M001", "MOLDE TAMPA 8 CAV", 8, 6))) else null,
         legendasMotivo = motivos, servidorAgora = "", segundosAtualizacao = 10,
-        periodoDe = iso(11 * 3_600_000L + 20 * 60_000), periodoAte = iso(-(4 * 3_600_000L + 41 * 60_000)), periodoRotulo = "Turno de hoje, 17/11 · 06:00 às 22:00",
+        periodoDe = iso(11 * 3_600_000L + 20 * 60_000), periodoAte = iso(-(4 * 3_600_000L + 41 * 60_000)), periodoRotulo = "Turno de hoje, 17/11 · T1 06:00–12:00 · T2 13:00–18:00 · T3 18:00–22:00",
         producao = ProducaoApp(
             // Meta de cada hora: OP 1 (450/h) até 10:30, OP 2 (300/h) depois; hora 11 (atual) só até agora.
             porHora = listOf(310, 120, 0, 420, 455, 440, 470, 430, 210, 0, 0, 0, 0, 0, 0, 0).mapIndexed { i, p ->
@@ -207,10 +207,10 @@ class CapturasMaquinasTest {
 
     private val perdas = PerdasOp(1, "06267801001", "PA0910755", 12000.0, 0.0125, 140.0, 1.75, 2, listOf(
         PerdaApp(3, "2026-11-17", 100.0, 1.25, 0.0125, "100 pç · 1,25 kg", "INJ-01 Injetora 01", "Rebarba no lote da manhã", "aplicativo",
-            "Maria Souza", "2026-11-17T13:10:00Z", false, null, null),
+            "Maria Souza", "2026-11-17T13:10:00Z", false, null, null, turno = 2, temTurno = true),
         PerdaApp(2, "2026-11-17", 25.0, 0.3125, 0.0125, "25 pç · 0,3125 kg", "INJ-01 Injetora 01", null, "aplicativo",
-            "Maria Souza", "2026-11-17T12:00:00Z", true, "João Lima", "2026-11-17T12:30:00Z"),
-        PerdaApp(1, "2026-11-16", 40.0, 0.5, 0.0125, "40 pç · 0,5 kg", null, null, "portal", "Carlos Dias", "2026-11-16T18:00:00Z", false, null, null),
+            "Maria Souza", "2026-11-17T12:00:00Z", true, "João Lima", "2026-11-17T12:30:00Z", turno = 1, temTurno = true),
+        PerdaApp(1, "2026-11-16", 40.0, 0.5, 0.0125, "40 pç · 0,5 kg", null, null, "portal", "Carlos Dias", "2026-11-16T18:00:00Z", false, null, null, turno = null, temTurno = true),
     ))
 
     @Test

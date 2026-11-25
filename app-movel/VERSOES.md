@@ -1,5 +1,13 @@
 # Versões do aplicativo
 
+## 0.14.2 (build 28)
+
+- Perdas: cada perda da lista mostra o **turno** em que foi lançada ("T1", "T2", "T3" ou "fora de turno"). O turno
+  é definido pelo portal pelo horário do lançamento (não se escolhe no app); a tela de apontar informa
+  "Turno: definido pelo horário do lançamento".
+- Máquinas com até 3 turnos por dia: o rótulo do período da linha do tempo ("T1 06:00–12:00 · T2 13:00–18:00 …")
+  quebra em duas linhas sem cortar.
+
 ## 0.14.1 (build 27)
 
 - Tela da máquina: **termômetro do OEE** no canto direito do primeiro cartão (o de Produzindo/Parada) — medidor
