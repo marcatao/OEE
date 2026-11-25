@@ -57,6 +57,12 @@ class InventarioTiTest extends TestCase
         return 'data:image/png;base64,'.base64_encode((string) ob_get_clean());
     }
 
+    private function qualificacao(): array
+    {
+        return ['cargo' => 'Vendedora', 'nacionalidade' => 'Brasileira', 'rg' => '12.345.678-9', 'cpf' => '529.982.247-25',
+            'endereco' => 'Rua das Flores, 10 – Centro – São Bernardo do Campo/SP – 09700-000'];
+    }
+
     private function cadastrar(array $dados = []): ItemTi
     {
         $this->actingAs($this->admin)->post('/tecnologia/inventario', $dados + [
@@ -79,15 +85,23 @@ class InventarioTiTest extends TestCase
 
         // A Ana (sem perfil) vê o aviso, os itens dela e assina com o dedo.
         $this->actingAs($this->ana)->get('/tecnologia/meus-equipamentos')->assertOk()->assertSee('TI-0001')->assertSee('Ler e assinar');
-        $this->get("/tecnologia/termos/{$termo->id}")->assertOk()->assertSee('Carregador e mochila')->assertSee('data-assinatura', false);
-        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => 'nao-e-png', 'aceite' => '1'])->assertSessionHasErrors('assinatura');
-        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png()])->assertSessionHasErrors('aceite');
-        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1'])->assertRedirect()->assertSessionHasNoErrors();
+        // Contrato de comodato no modelo da empresa: notebook não leva as cláusulas de telefonia (chip, ligações).
+        $this->get("/tecnologia/termos/{$termo->id}")->assertOk()->assertSee('CONTRATO PARTICULAR DE COMODATO')
+            ->assertSee('01 NOTEBOOK DO COMERCIAL DELL LATITUDE 5440 PATRIMÔNIO: TI-0001 S/N: ABC123 e carregador e mochila em ótimas condições.')
+            ->assertSee('É vedado seu empréstimo a terceiros.')->assertDontSee('remover o chip')->assertSee('data-assinatura', false);
+        $q = $this->qualificacao();
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => 'nao-e-png', 'aceite' => '1'] + $q)->assertSessionHasErrors('assinatura');
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png()] + $q)->assertSessionHasErrors('aceite');
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1', 'cpf' => '111.111.111-11'] + $q)->assertSessionHasErrors('cpf');
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1', 'rg' => ''] + $q)->assertSessionHasErrors('rg');
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1', 'cpf' => '52998224725'] + $q)->assertRedirect()->assertSessionHasNoErrors();
         $termo->refresh();
         $this->assertSame(['assinado', false, 'Ana'], [$termo->status, $termo->presencial, $termo->nome_assinante]);
-        $this->get("/tecnologia/termos/{$termo->id}")->assertOk()->assertSee('Assinado eletronicamente');
+        $this->assertSame('529.982.247-25', $termo->conteudo['comodatario']['cpf']);
+        $this->get("/tecnologia/termos/{$termo->id}")->assertOk()->assertSee('Assinado eletronicamente')->assertSee('529.982.247-25')
+            ->assertSee('Rua das Flores, 10');
         // Assinado não assina de novo.
-        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1'])->assertForbidden();
+        $this->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1'] + $q)->assertForbidden();
 
         // Outro usuário (sem o inventário) não abre o termo da Ana; nem o inventário.
         $this->actingAs($this->usuario(['operador'], 'op@empresa.com'))->get("/tecnologia/termos/{$termo->id}")->assertNotFound();
@@ -109,7 +123,7 @@ class InventarioTiTest extends TestCase
         $this->assertSame(['Ana', 'Bruno', 'Ana saiu de férias'], [$mov->valor_anterior, $mov->valor_novo, $mov->observacao]);
 
         // O administrador colhe a assinatura do Bruno na hora (presencial).
-        $this->post("/tecnologia/termos/{$termos[1]->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1', 'nome' => 'Bruno Souza'])->assertSessionHasNoErrors();
+        $this->post("/tecnologia/termos/{$termos[1]->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1', 'nome' => 'Bruno Souza'] + $this->qualificacao())->assertSessionHasNoErrors();
         $this->assertSame([true, 'Bruno Souza', $this->admin->id], [$termos[1]->fresh()->presencial, $termos[1]->fresh()->nome_assinante, (int) $termos[1]->fresh()->registrado_por_id]);
 
         // Baixa exige motivo, tira o responsável e não apaga nada.
@@ -158,7 +172,14 @@ class InventarioTiTest extends TestCase
             'vinculado_item_id' => $note->id, 'responsavel_id' => $this->ana->id])->assertSessionHasNoErrors();
         $linha = ItemTi::withoutGlobalScopes()->latest('id')->firstOrFail();
         $this->assertSame($note->id, (int) $linha->vinculado_item_id);
-        $this->assertSame(1, TermoResponsabilidade::where('item_id', $linha->id)->pendentes()->count());
+        $termoLinha = TermoResponsabilidade::where('item_id', $linha->id)->pendentes()->firstOrFail();
+        $this->actingAs($this->ana)->get("/tecnologia/termos/{$termoLinha->id}")->assertOk()->assertSee('remover o chip')
+            ->assertSee('LINHA: 11999990000 (Vivo)');
+        // Já assinou antes: o formulário vem com os dados dela.
+        $this->post("/tecnologia/termos/{$termoLinha->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1'] + $this->qualificacao())->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->post("/tecnologia/inventario/{$linha->id}/termo")->assertRedirect();
+        $novo = TermoResponsabilidade::where('item_id', $linha->id)->pendentes()->firstOrFail();
+        $this->actingAs($this->ana)->get("/tecnologia/termos/{$novo->id}")->assertOk()->assertSee('value="529.982.247-25"', false);
     }
 
     public function test_escopo_de_unidade_e_quem_edita(): void

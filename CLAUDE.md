@@ -314,7 +314,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Toda gravação pela regra única `App\Services\InventarioTi\MovimentacaoInventario` (histórico em `ti_movimentacoes`:
   responsável, local, centro de custo, situação, aparelho, licença, termo). **Termo de responsabilidade** (`ti_termos`,
   `App\Services\InventarioTi\TermosResponsabilidade`): trocar o responsável de equipamento/linha cancela o pendente e
-  gera outro (dados do item congelados em `conteudo`; texto em `config('oee.inventario_ti')`); o responsável assina no
+  gera outro (dados do item congelados em `conteudo`); o termo é o CONTRATO PARTICULAR DE COMODATO da empresa (modelo do
+  usuário, texto em `config('oee.inventario_ti')`: comodante, cláusulas — as de `telefonia` só para celular/tablet/linha —,
+  testemunhas no `.env` `INVENTARIO_TI_TESTEMUNHAS`; objeto por `TermosResponsabilidade::descricaoComodato`); ao assinar
+  o comodatário informa cargo, nacionalidade, RG, CPF (dígitos conferidos) e endereço (`conteudo.comodatario`, só no
+  termo; o próximo termo dele já vem preenchido); o responsável assina no
   portal (celular ou computador, quadro `[data-assinatura]` de `componentes.js`; PNG conferido por `App\Support\AssinaturaPng`,
   o mesmo do app) ou o administrador colhe na hora (`presencial`). Aviso no topo de todas as telas
   (`inventario-ti._aviso-termos`) e "Meus equipamentos": rotas só com login (SO_LOGIN; quem recebe pode não ter perfil;

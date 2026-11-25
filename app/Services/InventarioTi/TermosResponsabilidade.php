@@ -50,20 +50,23 @@ class TermosResponsabilidade
      * Assina o termo. O próprio responsável assina no portal; o administrador da unidade pode colher a assinatura dele
      * na hora (presencial, no aparelho do administrador).
      */
-    public function assinar(TermoResponsabilidade $termo, Usuario $logado, ?string $assinatura, ?string $nome, ?string $ip, ?string $navegador): TermoResponsabilidade
+    public function assinar(TermoResponsabilidade $termo, Usuario $logado, ?string $assinatura, ?string $nome, ?string $ip, ?string $navegador, array $comodatario = []): TermoResponsabilidade
     {
         if (! $this->podeAssinar($termo, $logado)) {
             abort(403, 'Só o responsável pelo item (ou o administrador da unidade, na frente dele) assina este termo.');
         }
         $png = AssinaturaPng::conferir($assinatura, 'assinatura', 'Assine no quadro antes de confirmar.');
 
-        return DB::transaction(function () use ($termo, $logado, $png, $nome, $ip, $navegador) {
+        return DB::transaction(function () use ($termo, $logado, $png, $nome, $ip, $navegador, $comodatario) {
             $termo = TermoResponsabilidade::lockForUpdate()->findOrFail($termo->id);
             if ($termo->status !== 'pendente') {
                 throw ValidationException::withMessages(['assinatura' => 'Este termo já foi '.($termo->status === 'assinado' ? 'assinado' : 'cancelado').'.']);
             }
             $presencial = (int) $logado->id !== (int) $termo->usuario_id;
-            $termo->update(['status' => 'assinado', 'assinado_em' => now(), 'imagem_png' => $png, 'registrado_por_id' => $logado->id,
+            // Qualificação do comodatário (nacionalidade, cargo, RG, CPF, endereço) fica no termo, como no contrato em papel.
+            $conteudo = $termo->conteudo ?? [];
+            $conteudo['comodatario'] = array_map(fn ($v) => mb_substr(trim((string) $v), 0, 255), $comodatario);
+            $termo->update(['status' => 'assinado', 'conteudo' => $conteudo, 'assinado_em' => now(), 'imagem_png' => $png, 'registrado_por_id' => $logado->id,
                 'presencial' => $presencial, 'nome_assinante' => mb_substr(trim((string) $nome) ?: (string) $termo->usuario?->nome, 0, 120),
                 'assinado_ip' => $ip, 'assinado_navegador' => $navegador !== null ? mb_substr($navegador, 0, 255) : null]);
             $this->historico($termo->item, $termo->numeroFormatado().' pendente',
@@ -127,14 +130,85 @@ class TermosResponsabilidade
             'responsavel_email' => $item->responsavel?->email,
             'responsavel_matricula' => $item->responsavel?->matricula,
             'responsavel_cargo' => $item->responsavel?->cargo,
+            'categoria' => $item->categoria,
+            'telefonia' => $item->ehLinha() || in_array(mb_strtolower((string) $item->tipo?->nome), array_map('mb_strtolower', config('oee.inventario_ti.tipos_telefonia', [])), true),
+            'testemunhas' => config('oee.inventario_ti.testemunhas', []) ?: null,
         ], fn ($v) => $v !== null && $v !== '');
     }
 
-    /** Rótulos dos campos do conteúdo (na ordem em que aparecem no termo). */
-    public const ROTULOS = ['patrimonio' => 'Patrimônio', 'tipo' => 'Tipo', 'descricao' => 'Descrição', 'marca_modelo' => 'Marca / modelo',
-        'numero_serie' => 'Nº de série / ICCID', 'hostname' => 'Nome na rede', 'especificacao' => 'Especificação', 'acessorios' => 'Acessórios',
-        'linha_numero' => 'Número da linha', 'operadora' => 'Operadora', 'plano' => 'Plano', 'aparelho' => 'Aparelho',
-        'centro_custo' => 'Centro de custo', 'local' => 'Local'];
+    /**
+     * O que é dado em comodato, numa frase como no contrato da empresa: "01 SMARTPHONE GALAXY A56 5G S/N: … e
+     * carregador em ótimas condições."
+     */
+    public static function descricaoComodato(array $dados): string
+    {
+        $nome = trim((string) ($dados['descricao'] ?? ''));
+        $marcaModelo = trim((string) ($dados['marca_modelo'] ?? ''));
+        if ($marcaModelo !== '' && ! str_contains(mb_strtolower($nome), mb_strtolower($marcaModelo))) {
+            $nome .= ' '.$marcaModelo;
+        }
+        $partes = ['01 '.mb_strtoupper($nome)];
+        if (! empty($dados['patrimonio'])) {
+            $partes[] = 'PATRIMÔNIO: '.$dados['patrimonio'];
+        }
+        if (! empty($dados['numero_serie'])) {
+            $partes[] = (($dados['categoria'] ?? '') === 'linha' ? 'ICCID: ' : 'S/N: ').$dados['numero_serie'];
+        }
+        if (! empty($dados['linha_numero'])) {
+            $partes[] = 'LINHA: '.$dados['linha_numero'].(! empty($dados['operadora']) ? ' ('.$dados['operadora'].')' : '');
+        }
+        if (! empty($dados['aparelho'])) {
+            $partes[] = 'NO APARELHO '.$dados['aparelho'];
+        }
+        $texto = implode(' ', $partes);
+        $acessorios = trim((string) ($dados['acessorios'] ?? ''));
+
+        return $texto.($acessorios !== '' ? ' e '.mb_strtolower($acessorios) : '').' em ótimas condições.';
+    }
+
+    /** Cláusulas do contrato para este termo (as de telefonia só para celular, tablet e linha). @return list<string> */
+    public static function clausulas(array $dados): array
+    {
+        $telefonia = (bool) ($dados['telefonia'] ?? false);
+
+        return array_values(array_map(fn ($c) => $c['texto'], array_filter(config('oee.inventario_ti.clausulas', []),
+            fn ($c) => $telefonia || empty($c['telefonia']))));
+    }
+
+    /** Dados do comodatário do último termo assinado por ele (para não digitar de novo). */
+    public function comodatarioAnterior(Usuario $u): array
+    {
+        $ultimo = TermoResponsabilidade::where('usuario_id', $u->id)->where('status', 'assinado')->orderByDesc('assinado_em')->orderByDesc('id')->first();
+
+        return ($ultimo?->conteudo['comodatario'] ?? []) + ['nacionalidade' => 'Brasileiro(a)', 'cargo' => (string) $u->cargo];
+    }
+
+    /** CPF com os dígitos verificadores certos (com ou sem pontuação). */
+    public static function cpfValido(string $cpf): bool
+    {
+        $n = preg_replace('/\D/', '', $cpf);
+        if (strlen($n) !== 11 || preg_match('/^(\d)\1{10}$/', $n)) {
+            return false;
+        }
+        for ($t = 9; $t < 11; $t++) {
+            $soma = 0;
+            for ($i = 0; $i < $t; $i++) {
+                $soma += (int) $n[$i] * ($t + 1 - $i);
+            }
+            if ((int) $n[$t] !== ((10 * $soma) % 11) % 10) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public static function formatarCpf(string $cpf): string
+    {
+        $n = preg_replace('/\D/', '', $cpf);
+
+        return substr($n, 0, 3).'.'.substr($n, 3, 3).'.'.substr($n, 6, 3).'-'.substr($n, 9, 2);
+    }
 
     private function enxergaUnidade(Usuario $u, string $unidade): bool
     {

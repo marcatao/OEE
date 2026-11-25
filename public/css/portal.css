@@ -1368,14 +1368,19 @@ a.kpi-link:hover { border-color:var(--primaria); }
 /* Termo de responsabilidade (tela e impressão) */
 .termo { max-width:52rem; margin:0 auto; }
 .termo h1 { text-align:center; }
-.termo-dados { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap:.5rem 1.5rem; margin:1rem 0; padding:1rem; border:1px solid var(--borda); border-radius:12px; background:var(--fundo); }
-.termo-dados dt { font-size:.8rem; color:var(--suave); margin:0; }
-.termo-dados dd { margin:0; font-weight:600; white-space:pre-line; }
 .termo-texto p { text-align:justify; }
-.termo-assinado { display:flex; flex-direction:column; align-items:center; gap:.3rem; margin:2rem auto 0; max-width:22rem; }
-.termo-assinado img { width:100%; height:auto; background:var(--assinatura-fundo); border-bottom:1px solid var(--texto); }
-.termo-assinado figcaption { text-align:center; font-size:.85rem; }
-.termo-assinado figcaption small { display:block; color:var(--suave); }
+.termo-objeto { font-weight:650; }
+.termo-data { margin-top:1.5rem; }
+.termo-lacuna { display:inline-block; min-width:7rem; border-bottom:1px solid var(--texto); color:var(--suave); font-size:.8rem; text-align:center; }
+.termo-assinaturas { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap:2rem; margin-top:2rem; }
+.termo-assinaturas > div { display:flex; flex-direction:column; align-items:center; text-align:center; gap:.2rem; font-size:.85rem; }
+.termo-assinaturas > div > small:first-child { align-self:flex-start; font-weight:650; }
+.termo-espaco { width:100%; height:5.5rem; display:flex; align-items:flex-end; justify-content:center; }
+.termo-espaco img { max-width:min(100%, 18rem); max-height:100%; background:var(--assinatura-fundo); }
+.termo-linha { width:100%; border-top:1px solid var(--texto); }
+@media (max-width: 40rem) { .termo-texto p { text-align:left; } }
+.termo-testemunhas-titulo { margin:2rem 0 0; font-weight:650; }
+.termo-assinar { margin-top:2rem; padding-top:1rem; border-top:1px solid var(--borda); }
 /* Quadro de assinatura com o dedo ou o mouse ([data-assinatura] em componentes.js) */
 .assinatura-quadro { display:flex; flex-direction:column; gap:.5rem; margin:1rem 0; }
 .assinatura-quadro canvas { width:100%; height:13rem; background:var(--assinatura-fundo); color:var(--assinatura-tinta); border:2px dashed var(--borda-forte); border-radius:12px; touch-action:none; cursor:crosshair; }
@@ -1386,5 +1391,4 @@ a.kpi-link:hover { border-color:var(--primaria); }
 .aviso-termos span { display:flex; flex-wrap:wrap; gap:.25rem 1rem; }
 @media print {
   .assinatura-quadro, .aviso-termos { display:none !important; }
-  .termo-dados { background:var(--branco); }
 }
