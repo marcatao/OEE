@@ -46,5 +46,14 @@
   @empty
     <p class="suave">Nenhum termo.</p>
   @endforelse
+
+  @if ($comoTestemunha->isNotEmpty())
+    <h2>Termos em que você é testemunha</h2>
+    @foreach ($comoTestemunha as $te)
+      <p><a href="{{ route('inventario-ti.termos.show', $te->termo_id) }}"><strong>{{ $te->termo?->numeroFormatado() }}</strong></a> — {{ $te->termo?->item?->descricao }} · {{ $te->termo?->usuario?->nome }}
+        @if ($te->assinou())<span class="etiqueta ti-termo-assinado">Assinado</span>
+        @else <a class="botao pequeno" href="{{ route('inventario-ti.termos.show', $te->termo_id) }}">Assinar como testemunha</a>@endif</p>
+    @endforeach
+  @endif
 </section>
 @endsection

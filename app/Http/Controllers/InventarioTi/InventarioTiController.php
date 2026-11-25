@@ -4,6 +4,7 @@ namespace App\Http\Controllers\InventarioTi;
 
 use App\Http\Controllers\Controller;
 use App\Models\InventarioTi\AtribuicaoLicenca;
+use App\Models\InventarioTi\AtributoItemTi;
 use App\Models\InventarioTi\ItemTi;
 use App\Models\InventarioTi\TipoItemTi;
 use App\Models\Manutencao\OrdemServico;
@@ -68,14 +69,14 @@ class InventarioTiController extends Controller
 
     public function show(Request $request, int $item): View
     {
-        $i = ItemTi::with(['tipo', 'responsavel', 'vinculado', 'chips', 'criadoPor', 'atualizadoPor'])->findOrFail($item);
+        $i = ItemTi::with(['tipo', 'responsavel', 'vinculado', 'chips', 'atributos', 'criadoPor', 'atualizadoPor'])->findOrFail($item);
         $u = $request->user();
 
         return view('inventario-ti.show', [
             'i' => $i,
             'podeEditar' => $i->podeEditar($u),
             'movimentacoes' => $i->movimentacoes()->with('usuario')->orderByDesc('criado_em')->orderByDesc('id')->limit(200)->get(),
-            'termos' => $i->termos()->with(['usuario', 'registradoPor'])->orderByDesc('criado_em')->orderByDesc('id')->get(),
+            'termos' => $i->termos()->with(['usuario', 'registradoPor', 'testemunhas'])->orderByDesc('criado_em')->orderByDesc('id')->get(),
             'atribuicoes' => $i->ehLicenca() ? $i->atribuicoes()->with(['item', 'usuario'])->orderByRaw('CASE WHEN removida_em IS NULL THEN 0 ELSE 1 END')
                 ->orderByDesc('atribuida_em')->get() : collect(),
             'licencas' => $i->ehHardware() ? $i->licencasInstaladas()->ativas()->with('licenca')->get() : collect(),
@@ -203,6 +204,8 @@ class InventarioTiController extends Controller
                 $w->orWhere($c, 'like', "%{$busca}%");
             }
             $w->orWhereHas('responsavel', fn ($r) => $r->where('nome', 'like', "%{$busca}%"));
+            // Também nos atributos (ex.: digitar o IP).
+            $w->orWhereHas('atributos', fn ($a) => $a->where('valor', 'like', "%{$busca}%")->orWhere('nome', 'like', "%{$busca}%"));
         });
     }
 
@@ -246,7 +249,12 @@ class InventarioTiController extends Controller
             'vinculado_item_id' => ['nullable', 'integer', Rule::exists('ti_itens', 'id')],
             'observacao' => ['nullable', 'string', 'max:500'],
             'motivo_baixa' => ['nullable', 'string', 'max:255', 'required_if:situacao,baixado'],
+            'atributos' => ['nullable', 'array', 'max:100'],
+            'atributos.*.nome' => ['nullable', 'string', 'max:60', 'required_with:atributos.*.valor'],
+            'atributos.*.valor' => ['nullable', 'string', 'max:255'],
         ], [
+            'atributos.*.nome.required_with' => 'Informe o nome do atributo (ex.: IP).', 'atributos.*.nome.max' => 'Nome do atributo: até 60 letras.',
+            'atributos.*.valor.max' => 'Valor do atributo: até 255 letras.',
             'tipo_id.required' => 'Escolha o tipo do item.', 'descricao.required' => 'Informe a descrição.',
             'patrimonio.unique' => 'Já existe um item com esse patrimônio.', 'motivo_baixa.required_if' => 'Informe o motivo da baixa.',
             'data_compra.before_or_equal' => 'A data de compra não pode ser no futuro.',
@@ -259,6 +267,7 @@ class InventarioTiController extends Controller
             throw ValidationException::withMessages(['tipo_id' => 'O tipo tem de ser da mesma categoria do item ('.$i->rotuloCategoria().').']);
         }
         $dados['categoria'] = $tipo->categoria;
+        $dados['atributos'] = $dados['atributos'] ?? [];
         $cc = trim((string) ($dados['centro_custo'] ?? ''));
         if ($cc !== '' && ! AcessoOs::centroCustoExiste($cc)) {
             throw ValidationException::withMessages(['centro_custo' => 'Escolha um centro de custo da lista.']);
@@ -295,6 +304,8 @@ class InventarioTiController extends Controller
             'usuarios' => $this->usuarios($i->responsavel_id),
             'centros' => AcessoOs::centrosCusto(),
             'equipamentos' => $this->equipamentos()->reject(fn ($e) => (int) $e->id === (int) $i->id),
+            // Nomes de atributo já usados (sugestões ao digitar, para todos escreverem "IP" do mesmo jeito).
+            'nomesAtributos' => AtributoItemTi::query()->select('nome')->distinct()->orderBy('nome')->limit(200)->pluck('nome'),
             'locais' => ItemTi::query()->whereNotNull('local')->select('local')->distinct()->orderBy('local')->limit(300)->pluck('local'),
         ];
     }

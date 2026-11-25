@@ -68,6 +68,25 @@ class ItemTi extends Model
         return $this->hasMany(self::class, 'vinculado_item_id')->withoutGlobalScopes();
     }
 
+    public function atributos(): HasMany
+    {
+        return $this->hasMany(AtributoItemTi::class, 'item_id')->orderBy('ordem')->orderBy('id');
+    }
+
+    /** Grava exatamente estes atributos (reaproveita as linhas, como os Equipamentos da manutenção; linhas sem nome são ignoradas). */
+    public function gravarAtributos(array $lista): void
+    {
+        $linhas = collect($lista)->map(fn ($a) => ['nome' => trim((string) ($a['nome'] ?? '')), 'valor' => trim((string) ($a['valor'] ?? ''))])
+            ->filter(fn ($a) => $a['nome'] !== '')->values();
+        $atuais = $this->atributos()->get()->values();
+        foreach ($linhas as $i => $a) {
+            $registro = $atuais[$i] ?? new AtributoItemTi(['item_id' => $this->id]);
+            $registro->fill(['nome' => mb_substr($a['nome'], 0, 60), 'valor' => $a['valor'] !== '' ? mb_substr($a['valor'], 0, 255) : null, 'ordem' => $i])->save();
+        }
+        $atuais->slice($linhas->count())->each->delete(); // linhas removidas na tela
+        $this->unsetRelation('atributos');
+    }
+
     public function movimentacoes(): HasMany
     {
         return $this->hasMany(MovimentacaoItemTi::class, 'item_id');

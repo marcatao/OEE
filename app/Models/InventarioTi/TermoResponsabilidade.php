@@ -6,6 +6,7 @@ use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Termo de responsabilidade de um item do inventário de TI. Nasce PENDENTE quando o item é entregue a um responsável;
@@ -55,6 +56,18 @@ class TermoResponsabilidade extends Model
     public function registradoPor(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'registrado_por_id');
+    }
+
+    /** As testemunhas (ordem 1 e 2). */
+    public function testemunhas(): HasMany
+    {
+        return $this->hasMany(TestemunhaTermo::class, 'termo_id')->orderBy('ordem');
+    }
+
+    /** Comodatário e as duas testemunhas assinaram. */
+    public function completo(): bool
+    {
+        return $this->status === 'assinado' && $this->testemunhas->filter->assinou()->count() >= 2;
     }
 
     public function numeroFormatado(): string

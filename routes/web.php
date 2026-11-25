@@ -262,6 +262,8 @@ Route::middleware('auth')->group(function () {
             Route::get('tipos', [InventarioTiController::class, 'tipos'])->name('tipos');
             Route::post('tipos', [InventarioTiController::class, 'salvarTipo'])->name('tipos.store');
             Route::put('tipos/{tipo}', [InventarioTiController::class, 'salvarTipo'])->whereNumber('tipo')->name('tipos.update');
+            // Testemunhas do contrato de comodato (o controlador confere se é o administrador da unidade do item).
+            Route::post('termos/{termo}/testemunhas', [TermoResponsabilidadeController::class, 'definirTestemunhas'])->whereNumber('termo')->name('termos.testemunhas');
         });
         Route::get('{item}', [InventarioTiController::class, 'show'])->whereNumber('item')->name('show');
     });
@@ -269,6 +271,8 @@ Route::middleware('auth')->group(function () {
     Route::get('tecnologia/termos/{termo}', [TermoResponsabilidadeController::class, 'show'])->whereNumber('termo')->name('inventario-ti.termos.show');
     Route::post('tecnologia/termos/{termo}/assinar', [TermoResponsabilidadeController::class, 'assinar'])->whereNumber('termo')
         ->middleware('throttle:30,1')->name('inventario-ti.termos.assinar');
+    Route::post('tecnologia/termos/{termo}/testemunhas/{ordem}/assinar', [TermoResponsabilidadeController::class, 'assinarTestemunha'])
+        ->whereNumber(['termo', 'ordem'])->middleware('throttle:30,1')->name('inventario-ti.termos.testemunha.assinar');
 
     // Administração > Logins (só administradores; as URLs antigas "cadastros/logins" foram mantidas)
     // Segurança (só Administrador de Tecnologia): usuários, grupos, histórico de acessos e banco de dados.

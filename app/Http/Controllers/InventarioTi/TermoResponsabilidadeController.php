@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\InventarioTi\AtribuicaoLicenca;
 use App\Models\InventarioTi\ItemTi;
 use App\Models\InventarioTi\TermoResponsabilidade;
+use App\Models\InventarioTi\TestemunhaTermo;
+use App\Models\Usuario;
 use App\Services\InventarioTi\TermosResponsabilidade;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -31,6 +34,9 @@ class TermoResponsabilidadeController extends Controller
             'licencas' => AtribuicaoLicenca::ativas()->where('usuario_id', $u->id)->with('licenca')->get(),
             'termos' => TermoResponsabilidade::where('usuario_id', $u->id)->where('status', '<>', 'cancelado')->with('item')
                 ->orderByRaw("CASE WHEN status = 'pendente' THEN 0 ELSE 1 END")->orderByDesc('criado_em')->orderByDesc('id')->get(),
+            // Termos em que ele é testemunha.
+            'comoTestemunha' => TestemunhaTermo::where('usuario_id', $u->id)->whereHas('termo', fn ($q) => $q->where('status', '<>', 'cancelado'))
+                ->with('termo.item', 'termo.usuario')->orderByRaw('CASE WHEN assinado_em IS NULL THEN 0 ELSE 1 END')->orderByDesc('id')->limit(100)->get(),
         ]);
     }
 
@@ -44,6 +50,10 @@ class TermoResponsabilidadeController extends Controller
             // Qualificação do comodatário já informada num termo anterior dele (só para preencher o formulário).
             'comodatario' => $t->status === 'pendente' && $t->usuario ? $this->termos->comodatarioAnterior($t->usuario) : [],
             'imprimir' => $request->boolean('imprimir'),
+            'podeDefinirTestemunhas' => $t->status !== 'cancelado' && (bool) $t->item?->podeEditar($request->user()),
+            'usuarios' => $t->status !== 'cancelado' && $t->item?->podeEditar($request->user())
+                ? Usuario::where('ativo', true)->where('id', '<>', $t->usuario_id)->orderBy('nome')->get(['id', 'nome', 'email']) : collect(),
+            'rgTestemunha' => $this->termos->rgAnteriorTestemunha($request->user()),
         ]);
     }
 
@@ -70,9 +80,31 @@ class TermoResponsabilidadeController extends Controller
         return redirect()->route('inventario-ti.termos.show', $t)->with('ok', "Termo {$t->numeroFormatado()} assinado. Obrigado!");
     }
 
+    /** Administrador da unidade do item define as duas testemunhas (usuários do portal). */
+    public function definirTestemunhas(Request $request, int $termo): RedirectResponse
+    {
+        $t = $this->buscar($request, $termo);
+        $dados = $request->validate(['testemunha_1' => ['nullable', 'integer', Rule::exists('usuarios', 'id')],
+            'testemunha_2' => ['nullable', 'integer', Rule::exists('usuarios', 'id')]]);
+        $this->termos->definirTestemunhas($t, [1 => $dados['testemunha_1'] ?? null, 2 => $dados['testemunha_2'] ?? null], $request->user());
+
+        return redirect()->route('inventario-ti.termos.show', $t)->with('ok', 'Testemunhas salvas. Cada uma vê o aviso para assinar no portal.');
+    }
+
+    public function assinarTestemunha(Request $request, int $termo, int $ordem): RedirectResponse
+    {
+        $t = $this->buscar($request, $termo);
+        $dados = $request->validate(['assinatura_testemunha' => ['required', 'string', 'max:900000'], 'rg' => ['required', 'string', 'max:30'],
+            'nome' => ['nullable', 'string', 'max:120']], ['assinatura_testemunha.required' => 'Assine no quadro antes de confirmar.',
+                'rg.required' => 'Informe o RG da testemunha.']);
+        $te = $this->termos->assinarTestemunha($t, $ordem, $request->user(), $dados['assinatura_testemunha'], $dados['nome'] ?? null, $dados['rg'], $request->ip());
+
+        return redirect()->route('inventario-ti.termos.show', $t)->with('ok', "Assinatura da testemunha {$te->nome} registrada.");
+    }
+
     private function buscar(Request $request, int $id): TermoResponsabilidade
     {
-        $t = TermoResponsabilidade::with(['item.tipo', 'usuario', 'geradoPor', 'registradoPor'])->findOrFail($id);
+        $t = TermoResponsabilidade::with(['item.tipo', 'usuario', 'geradoPor', 'registradoPor', 'testemunhas.usuario', 'testemunhas.registradoPor'])->findOrFail($id);
         abort_unless($this->termos->podeVer($t, $request->user()), 404);
 
         return $t;

@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **69** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **71** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -920,6 +920,15 @@ erDiagram
         bigint ferramenta_id FK
         bigint item_ti_id FK
     }
+    ti_item_atributos {
+        bigint id PK
+        bigint item_id FK
+        nvarchar(60) nome
+        nvarchar(255) valor
+        int ordem
+        datetime criado_em
+        datetime atualizado_em
+    }
     ti_itens {
         bigint id PK
         nvarchar(20) unidade
@@ -977,6 +986,21 @@ erDiagram
         nvarchar(255) valor_novo
         nvarchar(500) observacao
         bigint usuario_id FK
+        datetime criado_em
+    }
+    ti_termo_testemunhas {
+        bigint id PK
+        bigint termo_id FK
+        tinyint ordem
+        bigint usuario_id FK
+        nvarchar(120) nome
+        nvarchar(30) rg
+        nvarchar(max) imagem_png
+        datetime assinado_em
+        bigint registrado_por_id FK
+        bit presencial
+        nvarchar(45) assinado_ip
+        bigint definido_por_id FK
         datetime criado_em
     }
     ti_termos {
@@ -1170,6 +1194,7 @@ erDiagram
     ordens_producao |o--o{ solicitacoes_servico : "ordem_producao_id"
     ferramentas |o--o{ solicitacoes_servico : "ferramenta_id"
     ti_itens |o--o{ solicitacoes_servico : "item_ti_id"
+    ti_itens ||--o{ ti_item_atributos : "item_id"
     ti_tipos ||--o{ ti_itens : "tipo_id"
     usuarios |o--o{ ti_itens : "responsavel_id"
     ti_itens |o--o{ ti_itens : "vinculado_item_id"
@@ -1180,6 +1205,10 @@ erDiagram
     usuarios |o--o{ ti_licenca_atribuicoes : "removida_por_id"
     ti_itens ||--o{ ti_movimentacoes : "item_id"
     usuarios |o--o{ ti_movimentacoes : "usuario_id"
+    ti_termos ||--o{ ti_termo_testemunhas : "termo_id"
+    usuarios ||--o{ ti_termo_testemunhas : "usuario_id"
+    usuarios |o--o{ ti_termo_testemunhas : "registrado_por_id"
+    usuarios |o--o{ ti_termo_testemunhas : "definido_por_id"
     ti_itens ||--o{ ti_termos : "item_id"
     usuarios ||--o{ ti_termos : "usuario_id"
     usuarios |o--o{ ti_termos : "gerado_por_id"
@@ -1308,9 +1337,11 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`solicitacoes_material`](#solicitacoes_material) | Sistema | `id` | 9 | 3 |
 | [`solicitacoes_material_itens`](#solicitacoes_material_itens) | Sistema | `id` | 18 | 4 |
 | [`solicitacoes_servico`](#solicitacoes_servico) | Sistema | `id` | 27 | 10 |
+| [`ti_item_atributos`](#ti_item_atributos) | Sistema | `id` | 7 | 1 |
 | [`ti_itens`](#ti_itens) | Sistema | `id` | 36 | 5 |
 | [`ti_licenca_atribuicoes`](#ti_licenca_atribuicoes) | Sistema | `id` | 9 | 5 |
 | [`ti_movimentacoes`](#ti_movimentacoes) | Sistema | `id` | 8 | 2 |
+| [`ti_termo_testemunhas`](#ti_termo_testemunhas) | Sistema | `id` | 13 | 4 |
 | [`ti_termos`](#ti_termos) | Sistema | `id` | 16 | 4 |
 | [`ti_tipos`](#ti_tipos) | Sistema | `id` | 9 | 2 |
 | [`tokens_aplicativo`](#tokens_aplicativo) | Sistema | `id` | 8 | 1 |
@@ -2783,6 +2814,22 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Regras (CHECK, só no SQL Server):** `ck_solicitacoes_servico_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria')` · `ck_solicitacoes_servico_tipo`: `tipo IN ('corretiva', 'preventiva', 'servico_geral')` · `ck_solicitacoes_servico_prioridade`: `prioridade IN ('baixa', 'media', 'alta', 'urgente')` · `ck_solicitacoes_servico_status`: `status IN ('pendente', 'aprovada', 'rejeitada', 'cancelada')`
 
+### ti_item_atributos
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `item_id` | `bigint` | não |  | FK → `ti_itens.id` |
+| `nome` | `nvarchar(60)` | não |  |  |
+| `valor` | `nvarchar(255)` | sim |  |  |
+| `ordem` | `int` | não | `'0'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `atualizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `ti_item_atributos_item_id_ordem_index` (item_id, ordem) · `ti_item_atributos_nome_index` (nome)
+
 ### ti_itens
 
 **Origem:** Sistema OEE · **Chave primária:** `id`
@@ -2862,6 +2909,28 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_em` | `datetime` | sim |  |  |
 
 **Índices:** `ti_movimentacoes_item_id_criado_em_index` (item_id, criado_em)
+
+### ti_termo_testemunhas
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `termo_id` | `bigint` | não |  | FK → `ti_termos.id` |
+| `ordem` | `tinyint` | não |  |  |
+| `usuario_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `nome` | `nvarchar(120)` | sim |  |  |
+| `rg` | `nvarchar(30)` | sim |  |  |
+| `imagem_png` | `nvarchar(max)` | sim |  |  |
+| `assinado_em` | `datetime` | sim |  |  |
+| `registrado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `presencial` | `bit` | não | `'0'` |  |
+| `assinado_ip` | `nvarchar(45)` | sim |  |  |
+| `definido_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `criado_em` | `datetime` | sim |  |  |
+
+**Índices:** `ti_termo_testemunhas_termo_id_ordem_unique` único (termo_id, ordem) · `ti_termo_testemunhas_usuario_id_assinado_em_index` (usuario_id, assinado_em)
 
 ### ti_termos
 

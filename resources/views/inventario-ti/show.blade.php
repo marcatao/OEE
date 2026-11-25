@@ -51,6 +51,12 @@
       <div><dt>Vencimento</dt><dd>@if ($i->vencimento)<span @class(['ti-vencido' => $i->vencimento->lt(today())])>{{ $i->vencimento->format('d/m/Y') }}</span>@else — @endif</dd></div>
     @endif
   </dl>
+  @if ($i->atributos->isNotEmpty())
+    <h2>Atributos</h2>
+    <dl class="dados-curtos">
+      @foreach ($i->atributos as $a)<div><dt>{{ $a->nome }}</dt><dd>{{ $a->valor ?? '—' }}</dd></div>@endforeach
+    </dl>
+  @endif
   @if ($i->especificacao)<h2>Especificação</h2><p class="ti-especificacao">{{ $i->especificacao }}</p>@endif
   @if ($i->observacao)<p class="suave">{{ $i->observacao }}</p>@endif
   <p class="suave"><small>Cadastrado por {{ $i->criadoPor?->nome ?? '—' }} em @dataHora($i->criado_em)@if ($i->atualizadoPor) · alterado por {{ $i->atualizadoPor->nome }} em @dataHora($i->atualizado_em)@endif</small></p>
@@ -70,7 +76,8 @@
       </div>
       @forelse ($termos as $t)
         <p><a href="{{ route('inventario-ti.termos.show', $t) }}"><strong>{{ $t->numeroFormatado() }}</strong></a> · {{ $t->usuario?->nome }}
-          <span class="etiqueta ti-termo-{{ $t->status }}">{{ $t->rotuloStatus() }}</span><br>
+          <span class="etiqueta ti-termo-{{ $t->status }}">{{ $t->rotuloStatus() }}</span>
+          @if ($t->status !== 'cancelado')<small class="suave">· testemunhas {{ $t->testemunhas->filter->assinou()->count() }}/2</small>@endif<br>
           <small class="suave">Gerado em @dataHora($t->criado_em)@if ($t->assinado_em) · assinado em @dataHora($t->assinado_em){{ $t->presencial ? ' (presencial, com '.$t->registradoPor?->nome.')' : '' }}@endif
             @if ($t->cancelado_em) · cancelado em @dataHora($t->cancelado_em) — {{ $t->motivo_cancelamento }}@endif</small></p>
       @empty

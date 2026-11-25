@@ -315,8 +315,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   responsável, local, centro de custo, situação, aparelho, licença, termo). **Termo de responsabilidade** (`ti_termos`,
   `App\Services\InventarioTi\TermosResponsabilidade`): trocar o responsável de equipamento/linha cancela o pendente e
   gera outro (dados do item congelados em `conteudo`); o termo é o CONTRATO PARTICULAR DE COMODATO da empresa (modelo do
-  usuário, texto em `config('oee.inventario_ti')`: comodante, cláusulas — as de `telefonia` só para celular/tablet/linha —,
-  testemunhas no `.env` `INVENTARIO_TI_TESTEMUNHAS`; objeto por `TermosResponsabilidade::descricaoComodato`); ao assinar
+  usuário, texto em `App\Support\ContratoComodato` — NÃO no config, para não depender do `config:cache` do servidor: comodante,
+  cláusulas — as de `telefonia` só para celular/tablet/linha —; objeto por `TermosResponsabilidade::descricaoComodato`).
+  Duas TESTEMUNHAS por termo (`ti_termo_testemunhas`, usuários do portal; o administrador da unidade escolhe na tela do
+  termo, o termo novo herda as do último; testemunha que assinou não troca; o comodatário não é testemunha) assinam no
+  portal com RG (ou presencial), com aviso no topo e em "Meus equipamentos"; `completo()` = comodatário + 2. Atributos
+  livres do item (nome + valor, `ti_item_atributos`, `ItemTi::gravarAtributos`, busca da lista procura neles). Ao assinar
   o comodatário informa cargo, nacionalidade, RG, CPF (dígitos conferidos) e endereço (`conteudo.comodatario`, só no
   termo; o próximo termo dele já vem preenchido); o responsável assina no
   portal (celular ou computador, quadro `[data-assinatura]` de `componentes.js`; PNG conferido por `App\Support\AssinaturaPng`,

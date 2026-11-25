@@ -29,6 +29,8 @@ class MovimentacaoInventario
         return DB::transaction(function () use ($item, $dados, $por, $observacao) {
             $novo = ! $item->exists;
             $antes = $novo ? [] : $item->only(array_keys(self::ACOMPANHADOS));
+            $atributos = array_key_exists('atributos', $dados) ? (array) ($dados['atributos'] ?? []) : null;
+            unset($dados['atributos']);
             $item->fill($dados);
 
             if ($item->situacao === 'baixado') {
@@ -46,6 +48,9 @@ class MovimentacaoInventario
                 $item->responsavel_desde = $item->responsavel_id ? now() : null;
             }
             $item->save();
+            if ($atributos !== null) {
+                $item->gravarAtributos($atributos);
+            }
 
             if ($novo) {
                 $this->registrar($item, 'cadastro', null, $item->rotuloSituacao(), $observacao, $por);

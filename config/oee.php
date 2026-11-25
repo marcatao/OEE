@@ -212,41 +212,6 @@ return [
         'ferramentaria' => 'mantenedor_ferramentaria',
     ],
 
-    // Inventário de TI: termo de responsabilidade no modelo do CONTRATO PARTICULAR DE COMODATO da empresa (modelo do
-    // usuário em 25/11/2026). Os dados do item ficam congelados no termo; os do comodatário (nacionalidade, RG, CPF,
-    // endereço, cargo) são preenchidos por ele ao assinar. "telefonia" = cláusula só para celular/tablet/linha
-    // (tipos em "tipos_telefonia" e a categoria linha). Testemunhas: no .env (sem dados pessoais no repositório),
-    // INVENTARIO_TI_TESTEMUNHAS="Nome|RG nº 00.000.000-0 SSP/SP;Nome|RG ..." (até duas; vazio = linhas em branco).
-    'inventario_ti' => [
-        'termo_titulo' => 'Contrato particular de comodato',
-        'cidade' => 'São Bernardo do Campo',
-        'comodante' => [
-            'razao_social' => 'ALUMBRA PRODUTOS ELÉTRICOS E ELETRÔNICOS LTDA.',
-            'nome_curto' => 'ALUMBRA PROD. ELÉT. E ELETR. LTDA.',
-            'qualificacao' => 'pessoa jurídica de direito privado, sediada na Rua Guimarães Rosa nº 450, Jardim Continental, São Bernardo do Campo – SP, inscrita no CNPJ/MF sob o nº 59.114.777/0001-20',
-        ],
-        'tipos_telefonia' => ['Celular', 'Tablet'],
-        'clausulas' => [
-            ['telefonia' => true, 'texto' => 'O COMODATÁRIO deve mantê-lo em funcionamento (ativo) a serviço da empresa, bem como fazer e receber ligações com qualquer Claro do grupo Alumbra durante o horário estabelecido em seu Contrato Individual de Trabalho.'],
-            ['texto' => 'O uso do equipamento é para fins profissionais e está restrito ao horário de seu Contrato Individual de Trabalho.'],
-            ['texto' => 'O COMODATO é por prazo indeterminado, cessando, de pleno direito, quando não mais for de interesse de qualquer das partes.'],
-            ['texto' => 'O COMODATÁRIO se obriga a devolvê-lo(a) em condições de perfeito funcionamento, devendo cuidá-lo como se dono fosse.'],
-            ['texto' => 'Ao COMODATÁRIO cabe conservá-lo, cuidando do aparelho, de sua manutenção, limpeza e outras que se fizerem necessárias.'],
-            ['texto' => 'É vedado seu empréstimo a terceiros.'],
-            ['texto' => 'Para efeito deste contrato o referido(a) tem o preço de mercado.'],
-            ['texto' => 'O COMODATÁRIO deve comunicar imediatamente o COMODANTE a ocorrência de perda, dano, furto ou roubo do equipamento, e se for o caso de perda, furto ou roubo, providenciar a feitura do B.O.'],
-            ['texto' => 'Se o COMODATÁRIO o utilizar para fins particulares pagará pelo uso dele.'],
-            ['telefonia' => true, 'texto' => 'O COMODATÁRIO fica extremamente proibido de remover o chip e/ou trocar a carcaça do aparelho, tendo em vista penalidades aplicadas pela operadora.'],
-            ['texto' => 'A Política de Segurança da Informação da empresa encontra-se disponível na intranet da empresa, a qual deverá ser lida e cumprida, no que for aplicável.'],
-        ],
-        'fechamento' => 'Para firmeza e prova de assim haverem contratado, firmam o presente instrumento em duas vias de igual teor, na presença de testemunhas que tudo assistiram e que de tudo conhecimento tiveram.',
-        'testemunhas' => array_values(array_filter(array_map(function ($t) {
-            [$nome, $rg] = array_pad(array_map('trim', explode('|', $t, 2)), 2, '');
-
-            return $nome !== '' ? ['nome' => $nome, 'rg' => $rg] : null;
-        }, explode(';', (string) env('INVENTARIO_TI_TESTEMUNHAS', ''))))),
-    ],
-
     // Hora em que o "dia de produção" começa na Timeline (o dia vai desta hora até a mesma hora do dia seguinte).
     'timeline_inicio_dia' => env('TIMELINE_INICIO_DIA', '06:00'),
 

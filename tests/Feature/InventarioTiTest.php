@@ -232,4 +232,63 @@ class InventarioTiTest extends TestCase
         $this->assertFalse($t->fresh()->ativo);
         $this->get('/tecnologia/inventario/novo')->assertOk()->assertDontSee('>Leitor<', false);
     }
+
+    public function test_atributos_do_item(): void
+    {
+        $item = $this->cadastrar(['atributos' => [['nome' => 'IP', 'valor' => '10.0.5.20'], ['nome' => 'Memória', 'valor' => '16 GB'], ['nome' => '', 'valor' => '']]]);
+        $this->assertSame(['IP' => '10.0.5.20', 'Memória' => '16 GB'], $item->atributos()->pluck('valor', 'nome')->all());
+        $this->get("/tecnologia/inventario/{$item->id}")->assertOk()->assertSee('Memória')->assertSee('16 GB');
+        $this->get('/tecnologia/inventario?busca=10.0.5')->assertOk()->assertSee('<strong>TI-0001</strong>', false);
+        $this->get("/tecnologia/inventario/{$item->id}/editar")->assertOk()->assertSee('value="10.0.5.20"', false)->assertSee('<option value="IP">', false);
+        $this->post('/tecnologia/inventario', ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'descricao' => 'X', 'situacao' => 'estoque',
+            'atributos' => [['nome' => '', 'valor' => 'sem nome']]])->assertSessionHasErrors('atributos.0.nome');
+
+        // Editar: remove um e troca o valor do outro.
+        $this->put("/tecnologia/inventario/{$item->id}", ['unidade' => 'tecnologia', 'tipo_id' => $this->notebook->id, 'patrimonio' => 'TI-0001',
+            'descricao' => $item->descricao, 'situacao' => 'em_uso', 'responsavel_id' => $this->ana->id,
+            'atributos' => [['nome' => 'IP', 'valor' => '10.0.5.21']]])->assertSessionHasNoErrors();
+        $this->assertSame(['IP' => '10.0.5.21'], $item->atributos()->pluck('valor', 'nome')->all());
+    }
+
+    public function test_duas_testemunhas_assinam_o_termo(): void
+    {
+        $item = $this->cadastrar();
+        $termo = TermoResponsabilidade::where('item_id', $item->id)->firstOrFail();
+        $carla = $this->usuario([], 'carla@empresa.com');
+        $davi = $this->usuario(['operador'], 'davi@empresa.com');
+        $url = "/tecnologia/inventario/termos/{$termo->id}/testemunhas";
+
+        $this->actingAs($this->admin)->get("/tecnologia/termos/{$termo->id}")->assertOk()->assertSee('Testemunha 1 não definida')->assertSee('Salvar testemunhas');
+        $this->post($url, ['testemunha_1' => $this->ana->id, 'testemunha_2' => $carla->id])->assertSessionHasErrors('testemunhas'); // comodatária
+        $this->post($url, ['testemunha_1' => $carla->id, 'testemunha_2' => $carla->id])->assertSessionHasErrors('testemunhas');
+        $this->post($url, ['testemunha_1' => $carla->id, 'testemunha_2' => $davi->id])->assertSessionHasNoErrors();
+        // Quem não administra a unidade não define testemunhas.
+        $this->actingAs($this->usuario(['mantenedor_tecnologia'], 'mt@empresa.com'))->post($url, ['testemunha_1' => $davi->id])->assertForbidden();
+
+        // A Carla (sem perfil) vê o aviso e assina como testemunha 1 no portal; o Davi não assina no lugar dela.
+        $this->actingAs($carla)->get('/tecnologia/meus-equipamentos')->assertOk()->assertSee('Assinar como testemunha');
+        $this->get("/tecnologia/termos/{$termo->id}")->assertOk()->assertSee('Assinar como testemunha 1');
+        $this->post("/tecnologia/termos/{$termo->id}/testemunhas/1/assinar", ['assinatura_testemunha' => $this->png()])->assertSessionHasErrors('rg');
+        $this->post("/tecnologia/termos/{$termo->id}/testemunhas/1/assinar", ['assinatura_testemunha' => $this->png(), 'rg' => '33.081.668-8 SSP/SP'])
+            ->assertSessionHasNoErrors();
+        $this->actingAs($davi)->post("/tecnologia/termos/{$termo->id}/testemunhas/1/assinar", ['assinatura_testemunha' => $this->png(), 'rg' => '1'])->assertForbidden();
+        $this->actingAs($this->usuario([], 'estranho@empresa.com'))->get("/tecnologia/termos/{$termo->id}")->assertNotFound();
+
+        // O administrador colhe a do Davi na hora; testemunha que assinou não é trocada.
+        $this->actingAs($this->admin)->post("/tecnologia/termos/{$termo->id}/testemunhas/2/assinar", ['assinatura_testemunha' => $this->png(), 'rg' => '9'])
+            ->assertSessionHasNoErrors();
+        $this->post($url, ['testemunha_1' => $this->admin->id, 'testemunha_2' => $davi->id])->assertSessionHasErrors('testemunhas');
+        $ts = $termo->testemunhas()->get();
+        $this->assertSame([false, true], $ts->pluck('presencial')->all());
+        $this->assertSame('33.081.668-8 SSP/SP', $ts[0]->rg);
+        $this->get("/tecnologia/termos/{$termo->id}")->assertOk()->assertSee('NOME: CARLA')->assertSee('RG nº 33.081.668-8 SSP/SP');
+
+        // Comodatária assina: termo completo. O próximo termo já nasce com as mesmas testemunhas.
+        $this->actingAs($this->ana)->post("/tecnologia/termos/{$termo->id}/assinar", ['assinatura' => $this->png(), 'aceite' => '1'] + $this->qualificacao());
+        $this->assertTrue($termo->fresh()->completo());
+        $this->actingAs($this->admin)->post("/tecnologia/inventario/{$item->id}/termo")->assertRedirect();
+        $novo = TermoResponsabilidade::where('item_id', $item->id)->pendentes()->firstOrFail();
+        $this->assertSame([$carla->id, $davi->id], $novo->testemunhas()->pluck('usuario_id')->map(fn ($id) => (int) $id)->all());
+        $this->actingAs($carla)->get("/tecnologia/termos/{$novo->id}")->assertOk()->assertSee('value="33.081.668-8 SSP/SP"', false);
+    }
 }

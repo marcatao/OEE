@@ -67,6 +67,35 @@
       </div>
     </fieldset>
 
+    {{-- Atributos livres: quantos quiser, cada um com nome e valor (ex.: IP = 10.0.5.20). --}}
+    @php($atributos = collect(old('atributos', $i->exists ? $i->atributos->map(fn ($a) => ['nome' => $a->nome, 'valor' => $a->valor])->all() : []))->values())
+    <fieldset class="cartao" data-atributos>
+      <legend>Atributos</legend>
+      <p class="suave">Informações extras do item, com nome e valor. Ex.: <strong>IP</strong> = 10.0.5.20, <strong>Memória</strong> = 16 GB,
+        <strong>Office</strong> = 2021, <strong>IMEI</strong> = 3544… Cadastre quantos precisar; a busca da lista também procura nos atributos.</p>
+      <table class="tabela tabela-form">
+        <thead><tr><th>Atributo</th><th>Valor</th><th></th></tr></thead>
+        <tbody data-atributos-linhas>
+          @foreach ($atributos as $n => $a)
+            <tr>
+              <td><input name="atributos[{{ $n }}][nome]" maxlength="60" list="nomes-atributos" value="{{ $a['nome'] ?? '' }}" aria-label="Atributo" placeholder="Ex.: IP"></td>
+              <td><input name="atributos[{{ $n }}][valor]" maxlength="255" value="{{ $a['valor'] ?? '' }}" aria-label="Valor" placeholder="Ex.: 10.0.5.20"></td>
+              <td><button type="button" class="botao secundario pequeno" data-remover-atributo>Remover</button></td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+      <template data-modelo-atributo>
+        <tr>
+          <td><input name="atributos[__N__][nome]" maxlength="60" list="nomes-atributos" aria-label="Atributo" placeholder="Ex.: IP"></td>
+          <td><input name="atributos[__N__][valor]" maxlength="255" aria-label="Valor" placeholder="Ex.: 10.0.5.20"></td>
+          <td><button type="button" class="botao secundario pequeno" data-remover-atributo>Remover</button></td>
+        </tr>
+      </template>
+      <datalist id="nomes-atributos">@foreach ($nomesAtributos as $nomeAtributo)<option value="{{ $nomeAtributo }}">@endforeach</datalist>
+      <button type="button" class="botao secundario pequeno" data-adicionar-atributo>@include('layouts.partials.icone', ['nome' => 'mais']) Adicionar atributo</button>
+    </fieldset>
+
     <fieldset class="cartao">
       <legend>Com quem e onde está</legend>
       <div class="campos">
@@ -130,6 +159,18 @@
     }
     tipo.addEventListener('change', aplicar); situacao.addEventListener('change', aplicarSituacao);
     aplicar(); aplicarSituacao();
+
+    // Atributos: acrescentar e remover linhas.
+    var caixa = document.querySelector('[data-atributos]'), linhas = caixa.querySelector('[data-atributos-linhas]');
+    var proximo = {{ $atributos->count() }};
+    caixa.querySelector('[data-adicionar-atributo]').addEventListener('click', function () {
+      linhas.insertAdjacentHTML('beforeend', caixa.querySelector('[data-modelo-atributo]').innerHTML.replaceAll('__N__', String(proximo++)));
+      linhas.lastElementChild.querySelector('input').focus();
+    });
+    linhas.addEventListener('click', function (e) {
+      var botao = e.target.closest('[data-remover-atributo]');
+      if (botao) botao.closest('tr').remove();
+    });
   })();
 </script>
 @endsection
