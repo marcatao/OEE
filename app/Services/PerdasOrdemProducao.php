@@ -7,6 +7,7 @@ use App\Models\OrdemProducao;
 use App\Models\PerdaOp;
 use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
+use App\Support\JornadaSemanal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,8 @@ use Illuminate\Validation\ValidationException;
  * - PU (peso unitário, kg por peça) = B1_PESO do produto da OP na SB1 (produtos_protheus.b1_peso).
  * - Calculadora: informada a QUANTIDADE, peso = quantidade × PU; informado só o PESO, quantidade = peso ÷ PU (sem PU,
  *   só pela quantidade). O PU usado fica gravado na perda (mudar a SB1 depois não muda o que já foi apontado).
+ * - Turno (25/11/2026): no portal é escolhido (1, 2 ou 3, obrigatório); no app é o turno da máquina no horário do
+ *   lançamento (TurnoDaMaquina::turnoEm; fora de turno = null).
  * - Máquina obrigatória: a qualidade do OEE (PanoramaMaquinas) desconta a perda da máquina e do dia.
  * - Total: ordens_producao.quantidade_perda = soma das perdas NÃO excluídas (campo só do portal; C2_PERDA não muda).
  * - Excluir não apaga: grava quem e quando; a lista mostra "Excluído por Fulano" e o total desconta.
@@ -64,16 +67,25 @@ class PerdasOrdemProducao
         if (empty($dados['maquina_id']) || ! Maquina::withoutGlobalScopes()->whereKey((int) $dados['maquina_id'])->exists()) {
             throw ValidationException::withMessages(['maquina_id' => 'Escolha a máquina em que a perda aconteceu.']);
         }
+        if ($origem === 'aplicativo') {
+            $turno = app(TurnoDaMaquina::class)->turnoEm(Maquina::withoutGlobalScopes()->find((int) $dados['maquina_id']), CarbonImmutable::now());
+        } else {
+            $turno = (int) ($dados['turno'] ?? 0);
+            if ($turno < 1 || $turno > JornadaSemanal::MAX_TURNOS) {
+                throw ValidationException::withMessages(['turno' => 'Escolha o turno da perda (1, 2 ou 3).']);
+            }
+        }
         $fuso = HorarioApontamento::fuso();
         $dia = isset($dados['dia']) && $dados['dia'] !== '' ? CarbonImmutable::parse($dados['dia'], $fuso)->startOfDay() : CarbonImmutable::now($fuso)->startOfDay();
         if ($dia->greaterThan(CarbonImmutable::now($fuso)->startOfDay())) {
             throw ValidationException::withMessages(['dia' => 'O dia da perda não pode ser no futuro.']);
         }
 
-        return DB::transaction(function () use ($op, $usuario, $dados, $origem, $pu, $quantidade, $peso, $dia) {
+        return DB::transaction(function () use ($op, $usuario, $dados, $origem, $pu, $quantidade, $peso, $dia, $turno) {
             $perda = new PerdaOp([
                 'ordem_producao_id' => $op->id,
                 'maquina_id' => (int) $dados['maquina_id'],
+                'turno' => $turno,
                 'dia' => $dia->format('Y-m-d'),
                 'quantidade' => $quantidade,
                 'peso' => $peso,

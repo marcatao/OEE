@@ -12,6 +12,7 @@ use App\Services\EngenhariaOrdemProducao;
 use App\Services\PecasProduzidas;
 use App\Services\PerdasOrdemProducao;
 use App\Services\TiposMovimento;
+use App\Services\TurnoDaMaquina;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -83,6 +84,9 @@ class OrdemProducaoController extends Controller
 
         return view('ordens-producao.show', ['op' => $ordem, 'tipos' => $tipos, 'apontamentos' => $tempos['quantidade'],
             'perdas' => $perdas, 'resumoPerdas' => $perdasOp->resumo($ordem, $perdas), 'maquinasPerda' => $maquinasPerda,
+            // turno sugerido: o de agora na máquina que está com esta OP (senão o 1)
+            'turnoSugerido' => ($m = $maquinasPerda->first(fn ($m) => (int) $m->ordem_producao_id === (int) $ordem->id))
+                ? (app(TurnoDaMaquina::class)->turnoEm(Maquina::withoutGlobalScopes()->find($m->id), CarbonImmutable::now()) ?? 1) : 1,
             'apontamentosReais' => $apontamentosReais, 'temposApontamentos' => $tempos, 'contagemIot' => $contagemIot]
             + $custo->kardex($ordem) + $engenharia->daOp($ordem));
     }

@@ -18,9 +18,11 @@ use App\Models\RoteiroOperacao;
 use App\Models\Usuario;
 use App\Services\Aplicativo\MaquinasAplicativo;
 use App\Services\CalculadoraOee;
+use App\Services\MetaPorHora;
 use App\Services\MetaProducao;
 use App\Services\PanoramaMaquinas;
 use App\Services\ProducaoPorHora;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -328,5 +330,20 @@ class MetaProducaoTest extends TestCase
         // Quem não é administrador só consulta.
         $operador = Usuario::create(['entra_oid' => 'op', 'nome' => 'Operador', 'email' => 'op@alumbra.com.br', 'perfil' => 'operador']);
         $this->actingAs($operador)->put(route('mao-de-obra.update', $mo), ['fator_servico' => 1])->assertForbidden();
+    }
+
+    public function test_intervalo_entre_turnos_nao_tem_meta(): void
+    {
+        // Turno 1 08:00–09:00 e turno 2 10:00–11:00: a hora das 09 (intervalo) fica sem meta; as outras têm 49,02 × 60.
+        $fuso = config('oee.fuso_exibicao');
+        Carbon::setTestNow(Carbon::parse('2026-11-17 12:00', $fuso));
+        $de = CarbonImmutable::parse('2026-11-17 08:00', $fuso);
+        $ate = CarbonImmutable::parse('2026-11-17 11:00', $fuso);
+        $horas = array_map(fn ($h) => ['hora' => $h->format('H:i'), 'inicio' => $h->utc()->toIso8601String(), 'pecas' => 0],
+            [$de, $de->addHour(), $de->addHours(2)]);
+        $turnos = [['numero' => 1, 'de' => $de, 'ate' => $de->addHour()], ['numero' => 2, 'de' => $de->addHours(2), 'ate' => $ate]];
+        $r = app(MetaPorHora::class)->completar($this->maquina, $horas, $de, $ate, $fuso, [], $this->op, false, $turnos);
+        $this->assertSame([2941, null, 2941], array_column($r, 'meta'));
+        Carbon::setTestNow();
     }
 }

@@ -115,6 +115,186 @@ final class JornadaSemanal
         ];
     }
 
+    // ---------------------------------------------------------------- turnos (máquinas: até 3 por dia, 25/11/2026)
+
+    public const MAX_TURNOS = 3;
+
+    /**
+     * Turnos de cada dia de trabalho: turnos_semana (JSON {"1":[["05:00","13:00"],["13:00","21:00"]],…}); sem ela, o
+     * horário antigo do dia vira o turno 1. Cada turno pertence ao dia em que começa; fim antes do início = vira o dia.
+     *
+     * @return array<int, array<int, array{0: string, 1: string}>> dia ISO => [nº do turno => [início, fim]]
+     */
+    public static function turnos(object $registro): array
+    {
+        $json = $registro->turnos_semana ?? null;
+        if (is_string($json) && $json !== '' && is_array($lido = json_decode($json, true))) {
+            $dias = [];
+            foreach ($lido as $dia => $turnos) {
+                if (! isset(self::DIAS[(int) $dia]) || ! is_array($turnos)) {
+                    continue;
+                }
+                foreach ($turnos as $n => $t) {
+                    $n = (int) $n;
+                    if ($n >= 1 && $n <= self::MAX_TURNOS && isset($t[0], $t[1]) && $t[0] !== $t[1]) {
+                        $dias[(int) $dia][$n] = [(string) $t[0], (string) $t[1]];
+                    }
+                }
+                if (isset($dias[(int) $dia])) {
+                    ksort($dias[(int) $dia]);
+                }
+            }
+            ksort($dias);
+
+            return $dias;
+        }
+
+        return array_map(fn ($h) => [1 => $h], self::de($registro));
+    }
+
+    /** Duração do turno em minutos (fim antes do início = vira o dia). */
+    public static function minutosDoTurno(array $turno): int
+    {
+        [$a, $b] = array_map(fn ($h) => (int) substr($h, 0, 2) * 60 + (int) substr($h, 3, 2), $turno);
+
+        return $b > $a ? $b - $a : $b + 1440 - $a;
+    }
+
+    /** Horas disponíveis do dia = soma dos turnos, em minutos. */
+    public static function minutosDoDia(array $turnosDoDia): int
+    {
+        return array_sum(array_map(fn ($t) => self::minutosDoTurno($t), $turnosDoDia));
+    }
+
+    /**
+     * Lê o formulário de turnos: dias[] marcados e turno[dia][n][inicio|fim] (n = 1..3; o turno 1 é obrigatório nos dias
+     * marcados, os outros opcionais). Recusa turno com início = fim, turno 2/3 sem o anterior e turnos sobrepostos.
+     *
+     * @return array<int, array<int, array{0: string, 1: string}>>
+     *
+     * @throws ValidationException
+     */
+    public static function turnosDoFormulario(array $dados): array
+    {
+        $dias = [];
+        $erros = [];
+        foreach (array_unique(array_map('intval', $dados['dias'] ?? [])) as $dia) {
+            if (! isset(self::DIAS[$dia])) {
+                continue;
+            }
+            $nome = mb_strtolower(self::DIAS[$dia]);
+            $turnos = [];
+            for ($n = 1; $n <= self::MAX_TURNOS; $n++) {
+                $ini = $dados['turno'][$dia][$n]['inicio'] ?? null;
+                $fim = $dados['turno'][$dia][$n]['fim'] ?? null;
+                if (! $ini && ! $fim) {
+                    if ($n === 1) {
+                        $erros["turno.{$dia}"] = "Informe o turno 1 (começa e termina) na {$nome}.";
+                    }
+
+                    continue;
+                }
+                if (! $ini || ! $fim) {
+                    $erros["turno.{$dia}"] = "Turno {$n} da {$nome}: informe o horário em que começa e o que termina.";
+
+                    continue;
+                }
+                if ($ini === $fim) {
+                    $erros["turno.{$dia}"] = "Turno {$n} da {$nome}: o início e o fim não podem ser iguais.";
+
+                    continue;
+                }
+                if ($n > 1 && ! isset($turnos[$n - 1])) {
+                    $erros["turno.{$dia}"] = "Turno {$n} da {$nome}: preencha antes o turno ".($n - 1).'.';
+
+                    continue;
+                }
+                $turnos[$n] = [$ini, $fim];
+            }
+            if ($turnos && ! isset($erros["turno.{$dia}"]) && ($sobreposto = self::sobreposicao($turnos))) {
+                $erros["turno.{$dia}"] = ucfirst($nome).": {$sobreposto}";
+            }
+            if ($turnos) {
+                $dias[$dia] = $turnos;
+            }
+        }
+        if ($erros) {
+            throw ValidationException::withMessages($erros);
+        }
+        ksort($dias);
+
+        return $dias;
+    }
+
+    /** Mensagem se dois turnos do dia se sobrepõem (cada turno começa depois do início do anterior), ou null. */
+    private static function sobreposicao(array $turnos): ?string
+    {
+        $faixas = [];
+        $base = null;
+        foreach ($turnos as $n => $t) {
+            $a = (int) substr($t[0], 0, 2) * 60 + (int) substr($t[0], 3, 2);
+            $base ??= $a;
+            $a = $a < $base ? $a + 1440 : $a;              // turno depois da meia-noite (ex.: turno 3 às 00:30)
+            $faixas[$n] = [$a, $a + self::minutosDoTurno($t)];
+        }
+        $ns = array_keys($faixas);
+        foreach ($ns as $i => $n) {
+            foreach (array_slice($ns, $i + 1) as $m) {
+                if ($faixas[$n][0] < $faixas[$m][1] && $faixas[$m][0] < $faixas[$n][1]) {
+                    return "o turno {$n} e o turno {$m} se sobrepõem.";
+                }
+            }
+        }
+        if (max(array_column($faixas, 1)) - min(array_column($faixas, 0)) > 1440) {
+            return 'os turnos passam de 24 horas.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Colunas a gravar a partir dos turnos: turnos_semana + o envelope de cada dia em horarios_semana (início do turno 1
+     * ao fim do último; dia de 24 h = termina 1 minuto antes de começar) e as colunas antigas.
+     */
+    public static function colunasDosTurnos(array $turnos): array
+    {
+        $envelope = [];
+        foreach ($turnos as $dia => $doDia) {
+            $primeiro = reset($doDia);
+            $ultimo = end($doDia);
+            $fim = $ultimo[1];
+            if (self::minutosDoDia($doDia) >= 1440 || $fim === $primeiro[0]) {
+                $m = ((int) substr($primeiro[0], 0, 2) * 60 + (int) substr($primeiro[0], 3, 2) + 1439) % 1440;
+                $fim = sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
+            }
+            $envelope[$dia] = [$primeiro[0], $fim];
+        }
+
+        return self::colunas($envelope) + [
+            'turnos_semana' => $turnos ? json_encode(array_combine(array_map('strval', array_keys($turnos)),
+                array_map(fn ($d) => array_combine(array_map('strval', array_keys($d)), array_values($d)), array_values($turnos)))) : null,
+        ];
+    }
+
+    /** "Seg–Sex T1 05:00–13:00, T2 13:00–21:00 · Sáb T1 05:00–11:00" (dias seguidos com os mesmos turnos juntos). */
+    public static function textoTurnos(array $turnos): string
+    {
+        $grupos = [];
+        foreach ($turnos as $dia => $t) {
+            $ultimo = array_key_last($grupos);
+            if ($ultimo !== null && $grupos[$ultimo]['t'] === $t && $grupos[$ultimo]['ate'] === $dia - 1) {
+                $grupos[$ultimo]['ate'] = $dia;
+            } else {
+                $grupos[] = ['de' => $dia, 'ate' => $dia, 't' => $t];
+            }
+        }
+        $fmt = fn ($t) => count($t) === 1 ? reset($t)[0].'–'.reset($t)[1]
+            : implode(', ', array_map(fn ($n, $h) => "T{$n} {$h[0]}–{$h[1]}", array_keys($t), $t));
+
+        return implode(' · ', array_map(fn ($g) => self::CURTOS[$g['de']].($g['ate'] !== $g['de'] ? '–'.self::CURTOS[$g['ate']] : '')
+            .' '.$fmt($g['t']), $grupos)) ?: 'sem jornada';
+    }
+
     /**
      * Resumo para listas: dias seguidos com o mesmo horário ficam juntos ("Seg–Sex 07:00–17:00 · Sáb 07:00–11:00").
      *

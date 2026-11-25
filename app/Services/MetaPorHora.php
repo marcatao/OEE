@@ -30,10 +30,12 @@ class MetaPorHora
      *
      * @param  list<array{hora: string, inicio: string, pecas: int}>  $horas
      * @param  iterable  $apontamentos  apontamentos da máquina que tocam o turno (inicio, fim, ordem_producao_id, pecas, atualizado_em)
+     * @param  list<array{de: CarbonImmutable, ate: CarbonImmutable}>|null  $turnos  turnos do dia (TurnoDaMaquina::intervalos):
+     *                                                                               a meta só conta DENTRO deles (intervalo entre turnos = sem meta); null/vazio = o período inteiro
      * @return list<array>
      */
     public function completar(Maquina $maquina, array $horas, CarbonImmutable $de, CarbonImmutable $ate, string $fuso,
-        iterable $apontamentos, ?OrdemProducao $opAtual, bool $gravar = true): array
+        iterable $apontamentos, ?OrdemProducao $opAtual, bool $gravar = true, ?array $turnos = null): array
     {
         $agora = CarbonImmutable::now()->getTimestamp();
         $aps = collect($apontamentos)->sortBy(fn ($a) => [$a->inicio->getTimestamp(), (int) $a->id])->values();
@@ -44,6 +46,20 @@ class MetaPorHora
         }
 
         $trechos = $this->trechos($aps, $de->getTimestamp(), $ate->getTimestamp(), $agora, $opAtual ? (int) $opAtual->id : null);
+        if ($turnos) {
+            // Só as horas disponíveis (dentro dos turnos) têm meta: corta cada trecho nos turnos.
+            $cortados = [];
+            foreach ($trechos as $t) {
+                foreach ($turnos as $tu) {
+                    $ini = max($t['inicio'], $tu['de']->getTimestamp());
+                    $fim = min($t['fim'], $tu['ate']->getTimestamp());
+                    if ($fim > $ini) {
+                        $cortados[] = ['inicio' => $ini, 'fim' => $fim] + $t;
+                    }
+                }
+            }
+            $trechos = $cortados;
+        }
 
         // Peças de cada OP por hora (as mesmas regras do gráfico: repartidas pelo tempo de cada apontamento).
         $pecasPorOp = [];

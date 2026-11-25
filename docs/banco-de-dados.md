@@ -339,6 +339,7 @@ erDiagram
         nvarchar(200) horarios_semana
         int micro_parada_ms
         int macro_parada_ms
+        nvarchar(1000) turnos_semana
     }
     metas_producao {
         bigint id PK
@@ -772,6 +773,7 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        tinyint turno
     }
     plantas {
         bigint id PK
@@ -1156,7 +1158,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`legendas`](#legendas) | Sistema | `id` | 16 | 3 |
 | [`linhas`](#linhas) | Sistema | `id` | 10 | 3 |
 | [`maos_de_obra`](#maos_de_obra) | Sistema | `id` | 8 | 2 |
-| [`maquinas`](#maquinas) | Mista | `id` | 44 | 9 |
+| [`maquinas`](#maquinas) | Mista | `id` | 45 | 9 |
 | [`metas_producao`](#metas_producao) | Sistema | `id` | 10 | 0 |
 | [`metas_producao_horas`](#metas_producao_horas) | Sistema | `id` | 10 | 2 |
 | [`motivos_parada`](#motivos_parada) | Sistema | `id` | 10 | 2 |
@@ -1185,7 +1187,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`pedidos_compra`](#pedidos_compra) | Sistema | `id` | 22 | 4 |
 | [`pedidos_compra_itens`](#pedidos_compra_itens) | Sistema | `id` | 17 | 4 |
-| [`perdas_op`](#perdas_op) | Sistema | `id` | 15 | 5 |
+| [`perdas_op`](#perdas_op) | Sistema | `id` | 16 | 5 |
 | [`plantas`](#plantas) | Sistema | `id` | 9 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
 | [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 13 | 0 |
@@ -1758,6 +1760,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `horarios_semana` | `nvarchar(200)` | sim |  |  |
 | `micro_parada_ms` | `int` | sim |  |  |
 | `macro_parada_ms` | `int` | sim |  |  |
+| `turnos_semana` | `nvarchar(1000)` | sim |  |  |
 
 **Índices:** `maquinas_codigo_unique` único (codigo) · `maquinas_centro_custo_index` (centro_custo) · `maquinas_hb_filial_r_e_c_n_o__index` (hb_filial, r_e_c_n_o_) · `maquinas_unidade_index` (unidade)
 
@@ -2426,6 +2429,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `turno` | `tinyint` | sim |  |  |
 
 **Índices:** `perdas_op_ordem_producao_id_excluido_em_index` (ordem_producao_id, excluido_em)
 

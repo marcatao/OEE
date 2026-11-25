@@ -1,5 +1,5 @@
 {{--
-  Calendário de dias úteis + dias da semana com o horário de cada um (máquinas). Obrigatórios para ativar.
+  Calendário de dias úteis + dias da semana com até 3 turnos cada (máquinas). Obrigatórios para ativar.
   Parâmetros: $registro (calendario_id e a jornada) e $calendarios (lista para escolher).
 --}}
 <div class="campos">
@@ -13,4 +13,4 @@
     <small>Dias úteis, feriados, pontes e compensações (<a href="{{ route('admin.calendarios.index') }}">Administração › Calendários</a>).</small>
   </label>
 </div>
-@include('partials.jornada-semanal', ['registro' => $registro])
+@include('partials.turnos-semana', ['registro' => $registro])

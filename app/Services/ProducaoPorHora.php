@@ -68,7 +68,7 @@ class ProducaoPorHora
             // Meta de cada hora pela OP de cada momento (troca no meio da hora = proporcional), gravada por hora e OP.
             $passado = $fim->lessThan($agora);
             $horas = $this->horas($this->metaPorHora->completar($m, $this->pecas->porHora($m, $inicio, $fim, $fuso, $aps),
-                $inicio, $fim, $fuso, $todos, $passado ? null : ($sit['op'] ?? null)), $fim, $agora);
+                $inicio, $fim, $fuso, $todos, $passado ? null : ($sit['op'] ?? null), true, $this->turno->intervalos($m, $dia)), $fim, $agora);
             $metaPorMinuto = $passado ? null : ($sit['metaPorMinuto'] ?? null);
             $comMeta = array_filter($horas, fn ($h) => $h['meta'] !== null);
 

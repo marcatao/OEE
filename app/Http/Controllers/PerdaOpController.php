@@ -28,7 +28,8 @@ class PerdaOpController extends Controller
                 }
             }],
             'observacao' => ['nullable', 'string', 'max:500'],
-        ], ['dia.date_format' => 'Dia inválido.', 'maquina_id.required' => 'Escolha a máquina em que a perda aconteceu.', '*.max' => 'Texto muito longo.']);
+            'turno' => ['required', 'integer', 'between:1,3'],
+        ], ['turno.required' => 'Escolha o turno da perda.', 'turno.between' => 'Escolha o turno da perda (1, 2 ou 3).', 'dia.date_format' => 'Dia inválido.', 'maquina_id.required' => 'Escolha a máquina em que a perda aconteceu.', '*.max' => 'Texto muito longo.']);
         $perda = $perdas->registrar($ordem, $request->user(), $dados);
 
         return redirect()->to(route('ordens-producao.show', $ordem).'#aba-perdas')

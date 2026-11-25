@@ -111,7 +111,7 @@ class CalendarioTest extends TestCase
             JornadaSemanal::de($m)); // domingo desmarcado não grava
         $this->assertSame('123456', $m->dias_semana);
         $this->assertSame('Seg–Qui 06:00–22:00 · Sex 06:00–18:00 · Sáb 07:00–11:00', JornadaSemanal::texto(JornadaSemanal::de($m)));
-        $this->get("/admin/maquinas/{$m->id}/editar")->assertOk()->assertSee('name="horario[6][fim]" value="11:00"', false);
+        $this->get("/admin/maquinas/{$m->id}/editar")->assertOk()->assertSee('name="turno[6][1][fim]" value="11:00"', false);
 
         // A máquina entende os dias úteis: trabalha no sábado (dias dela), não no feriado; compensação num domingo, sim.
         $dias = app(DiasUteis::class);

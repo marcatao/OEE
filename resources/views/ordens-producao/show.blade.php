@@ -17,7 +17,7 @@
 @php
   $u = auth()->user();
   $podeEditarCavidades = $u->ehAdmin();
-  $abaInicial = $errors->has('h4_qtdcavativas') ? 'ferramenta' : ($errors->hasAny(['quantidade', 'peso', 'dia', 'maquina_id', 'perda']) ? 'perdas' : 'op');
+  $abaInicial = $errors->has('h4_qtdcavativas') ? 'ferramenta' : ($errors->hasAny(['quantidade', 'peso', 'dia', 'turno', 'maquina_id', 'perda']) ? 'perdas' : 'op');
   $podePerdas = $u->pode('perdas_op');
   $pu = $resumoPerdas['peso_unitario'];
 @endphp
@@ -408,8 +408,8 @@
         <form method="post" action="{{ route('perdas-op.store', $op) }}" class="perda-form" data-calculadora-pu="{{ $pu ?? '' }}">
           @csrf
           <h3>Apontar perda</h3>
-          @if ($errors->hasAny(['quantidade', 'peso', 'dia', 'maquina_id', 'perda']))
-            <p class="aviso erro">{{ $errors->first('quantidade') ?: $errors->first('peso') ?: $errors->first('dia') ?: $errors->first('maquina_id') ?: $errors->first('perda') }}</p>
+          @if ($errors->hasAny(['quantidade', 'peso', 'dia', 'turno', 'maquina_id', 'perda']))
+            <p class="aviso erro">{{ $errors->first('quantidade') ?: $errors->first('peso') ?: $errors->first('dia') ?: $errors->first('turno') ?: $errors->first('maquina_id') ?: $errors->first('perda') }}</p>
           @endif
           @unless ($pu)
             <p class="aviso alerta">Este produto não tem peso unitário (B1_PESO) no Protheus: informe a <strong>quantidade de peças</strong>.</p>
@@ -427,6 +427,13 @@
           <div class="formulario">
             <label>Dia
               <input type="date" name="dia" value="{{ old('dia', now(config('oee.fuso_exibicao'))->format('Y-m-d')) }}" max="{{ now(config('oee.fuso_exibicao'))->format('Y-m-d') }}" required>
+            </label>
+            <label>Turno
+              <select name="turno" required>
+                @for ($t = 1; $t <= \App\Support\JornadaSemanal::MAX_TURNOS; $t++)
+                  <option value="{{ $t }}" @selected((int) old('turno', $turnoSugerido) === $t)>Turno {{ $t }}</option>
+                @endfor
+              </select>
             </label>
             <label>Máquina
               <select name="maquina_id" data-busca required>
@@ -450,11 +457,12 @@
       @else
         <div class="rolagem">
         <table class="tabela perdas-tabela">
-          <thead><tr><th>Dia</th><th class="num">Quantidade</th><th class="num">Peso</th><th class="num">PU</th><th>Máquina</th><th>Apontado por</th><th>Observação</th><th></th></tr></thead>
+          <thead><tr><th>Dia</th><th>Turno</th><th class="num">Quantidade</th><th class="num">Peso</th><th class="num">PU</th><th>Máquina</th><th>Apontado por</th><th>Observação</th><th></th></tr></thead>
           <tbody>
           @foreach ($perdas as $p)
             <tr @class(['perda-excluida' => $p->excluida()])>
               <td>{{ $p->dia->format('d/m/Y') }}</td>
+              <td>{{ $p->turno ? 'T'.$p->turno : 'fora de turno' }}</td>
               <td class="num"><strong>{{ Formato::quantidade($p->quantidade) }}</strong> pç</td>
               <td class="num">{{ $p->peso !== null ? Formato::quantidade($p->peso).' kg' : '—' }}</td>
               <td class="num suave">{{ $p->peso_unitario ? Formato::quantidade($p->peso_unitario) : '—' }}</td>

@@ -66,6 +66,7 @@ class PerdasAplicativoController extends Controller
             + ['perdas' => $perdas->map(fn (PerdaOp $p) => [
                 'id' => (int) $p->id,
                 'dia' => $p->dia->format('Y-m-d'),
+                'turno' => $p->turno, // 1, 2, 3 ou null (fora de turno); no app vem do horário do lançamento
                 'quantidade' => (float) $p->quantidade,
                 'peso' => $p->peso === null ? null : (float) $p->peso,
                 'peso_unitario' => $p->peso_unitario === null ? null : (float) $p->peso_unitario,

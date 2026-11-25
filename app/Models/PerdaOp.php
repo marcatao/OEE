@@ -16,11 +16,11 @@ class PerdaOp extends Model
 
     protected $table = 'perdas_op';
 
-    protected $fillable = ['ordem_producao_id', 'maquina_id', 'dia', 'quantidade', 'peso', 'peso_unitario', 'origem', 'observacao'];
+    protected $fillable = ['ordem_producao_id', 'maquina_id', 'dia', 'quantidade', 'peso', 'peso_unitario', 'origem', 'observacao', 'turno'];
 
     protected function casts(): array
     {
-        return ['dia' => 'date', 'quantidade' => 'float', 'peso' => 'float', 'peso_unitario' => 'float', 'excluido_em' => 'datetime'];
+        return ['dia' => 'date', 'quantidade' => 'float', 'peso' => 'float', 'peso_unitario' => 'float', 'excluido_em' => 'datetime', 'turno' => 'integer'];
     }
 
     public function excluida(): bool

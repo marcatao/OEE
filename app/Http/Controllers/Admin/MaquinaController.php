@@ -169,6 +169,10 @@ class MaquinaController extends Controller
             // Calendário e jornada: obrigatórios para ativar (conferido abaixo).
             'calendario_id' => ['nullable', 'integer'],
             ...JornadaSemanal::regras(),
+            // Até 3 turnos por dia (turno[dia][n][inicio|fim]); a tela de máquinas usa só estes.
+            'turno' => ['nullable', 'array'],
+            'turno.*.*.inicio' => ['nullable', 'date_format:H:i'],
+            'turno.*.*.fim' => ['nullable', 'date_format:H:i'],
             'jornada_inicio' => ['nullable', 'date_format:H:i'],
             'jornada_fim' => ['nullable', 'date_format:H:i'],
             'ordem_producao' => ['nullable', 'string', 'max:20'],
@@ -236,11 +240,13 @@ class MaquinaController extends Controller
         if ($calendarioId && ! Calendario::whereKey($calendarioId)->where(fn ($q) => $q->where('ativo', true)->orWhere('id', (int) $maquina->calendario_id))->exists()) {
             throw ValidationException::withMessages(['calendario_id' => 'Calendário não encontrado ou inativo.']);
         }
-        // Dias da semana, cada um com o horário em que começa e termina (só se vieram do formulário).
-        if (array_key_exists('dias', $dados) || $request->has('jornada_inicio') || $request->has('horario')) {
-            $dados = array_merge($dados, JornadaSemanal::colunas(JornadaSemanal::doFormulario($dados)));
+        // Dias da semana com até 3 turnos cada (turno[dia][n]); o formulário antigo (horario[dia] / jornada_*) = 1 turno.
+        if ($request->has('turno')) {
+            $dados = array_merge($dados, JornadaSemanal::colunasDosTurnos(JornadaSemanal::turnosDoFormulario($dados)));
+        } elseif (array_key_exists('dias', $dados) || $request->has('jornada_inicio') || $request->has('horario')) {
+            $dados = array_merge($dados, JornadaSemanal::colunas(JornadaSemanal::doFormulario($dados)), ['turnos_semana' => null]);
         }
-        unset($dados['dias'], $dados['horario']);
+        unset($dados['dias'], $dados['horario'], $dados['turno']);
         // Calendário, jornada e canal IoT só são exigidos das máquinas da Manutenção (Maquina::exigeIotECalendario).
         $exige = $maquina->exigeIotECalendario($dados['unidade'] ?? null);
         if ($dados['ativo'] && $exige) {

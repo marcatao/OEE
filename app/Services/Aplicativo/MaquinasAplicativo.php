@@ -299,7 +299,8 @@ class MaquinasAplicativo
             'nivel' => ProducaoPorHora::nivelMeta($h + ['futura' => CarbonImmutable::parse($h['inicio'])->getTimestamp() > $agoraTs]),
             'ops' => array_map(fn ($o) => ['op_id' => $o['op_id'], 'numero' => $o['numero'], 'meta_por_minuto' => $o['meta_por_minuto'],
                 'meta' => $o['meta'] === null ? null : (int) round($o['meta']), 'pecas' => $o['pecas'], 'minutos' => round($o['segundos'] / 60, 1)], $h['ops']),
-        ], app(MetaPorHora::class)->completar($maquina, $porHora, $de, $ate, $fuso, $apontamentos, $op));
+        ], app(MetaPorHora::class)->completar($maquina, $porHora, $de, $ate, $fuso, $apontamentos, $op, true,
+            app(TurnoDaMaquina::class)->intervalos($maquina)));
         $metaTurno = array_filter(array_column($porHora, 'meta'), fn ($v) => $v !== null);
         $ultimo = $apontamentos->first();
         $ciclo = $ultimo ? ApontamentoEstado::cicloEmSegundos($ultimo->ciclo_medio_ms, $ultimo->ciclo_medio) : null; // s, com fração

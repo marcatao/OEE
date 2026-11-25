@@ -295,6 +295,14 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (`App\Support\JornadaSemanal` + partial `partials.jornada-semanal`; coluna `horarios_semana` JSON; `dias_semana` e
   `jornada_inicio|fim` = dias marcados e horário do 1º dia, lidos quando não há `horarios_semana`). As horas normais ×
   extras do mantenedor (`HorasManutencao`) usam o horário de cada dia. Para saber se trabalha num dia: `DiasUteis::trabalha($maquinaOuMantenedor, $data)`.
+  **Máquinas: até 3 turnos por dia** (25/11/2026; partial `partials.turnos-semana`, campos `turno[dia][n][inicio|fim]`,
+  turno 1 obrigatório, sem sobreposição): `maquinas.turnos_semana` (JSON; `JornadaSemanal::turnos`, `turnosDoFormulario`,
+  `colunasDosTurnos`), horas disponíveis = soma dos turnos; `horarios_semana` continua gravada como o ENVELOPE do dia
+  (início do T1 ao fim do último) para quem só lê a jornada antiga. `TurnoDaMaquina`: período do dia = envelope,
+  `intervalos()` = cada turno, `turnoEm()` = turno num instante; a meta da hora só conta DENTRO dos turnos
+  (`MetaPorHora::completar(..., $turnos)`); o integrador lê `turnos_semana` e o intervalo entre turnos vira 96. Mantenedor
+  continua com 1 horário por dia (`partials.jornada-semanal`). Perda tem `turno` (portal: escolhido; app: `turnoEm` no
+  horário do lançamento).
 - **Pergunte para Alumbra** (box da página inicial, `partials.assistente` + `public/js/assistente.js`, permissão
   `assistente`): IA com a Claude (SDK `anthropic-ai/sdk`, `config/assistente.php`, chave `ANTHROPIC_API_KEY` só no
   `.env`). Só responde sobre o portal e só com os dados do usuário logado: as consultas ficam em
