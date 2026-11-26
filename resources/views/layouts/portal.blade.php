@@ -10,6 +10,8 @@
   <script src="{{ asset('js/componentes.js') }}?v={{ @filemtime(public_path('js/componentes.js')) }}" defer></script>
   {{-- Aplica o menu recolhido antes de desenhar a página (sem "piscar") --}}
   <script>try { if (localStorage.getItem('oee-menu') === 'recolhido') document.documentElement.classList.add('menu-recolhido'); } catch (e) {}</script>
+  {{-- Tema escolhido pelo usuário (claro/escuro), antes de desenhar a página; sem escolha segue o sistema --}}
+  <script>try { var tema = localStorage.getItem('oee-tema'); if (tema === 'claro' || tema === 'escuro') document.documentElement.dataset.tema = tema; } catch (e) {}</script>
 </head>
 <body>
 @php($u = auth()->user())
@@ -197,8 +199,6 @@
       </header>
       <main>
         @include('layouts.partials.avisos')
-        @include('manutencao._aviso-avaliacao')
-        @include('inventario-ti._aviso-termos')
         @yield('conteudo')
       </main>
     </div>
@@ -231,7 +231,6 @@
   <main class="sozinho">
     @include('layouts.partials.avisos')
     @if ($u)
-      @include('inventario-ti._aviso-termos')
       @if (! request()->routeIs('inventario-ti.*') && rescue(fn () => \App\Services\InventarioTi\TermosResponsabilidade::temEquipamentos($u), false, false))
         <p><a href="{{ route('inventario-ti.meus') }}">Meus equipamentos</a></p>
       @endif

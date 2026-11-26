@@ -241,6 +241,8 @@
     (raiz || document).querySelectorAll('[data-escolha]').forEach(montarEscolha);
     (raiz || document).querySelectorAll('[data-abas]').forEach(function (c) { if (!c.dataset.abasProntas) { c.dataset.abasProntas = '1'; montarAbas(c); } });
     (raiz || document).querySelectorAll('[data-assinatura]').forEach(montarAssinatura);
+    (raiz || document).querySelectorAll('[data-alternar-tema]').forEach(function (b) { if (!b.dataset.temaPronto) { b.dataset.temaPronto = '1'; montarTema(b); } });
+    (raiz || document).querySelectorAll('[data-notificacoes]').forEach(function (n) { if (!n.dataset.notifPronto) { n.dataset.notifPronto = '1'; montarNotificacoes(n); } });
     (raiz || document).querySelectorAll('[data-grafico-ciclos]').forEach(function (g) { if (!g.dataset.ciclosPronto) { g.dataset.ciclosPronto = '1'; montarGraficoCiclos(g); } });
     (raiz || document).querySelectorAll('[data-calculadora-pu]').forEach(function (f) { if (!f.dataset.calcPronta) { f.dataset.calcPronta = '1'; montarCalculadoraPu(f); } });
   }
@@ -342,6 +344,99 @@
   }
 
   window.OeeComponentes = { iniciar: iniciar };
+  // ---------- Tema claro/escuro (botão do topo) ----------
+  // Sem escolha o portal segue o sistema. O botão troca para o tema oposto ao que está na tela e guarda a escolha;
+  // voltar ao tema do sistema apaga a escolha (passa a seguir o sistema de novo). Aviso 'oee-tema' para os gráficos.
+  function montarTema(botao) {
+    var raiz = document.documentElement, escuroSistema = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    function atual() { return raiz.dataset.tema || (escuroSistema && escuroSistema.matches ? 'escuro' : 'claro'); }
+    function rotular() {
+      var texto = atual() === 'escuro' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro';
+      botao.title = texto; botao.setAttribute('aria-label', texto);
+    }
+    botao.addEventListener('click', function () {
+      var novo = atual() === 'escuro' ? 'claro' : 'escuro', sistema = escuroSistema && escuroSistema.matches ? 'escuro' : 'claro';
+      try {
+        if (novo === sistema) { delete raiz.dataset.tema; localStorage.removeItem('oee-tema'); }
+        else { raiz.dataset.tema = novo; localStorage.setItem('oee-tema', novo); }
+      } catch (e) { raiz.dataset.tema = novo; }
+      rotular(); document.dispatchEvent(new CustomEvent('oee-tema'));
+    });
+    if (escuroSistema) escuroSistema.addEventListener('change', rotular);
+    rotular();
+  }
+
+  // ---------- Notificações (sino do topo, App\Services\Notificacoes\NotificacoesUsuario) ----------
+  // Atualiza a cada minuto; o que é NOVO (id ainda não visto neste navegador) vira pop-up do Windows (Notification API)
+  // quando a página não está à vista (navegador minimizado ou outra aba). Na 1ª vez só guarda o que já existe.
+  function montarNotificacoes(caixa) {
+    var botao = caixa.querySelector('[data-notificacoes-botao]'), painel = caixa.querySelector('[data-notificacoes-painel]');
+    var lista = caixa.querySelector('[data-notificacoes-lista]'), contador = caixa.querySelector('[data-notificacoes-contador]');
+    var ativar = caixa.querySelector('[data-notificacoes-ativar]'), dica = caixa.querySelector('[data-notificacoes-dica]');
+    var CHAVE = 'oee-notificacoes-vistas', suporta = 'Notification' in window;
+    function lerVistas() { try { return JSON.parse(localStorage.getItem(CHAVE) || 'null'); } catch (e) { return null; } }
+    function gravarVistas(ids) { try { localStorage.setItem(CHAVE, JSON.stringify(ids.slice(-300))); } catch (e) {} }
+
+    function abrir(sim) {
+      painel.hidden = !sim; botao.setAttribute('aria-expanded', String(sim));
+      if (sim) { atualizarAtivar(); var primeiro = painel.querySelector('a, button:not([hidden])'); if (primeiro) primeiro.focus(); }
+    }
+    botao.addEventListener('click', function () { abrir(painel.hidden); });
+    document.addEventListener('click', function (e) { if (!painel.hidden && !caixa.contains(e.target)) abrir(false); });
+    caixa.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !painel.hidden) { abrir(false); botao.focus(); } });
+
+    function atualizarAtivar() {
+      if (!suporta) { ativar.hidden = true; dica.hidden = false; dica.textContent = 'Este navegador não mostra avisos no Windows.'; return; }
+      ativar.hidden = Notification.permission !== 'default';
+      dica.hidden = Notification.permission !== 'denied';
+      if (Notification.permission === 'denied') dica.textContent = 'Os avisos no Windows estão bloqueados para este site (libere no cadeado da barra de endereço).';
+    }
+    ativar.addEventListener('click', function () {
+      Notification.requestPermission().then(function () {
+        atualizarAtivar();
+        if (Notification.permission === 'granted') new Notification('Avisos ligados', { body: 'Você vai ver aqui as notificações do portal, mesmo com o navegador minimizado.', icon: caixa.dataset.icone, tag: 'oee-teste' });
+      });
+    });
+
+    function desenhar(itens) {
+      contador.hidden = itens.length === 0; contador.textContent = itens.length > 99 ? '99+' : String(itens.length);
+      botao.setAttribute('aria-label', 'Notificações' + (itens.length ? ' (' + itens.length + ' novas)' : ''));
+      lista.textContent = '';
+      if (!itens.length) { var v = document.createElement('li'); v.className = 'notificacoes-vazia suave'; v.textContent = 'Nenhuma notificação.'; lista.appendChild(v); return; }
+      itens.forEach(function (n) {
+        var li = document.createElement('li'), a = document.createElement('a'), s = document.createElement('strong'), sp = document.createElement('span');
+        if (n.urgente) li.className = 'urgente';
+        a.href = n.url; s.textContent = n.titulo; sp.textContent = n.texto;
+        a.appendChild(s); a.appendChild(sp); li.appendChild(a); lista.appendChild(li);
+      });
+    }
+
+    function avisar(itens) {
+      var vistas = lerVistas(), ids = itens.map(function (n) { return n.id; });
+      if (vistas !== null && suporta && Notification.permission === 'granted' && (document.visibilityState !== 'visible' || !document.hasFocus())) {
+        itens.filter(function (n) { return vistas.indexOf(n.id) < 0; }).slice(0, 5).forEach(function (n) {
+          var pop = new Notification(n.titulo, { body: n.texto, icon: caixa.dataset.icone, tag: 'oee-' + n.id, requireInteraction: !!n.urgente });
+          pop.onclick = function () { window.focus(); location.href = n.url; pop.close(); };
+        });
+      }
+      // Com a página à vista o usuário já vê o contador: conta como vista (sem pop-up depois).
+      gravarVistas((vistas || []).filter(function (id) { return ids.indexOf(id) >= 0; }).concat(ids.filter(function (id) { return (vistas || []).indexOf(id) < 0; })));
+    }
+
+    function buscar() {
+      fetch(caixa.dataset.url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function (d) { desenhar(d.itens || []); avisar(d.itens || []); })
+        .catch(function () {});
+    }
+
+    var iniciais = [];
+    try { iniciais = JSON.parse(caixa.querySelector('[data-notificacoes-dados]').textContent || '[]'); } catch (e) {}
+    avisar(iniciais);
+    setInterval(buscar, 60000);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') buscar(); });
+  }
+
   // ---------- Gráfico de ciclos da máquina (Dashboard por máquina, App\Services\CiclosIot) ----------
   // Dados: [ts_unix, contador, peças, intervalo s, ciclo por peça s, nível 0 normal | 1 micro | 2 parada grande].
   // Uma barra por mudança do contador; a escala vem dos ciclos normais e microparadas (percentil 98), então as paradas
@@ -443,6 +538,7 @@
     });
     var espera; window.addEventListener('resize', function () { clearTimeout(espera); espera = setTimeout(desenhar, 150); });
     if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', desenhar);
+    document.addEventListener('oee-tema', desenhar);
     desenhar();
   }
 

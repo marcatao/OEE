@@ -20,7 +20,7 @@ class AcessoDiretoRotasTest extends TestCase
 
     /** Rotas internas que só exigem login, de propósito (o próprio perfil, sair, a página de aviso). */
     private const SO_LOGIN = ['aguardando', 'app.entrar.concluir', 'logout', 'perfil', 'perfil.update', 'perfil.entra',
-        'ordens-producao.busca', 'usuarios.foto', 'api.app.eu', 'api.app.sair',
+        'ordens-producao.busca', 'usuarios.foto', 'notificacoes', 'api.app.eu', 'api.app.sair',
         // Atualização do app: todo usuário logado no app precisa saber da versão nova e baixá-la.
         'api.app.versao', 'api.app.versao.apk',
         // Inventário de TI: quem recebe um equipamento (mesmo sem perfil) vê os seus itens e assina o termo dele.

@@ -27,6 +27,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\Concerns\CalendarioDeTeste;
 use Tests\TestCase;
 
@@ -389,7 +390,9 @@ class OrdensServicoTest extends TestCase
         // Quem tem as duas áreas escolhe e grava a área padrão.
         $this->actingAs($adm)->get('/ordens-de-servico/painel')->assertOk()->assertSee('Painel — Manutenção')->assertSee('Usar Manutenção como área padrão');
         $this->post('/ordens-de-servico/painel/area-padrao', ['unidade' => 'tecnologia'])->assertRedirect();
-        $this->get('/ordens-de-servico/painel')->assertOk()->assertSee('Painel — Tecnologia')->assertSee('Chamado de TI')->assertDontSee('Pendente na fila');
+        $r = $this->get('/ordens-de-servico/painel')->assertOk()->assertSee('Painel — Tecnologia')->assertSee('Chamado de TI');
+        // (o sino do topo lista as SS que ele pode atender de todas as áreas; o PAINEL da Tecnologia não mostra a da Manutenção)
+        $this->assertStringNotContainsString('Pendente na fila', Str::after($r->getContent(), '<main'));
         $this->get('/ordens-de-servico/painel?unidade=manutencao')->assertOk()->assertSee('Pendente na fila');
 
         // Solicitante sem perfil de gestão não vê o painel.

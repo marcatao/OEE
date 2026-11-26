@@ -35,6 +35,7 @@ use App\Http\Controllers\Manutencao\RelatorioManutencaoController;
 use App\Http\Controllers\Manutencao\SolicitacaoController;
 use App\Http\Controllers\Manutencao\SolicitacaoMaterialController;
 use App\Http\Controllers\MaoDeObraController;
+use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\OrdemProducaoController;
 use App\Http\Controllers\PerdaOpController;
 use App\Http\Controllers\PerfilController;
@@ -65,6 +66,9 @@ Route::middleware('auth')->group(function () {
     Route::put('perfil', [PerfilController::class, 'update'])->name('perfil.update');
     Route::post('perfil/entra', [PerfilController::class, 'sincronizar'])->name('perfil.entra');
     Route::get('usuarios/{usuario}/foto', [PerfilController::class, 'foto'])->name('usuarios.foto');
+
+    // Notificações do sino do topo (qualquer usuário logado: quem só tem termo para assinar também recebe).
+    Route::get('notificacoes', [NotificacaoController::class, 'index'])->middleware('throttle:30,1')->name('notificacoes');
 
     // Produção (cada tela exige a permissão dada pelos grupos; admin pode tudo)
     Route::middleware('permissao:dashboard_maquina')->prefix('producao/dashboard')->name('dashboard.')->group(function () {

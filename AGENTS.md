@@ -39,6 +39,16 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `public/css/portal.css` (tema claro e escuro). Nunca use cores soltas nas telas. Contraste WCAG 2.2 AA (revisado em 26/11/2026): texto ≥ 4,5:1 e componentes/gráficos ≥ 3:1 nos dois
   temas (verde = identidade e ações; vermelho = erro; âmbar = alerta; azul = informação; cinza = neutro); campos de
   formulário usam `--borda-campo`; área com rolagem própria leva `tabindex="0"` + `role="region"` + `aria-label`.
+  **Tema e notificações no topo** (26/11/2026; `layouts.partials.usuario`): botão claro/escuro (`[data-alternar-tema]`;
+  sem escolha segue o sistema; a escolha fica em `localStorage` `oee-tema` e vira `data-tema` no `<html>` antes de
+  desenhar; o tema escuro está em `@media (prefers-color-scheme: dark) :root:not([data-tema="claro"])` E em
+  `:root[data-tema="escuro"]` — mude os DOIS; gráficos em canvas redesenham no evento `oee-tema`). Sino
+  (`layouts.partials.notificacoes`, `[data-notificacoes]`): as notificações do usuário ficam SÓ nele, nunca em faixas no
+  topo das páginas (mensagens de retorno de uma ação, `session('ok'|'erro')`, continuam na página). Fonte única
+  `App\Services\Notificacoes\NotificacoesUsuario` (SS para atender, OS para avaliar, termos para assinar; id estável
+  por item); rota `notificacoes` (JSON, SO_LOGIN) consultada a cada minuto; item novo com o navegador minimizado ou sem
+  foco = pop-up do Windows (Notification API, permissão pelo botão "Avisar no Windows"; só com o portal aberto em
+  alguma aba). Notificação nova no sistema? Acrescente em `NotificacoesUsuario`.
 - Telas em Blade com `layouts.portal` e o CSS de `public/css/portal.css`. Sem etapa de build com Node.
   Listas longas (centro de custo, máquina, usuário, mantenedor): use `<select data-busca>` (lista com busca) e, para
   marcar vários, o partial `partials.escolha-multipla` (abre/fecha, com busca) — ambos em `public/js/componentes.js`.
