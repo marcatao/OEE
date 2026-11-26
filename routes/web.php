@@ -22,6 +22,7 @@ use App\Http\Controllers\EstruturaProdutoController;
 use App\Http\Controllers\FaltaProdutoController;
 use App\Http\Controllers\Faturamento\EtapaPedidoController;
 use App\Http\Controllers\Faturamento\PedidoVendaController;
+use App\Http\Controllers\Faturamento\TipoOperacaoPedidoController;
 use App\Http\Controllers\FerramentaController;
 use App\Http\Controllers\InventarioTi\InventarioTiController;
 use App\Http\Controllers\InventarioTi\TermoResponsabilidadeController;
@@ -124,6 +125,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [EtapaPedidoController::class, 'index'])->name('index');
         Route::post('/', [EtapaPedidoController::class, 'store'])->name('store');
         Route::patch('{regra}', [EtapaPedidoController::class, 'alternar'])->whereNumber('regra')->name('alternar');
+        // Tipos de operação (C6_OPER) dos pedidos de venda que a procedure sincroniza.
+        Route::post('tipos-operacao', [TipoOperacaoPedidoController::class, 'store'])->name('tipos.store');
+        Route::delete('tipos-operacao/{tipo}', [TipoOperacaoPedidoController::class, 'destroy'])->whereNumber('tipo')->name('tipos.destroy');
     });
     // Estruturas (SG1) e roteiros (SG2): consulta. Ferramentas (SH4): consulta; administradores editam cavidades ativas.
     Route::get('producao/estruturas', [EstruturaProdutoController::class, 'index'])

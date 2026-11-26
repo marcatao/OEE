@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Faturamento;
 use App\Http\Controllers\Controller;
 use App\Models\Faturamento\PedidoVendaLiberacao;
 use App\Models\Faturamento\RegraEtapaPedido;
+use App\Models\Faturamento\TipoOperacaoPedido;
 use App\Services\Faturamento\EtapasPedidoVenda;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,9 @@ class EtapaPedidoController extends Controller
             'configuraveis' => array_reverse(EtapasPedidoVenda::CONFIGURAVEIS),
             'valores' => $this->valoresEncontrados(),
             'opcionais' => EtapasPedidoVenda::CAMPOS_WMS,
+            // Tipos de operação (C6_OPER) que a procedure sincroniza: ativos primeiro, pelo número.
+            'tiposOperacao' => TipoOperacaoPedido::with('atualizadoPor:id,nome', 'criadoPor:id,nome')->get()
+                ->sortBy(fn ($t) => [$t->ativo ? 0 : 1, (int) $t->codigo])->values(),
         ]);
     }
 

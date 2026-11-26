@@ -92,6 +92,59 @@
   </div>
 </section>
 
+<section class="cartao" id="tipos-operacao">
+  <h2 style="margin-top:0">Tipos de operação sincronizados</h2>
+  <p class="suave">Só os itens de pedido com o <strong>tipo de operação</strong> (<code>C6_OPER</code>) desta lista vêm do Protheus. "1" e "01" são o
+    mesmo tipo. Vale na próxima sincronização "Pedidos de venda" (Segurança › Banco de dados): os pedidos de um tipo excluído, dos
+    últimos 6 meses, saem do portal; os mais antigos ficam como histórico.</p>
+  @php($ativos = $tiposOperacao->where('ativo', true))
+  @if ($ativos->isEmpty())<p class="aviso erro" role="alert">Nenhum tipo de operação na lista: a sincronização dos pedidos de venda para com erro até incluir pelo menos um.</p>@endif
+  @if ($errors->tipos->any())<p class="aviso erro" role="alert">{{ $errors->tipos->first() }}</p>@endif
+  <div class="rolagem" tabindex="0" role="region" aria-label="Tipos de operação sincronizados">
+  <table class="tabela">
+    <thead><tr><th>Tipo</th><th>Descrição</th><th>Incluído / alterado</th><th></th></tr></thead>
+    <tbody>
+    @forelse ($ativos as $t)
+      <tr>
+        <td><code>{{ $t->codigoProtheus() }}</code></td>
+        <td>{{ $t->descricao ?: '-' }}</td>
+        <td>@dataHora($t->atualizado_em ?? $t->criado_em)<br><small class="suave">{{ ($t->atualizadoPor ?? $t->criadoPor)?->nome ?? 'carga inicial' }}</small></td>
+        <td>
+          <form method="post" action="{{ route('faturamento.etapas.tipos.destroy', $t) }}" data-pergunta="Excluir o tipo de operação {{ $t->codigoProtheus() }}? Os pedidos desse tipo dos últimos 6 meses saem do portal na próxima sincronização."
+                onsubmit="return confirm(this.dataset.pergunta)">
+            @csrf @method('delete')
+            <button class="botao secundario pequeno" type="submit">Excluir</button>
+          </form>
+        </td>
+      </tr>
+    @empty
+      <tr><td colspan="4" class="suave">Nenhum tipo na lista.</td></tr>
+    @endforelse
+    </tbody>
+  </table>
+  </div>
+
+  <form method="post" action="{{ route('faturamento.etapas.tipos.store') }}" class="formulario-vertical">
+    @csrf
+    <div class="campos">
+      <label>Tipo de operação
+        <input name="codigo" required maxlength="3" inputmode="numeric" value="{{ old('codigo') }}" placeholder="Ex.: 1 ou 01"></label>
+      <label>Descrição
+        <input name="descricao" maxlength="80" value="{{ old('descricao') }}" placeholder="Ex.: VENDA DE MERCADORIA" style="text-transform:uppercase"></label>
+    </div>
+    <div class="acoes"><button class="botao" type="submit">Incluir tipo</button></div>
+  </form>
+
+  @php($excluidos = $tiposOperacao->where('ativo', false))
+  @if ($excluidos->isNotEmpty())
+    <details>
+      <summary>Excluídos da lista ({{ $excluidos->count() }})</summary>
+      <p class="suave"><small>Para voltar um tipo, inclua o código de novo.</small></p>
+      <ul>@foreach ($excluidos as $t)<li><code>{{ $t->codigoProtheus() }}</code> {{ $t->descricao }}</li>@endforeach</ul>
+    </details>
+  @endif
+</section>
+
 <section class="cartao">
   <h2 style="margin-top:0">Valores encontrados nas liberações em aberto</h2>
   <p class="suave"><small>Campos do WMS/expedição lidos da SC9 (os existentes entre {{ implode(', ', $opcionais) }} e os usados nas regras), com quantas

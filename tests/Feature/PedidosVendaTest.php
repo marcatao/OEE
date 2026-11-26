@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Faturamento\PedidoVendaEtapa;
 use App\Models\Faturamento\PedidoVendaLiberacao;
 use App\Models\Faturamento\RegraEtapaPedido;
+use App\Models\Faturamento\TipoOperacaoPedido;
 use App\Models\FiltroUsuario;
 use App\Models\Grupo;
 use App\Models\PedidoVenda;
@@ -165,6 +166,42 @@ class PedidosVendaTest extends TestCase
         $this->assertFalse($regra->fresh()->ativo);
         $this->assertSame('expedicao', $this->etapa('000005'));
         $this->assertSame(2, RegraEtapaPedido::count());
+    }
+
+    public function test_tipos_de_operacao_sincronizados(): void
+    {
+        // Nasce com os tipos pedidos pelo usuário, sem zeros à esquerda.
+        $this->assertSame(['1', '2', '3', '5', '7', '9', '10', '11'],
+            TipoOperacaoPedido::where('ativo', true)->pluck('codigo')->sortBy(fn ($c) => (int) $c)->values()->all());
+
+        $this->actingAs($this->usuario(['faturamento_etapas']));
+        $this->get('/faturamento/etapas')->assertOk()->assertSee('Tipos de operação sincronizados')
+            ->assertSee('VENDA DE MERCADORIA')->assertSee('<code>01</code>', false)->assertSee('<code>11</code>', false);
+
+        // "05" = "5": já está na lista; código inválido é recusado.
+        $this->post('/faturamento/etapas/tipos-operacao', ['codigo' => '05'])->assertSessionHasErrors('codigo', null, 'tipos');
+        $this->post('/faturamento/etapas/tipos-operacao', ['codigo' => 'AB'])->assertSessionHasErrors('codigo', null, 'tipos');
+        $this->post('/faturamento/etapas/tipos-operacao', ['codigo' => '100'])->assertSessionHasErrors('codigo', null, 'tipos');
+
+        // Incluir "04" grava "4"; excluir desativa (não apaga); incluir de novo reativa.
+        $this->post('/faturamento/etapas/tipos-operacao', ['codigo' => '04', 'descricao' => 'bonificação'])->assertSessionHas('ok');
+        $quatro = TipoOperacaoPedido::where('codigo', '4')->sole();
+        $this->assertSame([true, 'BONIFICAÇÃO'], [$quatro->ativo, $quatro->descricao]);
+        $this->delete("/faturamento/etapas/tipos-operacao/{$quatro->id}")->assertRedirect()->assertSessionHas('ok');
+        $this->assertFalse($quatro->fresh()->ativo);
+        $this->get('/faturamento/etapas')->assertSee('Excluídos da lista (1)');
+        $this->post('/faturamento/etapas/tipos-operacao', ['codigo' => '4'])->assertSessionHas('ok');
+        $this->assertTrue($quatro->fresh()->ativo);
+        $this->assertSame(1, TipoOperacaoPedido::where('codigo', '4')->count());
+
+        // A procedure filtra pelo C6_OPER dos tipos ativos, nos dois formatos, e as liberações só dos itens que vieram.
+        $sql = file_get_contents(database_path('procedures/sp_sincronizar_pedidos_venda.sql'));
+        $this->assertStringContainsString("AND C6.C6_OPER IN (' + @tipos + N')'", $sql);
+        $this->assertStringContainsString('FROM dbo.tipos_operacao_pedido t', $sql);
+        $this->assertStringContainsString("RIGHT(N'0' + CAST(TRY_CAST(t.codigo AS int) AS nvarchar(3)), 2)", $sql);
+        $this->assertStringContainsString('WHERE NOT EXISTS (SELECT 1 FROM #pv p WHERE p.c5_filial = s.c9_filial', $sql);
+        $this->assertSame(['1' => '1', '01' => '1', ' 9 ' => '9', '10' => '10', '0' => null, 'X1' => null],
+            collect(['1', '01', ' 9 ', '10', '0', 'X1'])->mapWithKeys(fn ($c) => [$c => TipoOperacaoPedido::normalizar($c)])->all());
     }
 
     public function test_sem_permissao_nao_ve(): void

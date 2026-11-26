@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **77** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **78** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -821,6 +821,7 @@ erDiagram
         int r_e_c_n_o_ UK
         datetime sincronizado_em
         bigint cliente_id
+        nvarchar(2) c6_oper
     }
     pedidos_venda_etapas {
         bigint id PK
@@ -1157,6 +1158,16 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
     }
+    tipos_operacao_pedido {
+        bigint id PK
+        nvarchar(3) codigo UK
+        nvarchar(80) descricao
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
+    }
     tokens_aplicativo {
         bigint id PK
         bigint usuario_id FK
@@ -1454,7 +1465,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`pedidos_compra`](#pedidos_compra) | Sistema | `id` | 22 | 4 |
 | [`pedidos_compra_itens`](#pedidos_compra_itens) | Sistema | `id` | 17 | 4 |
-| [`pedidos_venda`](#pedidos_venda) | Protheus | `id` | 37 | 0 |
+| [`pedidos_venda`](#pedidos_venda) | Protheus | `id` | 38 | 0 |
 | [`pedidos_venda_etapas`](#pedidos_venda_etapas) | Sistema | `id` | 16 | 0 |
 | [`pedidos_venda_liberacoes`](#pedidos_venda_liberacoes) | Protheus | `id` | 17 | 0 |
 | [`perdas_op`](#perdas_op) | Sistema | `id` | 16 | 5 |
@@ -1477,6 +1488,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`ti_termo_testemunhas`](#ti_termo_testemunhas) | Sistema | `id` | 13 | 4 |
 | [`ti_termos`](#ti_termos) | Sistema | `id` | 16 | 4 |
 | [`ti_tipos`](#ti_tipos) | Sistema | `id` | 9 | 2 |
+| [`tipos_operacao_pedido`](#tipos_operacao_pedido) | Sistema | `id` | 8 | 2 |
 | [`tokens_aplicativo`](#tokens_aplicativo) | Sistema | `id` | 8 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
@@ -2763,6 +2775,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `r_e_c_n_o_` | `int` | não |  |  |
 | `sincronizado_em` | `datetime` | sim |  |  |
 | `cliente_id` | `bigint` | sim |  |  |
+| `c6_oper` | `nvarchar(2)` | não | `''` |  |
 
 **Índices:** `pedidos_venda_r_e_c_n_o__unique` único (r_e_c_n_o_) · `pedidos_venda_c5_num_c5_filial_index` (c5_num, c5_filial) · `pedidos_venda_c6_produto_index` (c6_produto) · `pedidos_venda_situacao_c6_entreg_index` (situacao, c6_entreg) · `pedidos_venda_c5_cliente_index` (c5_cliente) · `pedidos_venda_cliente_id_index` (cliente_id)
 
@@ -3274,6 +3287,23 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 
 **Índices:** `ti_tipos_categoria_ativo_index` (categoria, ativo)
+
+### tipos_operacao_pedido
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `codigo` | `nvarchar(3)` | não |  |  |
+| `descricao` | `nvarchar(80)` | não | `''` |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `tipos_operacao_pedido_codigo_unique` único (codigo)
 
 ### tokens_aplicativo
 
