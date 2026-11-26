@@ -124,7 +124,7 @@
         @if ($opsAbertas->isEmpty())
           <p class="suave">Nenhuma OP aberta. As OPs vêm do Protheus (sincronização em Administração › Banco de dados).</p>
         @else
-          <div class="rolagem ops-inicio">
+          <div class="rolagem ops-inicio" tabindex="0" role="region" aria-label="Lista de ordens de produção abertas (use as setas para rolar)">
           <table class="tabela">
             <thead><tr><th>OP</th><th>Status</th><th>Produto</th><th class="num">Quantidade</th><th class="num">Produzido</th><th>Previsão</th></tr></thead>
             <tbody>

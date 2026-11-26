@@ -36,7 +36,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id`). Cadastros são desativados, não excluídos.
 - Nome do portal: **OEE Alumbra**, em `config('oee.nome')` (nunca escreva o nome direto nas telas).
 - Identidade visual em **tons de verde** (estilo da empresa): as cores ficam só nas variáveis do topo de
-  `public/css/portal.css` (tema claro e escuro). Nunca use cores soltas nas telas.
+  `public/css/portal.css` (tema claro e escuro). Nunca use cores soltas nas telas. Contraste WCAG 2.2 AA (revisado em 26/11/2026): texto ≥ 4,5:1 e componentes/gráficos ≥ 3:1 nos dois
+  temas (verde = identidade e ações; vermelho = erro; âmbar = alerta; azul = informação; cinza = neutro); campos de
+  formulário usam `--borda-campo`; área com rolagem própria leva `tabindex="0"` + `role="region"` + `aria-label`.
 - Telas em Blade com `layouts.portal` e o CSS de `public/css/portal.css`. Sem etapa de build com Node.
   Listas longas (centro de custo, máquina, usuário, mantenedor): use `<select data-busca>` (lista com busca) e, para
   marcar vários, o partial `partials.escolha-multipla` (abre/fecha, com busca) — ambos em `public/js/componentes.js`.

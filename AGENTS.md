@@ -36,7 +36,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id`). Cadastros são desativados, não excluídos.
 - Nome do portal: **OEE Alumbra**, em `config('oee.nome')` (nunca escreva o nome direto nas telas).
 - Identidade visual em **tons de verde** (estilo da empresa): as cores ficam só nas variáveis do topo de
-  `public/css/portal.css` (tema claro e escuro). Nunca use cores soltas nas telas.
+  `public/css/portal.css` (tema claro e escuro). Nunca use cores soltas nas telas. Contraste WCAG 2.2 AA (revisado em 26/11/2026): texto ≥ 4,5:1 e componentes/gráficos ≥ 3:1 nos dois
+  temas (verde = identidade e ações; vermelho = erro; âmbar = alerta; azul = informação; cinza = neutro); campos de
+  formulário usam `--borda-campo`; área com rolagem própria leva `tabindex="0"` + `role="region"` + `aria-label`.
 - Telas em Blade com `layouts.portal` e o CSS de `public/css/portal.css`. Sem etapa de build com Node.
   Listas longas (centro de custo, máquina, usuário, mantenedor): use `<select data-busca>` (lista com busca) e, para
   marcar vários, o partial `partials.escolha-multipla` (abre/fecha, com busca) — ambos em `public/js/componentes.js`.
@@ -241,7 +243,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Geração de preventivas (agendador × botão "Gerar agora") roda sob a trava `os-gerar-preventivas` e não duplica OS.
   Custo da OS (card na tela da OS): `App\Services\Manutencao\CustoOrdemServico`.
 - **Abertura de SS**: em etapas (unidade → área executante → máquina/CC → o que precisa → descrição); a unidade só
-  lista as liberadas ao login (`SolicitacaoController::unidadesPermitidas`) e filtra áreas e máquinas; flags "máquina
+  lista as liberadas ao login (`SolicitacaoController::unidadesPermitidas`) e filtra áreas e máquinas; recurso = MÁQUINA ou FERRAMENTA/MOLDE (SH4, `ferramenta_id` na SS e na OS, só nas unidades de
+  `oee.os_unidades_ferramenta` = Manutenção e Ferramentaria, da mesma unidade; nunca os dois; `AcessoOs::ferramentas()`); flags "máquina
   parada" e **"oferece risco à integridade"**; prioridade só **Alta | Baixa** (SS, OS e planos de preventiva;
   `SolicitacaoServico::PRIORIDADES`; "urgente" e "média" antigas só aparecem com "(antiga)", plano antigo gera OS
   pela `prioridadeAtual`; painéis contam `PRIORIDADES_ALTAS`) (`risco_integridade`, copiado para a OS). **SS automática**: legenda com
@@ -303,6 +306,38 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (`MetaPorHora::completar(..., $turnos)`); o integrador lê `turnos_semana` e o intervalo entre turnos vira 96. Mantenedor
   continua com 1 horário por dia (`partials.jornada-semanal`). Perda tem `turno` (portal: escolhido; app: `turnoEm` no
   horário do lançamento).
+- **Inventário de TI** (Tecnologia › Inventário de TI, permissão `inventario_ti`, no perfil `mantenedor_tecnologia`;
+  pedido do usuário em 25/11/2026): tudo cadastrado no portal (sem SN1). `ti_itens` (`App\Models\InventarioTi\ItemTi`,
+  TemUnidade + Auditavel, unidade padrão `tecnologia`) em 3 categorias FIXAS — `hardware` (equipamento), `licenca`
+  (licença de software, `ti_licenca_atribuicoes`: em um computador e/ou para uma pessoa, sem passar de
+  `quantidade_licencas`) e `linha` (linha/chip, `vinculado_item_id` = aparelho) — e tipos editáveis em `ti_tipos`
+  (categoria do tipo não muda). Situação `em_uso | estoque | manutencao | baixado` (nunca exclui; baixar exige motivo,
+  tira o responsável e libera as licenças instaladas). Só o administrador da unidade do item edita (`ItemTi::podeEditar`).
+  Toda gravação pela regra única `App\Services\InventarioTi\MovimentacaoInventario` (histórico em `ti_movimentacoes`:
+  responsável, local, centro de custo, situação, aparelho, licença, termo). **Termo de responsabilidade** (`ti_termos`,
+  `App\Services\InventarioTi\TermosResponsabilidade`): trocar o responsável de equipamento/linha cancela o pendente e
+  gera outro (dados do item congelados em `conteudo`); o termo é o CONTRATO PARTICULAR DE COMODATO da empresa (modelo do
+  usuário, texto em `App\Support\ContratoComodato` — NÃO no config, para não depender do `config:cache` do servidor: comodante,
+  cláusulas — as de `telefonia` só para celular/tablet/linha —; objeto por `TermosResponsabilidade::descricaoComodato`).
+  Duas TESTEMUNHAS por termo (`ti_termo_testemunhas`, usuários do portal; o administrador da unidade escolhe na tela do
+  termo, o termo novo herda as do último; testemunha que assinou não troca; o comodatário não é testemunha) assinam no
+  portal com RG (ou presencial), com aviso no topo e em "Meus equipamentos"; `completo()` = comodatário + 2. Na tela do
+  termo o que é do LOGADO assinar vem primeiro e aberto; assinatura presencial de outra pessoa fica recolhida e exige
+  `confirmo_presencial` (erro real de 25/11: testemunha logada assinou no quadro do comodatário). Anular termo (admin da
+  unidade, `TermosResponsabilidade::anular`): cancelado com motivo, nada apagado, e termo novo com as mesmas testemunhas. Descrição do
+  item só das DESCRIÇÕES PADRÃO (`ti_descricoes`, `DescricaoItemTi`, tela Inventário › Descrições; com tipo = só daquele
+  tipo, sem tipo = qualquer um; o item grava `descricao_id` + cópia do texto em `descricao`, renomear não muda itens;
+  item antigo sem `descricao_id` pode manter a dele). Atributos
+  livres do item (nome + valor, `ti_item_atributos`, `ItemTi::gravarAtributos`, busca da lista procura neles). Ao assinar
+  o comodatário informa cargo, nacionalidade, RG, CPF (dígitos conferidos) e endereço (`conteudo.comodatario`, só no
+  termo; o próximo termo dele já vem preenchido); o responsável assina no
+  portal (celular ou computador, quadro `[data-assinatura]` de `componentes.js`; PNG conferido por `App\Support\AssinaturaPng`,
+  o mesmo do app) ou o administrador colhe na hora (`presencial`). Aviso no topo de todas as telas
+  (`inventario-ti._aviso-termos`) e "Meus equipamentos": rotas só com login (SO_LOGIN; quem recebe pode não ter perfil;
+  o termo só abre para o responsável ou quem vê o inventário da unidade, o resto 404). **SS/OS para item de TI**:
+  `item_ti_id` na SS e na OS, só nas unidades de `oee.os_unidades_item_ti` (Tecnologia), nunca junto com máquina ou
+  ferramenta; sem CC informado vale o do item; "Abrir SS para este item" na tela do item (`?item_ti=`); a tela do item
+  lista os chamados (`AcessoOs::filtrar`). Listas em `AcessoOs::itensTi()`.
 - **Pergunte para Alumbra** (box da página inicial, `partials.assistente` + `public/js/assistente.js`, permissão
   `assistente`): IA com a Claude (SDK `anthropic-ai/sdk`, `config/assistente.php`, chave `ANTHROPIC_API_KEY` só no
   `.env`). Só responde sobre o portal e só com os dados do usuário logado: as consultas ficam em

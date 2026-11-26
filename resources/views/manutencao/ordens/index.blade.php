@@ -12,7 +12,7 @@
   <div class="titulo-com-acao">
     <h1>Ordens de serviço (OS)</h1>
     @if (\App\Support\AcessoOs::podeSolicitar(auth()->user()))
-      <a class="botao" href="{{ route('os.solicitacoes.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova solicitação</a>
+      <a class="botao" href="{{ route('os.solicitacoes.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova solicitação de serviço</a>
     @endif
   </div>
   <p class="suave">OS emitidas a partir das solicitações aprovadas e as preventivas geradas pela PAMP. Ordenadas por prioridade.</p>

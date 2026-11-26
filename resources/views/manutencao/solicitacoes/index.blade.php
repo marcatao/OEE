@@ -10,7 +10,7 @@
   <div class="titulo-com-acao">
     <h1>Solicitações de serviço (SS)</h1>
     @if (\App\Support\AcessoOs::podeSolicitar(auth()->user()))
-      <a class="botao" href="{{ route('os.solicitacoes.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova solicitação</a>
+      <a class="botao" href="{{ route('os.solicitacoes.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova solicitação de serviço</a>
     @endif
   </div>
   <p class="suave">Quem tem o perfil Solicitante abre a SS. Você vê as suas, as do seu centro de custo e, se for da manutenção, as da sua área. A manutenção analisa: <strong>aprovada</strong>, ela vira uma ordem de serviço (OS) com os mesmos

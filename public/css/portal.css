@@ -1,26 +1,26 @@
 /* ===== Identidade OEE Alumbra: tons de verde. Para ajustar a cor da empresa, mude só estas variáveis. ===== */
 :root {
-  --fundo:#f2f5f3; --cartao:#ffffff; --texto:#16231c; --suave:#5b6b62; --borda:#dde6e0; --borda-forte:#c6d4cb;
-  --primaria:#008650; --primaria-escura:#006a3f; --primaria-texto:#ffffff; --primaria-suave:#e4f3eb; --destaque:#3fb37a;
+  --fundo:#f2f5f3; --cartao:#ffffff; --texto:#16231c; --suave:#5b6b62; --borda:#dde6e0; --borda-forte:#c6d4cb; --borda-campo:#7d9183; /* borda dos campos: 3:1 sobre o cartão (WCAG 2.2 AA) */
+  --primaria:#007a49; --primaria-escura:#00603a; --primaria-texto:#ffffff; --primaria-suave:#e4f3eb; --destaque:#3fb37a;
   --erro:#b42318; --erro-suave:#fdecea; --ok:#067647; --ok-suave:#e3f6ec; --alerta:#b54708; --alerta-suave:#fef3e2;
   --protheus:#1d5fa8; --protheus-suave:#e6eef8; /* dados que vêm do Protheus */ --ferramentaria:#0f766e; --ferramentaria-suave:#dcf3ef; /* área Ferramentaria */
   --menu:#0c2419; --menu-borda:#173a29; --menu-texto:#bfd4c7; --menu-secao:#7f9c8c; --menu-ativo:#13472f; --menu-hover:#123323;
   --branco:#ffffff; --sombra:0 1px 2px rgba(16,40,28,.06), 0 4px 16px rgba(16,40,28,.06);
   --sombra-forte:0 10px 30px rgba(16,40,28,.12);
-  --heroi-inicio:#00663d; --heroi-fim:#0a8f58; --heroi-texto:#ffffff; --heroi-suave:rgba(255,255,255,.8);
+  --heroi-inicio:#00663d; --heroi-fim:#087f4e; --heroi-texto:#ffffff; --heroi-suave:rgba(255,255,255,.8);
   --logo-filtro:none; --trilha-medidor:#e3ebe6; --fundo-escurecido:rgba(0,0,0,.45);
   --tl-texto-claro:#ffffff; --tl-texto-escuro:#1b2a21; --tl-vazio:#eef2ef; --tl-separador:rgba(255,255,255,.55); --tl-agora:#c62828;
   --grafico-1:#008650; --grafico-2:#1d5fa8; --grafico-3:#d97706; --grafico-4:#7c3aed; --grafico-5:#0f766e; --grafico-6:#be123c; /* séries dos gráficos do assistente */
   --tempo-atendimento:#008650; --tempo-reparo:#1d5fa8; /* gráfico de tempos do painel de OS (validado) */
   --falta-verde:#067647; --falta-amarelo:#a15c07; --falta-vermelho:#b42318; --falta-preto:#1f2a24; /* legendas da ZB5 (falta de produtos) */
-  --meta-boa:#16a34a; --meta-media:#eab308; --meta-ruim:#dc2626; /* barras da produção por hora × meta (≥ 90%, ≥ 50%, abaixo) */
+  --meta-boa:#16a34a; --meta-media:#b98003; --meta-ruim:#dc2626; /* barras da produção por hora × meta (≥ 90%, ≥ 50%, abaixo) */
   --falta-faltantes:#d97706; --falta-atendidas:#008650; /* gráfico faltantes × atendidas */
   --assinatura-fundo:#ffffff; --assinatura-tinta:#111111; /* quadro de assinatura (sempre claro: vira a imagem do termo) */
   --largura-menu:clamp(14.5rem, 13vw, 16.5rem); --largura-menu-recolhido:4.25rem; --altura-topo:3.75rem;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --fundo:#0e1511; --cartao:#151f19; --texto:#e4ede7; --suave:#9db0a5; --borda:#243229; --borda-forte:#2f4136;
+    --fundo:#0e1511; --cartao:#151f19; --texto:#e4ede7; --suave:#9db0a5; --borda:#243229; --borda-forte:#2f4136; --borda-campo:#62796b;
     --primaria:#3fbf82; --primaria-escura:#2fa56e; --primaria-texto:#07150e; --primaria-suave:#163828; --destaque:#4cc38a;
     --erro:#f97066; --erro-suave:#3a1714; --ok:#47cd89; --ok-suave:#12301f; --alerta:#fdb022; --alerta-suave:#33240b;
     --protheus:#7cb2ee; --protheus-suave:#14263a; --ferramentaria:#5fd4c4; --ferramentaria-suave:#10302c;
@@ -151,6 +151,8 @@ main.sozinho { max-width:min(100%, 62rem); margin:0 auto; }
 .cartao-titulo h3 { margin:0; }
 .ops-inicio { max-height:28rem; overflow-y:auto; }
 .ops-inicio thead th { position:sticky; top:0; background:var(--cartao); }
+/* Área com rolagem própria: recebe o foco do teclado (setas rolam) e mostra onde está o foco. */
+.rolagem[tabindex]:focus-visible { outline:3px solid var(--primaria); outline-offset:2px; border-radius:6px; }
 .botao { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; background:var(--primaria); color:var(--primaria-texto); border:1px solid var(--primaria); border-radius:8px; padding:.55rem 1.05rem; text-decoration:none; font:inherit; font-weight:600; font-size:.9rem; cursor:pointer; transition:background .15s, border-color .15s; min-height:2.5rem; white-space:nowrap; }
 .botao:hover { background:var(--primaria-escura); border-color:var(--primaria-escura); }
 .botao.secundario { background:transparent; color:var(--primaria); border-color:var(--borda-forte); }
@@ -159,7 +161,7 @@ main.sozinho { max-width:min(100%, 62rem); margin:0 auto; }
 .botao .icone { width:1.125rem; height:1.125rem; }
 .formulario { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 11.25rem), 1fr)); gap:1rem; align-items:end; }
 .formulario label { display:flex; flex-direction:column; gap:.3rem; color:var(--suave); font-size:.88rem; }
-input, select, textarea { padding:.55rem .65rem; border:1px solid var(--borda-forte); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit; }
+input, select, textarea { padding:.55rem .65rem; border:1px solid var(--borda-campo); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit; }
 input:focus, select:focus, textarea:focus { outline:none; border-color:var(--primaria); box-shadow:0 0 0 3px var(--primaria-suave); }
 input[readonly] { background:var(--fundo); color:var(--suave); }
 .indicadores { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 9.375rem), 1fr)); gap:1rem; margin-top:1.5rem; }
@@ -591,10 +593,11 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .ss-campos input:not([type=checkbox]), .ss-campos select { width:100%; }
 .ss-form textarea { width:100%; }
 .ss-sugestoes { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin-top:.6rem; }
+.ss-campos > .ss-sugestoes { grid-column:1 / span 2; grid-row:2; margin-top:-.4rem; } /* logo abaixo do título resumido */
 .ss-chip { cursor:pointer; font:inherit; font-size:.85rem; padding:.25rem .7rem; border-radius:999px; border:1px solid var(--borda-forte); background:var(--cartao); color:var(--texto); }
 .ss-chip:hover { border-color:var(--primaria); color:var(--primaria); background:var(--primaria-suave); }
 @media (max-width: 52rem) { .ss-campos { grid-template-columns:1fr 1fr; } }
-@media (max-width: 32rem) { .ss-campos { grid-template-columns:1fr; } .ss-campos > .largo-2 { grid-column:auto; } }
+@media (max-width: 32rem) { .ss-campos { grid-template-columns:1fr; } .ss-campos > .largo-2, .ss-campos > .ss-sugestoes { grid-column:auto; } }
 /* Cadastro de usuários: perfis separados por área */
 .perfis-areas { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap:1rem; margin-top:.75rem; }
 .perfis-area .opcao { padding:.5rem .6rem; border-radius:8px; }
@@ -602,7 +605,7 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 /* Lista com busca (select[data-busca], public/js/componentes.js) */
 .busca-select { position:relative; display:block; width:100%; }
 .busca-select-original { display:none !important; }
-.busca-select-botao { width:100%; min-height:2.5rem; text-align:left; padding:.5rem 2rem .5rem .65rem; border:1px solid var(--borda-forte); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit; cursor:pointer; position:relative; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.busca-select-botao { width:100%; min-height:2.5rem; text-align:left; padding:.5rem 2rem .5rem .65rem; border:1px solid var(--borda-campo); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit; cursor:pointer; position:relative; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .busca-select-botao::after { content:'▾'; position:absolute; right:.7rem; top:50%; transform:translateY(-50%); color:var(--suave); }
 .busca-select-botao.vazio { color:var(--suave); }
 .busca-select-botao:focus-visible { outline:none; border-color:var(--primaria); box-shadow:0 0 0 3px var(--primaria-suave); }
@@ -621,7 +624,7 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 .busca-select.compacta .busca-select-painel input[type=search] { padding:.35rem .55rem; font-size:.85rem; }
 .busca-select.compacta .busca-select-lista li { padding:.3rem .5rem; font-size:.82rem; }
 /* Escolha de vários com busca ([data-escolha], partials/escolha-multipla) */
-.escolha { border:1px solid var(--borda); border-radius:10px; background:var(--cartao); }
+.escolha { border:1px solid var(--borda-campo); border-radius:10px; background:var(--cartao); }
 .escolha > summary { list-style:none; cursor:pointer; display:flex; flex-wrap:wrap; gap:.4rem .75rem; align-items:center; padding:.65rem .9rem; }
 .escolha > summary::-webkit-details-marker { display:none; }
 .escolha > summary::after { content:'▾'; margin-left:auto; color:var(--suave); }

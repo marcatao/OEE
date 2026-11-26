@@ -10,7 +10,7 @@
   <div class="titulo-com-acao">
     <h1>Solicitações de material</h1>
     @if ($podeSolicitar)
-      <a class="botao" href="{{ route('os.materiais-solicitacao.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova solicitação</a>
+      <a class="botao" href="{{ route('os.materiais-solicitacao.create') }}">@include('layouts.partials.icone', ['nome' => 'mais']) Nova solicitação de material</a>
     @endif
   </div>
   <p class="suave">O mantenedor pede o material à administração da área; o administrador analisa item a item (aprova a quantidade ou

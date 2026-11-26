@@ -82,8 +82,14 @@
       <legend><span class="ss-passo">3</span> O que precisa</legend>
       <div class="campos ss-campos">
         <label class="largo-2">Título resumido
-          <input name="titulo" required maxlength="120" value="{{ old('titulo', $ss->titulo) }}" placeholder="Ex.: Vazamento de óleo no cilindro da injetora">
+          <input name="titulo" id="ss-titulo" required maxlength="120" value="{{ old('titulo', $ss->titulo) }}" placeholder="Ex.: Vazamento de óleo no cilindro da injetora">
         </label>
+        @if ($sugestoes->isNotEmpty())
+          {{-- Sugestões preenchem SÓ o título (a descrição da etapa 4 é independente). --}}
+          <div class="ss-sugestoes" role="group" aria-label="Sugestões para o título"><small class="suave">Sugestões para o título (clique para usar):</small>
+            @foreach ($sugestoes as $s)<button type="button" class="ss-chip" data-sugestao="{{ $s }}">{{ $s }}</button>@endforeach
+          </div>
+        @endif
         <label>Tipo
           <select name="tipo" required>
             @foreach (SolicitacaoServico::TIPOS as $valor => $rotulo)<option value="{{ $valor }}" @selected(old('tipo', $ss->tipo) === $valor)>{{ $rotulo }}</option>@endforeach
@@ -112,11 +118,6 @@
     <fieldset class="ss-etapa">
       <legend><span class="ss-passo">4</span> Conte o problema ou o serviço</legend>
       <textarea name="descricao" rows="6" maxlength="2000" required id="ss-descricao" placeholder="O que está acontecendo, desde quando, o que já foi feito…">{{ old('descricao', $ss->descricao) }}</textarea>
-      @if ($sugestoes->isNotEmpty())
-        <div class="ss-sugestoes"><small class="suave">Sugestões (clique para usar):</small>
-          @foreach ($sugestoes as $s)<button type="button" class="ss-chip" data-sugestao="{{ $s }}">{{ $s }}</button>@endforeach
-        </div>
-      @endif
     </fieldset>
 <script>
   (function () {
@@ -215,9 +216,10 @@
 
     document.querySelectorAll('[data-sugestao]').forEach(function (b) {
       b.addEventListener('click', function () {
-        var d = document.getElementById('ss-descricao');
-        d.value = d.value ? d.value.replace(/\s*$/, '') + '\n' + b.dataset.sugestao : b.dataset.sugestao;
-        d.focus();
+        var t = document.getElementById('ss-titulo');
+        t.value = b.dataset.sugestao.slice(0, t.maxLength > 0 ? t.maxLength : undefined);
+        t.dispatchEvent(new Event('input', { bubbles: true }));
+        t.focus();
       });
     });
   })();
