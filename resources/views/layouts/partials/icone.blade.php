@@ -46,6 +46,7 @@
     'relatorio' => '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
     'barras' => '<path d="M3 21h18"/><rect x="4.5" y="12" width="3.5" height="9" rx=".8"/><rect x="10.25" y="7" width="3.5" height="14" rx=".8"/><rect x="16" y="3" width="3.5" height="18" rx=".8"/>',
     'cronometro' => '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M10 2h4M12 2v3"/>',
+    'caminhao' => '<path d="M2 6h11v10H2zM13 9h4.5L21 12.5V16h-8"/><circle cx="6" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
     'imprimir' => '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
   ];
 @endphp

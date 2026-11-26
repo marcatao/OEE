@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **73** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **76** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -797,6 +797,43 @@ erDiagram
         int r_e_c_n_o_ UK
         datetime sincronizado_em
     }
+    pedidos_venda_etapas {
+        bigint id PK
+        nvarchar(8) c5_filial
+        nvarchar(10) c5_num
+        nvarchar(10) c5_cliente
+        nvarchar(4) c5_lojacli
+        nvarchar(60) cliente_nome
+        nchar(8) c5_emissao
+        nvarchar(30) etapa
+        datetime etapa_desde
+        bit parcial
+        float(53) valor_total
+        float(53) valor_saldo
+        float(53) valor_faturado
+        nchar(8) entrega_prevista
+        nchar(8) faturado_em
+        datetime calculado_em
+    }
+    pedidos_venda_liberacoes {
+        bigint id PK
+        nvarchar(8) c9_filial
+        nvarchar(10) c9_pedido
+        nvarchar(4) c9_item
+        nvarchar(3) c9_sequen
+        nvarchar(30) c9_produto
+        float(53) c9_qtdlib
+        float(53) c9_prcven
+        nchar(8) c9_datalib
+        nvarchar(2) c9_blest
+        nvarchar(2) c9_blcred
+        nvarchar(9) c9_nfiscal
+        nvarchar(3) c9_serienf
+        nvarchar(max) extras
+        nchar(8) c5_emissao
+        int r_e_c_n_o_ UK
+        datetime sincronizado_em
+    }
     perdas_op {
         bigint id PK
         bigint ordem_producao_id FK
@@ -860,6 +897,19 @@ erDiagram
         nvarchar(200) motivo
         nvarchar(45) ip
         nvarchar(400) navegador
+    }
+    regras_etapa_pedido {
+        bigint id PK
+        nvarchar(30) etapa
+        nvarchar(10) campo
+        nvarchar(12) operador
+        nvarchar(200) valores
+        nvarchar(200) observacao
+        bit ativo
+        datetime criado_em
+        bigint criado_por_id FK
+        datetime atualizado_em
+        bigint atualizado_por_id FK
     }
     roteiros_operacao {
         bigint id PK
@@ -1379,11 +1429,14 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`pedidos_compra`](#pedidos_compra) | Sistema | `id` | 22 | 4 |
 | [`pedidos_compra_itens`](#pedidos_compra_itens) | Sistema | `id` | 17 | 4 |
 | [`pedidos_venda`](#pedidos_venda) | Protheus | `id` | 36 | 0 |
+| [`pedidos_venda_etapas`](#pedidos_venda_etapas) | Sistema | `id` | 16 | 0 |
+| [`pedidos_venda_liberacoes`](#pedidos_venda_liberacoes) | Protheus | `id` | 17 | 0 |
 | [`perdas_op`](#perdas_op) | Sistema | `id` | 16 | 5 |
 | [`plantas`](#plantas) | Sistema | `id` | 9 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
 | [`produtos_protheus`](#produtos_protheus) | Protheus | `id` | 13 | 0 |
 | [`registros_login`](#registros_login) | Sistema | `id` | 8 | 1 |
+| [`regras_etapa_pedido`](#regras_etapa_pedido) | Sistema | `id` | 11 | 2 |
 | [`roteiros_operacao`](#roteiros_operacao) | Protheus | `id` | 17 | 0 |
 | [`sessions`](#sessions) | Infra | `id` | 6 | 0 |
 | [`sincronizacoes`](#sincronizacoes) | Sistema | `id` | 16 | 1 |
@@ -2612,7 +2665,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 ### pedidos_venda
 
-**Origem:** Protheus — sincronizada de `[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SC5010] + [SC6010]` (procedure `dbo.sp_sincronizar_pedidos_venda`) · **Chave primária:** `id`
+**Origem:** Protheus — sincronizada de `[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SC5010] + [SC6010] + [SC9010]` (procedure `dbo.sp_sincronizar_pedidos_venda`) · **Chave primária:** `id`
 
 | Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
 |---|---|---|---|---|
@@ -2654,6 +2707,57 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `sincronizado_em` | `datetime` | sim |  |  |
 
 **Índices:** `pedidos_venda_r_e_c_n_o__unique` único (r_e_c_n_o_) · `pedidos_venda_c5_num_c5_filial_index` (c5_num, c5_filial) · `pedidos_venda_c6_produto_index` (c6_produto) · `pedidos_venda_situacao_c6_entreg_index` (situacao, c6_entreg) · `pedidos_venda_c5_cliente_index` (c5_cliente)
+
+### pedidos_venda_etapas
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `c5_filial` | `nvarchar(8)` | não | `''` |  |
+| `c5_num` | `nvarchar(10)` | não | `''` |  |
+| `c5_cliente` | `nvarchar(10)` | não | `''` |  |
+| `c5_lojacli` | `nvarchar(4)` | não | `''` |  |
+| `cliente_nome` | `nvarchar(60)` | não | `''` |  |
+| `c5_emissao` | `nchar(8)` | não | `''` |  |
+| `etapa` | `nvarchar(30)` | sim |  |  |
+| `etapa_desde` | `datetime` | sim |  |  |
+| `parcial` | `bit` | não | `'0'` |  |
+| `valor_total` | `float(53)` | não | `'0'` |  |
+| `valor_saldo` | `float(53)` | não | `'0'` |  |
+| `valor_faturado` | `float(53)` | não | `'0'` |  |
+| `entrega_prevista` | `nchar(8)` | não | `''` |  |
+| `faturado_em` | `nchar(8)` | não | `''` |  |
+| `calculado_em` | `datetime` | sim |  |  |
+
+**Índices:** `pedidos_venda_etapas_c5_filial_c5_num_unique` único (c5_filial, c5_num) · `pedidos_venda_etapas_c5_num_index` (c5_num) · `pedidos_venda_etapas_etapa_entrega_prevista_index` (etapa, entrega_prevista) · `pedidos_venda_etapas_faturado_em_index` (faturado_em)
+
+### pedidos_venda_liberacoes
+
+**Origem:** Protheus — sincronizada de `[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SC9010]` (procedure `dbo.sp_sincronizar_pedidos_venda`) · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `c9_filial` | `nvarchar(8)` | não | `''` |  |
+| `c9_pedido` | `nvarchar(10)` | não | `''` |  |
+| `c9_item` | `nvarchar(4)` | não | `''` |  |
+| `c9_sequen` | `nvarchar(3)` | não | `''` |  |
+| `c9_produto` | `nvarchar(30)` | não | `''` |  |
+| `c9_qtdlib` | `float(53)` | não | `'0'` |  |
+| `c9_prcven` | `float(53)` | não | `'0'` |  |
+| `c9_datalib` | `nchar(8)` | não | `''` |  |
+| `c9_blest` | `nvarchar(2)` | não | `''` |  |
+| `c9_blcred` | `nvarchar(2)` | não | `''` |  |
+| `c9_nfiscal` | `nvarchar(9)` | não | `''` |  |
+| `c9_serienf` | `nvarchar(3)` | não | `''` |  |
+| `extras` | `nvarchar(max)` | sim |  |  |
+| `c5_emissao` | `nchar(8)` | não | `''` |  |
+| `r_e_c_n_o_` | `int` | não |  |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `pedidos_venda_liberacoes_r_e_c_n_o__unique` único (r_e_c_n_o_) · `pedidos_venda_liberacoes_c9_pedido_c9_filial_index` (c9_pedido, c9_filial) · `pedidos_venda_liberacoes_c5_emissao_index` (c5_emissao)
 
 ### perdas_op
 
@@ -2757,6 +2861,26 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `navegador` | `nvarchar(400)` | sim |  |  |
 
 **Índices:** `registros_login_data_hora_index` (data_hora)
+
+### regras_etapa_pedido
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `etapa` | `nvarchar(30)` | não |  |  |
+| `campo` | `nvarchar(10)` | não |  |  |
+| `operador` | `nvarchar(12)` | não | `'igual'` |  |
+| `valores` | `nvarchar(200)` | não | `''` |  |
+| `observacao` | `nvarchar(200)` | sim |  |  |
+| `ativo` | `bit` | não | `'1'` |  |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `atualizado_em` | `datetime` | sim |  |  |
+| `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
+**Índices:** `regras_etapa_pedido_etapa_ativo_index` (etapa, ativo)
 
 ### roteiros_operacao
 

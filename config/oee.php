@@ -56,6 +56,9 @@ return [
         'ferramentas' => 'Ferramentas (SH4: consulta; administradores editam as cavidades ativas)',
         'mao_obra' => 'Mão de obra (SB1 tipo MO: consulta; administradores editam o fator de serviço da meta de produção)',
         'calculadora' => 'Calculadora de OEE',
+        // Faturamento
+        'faturamento_pedidos' => 'Faturamento: pedidos de venda (SC5/SC6/SC9 do Protheus por etapa: carteira, expedição, separação, conferência, logística, aguardando faturamento, faturados)',
+        'faturamento_etapas' => 'Faturamento: etapas dos pedidos (regras dos status do WMS que definem separação, conferência, logística e aguardando faturamento)',
         'assistente' => 'Pergunte para Alumbra (assistente de IA na página inicial; responde só com os dados que o usuário pode ver)',
         // Ordens de serviço (manutenção de produção e de tecnologia; cada um vê a fila da sua unidade)
         'os_material' => 'Ordens de serviço: solicitação de material (mantenedores pedem; o administrador da área aprova item a item)',

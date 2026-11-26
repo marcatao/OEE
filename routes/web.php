@@ -20,6 +20,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpenhoOpController;
 use App\Http\Controllers\EstruturaProdutoController;
 use App\Http\Controllers\FaltaProdutoController;
+use App\Http\Controllers\Faturamento\EtapaPedidoController;
+use App\Http\Controllers\Faturamento\PedidoVendaController;
 use App\Http\Controllers\FerramentaController;
 use App\Http\Controllers\InventarioTi\InventarioTiController;
 use App\Http\Controllers\InventarioTi\TermoResponsabilidadeController;
@@ -111,6 +113,17 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [FaltaProdutoController::class, 'index'])->name('index');
         Route::post('filtros', [FaltaProdutoController::class, 'salvarFiltro'])->name('filtros.salvar');
         Route::delete('filtros/{filtro}', [FaltaProdutoController::class, 'excluirFiltro'])->name('filtros.excluir');
+    });
+    // Faturamento: pedidos de venda do Protheus (SC5/SC6/SC9) por etapa e as regras das etapas do WMS.
+    Route::middleware('permissao:faturamento_pedidos')->prefix('faturamento/pedidos-de-venda')->name('faturamento.pedidos.')->group(function () {
+        Route::get('/', [PedidoVendaController::class, 'index'])->name('index');
+        Route::post('filtros', [PedidoVendaController::class, 'salvarFiltro'])->name('filtros.salvar');
+        Route::delete('filtros/{filtro}', [PedidoVendaController::class, 'excluirFiltro'])->name('filtros.excluir');
+    });
+    Route::middleware('permissao:faturamento_etapas')->prefix('faturamento/etapas')->name('faturamento.etapas.')->group(function () {
+        Route::get('/', [EtapaPedidoController::class, 'index'])->name('index');
+        Route::post('/', [EtapaPedidoController::class, 'store'])->name('store');
+        Route::patch('{regra}', [EtapaPedidoController::class, 'alternar'])->whereNumber('regra')->name('alternar');
     });
     // Estruturas (SG1) e roteiros (SG2): consulta. Ferramentas (SH4): consulta; administradores editam cavidades ativas.
     Route::get('producao/estruturas', [EstruturaProdutoController::class, 'index'])

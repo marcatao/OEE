@@ -62,6 +62,8 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   usuário**, explicando o que mudaria, e só faça depois que ele decidir (de preferência num comando separado, nunca
   escondido numa migração).
 - Mudou uma migração? Rode `php artisan banco:documentar` e faça commit de `docs/banco-de-dados.md` junto.
+- **Código novo NUNCA acessa o Protheus direto** (pedido do usuário em 26/11/2026): cópias novas são feitas por
+  procedure do banco do portal (MERGE; o PHP só chama). Os importadores PHP antigos abaixo continuam até serem migrados.
 - Dados do Protheus são só **lidos** (conexão `protheus`, banco `Compras`): tabelas sincronizadas e importadores ficam
   em `config/protheus.php`; a sincronização (`App\Services\Protheus\SincronizadorProtheus`) grava o histórico em
   `sincronizacoes`. `centros_custo` é cópia da CTT; `maquinas` é **mista** com a SHB (código, nome e centro de custo
@@ -86,6 +88,24 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   D cancelada). `App\Services\FaltaProdutos\FaltaProdutos` cruza com a produção: em produção (apontamento real em
   aberto "produzindo" com OP do produto) > direcionada (OP atual de máquina) > com OP > sem OP. Filtro
   `FiltroFaltaProdutos` (padrão: P + A, sem limite de data; salvos em `filtros_usuarios`, tela `falta_produtos`).
+- **Faturamento › Pedidos de venda** (pedido do usuário em 26/11/2026; permissões `faturamento_pedidos` e
+  `faturamento_etapas`; seção "Faturamento" no menu): o portal **NUNCA acessa o Protheus direto** — tudo vem da MESMA
+  procedure `dbo.sp_sincronizar_pedidos_venda` (item `pedidos_venda`, sem importador PHP): `pedidos_venda` (SC5 + SC6,
+  um item por linha, ver abaixo) e `pedidos_venda_liberacoes` (SC9010 dos pedidos da janela de 6 meses, com o
+  C5_EMISSAO; MERGE pelo R_E_C_N_O_; apaga as da janela que não vieram; `extras` JSON = campos do WMS
+  `EtapasPedidoVenda::CAMPOS_WMS` + os das regras ativas, só os que existem na SC9010; FOR JSON = SQL Server 2016+).
+  Depois da procedure o sincronizador chama o item `depois` (`EtapasPedidoVenda::depoisDaSincronizacao`), que grava
+  `pedidos_venda_etapas` (uma linha por pedido: etapa, `etapa_desde`, valores, entrega prevista, faturado_em, cliente)
+  só com as tabelas do portal. Regra única em `App\Services\Faturamento\EtapasPedidoVenda`: liberação bloqueada
+  (C9_BLCRED/C9_BLEST fora de vazio e "10") = carteira; senão a etapa do WMS da 1ª regra que vale (aguardando
+  faturamento > logística > conferência > separação; `regras_etapa_pedido`, campo da SC9, tela Faturamento › Etapas
+  dos pedidos, desativadas e não excluídas, sem unidade; salvar recalcula os em aberto); nenhuma = em expedição; item
+  com saldo sem liberação suficiente = carteira; pedido = etapa do item MAIS ATRASADO; sem saldo = faturado (C6_DATFAT)
+  ou encerrado (null, resíduo sem entrega). Dias na etapa: faturado = C6_DATFAT, expedição = C9_DATALIB, as outras
+  desde que o portal viu a mudança. Tela (`PedidosVendaDashboard`, `FiltroPedidosVenda`): SEMPRE abre no mês atual,
+  mês a mês (o mês não vai no filtro salvo); faturados = faturamento no mês; em aberto = entrega prevista no mês +
+  atrasados (padrão), só no mês ou todos; cartões das 7 etapas (quantidade e valor; aberto = saldo a faturar) filtram
+  a lista; cores `--pv-*` (claro, escuro e `data-tema`). Assistente: consulta `pedidos_venda`. Sem unidade.
 - `estruturas_produto` (SG1) e `roteiros_operacao` (SG2) são cópias (só consulta). `ferramentas` (SH4) é **mista**:
   campos `h4_*` vêm do Protheus a cada sincronização; `h4_qtdcavativas` (nasce = `h4_qtdcav`, nunca maior, editável
   pelos administradores), `unidade` e `disponivel` (nasce true; filtro Disponíveis/Indisponíveis na lista) são do portal

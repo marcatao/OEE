@@ -1458,3 +1458,55 @@ a.kpi-link:hover { border-color:var(--primaria); }
 .notificacoes-lista span { font-size:.82rem; color:var(--suave); }
 .notificacoes-vazia { padding:1rem; font-size:.88rem; }
 @media (max-width: 32.5em) { .notificacoes-painel { position:fixed; top:calc(var(--altura-topo) + .25rem); right:.75rem; left:.75rem; width:auto; } }
+
+/* ---------- Faturamento › Pedidos de venda (etapas) ---------- */
+:root {
+  --pv-carteira:#4f5d55; --pv-carteira-suave:#edf1ee; --pv-expedicao:#1d5fa8; --pv-expedicao-suave:#e6eef8;
+  --pv-separacao:#6d28d9; --pv-separacao-suave:#f1eafd; --pv-conferencia:#9a5306; --pv-conferencia-suave:#fef3e2;
+  --pv-logistica:#0f766e; --pv-logistica-suave:#dcf3ef; --pv-aguardando:#9f1239; --pv-aguardando-suave:#ffe4e6;
+  --pv-faturado:#067647; --pv-faturado-suave:#e3f6ec;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --pv-carteira:#b5c4bb; --pv-carteira-suave:#1c2721; --pv-expedicao:#7cb2ee; --pv-expedicao-suave:#14263a;
+    --pv-separacao:#c4a5fa; --pv-separacao-suave:#2a1d45; --pv-conferencia:#fbbf24; --pv-conferencia-suave:#33240b;
+    --pv-logistica:#5fd4c4; --pv-logistica-suave:#10302c; --pv-aguardando:#fb7185; --pv-aguardando-suave:#3a1520;
+    --pv-faturado:#47cd89; --pv-faturado-suave:#12301f;
+  }
+}
+:root[data-tema="escuro"] {
+    --pv-carteira:#b5c4bb; --pv-carteira-suave:#1c2721; --pv-expedicao:#7cb2ee; --pv-expedicao-suave:#14263a;
+    --pv-separacao:#c4a5fa; --pv-separacao-suave:#2a1d45; --pv-conferencia:#fbbf24; --pv-conferencia-suave:#33240b;
+    --pv-logistica:#5fd4c4; --pv-logistica-suave:#10302c; --pv-aguardando:#fb7185; --pv-aguardando-suave:#3a1520;
+    --pv-faturado:#47cd89; --pv-faturado-suave:#12301f;
+}
+.pv-mes { display:flex; flex-wrap:wrap; align-items:end; gap:.5rem; margin:.5rem 0; }
+.pv-mes label { display:flex; flex-direction:column; gap:.3rem; color:var(--suave); font-size:.88rem; }
+.pv-cartoes { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr)); gap:.75rem; margin:.75rem 0 .5rem; }
+.pv-cartoes a.tempo-cartao { color:inherit; text-decoration:none; border-top-width:4px; }
+.pv-cartoes a.tempo-cartao:hover { border-color:var(--primaria); }
+.pv-cartoes a.tempo-cartao.ativo { border-color:var(--primaria); background:var(--primaria-suave); }
+.pv-cartoes a.tempo-cartao:focus-visible { outline:2px solid var(--primaria); outline-offset:2px; }
+.pv-cartoes .tempo-cartao strong { font-size:1.5rem; line-height:1.2; }
+.pv-cartoes .pv-valor { font-weight:600; }
+.pv-cartoes .pv-etapa { align-self:flex-start; }
+.pv-etapa { display:inline-flex; align-items:center; font-size:.8rem; font-weight:600; padding:.05rem .55rem; border-radius:999px; border:1px solid currentColor; white-space:nowrap; }
+.pv-etapa.pv-carteira { color:var(--pv-carteira); background:var(--pv-carteira-suave); }
+.pv-etapa.pv-expedicao { color:var(--pv-expedicao); background:var(--pv-expedicao-suave); }
+.pv-etapa.pv-separacao { color:var(--pv-separacao); background:var(--pv-separacao-suave); }
+.pv-etapa.pv-conferencia { color:var(--pv-conferencia); background:var(--pv-conferencia-suave); }
+.pv-etapa.pv-logistica { color:var(--pv-logistica); background:var(--pv-logistica-suave); }
+.pv-etapa.pv-aguardando_faturamento { color:var(--pv-aguardando); background:var(--pv-aguardando-suave); }
+.pv-etapa.pv-faturado { color:var(--pv-faturado); background:var(--pv-faturado-suave); }
+.tempo-cartao.pv-carteira { border-top-color:var(--pv-carteira); }
+.tempo-cartao.pv-expedicao { border-top-color:var(--pv-expedicao); }
+.tempo-cartao.pv-separacao { border-top-color:var(--pv-separacao); }
+.tempo-cartao.pv-conferencia { border-top-color:var(--pv-conferencia); }
+.tempo-cartao.pv-logistica { border-top-color:var(--pv-logistica); }
+.tempo-cartao.pv-aguardando_faturamento { border-top-color:var(--pv-aguardando); }
+.tempo-cartao.pv-faturado { border-top-color:var(--pv-faturado); }
+.pv-regra-fixa { padding-left:1.25rem; display:grid; gap:.45rem; }
+.pv-regra-fixa .pv-etapa { margin-right:.35rem; }
+.pv-valores { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); gap:1rem; }
+.pv-valores h3 { margin:.25rem 0; font-size:.95rem; }
+.pv-valores ul { margin:0; padding-left:1rem; }

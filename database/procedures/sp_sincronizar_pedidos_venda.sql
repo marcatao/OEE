@@ -15,6 +15,13 @@
  * - APAGA do portal os itens DA JANELA que não vieram (excluídos no Protheus, item ou cabeçalho, ou apagados de vez);
  * - situacao: eliminado (C6_BLQ = 'R', resíduo) > faturado (entregue >= vendido) > parcial (entregue > 0) > aberto.
  * Por segurança, leitura vazia com pedidos da janela no portal = erro (nada é apagado).
+ * LIBERAÇÕES (SC9010 → dbo.pedidos_venda_liberacoes, Faturamento › Pedidos de venda, 26/11/2026), no MESMO sincronismo:
+ * - as liberações não excluídas dos pedidos da janela (mesma filial e número, C5 não excluído), com o C5_EMISSAO;
+ * - MERGE pelo R_E_C_N_O_ da SC9; APAGA do portal as liberações DA JANELA que não vieram (estornadas/excluídas);
+ * - "extras" (JSON, FOR JSON: SQL Server 2016+): campos do WMS (C9_ORDSEP, C9_CARGA, C9_SEQCAR, C9_SERVIC, C9_STSERV,
+ *   C9_ENDPAD = EtapasPedidoVenda::CAMPOS_WMS) e os das regras ativas de dbo.regras_etapa_pedido, só os que EXISTEM na
+ *   SC9010 (nome validado: letras, números e _). As etapas são calculadas depois pelo PHP, só com as tabelas do portal.
+ * O portal NUNCA lê o Protheus direto: esta procedure é o único caminho.
  * Devolve uma linha: lidos, novos, atualizados, excluidos, ignorados, ultimo_recno, corte (AAAAMMDD; 00000000 = tudo).
  */
 ALTER PROCEDURE dbo.sp_sincronizar_pedidos_venda
@@ -28,7 +35,8 @@ BEGIN
     -- Janela: pedidos emitidos a partir de hoje − 6 meses (AAAAMMDD, como o C5_EMISSAO). Portal vazio = carga geral.
     DECLARE @corte varchar(8) = CONVERT(varchar(8), DATEADD(MONTH, -6, CAST(GETDATE() AS date)), 112);
     IF NOT EXISTS (SELECT 1 FROM dbo.pedidos_venda) SET @corte = '00000000';
-    DECLARE @lidos int, @ultimo int, @excluidos int = 0;
+    DECLARE @lidos int, @ultimo int, @excluidos int = 0, @lidos9 int = 0;
+    DECLARE @extras9 nvarchar(max), @rem9 nvarchar(max);
     DECLARE @acoes TABLE (acao nvarchar(10));
 
     IF NOT EXISTS (SELECT 1 FROM sys.servers WHERE name = N'ALUMBRAPRD')
@@ -115,6 +123,59 @@ BEGIN
         RETURN;
     END;
 
+    -- 1b) Liberações (SC9010) dos pedidos da janela. Campos extras do WMS: os fixos + os das regras, se existirem.
+    CREATE TABLE #colunas9 (coluna nvarchar(30) COLLATE DATABASE_DEFAULT);
+    SET @remota = N'SELECT COLUMN_NAME FROM CMT8F4_145045_PR_PD.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = ''SC9010''';
+    SET @sql = N'INSERT INTO #colunas9 (coluna) SELECT UPPER(COLUMN_NAME) FROM OPENQUERY(ALUMBRAPRD, '''
+        + REPLACE(@remota, N'''', N'''''') + N''')';
+    EXEC sp_executesql @sql;
+
+    CREATE TABLE #extras9 (campo nvarchar(10) COLLATE DATABASE_DEFAULT PRIMARY KEY);
+    INSERT INTO #extras9 (campo)
+    SELECT DISTINCT c.campo FROM (
+        SELECT v.campo FROM (VALUES (N'C9_ORDSEP'), (N'C9_CARGA'), (N'C9_SEQCAR'), (N'C9_SERVIC'), (N'C9_STSERV'), (N'C9_ENDPAD')) v (campo)
+        UNION
+        SELECT UPPER(LTRIM(RTRIM(r.campo))) FROM dbo.regras_etapa_pedido r WHERE r.ativo = 1
+    ) c
+    WHERE c.campo LIKE N'C9[_]%' AND c.campo NOT LIKE N'%[^A-Za-z0-9_]%'
+      AND EXISTS (SELECT 1 FROM #colunas9 k WHERE k.coluna = c.campo);
+    SET @rem9 = ISNULL((SELECT N', C9.' + campo FROM #extras9 ORDER BY campo FOR XML PATH(''), TYPE).value('.', 'nvarchar(max)'), N'');
+    SET @extras9 = STUFF((SELECT N', RTRIM(CONVERT(nvarchar(60), q.' + campo + N')) AS ' + campo FROM #extras9 ORDER BY campo
+        FOR XML PATH(''), TYPE).value('.', 'nvarchar(max)'), 1, 2, N'');
+
+    CREATE TABLE #sc9 (
+        c9_filial nvarchar(8) COLLATE DATABASE_DEFAULT NOT NULL,
+        c9_pedido nvarchar(10) COLLATE DATABASE_DEFAULT NOT NULL,
+        c9_item nvarchar(4) COLLATE DATABASE_DEFAULT NOT NULL,
+        c9_sequen nvarchar(3) COLLATE DATABASE_DEFAULT NOT NULL,
+        c9_produto nvarchar(30) COLLATE DATABASE_DEFAULT NOT NULL,
+        c9_qtdlib float NOT NULL,
+        c9_prcven float NOT NULL,
+        c9_datalib nvarchar(8) COLLATE DATABASE_DEFAULT NOT NULL,
+        c9_blest nvarchar(2) COLLATE DATABASE_DEFAULT NOT NULL,
+        c9_blcred nvarchar(2) COLLATE DATABASE_DEFAULT NOT NULL,
+        c9_nfiscal nvarchar(9) COLLATE DATABASE_DEFAULT NOT NULL,
+        c9_serienf nvarchar(3) COLLATE DATABASE_DEFAULT NOT NULL,
+        extras nvarchar(max) COLLATE DATABASE_DEFAULT NULL,
+        c5_emissao nvarchar(8) COLLATE DATABASE_DEFAULT NOT NULL,
+        r_e_c_n_o_ int NOT NULL PRIMARY KEY
+    );
+    SET @remota = N'SELECT C9.C9_FILIAL, C9.C9_PEDIDO, C9.C9_ITEM, C9.C9_SEQUEN, C9.C9_PRODUTO, C9.C9_QTDLIB, C9.C9_PRCVEN, '
+        + N'C9.C9_DATALIB, C9.C9_BLEST, C9.C9_BLCRED, C9.C9_NFISCAL, C9.C9_SERIENF, C5.C5_EMISSAO, C9.R_E_C_N_O_ AS C9_RECNO' + @rem9 + N' '
+        + N'FROM CMT8F4_145045_PR_PD.dbo.SC9010 C9 '
+        + N'JOIN CMT8F4_145045_PR_PD.dbo.SC5010 C5 ON C5.C5_FILIAL = C9.C9_FILIAL AND C5.C5_NUM = C9.C9_PEDIDO AND C5.D_E_L_E_T_ = '' '' '
+        + N'WHERE C9.D_E_L_E_T_ = '' '' AND C5.C5_EMISSAO >= ''' + @corte + N'''';
+    SET @sql = N'INSERT INTO #sc9 (c9_filial, c9_pedido, c9_item, c9_sequen, c9_produto, c9_qtdlib, c9_prcven, c9_datalib, '
+        + N'c9_blest, c9_blcred, c9_nfiscal, c9_serienf, extras, c5_emissao, r_e_c_n_o_) '
+        + N'SELECT LEFT(RTRIM(q.C9_FILIAL), 8), LEFT(RTRIM(q.C9_PEDIDO), 10), LEFT(RTRIM(q.C9_ITEM), 4), LEFT(RTRIM(q.C9_SEQUEN), 3), '
+        + N'LEFT(RTRIM(q.C9_PRODUTO), 30), ISNULL(q.C9_QTDLIB, 0), ISNULL(q.C9_PRCVEN, 0), LEFT(RTRIM(q.C9_DATALIB), 8), '
+        + N'LEFT(RTRIM(q.C9_BLEST), 2), LEFT(RTRIM(q.C9_BLCRED), 2), LEFT(RTRIM(q.C9_NFISCAL), 9), LEFT(RTRIM(q.C9_SERIENF), 3), '
+        + CASE WHEN @extras9 IS NULL THEN N'NULL' ELSE N'(SELECT ' + @extras9 + N' FOR JSON PATH, WITHOUT_ARRAY_WRAPPER)' END + N', '
+        + N'LEFT(RTRIM(q.C5_EMISSAO), 8), q.C9_RECNO '
+        + N'FROM OPENQUERY(ALUMBRAPRD, ''' + REPLACE(@remota, N'''', N'''''') + N''') q';
+    EXEC sp_executesql @sql;
+    SELECT @lidos9 = COUNT(*) FROM #sc9;
+
     BEGIN TRANSACTION;
 
     -- 2) Itens DA JANELA que não vieram (excluídos no Protheus, item ou cabeçalho, ou apagados de vez): apaga do portal.
@@ -158,9 +219,37 @@ BEGIN
     )
     OUTPUT $action INTO @acoes (acao);
 
+    -- 4) Liberações DA JANELA que não vieram (estornadas ou excluídas no Protheus): apaga do portal.
+    DELETE t FROM dbo.pedidos_venda_liberacoes t
+    WHERE t.c5_emissao >= @corte
+      AND NOT EXISTS (SELECT 1 FROM #sc9 s WHERE s.r_e_c_n_o_ = t.r_e_c_n_o_);
+    SET @excluidos += @@ROWCOUNT;
+
+    -- 5) MERGE das liberações pelo R_E_C_N_O_ da SC9 (só as que mudaram).
+    MERGE dbo.pedidos_venda_liberacoes WITH (HOLDLOCK) AS t
+    USING #sc9 AS s ON t.r_e_c_n_o_ = s.r_e_c_n_o_
+    WHEN MATCHED AND EXISTS (
+        SELECT s.c9_filial, s.c9_pedido, s.c9_item, s.c9_sequen, s.c9_produto, s.c9_qtdlib, s.c9_prcven, s.c9_datalib,
+               s.c9_blest, s.c9_blcred, s.c9_nfiscal, s.c9_serienf, s.extras, s.c5_emissao
+        EXCEPT
+        SELECT t.c9_filial, t.c9_pedido, t.c9_item, t.c9_sequen, t.c9_produto, t.c9_qtdlib, t.c9_prcven, t.c9_datalib,
+               t.c9_blest, t.c9_blcred, t.c9_nfiscal, t.c9_serienf, t.extras, t.c5_emissao
+    ) THEN UPDATE SET
+        c9_filial = s.c9_filial, c9_pedido = s.c9_pedido, c9_item = s.c9_item, c9_sequen = s.c9_sequen, c9_produto = s.c9_produto,
+        c9_qtdlib = s.c9_qtdlib, c9_prcven = s.c9_prcven, c9_datalib = s.c9_datalib, c9_blest = s.c9_blest, c9_blcred = s.c9_blcred,
+        c9_nfiscal = s.c9_nfiscal, c9_serienf = s.c9_serienf, extras = s.extras, c5_emissao = s.c5_emissao, sincronizado_em = @agora
+    WHEN NOT MATCHED BY TARGET THEN INSERT (
+        c9_filial, c9_pedido, c9_item, c9_sequen, c9_produto, c9_qtdlib, c9_prcven, c9_datalib, c9_blest, c9_blcred, c9_nfiscal,
+        c9_serienf, extras, c5_emissao, r_e_c_n_o_, sincronizado_em
+    ) VALUES (
+        s.c9_filial, s.c9_pedido, s.c9_item, s.c9_sequen, s.c9_produto, s.c9_qtdlib, s.c9_prcven, s.c9_datalib, s.c9_blest,
+        s.c9_blcred, s.c9_nfiscal, s.c9_serienf, s.extras, s.c5_emissao, s.r_e_c_n_o_, @agora
+    )
+    OUTPUT $action INTO @acoes (acao);
+
     COMMIT TRANSACTION;
 
-    SELECT ISNULL(@lidos, 0) AS lidos,
+    SELECT ISNULL(@lidos, 0) + @lidos9 AS lidos,
            (SELECT COUNT(*) FROM @acoes WHERE acao = 'INSERT') AS novos,
            (SELECT COUNT(*) FROM @acoes WHERE acao = 'UPDATE') AS atualizados,
            @excluidos AS excluidos,

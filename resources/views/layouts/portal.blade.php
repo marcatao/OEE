@@ -86,6 +86,20 @@
           </div>
         @endif
 
+        @if ($u->pode('faturamento_pedidos') || $u->pode('faturamento_etapas'))
+          <div class="menu-bloco" data-bloco="faturamento">
+            @include('layouts.partials.menu-secao', ['titulo' => 'Faturamento'])
+            <div class="menu-itens">
+              @if ($u->pode('faturamento_pedidos'))
+                @include('layouts.partials.menu-link', ['rota' => 'faturamento.pedidos.index', 'rotulo' => 'Pedidos de venda', 'icone' => 'caminhao', 'ativo' => 'faturamento.pedidos.*'])
+              @endif
+              @if ($u->pode('faturamento_etapas'))
+                @include('layouts.partials.menu-link', ['rota' => 'faturamento.etapas.index', 'rotulo' => 'Etapas dos pedidos', 'icone' => 'engrenagem', 'ativo' => 'faturamento.etapas.*'])
+              @endif
+            </div>
+          </div>
+        @endif
+
         @if ($u->pode('os_painel') || $u->pode('os_material') || $u->pode('os_solicitar') || $u->pode('os_aprovar') || $u->pode('solicitacoes_manutencao') || $u->pode('os_almoxarifado') || $u->pode('os_preventivas') || $u->pode('os_relatorios') || $u->ehAdmin())
           <div class="menu-bloco" data-bloco="ordens-servico">
             @include('layouts.partials.menu-secao', ['titulo' => 'Ordens de serviço'])

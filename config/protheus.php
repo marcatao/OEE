@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Faturamento\EtapasPedidoVenda;
 use App\Services\ImportadorCentrosCusto;
 use App\Services\Protheus\ImportadorEmpenhos;
 use App\Services\Protheus\ImportadorEstruturas;
@@ -125,9 +126,11 @@ return [
             'procedure' => 'dbo.sp_sincronizar_movimentos_producao',
             'origem_procedure' => '[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SD3010]',
         ],
-        // Pedidos de venda: SC5 (cabeçalho) + SC6 (itens) + nome do cliente (SA1) numa tabela só, uma linha por item.
-        // SÓ pela procedure (MERGE pelo R_E_C_N_O_ do item, lendo o servidor vinculado ALUMBRAPRD): não há importador
-        // em PHP; fora do SQL Server (testes) a sincronização é pulada.
+        // Pedidos de venda: SC5 (cabeçalho) + SC6 (itens) + nome do cliente (SA1) numa tabela só, uma linha por item,
+        // e as liberações (SC9) em pedidos_venda_liberacoes, no MESMO sincronismo (Faturamento, 26/11/2026).
+        // SÓ pela procedure (MERGE pelo R_E_C_N_O_, lendo o servidor vinculado ALUMBRAPRD): o portal NUNCA acessa o
+        // Protheus direto; não há importador em PHP; fora do SQL Server (testes) a sincronização é pulada. Depois da
+        // procedure, o PHP recalcula as etapas dos pedidos só com as tabelas do portal ("depois").
         'pedidos_venda' => [
             'descricao' => 'Pedidos de venda',
             'tabela_origem' => 'SC6', // a procedure lê SC6010 + SC5010 + SA1010 do ALUMBRAPRD
@@ -136,7 +139,10 @@ return [
             'modo' => 'espelho',
             'via' => 'procedure',
             'procedure' => 'dbo.sp_sincronizar_pedidos_venda',
-            'origem_procedure' => '[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SC5010] + [SC6010]',
+            'origem_procedure' => '[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SC5010] + [SC6010] + [SC9010]',
+            'depois' => EtapasPedidoVenda::class,
+            // Outras tabelas gravadas pela mesma procedure (documentação do banco).
+            'outras_tabelas' => ['pedidos_venda_liberacoes' => '[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SC9010]'],
         ],
         // Itens de nota fiscal de saída (SD2) que citam uma OP.
         'notas_fiscais_op' => [

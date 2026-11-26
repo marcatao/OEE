@@ -152,6 +152,10 @@ class DocumentarBanco extends Command
     private function origem(string $tabela): array
     {
         foreach (config('protheus.sincronizacoes', []) as $item) {
+            // "outras_tabelas": tabelas a mais gravadas pela mesma procedure (ex.: liberações dos pedidos de venda).
+            if (isset($item['outras_tabelas'][$tabela])) {
+                return ['tipo' => 'Protheus', 'texto' => 'Protheus — sincronizada de `'.$item['outras_tabelas'][$tabela].'` (procedure `'.$item['procedure'].'`)'];
+            }
             if ($item['tabela_destino'] === $tabela) {
                 // Pela procedure que lê o servidor vinculado (ex.: [ALUMBRAPRD]...[SD3010]), a origem dela; senão, a do banco Compras.
                 $de = ($item['via'] ?? 'php') === 'procedure' && ! empty($item['origem_procedure'])

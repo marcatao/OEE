@@ -4,6 +4,7 @@ namespace App\Services\Assistente;
 
 use App\Models\ApontamentoEstado;
 use App\Models\EmpenhoOp;
+use App\Models\Faturamento\PedidoVendaEtapa;
 use App\Models\Ferramenta;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
@@ -12,6 +13,9 @@ use App\Models\OrdemProducao;
 use App\Models\ProdutoProtheus;
 use App\Models\Usuario;
 use App\Services\CustoOrdemProducao;
+use App\Services\Faturamento\EtapasPedidoVenda;
+use App\Services\Faturamento\FiltroPedidosVenda;
+use App\Services\Faturamento\PedidosVendaDashboard;
 use App\Services\IndicadoresOee;
 use App\Services\IndicadoresPeriodo;
 use App\Services\ResumoCustoOp;
@@ -223,6 +227,24 @@ class FerramentasAssistente
                 'permissoes' => ['ferramentas'],
                 'descricao' => 'Ferramentas/moldes (SH4): código, descrição, cavidades e cavidades ativas, vida útil.',
                 'esquema' => $objeto(['busca' => ['type' => 'string', 'description' => 'Parte do código ou da descrição.'], 'limite' => $limite]),
+            ],
+            'pedidos_venda' => [
+                'metodo' => 'pedidosVenda', 'rotulo' => 'Consultando os pedidos de venda',
+                'permissoes' => ['faturamento_pedidos'],
+                'descricao' => 'Pedidos de venda do Protheus (Faturamento › Pedidos de venda) por etapa: '
+                    .implode(', ', array_map(fn ($k, $e) => "{$k} ({$e['rotulo']})", array_keys(EtapasPedidoVenda::ETAPAS), EtapasPedidoVenda::ETAPAS))
+                    .'. Devolve a quantidade e o valor de cada etapa no mês (faturados = faturamento no mês; em aberto = '
+                    .'saldo a faturar, conforme "abertos") e a lista dos pedidos (número, cliente, emissão, entrega prevista, '
+                    .'valor, etapa, dias na etapa). Os pedidos ficam na etapa do item mais atrasado.',
+                'esquema' => $objeto([
+                    'mes' => ['type' => 'string', 'description' => 'Mês (AAAA-MM). Padrão: o mês atual.'],
+                    'etapas' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => array_keys(EtapasPedidoVenda::ETAPAS)],
+                        'description' => 'Só estas etapas na lista (vazio = todas).'],
+                    'abertos' => ['type' => 'string', 'enum' => array_keys(FiltroPedidosVenda::ABERTOS),
+                        'description' => 'Pedidos em aberto: mes_atrasados (padrão: entrega no mês, atrasados e sem data), mes ou todos.'],
+                    'busca' => ['type' => 'string', 'description' => 'Número do pedido, cliente (código ou nome), produto ou pedido do cliente.'],
+                    'limite' => $limite,
+                ]),
             ],
             'ordens_servico' => [
                 'metodo' => 'ordensServico', 'rotulo' => 'Consultando as ordens de serviço',
@@ -452,6 +474,41 @@ class FerramentasAssistente
         }
 
         return $dados;
+    }
+
+    private function pedidosVenda(Usuario $u, array $e): array
+    {
+        $mes = trim((string) ($e['mes'] ?? ''));
+        if ($mes !== '' && ! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $mes)) {
+            throw new ErroFerramenta("Mês inválido: {$mes} (use AAAA-MM).");
+        }
+        $filtro = FiltroPedidosVenda::doSalvo(['etapas' => (array) ($e['etapas'] ?? []), 'abertos' => $e['abertos'] ?? null,
+            'busca' => $e['busca'] ?? ''], $mes ?: null);
+        $dados = app(PedidosVendaDashboard::class)->montar($filtro, 1);
+        $lista = app(PedidosVendaDashboard::class)->consulta($filtro)
+            ->when($filtro->etapas, fn ($q) => $q->whereIn('etapa', $filtro->etapas))
+            ->orderBy('entrega_prevista')->orderBy('c5_num')->limit($this->limite($e['limite'] ?? null))->get();
+
+        return [
+            'mes' => $filtro->rotuloMes(),
+            'em_aberto' => FiltroPedidosVenda::ABERTOS[$filtro->abertos],
+            'etapas' => collect($dados['cartoes'])->map(fn ($c, $etapa) => ['etapa' => EtapasPedidoVenda::ETAPAS[$etapa]['rotulo'],
+                'pedidos' => $c['quantidade'], 'valor' => round($c['valor'], 2)])->values()->all(),
+            'pedidos_na_lista' => $dados['pedidos']->total(),
+            'pedidos' => $lista->map(fn (PedidoVendaEtapa $p) => [
+                'pedido' => $p->numero(),
+                'filial' => trim((string) $p->c5_filial),
+                'cliente' => trim((string) $p->cliente_nome) ?: trim((string) $p->c5_cliente),
+                'emissao' => PedidoVendaEtapa::data($p->c5_emissao),
+                'entrega_prevista' => PedidoVendaEtapa::data($p->entrega_prevista),
+                'faturado_em' => trim((string) $p->faturado_em) !== '' ? PedidoVendaEtapa::data($p->faturado_em) : null,
+                'valor' => round($p->valor(), 2),
+                'valor_total' => round((float) $p->valor_total, 2),
+                'etapa' => $p->rotuloEtapa(),
+                'parcialmente_faturado' => (bool) $p->parcial,
+                'dias_na_etapa' => $p->diasNaEtapa(),
+            ])->all(),
+        ];
     }
 
     private function empenhosOp(Usuario $u, array $e): array
