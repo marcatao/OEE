@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **72** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **73** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -759,6 +759,44 @@ erDiagram
         bigint atualizado_por_id FK
         nvarchar(10) pedido_gerado
     }
+    pedidos_venda {
+        bigint id PK
+        nvarchar(8) c5_filial
+        nvarchar(10) c5_num
+        nchar(1) c5_tipo
+        nvarchar(10) c5_cliente
+        nvarchar(4) c5_lojacli
+        nvarchar(60) cliente_nome
+        nvarchar(3) c5_condpag
+        nchar(8) c5_emissao
+        nvarchar(10) c5_vend1
+        nvarchar(10) c5_transp
+        nvarchar(9) c5_nota
+        nvarchar(3) c5_serie
+        nchar(1) c5_liberok
+        nvarchar(4) c6_item
+        nvarchar(30) c6_produto
+        nvarchar(60) c6_descri
+        nvarchar(2) c6_um
+        float(53) c6_qtdven
+        float(53) c6_prcven
+        float(53) c6_valor
+        float(53) c6_qtdent
+        nchar(8) c6_entreg
+        nvarchar(3) c6_tes
+        nvarchar(4) c6_local
+        nvarchar(9) c6_nota
+        nvarchar(3) c6_serie
+        nchar(8) c6_datfat
+        nvarchar(2) c6_blq
+        nvarchar(10) c6_numop
+        nvarchar(4) c6_itemop
+        nvarchar(20) c6_pedcli
+        nvarchar(12) situacao
+        int c5_recno
+        int r_e_c_n_o_ UK
+        datetime sincronizado_em
+    }
     perdas_op {
         bigint id PK
         bigint ordem_producao_id FK
@@ -1340,6 +1378,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`pedidos_compra`](#pedidos_compra) | Sistema | `id` | 22 | 4 |
 | [`pedidos_compra_itens`](#pedidos_compra_itens) | Sistema | `id` | 17 | 4 |
+| [`pedidos_venda`](#pedidos_venda) | Protheus | `id` | 36 | 0 |
 | [`perdas_op`](#perdas_op) | Sistema | `id` | 16 | 5 |
 | [`plantas`](#plantas) | Sistema | `id` | 9 | 2 |
 | [`produtos`](#produtos) | Sistema | `id` | 8 | 2 |
@@ -1601,7 +1640,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 ### empenhos_op
 
-**Origem:** Protheus — sincronizada de `Compras.SD4` · **Chave primária:** `id`
+**Origem:** Protheus — sincronizada de `[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SD4010]` (procedure `dbo.sp_sincronizar_empenhos_op`) · **Chave primária:** `id`
 
 | Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
 |---|---|---|---|---|
@@ -1986,7 +2025,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 ### movimentos_producao
 
-**Origem:** Protheus — sincronizada de `Compras.SD3` · **Chave primária:** `id`
+**Origem:** Protheus — sincronizada de `[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SD3010]` (procedure `dbo.sp_sincronizar_movimentos_producao`) · **Chave primária:** `id`
 
 | Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
 |---|---|---|---|---|
@@ -2570,6 +2609,51 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `pedidos_compra_itens_pedido_compra_id_id_index` (pedido_compra_id, id) · `pedidos_compra_itens_solicitacao_material_item_id_index` (solicitacao_material_item_id)
 
 **Regras (CHECK, só no SQL Server):** `ck_pedidos_compra_itens_quantidade`: `quantidade > 0`
+
+### pedidos_venda
+
+**Origem:** Protheus — sincronizada de `[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SC5010] + [SC6010]` (procedure `dbo.sp_sincronizar_pedidos_venda`) · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `c5_filial` | `nvarchar(8)` | não | `''` |  |
+| `c5_num` | `nvarchar(10)` | não | `''` |  |
+| `c5_tipo` | `nchar(1)` | não | `''` |  |
+| `c5_cliente` | `nvarchar(10)` | não | `''` |  |
+| `c5_lojacli` | `nvarchar(4)` | não | `''` |  |
+| `cliente_nome` | `nvarchar(60)` | não | `''` |  |
+| `c5_condpag` | `nvarchar(3)` | não | `''` |  |
+| `c5_emissao` | `nchar(8)` | não | `''` |  |
+| `c5_vend1` | `nvarchar(10)` | não | `''` |  |
+| `c5_transp` | `nvarchar(10)` | não | `''` |  |
+| `c5_nota` | `nvarchar(9)` | não | `''` |  |
+| `c5_serie` | `nvarchar(3)` | não | `''` |  |
+| `c5_liberok` | `nchar(1)` | não | `''` |  |
+| `c6_item` | `nvarchar(4)` | não | `''` |  |
+| `c6_produto` | `nvarchar(30)` | não | `''` |  |
+| `c6_descri` | `nvarchar(60)` | não | `''` |  |
+| `c6_um` | `nvarchar(2)` | não | `''` |  |
+| `c6_qtdven` | `float(53)` | não | `'0'` |  |
+| `c6_prcven` | `float(53)` | não | `'0'` |  |
+| `c6_valor` | `float(53)` | não | `'0'` |  |
+| `c6_qtdent` | `float(53)` | não | `'0'` |  |
+| `c6_entreg` | `nchar(8)` | não | `''` |  |
+| `c6_tes` | `nvarchar(3)` | não | `''` |  |
+| `c6_local` | `nvarchar(4)` | não | `''` |  |
+| `c6_nota` | `nvarchar(9)` | não | `''` |  |
+| `c6_serie` | `nvarchar(3)` | não | `''` |  |
+| `c6_datfat` | `nchar(8)` | não | `''` |  |
+| `c6_blq` | `nvarchar(2)` | não | `''` |  |
+| `c6_numop` | `nvarchar(10)` | não | `''` |  |
+| `c6_itemop` | `nvarchar(4)` | não | `''` |  |
+| `c6_pedcli` | `nvarchar(20)` | não | `''` |  |
+| `situacao` | `nvarchar(12)` | não | `'aberto'` |  |
+| `c5_recno` | `int` | sim |  |  |
+| `r_e_c_n_o_` | `int` | não |  |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `pedidos_venda_r_e_c_n_o__unique` único (r_e_c_n_o_) · `pedidos_venda_c5_num_c5_filial_index` (c5_num, c5_filial) · `pedidos_venda_c6_produto_index` (c6_produto) · `pedidos_venda_situacao_c6_entreg_index` (situacao, c6_entreg) · `pedidos_venda_c5_cliente_index` (c5_cliente)
 
 ### perdas_op
 

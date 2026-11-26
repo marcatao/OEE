@@ -125,6 +125,19 @@ return [
             'procedure' => 'dbo.sp_sincronizar_movimentos_producao',
             'origem_procedure' => '[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SD3010]',
         ],
+        // Pedidos de venda: SC5 (cabeçalho) + SC6 (itens) + nome do cliente (SA1) numa tabela só, uma linha por item.
+        // SÓ pela procedure (MERGE pelo R_E_C_N_O_ do item, lendo o servidor vinculado ALUMBRAPRD): não há importador
+        // em PHP; fora do SQL Server (testes) a sincronização é pulada.
+        'pedidos_venda' => [
+            'descricao' => 'Pedidos de venda',
+            'tabela_origem' => 'SC6', // a procedure lê SC6010 + SC5010 + SA1010 do ALUMBRAPRD
+            'tabela_destino' => 'pedidos_venda',
+            'importador' => null,
+            'modo' => 'espelho',
+            'via' => 'procedure',
+            'procedure' => 'dbo.sp_sincronizar_pedidos_venda',
+            'origem_procedure' => '[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SC5010] + [SC6010]',
+        ],
         // Itens de nota fiscal de saída (SD2) que citam uma OP.
         'notas_fiscais_op' => [
             'descricao' => 'Notas fiscais com OP',

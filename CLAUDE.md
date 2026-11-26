@@ -228,6 +228,10 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `empenhos_op` usa `dbo.sp_sincronizar_empenhos_op`, SEM parâmetros: a `SD4010` INTEIRA do mesmo servidor vinculado
   (só com `D4_OP`), sem o corte da SB9, MERGE pelo R_E_C_N_O_, apagando os excluídos e os que sumiram (para com erro
   se a leitura vier vazia e o portal tiver empenhos).
+  `pedidos_venda` = SC5010 (cabeçalho) + SC6010 (itens) + nome do cliente (SA1010) numa tabela só, UMA linha por item
+  (chave = R_E_C_N_O_ da SC6; `c5_recno` = do cabeçalho; `situacao` aberto | parcial | faturado | eliminado), SÓ pela
+  procedure `dbo.sp_sincronizar_pedidos_venda` (junção no Protheus por OPENQUERY, MERGE, apaga os que não vieram; sem
+  importador em PHP: fora do SQL Server a sincronização é pulada com aviso).
   SD2 (e a SD3 pelo PHP) são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
 - **Regras de proteção da manutenção**: minutos normais + extras lançados à mão têm de somar a duração; cronômetro

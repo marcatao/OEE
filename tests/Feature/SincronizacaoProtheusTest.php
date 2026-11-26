@@ -88,7 +88,7 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertSame(['1001', '1002'], CentroCusto::orderBy('ctt_custo')->pluck('ctt_custo')->all());
         $this->assertSame('USINAGEM', rtrim(CentroCusto::where('ctt_custo', '1001')->value('ctt_desc01')));
 
-        $this->assertSame(['centros_custo', 'maquinas', 'produtos', 'estruturas', 'ferramentas', 'roteiros', 'ordens_producao', 'empenhos_op', 'faltas_produto', 'movimentos_producao', 'notas_fiscais_op'],
+        $this->assertSame(['centros_custo', 'maquinas', 'produtos', 'estruturas', 'ferramentas', 'roteiros', 'ordens_producao', 'empenhos_op', 'faltas_produto', 'movimentos_producao', 'pedidos_venda', 'notas_fiscais_op'],
             Sincronizacao::orderBy('id')->pluck('chave')->all());
         $s = Sincronizacao::where('chave', 'centros_custo')->sole();
         $this->assertSame(['centros_custo', 'manual', 'sucesso', 3, 2, 0, 1, $admin->id],
@@ -266,6 +266,24 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertStringNotContainsString('SB9010', $sql); // sem o corte do fechamento do estoque
         $this->assertStringContainsString('MERGE dbo.empenhos_op', $sql);
         $this->assertStringContainsString("WHERE s.d_e_l_e_t_ = '*'", $sql);
+    }
+
+    public function test_pedidos_de_venda_sc5_e_sc6_numa_tabela_so_pela_procedure(): void
+    {
+        $this->assertSame('dbo.sp_sincronizar_pedidos_venda', config('protheus.sincronizacoes.pedidos_venda.procedure'));
+        // Só pela procedure: fora do SQL Server a sincronização é pulada, sem erro.
+        $r = app(SincronizadorProtheus::class)->sincronizar('pedidos_venda', 'comando');
+        $this->assertSame('sucesso', $r->situacao);
+        $this->assertStringContainsString('só é sincronizada pela procedure', $r->mensagem);
+
+        $sql = file_get_contents(database_path('procedures/sp_sincronizar_pedidos_venda.sql'));
+        $this->assertMatchesRegularExpression('/ALTER PROCEDURE dbo\.sp_sincronizar_pedidos_venda\s+AS\s+BEGIN/', $sql);
+        $this->assertStringContainsString('OPENQUERY(ALUMBRAPRD', $sql);
+        $this->assertStringContainsString('FROM CMT8F4_145045_PR_PD.dbo.SC6010 C6', $sql);
+        $this->assertStringContainsString('JOIN CMT8F4_145045_PR_PD.dbo.SC5010 C5', $sql);
+        $this->assertStringContainsString('MERGE dbo.pedidos_venda', $sql);
+        $this->assertStringContainsString('ON t.r_e_c_n_o_ = s.r_e_c_n_o_', $sql);
+        $this->assertTrue(Schema::hasColumns('pedidos_venda', ['c5_num', 'c6_item', 'cliente_nome', 'situacao', 'c5_recno']));
     }
 
     public function test_ordens_de_producao_vao_pela_procedure_so_no_sql_server(): void

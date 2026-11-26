@@ -153,7 +153,10 @@ class DocumentarBanco extends Command
     {
         foreach (config('protheus.sincronizacoes', []) as $item) {
             if ($item['tabela_destino'] === $tabela) {
-                $de = '`'.config('database.connections.protheus.database').'.'.$item['tabela_origem'].'`';
+                // Pela procedure que lê o servidor vinculado (ex.: [ALUMBRAPRD]...[SD3010]), a origem dela; senão, a do banco Compras.
+                $de = ($item['via'] ?? 'php') === 'procedure' && ! empty($item['origem_procedure'])
+                    ? '`'.$item['origem_procedure'].'` (procedure `'.$item['procedure'].'`)'
+                    : '`'.config('database.connections.protheus.database').'.'.$item['tabela_origem'].'`';
 
                 return ($item['modo'] ?? 'espelho') === 'mista'
                     ? ['tipo' => 'Mista', 'texto' => "Mista — parte dos campos vem de {$de} (Protheus), o resto é do Sistema OEE"]

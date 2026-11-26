@@ -120,7 +120,7 @@ class SincronizadorProtheus
 
         try {
             $tabela = $this->tabelaOrigem($item);
-            $importador = app($item['importador']);
+            $importador = empty($item['importador']) ? null : app($item['importador']);
             // Leitura incremental (SD3, SD2): começa no primeiro R_E_C_N_O_ que precisa ser relido. Pela procedure, ela
             // mesma escolhe o que ler.
             $primeiro = $importador instanceof ImportadorEspelho && $this->via($chave) !== 'procedure'
@@ -174,6 +174,10 @@ class SincronizadorProtheus
             $tabela = $this->tabelaOrigem($item);
             if ($this->via($registro->chave) === 'procedure') {
                 return $this->continuarPorProcedure($registro, $item);
+            }
+            // Tabela só pela procedure (ex.: pedidos de venda, que juntam SC5 + SC6): fora do SQL Server não há o que rodar.
+            if (empty($item['importador'])) {
+                return $this->terminar($registro, 'sucesso', mensagem: 'Esta tabela só é sincronizada pela procedure, no SQL Server.');
             }
 
             /** @var ImportadorProtheus $importador */
