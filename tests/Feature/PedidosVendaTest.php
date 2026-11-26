@@ -200,6 +200,8 @@ class PedidosVendaTest extends TestCase
         $this->assertStringContainsString('FROM dbo.tipos_operacao_pedido t', $sql);
         $this->assertStringContainsString("RIGHT(N'0' + CAST(TRY_CAST(t.codigo AS int) AS nvarchar(3)), 2)", $sql);
         $this->assertStringContainsString('WHERE NOT EXISTS (SELECT 1 FROM #pv p WHERE p.c5_filial = s.c9_filial', $sql);
+        // Histórico sem tipo (gravado antes do filtro): relê tudo uma vez com o filtro de tipos.
+        $this->assertStringContainsString("IF EXISTS (SELECT 1 FROM dbo.pedidos_venda WHERE c6_oper = '' AND c5_emissao >= '00000000') SET @corte = '00000000';", $sql);
         $this->assertSame(['1' => '1', '01' => '1', ' 9 ' => '9', '10' => '10', '0' => null, 'X1' => null],
             collect(['1', '01', ' 9 ', '10', '0', 'X1'])->mapWithKeys(fn ($c) => [$c => TipoOperacaoPedido::normalizar($c)])->all());
     }

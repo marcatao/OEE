@@ -9,6 +9,8 @@
  * - TIPOS DE OPERAÇÃO: só os itens com C6_OPER num tipo ATIVO de dbo.tipos_operacao_pedido (tela Faturamento ›
  *   Etapas dos pedidos); "1" e "01" são o mesmo tipo (vão os dois formatos para o Protheus). O filtro roda no Protheus;
  *   itens de outros tipos não vêm e saem do portal (os da janela); as liberações (SC9) só dos itens que vieram.
+ * - Itens antigos ainda sem C6_OPER no portal: a execução seguinte relê TUDO uma vez (carga completa com o filtro de
+ *   tipos), e o histórico fica só com os tipos aceitos.
  * - Janela de 6 meses: só os pedidos com C5_EMISSAO nos últimos 6 meses são lidos, incluídos, alterados e apagados;
  *   os mais antigos ficam no portal como histórico, sem mexer. Com a tabela do portal VAZIA, faz a carga geral (tudo).
  * - A junção (item × cabeçalho × cliente) roda no servidor do Protheus (OPENQUERY): só vêm pela rede os itens não
@@ -41,6 +43,9 @@ BEGIN
     -- Janela: pedidos emitidos a partir de hoje − 6 meses (AAAAMMDD, como o C5_EMISSAO). Portal vazio = carga geral.
     DECLARE @corte varchar(8) = CONVERT(varchar(8), DATEADD(MONTH, -6, CAST(GETDATE() AS date)), 112);
     IF NOT EXISTS (SELECT 1 FROM dbo.pedidos_venda) SET @corte = '00000000';
+    -- Itens do portal ainda sem tipo de operação (gravados antes do filtro de C6_OPER): relê TUDO uma vez, para o
+    -- histórico ficar só com os tipos aceitos (os de outros tipos saem do portal). Depois volta à janela de 6 meses.
+    IF EXISTS (SELECT 1 FROM dbo.pedidos_venda WHERE c6_oper = '' AND c5_emissao >= '00000000') SET @corte = '00000000';
     DECLARE @lidos int, @ultimo int, @excluidos int = 0, @lidos9 int = 0;
     DECLARE @extras9 nvarchar(max), @rem9 nvarchar(max), @etapas int = 0;
     DECLARE @acoes TABLE (acao nvarchar(10));

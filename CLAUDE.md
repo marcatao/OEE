@@ -256,7 +256,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   importador em PHP: fora do SQL Server a sincronização é pulada com aviso). Só os itens com `C6_OPER` (tipo de operação,
   DJ da SX5) num tipo ATIVO de `tipos_operacao_pedido` (`App\Models\Faturamento\TipoOperacaoPedido`, código sem zeros à
   esquerda: "1" = "01"; tela Faturamento › Etapas dos pedidos, incluir/excluir = desativar; sem tipo ativo a procedure
-  para com erro); a SC9 só dos itens que vieram; itens de tipo excluído saem do portal (só os da janela).
+  para com erro); a SC9 só dos itens que vieram; itens de tipo excluído saem do portal (só os da janela); itens do portal sem `c6_oper` (gravados antes do filtro) = a execução seguinte relê TUDO uma vez com o filtro (o histórico fica só com os tipos aceitos).
   `clientes` = cópia da SA1010 do mesmo servidor vinculado, SÓ pela procedure `dbo.sp_sincronizar_clientes` (inteira,
   MERGE pelo R_E_C_N_O_, apaga os excluídos soltando os pedidos; leitura vazia = erro) — roda ANTES dos pedidos e liga
   `pedidos_venda.cliente_id` (C5_CLIENTE + C5_LOJACLI, filial do pedido ou compartilhada); a dos pedidos liga os da janela.
