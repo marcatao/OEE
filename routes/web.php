@@ -14,7 +14,10 @@ use App\Http\Controllers\ApontamentoProducaoController;
 use App\Http\Controllers\AssistenteController;
 use App\Http\Controllers\AutenticacaoController;
 use App\Http\Controllers\Cadastros\AcessoController;
+use App\Http\Controllers\Cadastros\AcessoPaginaController;
 use App\Http\Controllers\Cadastros\GrupoController;
+use App\Http\Controllers\Cadastros\PainelAcessosController;
+use App\Http\Controllers\Cadastros\SessaoController;
 use App\Http\Controllers\Cadastros\UsuarioController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpenhoOpController;
@@ -315,7 +318,19 @@ Route::middleware('auth')->group(function () {
         Route::get('grupos/{grupo}/editar', [GrupoController::class, 'edit'])->name('grupos.edit');
         Route::put('grupos/{grupo}', [GrupoController::class, 'update'])->name('grupos.update');
 
-        Route::get('acessos', AcessoController::class)->name('acessos');
+    });
+
+    // Segurança › controle de acessos (dados pessoais): o Administrador de Tecnologia sempre; os outros só com a
+    // permissão RESTRITA marcada num grupo ou direto no usuário (oee.permissoes_restritas; o "*" não cobre).
+    Route::prefix('cadastros/logins')->name('cadastros.')->group(function () {
+        Route::get('acessos', AcessoController::class)->middleware('permissao:seguranca_historico')->name('acessos');
+        Route::get('painel', PainelAcessosController::class)->middleware('permissao:seguranca_painel')->name('painel-acessos');
+        Route::get('paginas', AcessoPaginaController::class)->middleware('permissao:seguranca_paginas')->name('acessos-paginas');
+        Route::middleware('permissao:seguranca_sessoes')->group(function () {
+            Route::get('sessoes', [SessaoController::class, 'index'])->name('sessoes');
+            Route::post('sessoes/{chave}/encerrar', [SessaoController::class, 'encerrar'])->where('chave', '[0-9a-f]{64}')->name('sessoes.encerrar');
+            Route::post('sessoes/celulares/{token}/revogar', [SessaoController::class, 'revogarCelular'])->whereNumber('token')->name('sessoes.revogar-celular');
+        });
     });
 
     Route::middleware('perfil:admin_tecnologia')->prefix('admin')->name('admin.')->group(function () {

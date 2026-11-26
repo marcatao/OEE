@@ -165,15 +165,31 @@
           </div>
         @endif
 
-        @if ($u->podeSeguranca())
+        @if ($u->podeSeguranca() || $u->podeControleAcessos())
           <div class="menu-bloco" data-bloco="seguranca">
             @include('layouts.partials.menu-secao', ['titulo' => 'Segurança'])
             <div class="menu-itens">
-              @include('layouts.partials.menu-link', ['rota' => 'cadastros.usuarios.index', 'rotulo' => 'Usuários', 'icone' => 'usuarios', 'ativo' => 'cadastros.usuarios.*'])
-              @include('layouts.partials.menu-link', ['rota' => 'cadastros.grupos.index', 'rotulo' => 'Grupos', 'icone' => 'grupos', 'ativo' => 'cadastros.grupos.*'])
-              @include('layouts.partials.menu-link', ['rota' => 'cadastros.acessos', 'rotulo' => 'Histórico de acessos', 'icone' => 'historico'])
-              @include('layouts.partials.menu-link', ['rota' => 'admin.banco', 'rotulo' => 'Banco de dados', 'icone' => 'banco'])
-              @include('layouts.partials.menu-link', ['rota' => 'admin.aplicativo', 'rotulo' => 'Aplicativo', 'icone' => 'celular'])
+              @if ($u->podeSeguranca())
+                @include('layouts.partials.menu-link', ['rota' => 'cadastros.usuarios.index', 'rotulo' => 'Usuários', 'icone' => 'usuarios', 'ativo' => 'cadastros.usuarios.*'])
+                @include('layouts.partials.menu-link', ['rota' => 'cadastros.grupos.index', 'rotulo' => 'Grupos', 'icone' => 'grupos', 'ativo' => 'cadastros.grupos.*'])
+              @endif
+              {{-- Controle de acessos: liberável por grupo ou direto no usuário (permissões restritas). --}}
+              @if ($u->pode('seguranca_painel'))
+                @include('layouts.partials.menu-link', ['rota' => 'cadastros.painel-acessos', 'rotulo' => 'Painel de logins', 'icone' => 'barras'])
+              @endif
+              @if ($u->pode('seguranca_historico'))
+                @include('layouts.partials.menu-link', ['rota' => 'cadastros.acessos', 'rotulo' => 'Histórico de logins', 'icone' => 'historico'])
+              @endif
+              @if ($u->pode('seguranca_paginas'))
+                @include('layouts.partials.menu-link', ['rota' => 'cadastros.acessos-paginas', 'rotulo' => 'Acesso às páginas', 'icone' => 'relatorio'])
+              @endif
+              @if ($u->pode('seguranca_sessoes'))
+                @include('layouts.partials.menu-link', ['rota' => 'cadastros.sessoes', 'rotulo' => 'Sessões ativas', 'icone' => 'sinal', 'ativo' => 'cadastros.sessoes*'])
+              @endif
+              @if ($u->podeSeguranca())
+                @include('layouts.partials.menu-link', ['rota' => 'admin.banco', 'rotulo' => 'Banco de dados', 'icone' => 'banco'])
+                @include('layouts.partials.menu-link', ['rota' => 'admin.aplicativo', 'rotulo' => 'Aplicativo', 'icone' => 'celular'])
+              @endif
             </div>
           </div>
         @endif

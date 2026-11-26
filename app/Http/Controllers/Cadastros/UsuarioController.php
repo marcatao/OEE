@@ -86,6 +86,9 @@ class UsuarioController extends Controller
             'usuario' => $usuario->load('grupos'),
             'perfis' => Usuario::perfisDisponiveis(),
             'grupos' => Grupo::orderBy('nome')->get(),
+            'catalogo' => config('oee.permissoes'),
+            'restritas' => config('oee.permissoes_restritas', []),
+            'permissoesDiretas' => $usuario->permissoesDiretas(),
             'acessos' => $usuario->registrosLogin()->latest('data_hora')->limit(10)->get(),
             // Celulares com o aplicativo conectado (token válido): o administrador pode desconectar (celular perdido).
             'celulares' => TokenAplicativo::where('usuario_id', $usuario->id)->whereNull('revogado_em')
@@ -102,12 +105,16 @@ class UsuarioController extends Controller
             'ativo' => ['required', 'boolean'],
             'grupos' => ['array'],
             'grupos.*' => ['integer', Rule::exists('grupos', 'id')],
+            // Páginas liberadas direto para o usuário (além dos perfis e dos grupos).
+            'permissoes' => ['array'],
+            'permissoes.*' => [Rule::in(array_keys(config('oee.permissoes')))],
             // Opcionais: ligação com o usuário do Protheus (cada um em um só usuário do portal).
             'usuario_protheus' => ['nullable', 'string', 'max:25', Rule::unique('usuarios', 'usuario_protheus')->ignore($usuario->id)],
             'id_protheus' => ['nullable', 'string', 'max:20', Rule::unique('usuarios', 'id_protheus')->ignore($usuario->id)],
         ], [
             'perfis.*' => 'Escolha perfis válidos.',
             'grupos.*.*' => 'Escolha grupos válidos.',
+            'permissoes.*' => 'Escolha páginas válidas.',
             'usuario_protheus.unique' => 'Este usuário do Protheus já está ligado a outro usuário do portal.',
             'id_protheus.unique' => 'Este ID do Protheus já está ligado a outro usuário do portal.',
         ], [
@@ -130,6 +137,7 @@ class UsuarioController extends Controller
             ]);
             $usuario->definirPerfis($perfis, $request->user());
             $usuario->grupos()->sync($dados['grupos'] ?? []);
+            $usuario->definirPermissoesDiretas($dados['permissoes'] ?? [], $request->user());
         });
 
         return redirect()->route('cadastros.usuarios.index')->with('ok', "Cadastro de {$usuario->nome} atualizado.");

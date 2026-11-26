@@ -50,6 +50,7 @@ class Usuario extends Authenticatable
         return [
             'ativo' => 'boolean',
             'ultimo_login_em' => 'datetime',
+            'ultimo_acesso_em' => 'datetime',
             'foto_atualizada_em' => 'datetime',
             'perfil_entra_em' => 'datetime',
         ];
@@ -213,9 +214,11 @@ class Usuario extends Authenticatable
         if ($this->ehAdminTecnologia()) {
             return true;
         }
+        // O "*" dos administradores de área não cobre as restritas (dados pessoais da Segurança).
+        $restrita = in_array($permissao, config('oee.permissoes_restritas', []), true);
         foreach ($this->perfisAcesso() as $perfil) {
             $doPerfil = self::perfisDisponiveis()[$perfil]['permissoes'] ?? [];
-            if (in_array('*', $doPerfil, true) || in_array($permissao, $doPerfil, true)) {
+            if ((! $restrita && in_array('*', $doPerfil, true)) || in_array($permissao, $doPerfil, true)) {
                 return true;
             }
         }
@@ -223,17 +226,53 @@ class Usuario extends Authenticatable
         return in_array($permissao, $this->permissoes(), true);
     }
 
-    /** @return list<string> permissões vindas dos grupos ativos */
+    /** @return list<string> permissões vindas dos grupos ativos + as liberadas direto para o usuário */
     public function permissoes(): array
     {
-        return $this->permissoesCache ??= DB::table('grupo_permissoes')
-            ->join('grupo_usuario', 'grupo_usuario.grupo_id', '=', 'grupo_permissoes.grupo_id')
-            ->join('grupos', 'grupos.id', '=', 'grupo_permissoes.grupo_id')
-            ->where('grupo_usuario.usuario_id', $this->id)
-            ->where('grupos.ativo', true)
-            ->distinct()
-            ->pluck('grupo_permissoes.permissao')
-            ->all();
+        return $this->permissoesCache ??= array_values(array_unique(array_merge(
+            DB::table('grupo_permissoes')
+                ->join('grupo_usuario', 'grupo_usuario.grupo_id', '=', 'grupo_permissoes.grupo_id')
+                ->join('grupos', 'grupos.id', '=', 'grupo_permissoes.grupo_id')
+                ->where('grupo_usuario.usuario_id', $this->id)
+                ->where('grupos.ativo', true)
+                ->distinct()
+                ->pluck('grupo_permissoes.permissao')
+                ->all(),
+            $this->permissoesDiretas(),
+        )));
+    }
+
+    /** @return list<string> páginas liberadas direto para o usuário (Segurança › Usuários), sem grupo */
+    public function permissoesDiretas(): array
+    {
+        return $this->exists ? DB::table('usuario_permissoes')->where('usuario_id', $this->id)->pluck('permissao')->all() : [];
+    }
+
+    /** Troca as páginas liberadas direto para o usuário (só chaves do catálogo `oee.permissoes`). */
+    public function definirPermissoesDiretas(array $permissoes, ?Usuario $por = null): void
+    {
+        $permissoes = array_values(array_intersect(array_keys(config('oee.permissoes', [])), $permissoes));
+        DB::transaction(function () use ($permissoes, $por) {
+            DB::table('usuario_permissoes')->where('usuario_id', $this->id)->whereNotIn('permissao', $permissoes ?: [''])->delete();
+            $atuais = DB::table('usuario_permissoes')->where('usuario_id', $this->id)->pluck('permissao')->all();
+            foreach (array_diff($permissoes, $atuais) as $permissao) {
+                DB::table('usuario_permissoes')->insert(['usuario_id' => $this->id, 'permissao' => $permissao,
+                    'criado_em' => now(), 'criado_por_id' => $por?->id]);
+            }
+        });
+        $this->permissoesCache = null;
+    }
+
+    /** Vê algum item do controle de acessos (painel, histórico de logins, páginas, sessões)? */
+    public function podeControleAcessos(): bool
+    {
+        foreach (config('oee.permissoes_restritas', []) as $p) {
+            if ($this->pode($p)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Rótulo curto para o topo: o perfil principal e quantos mais (ex.: "Administrador de Tecnologia +4"). */

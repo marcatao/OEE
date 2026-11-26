@@ -17,13 +17,29 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   perfil com unidades e permissões de página) + **grupos** (somam páginas, `grupo_permissoes`, catálogo em
   `config('oee.permissoes')`). Usuário sem linhas em `usuario_perfis` segue a coluna antiga `perfil` (admin = todos os
   perfis, operador = operador). Administrador de Tecnologia abre todas as PÁGINAS e é o único na aba **Segurança**
-  (usuários, grupos, acessos, banco: `perfil:admin_tecnologia`), mas DADOS só da Tecnologia: ninguém vê unidade que
+  (usuários, grupos, banco, aplicativo: `perfil:admin_tecnologia`; controle de acessos por permissão restrita, ver abaixo), mas DADOS só da Tecnologia: ninguém vê unidade que
   não está habilitada nos perfis dele (cadastros, filtros, listas, SS/OS, app; `AcessoOs::unidadesHabilitadas` =
   unidades dos perfis + as em que é Solicitante; `AcessoOs::filtrar` nunca passa delas); quem é APENAS solicitante vê só as SS/OS
   que abriu e as do seu centro de custo (`AcessoOs::centroCustoDo`, do Entra ID; sem centro de custo, só as suas), nas
   unidades em que é solicitante; cadastros = `perfil:admin_producao,admin_tecnologia,
   admin_ferramentaria`. Use `Usuario::pode()`, `ehAdmin()`, `podeSeguranca()`, `temPerfil()`, `areasAdministradas()` e
   `App\Support\Unidades::areas()` (nunca escreva a lista de áreas fixa no código).
+- **Controle de logins e acessos** (Segurança, pedido do usuário em 26/11/2026; dados PESSOAIS): Painel de logins
+  (`cadastros.painel-acessos`, `App\Services\Seguranca\PainelAcessos`: entradas por dia/hora no fuso local, recusas por
+  motivo, ativos hoje = login, página ou app, páginas mais abertas, último uso de cada usuário ativo com "nunca entrou" e
+  "sem uso há N dias" para bloquear), Histórico de logins (`cadastros.acessos`, filtros período/usuário/e-mail/resultado/
+  motivo/IP, sem CSV), Acesso às páginas (`cadastros.acessos-paginas`) e Sessões ativas (`cadastros.sessoes`,
+  `SessoesAtivas`: tabela `sessions` com SESSION_DRIVER=database + tokens válidos do app; "Desconectar" apaga a sessão ou
+  revoga o token; o id da sessão nunca vai para a tela, só o SHA-256). Permissões `seguranca_painel|historico|paginas|
+  sessoes` são RESTRITAS (`oee.permissoes_restritas`): o `*` dos administradores de área NÃO as cobre; só o Administrador
+  de Tecnologia ou quem as recebe num grupo ou DIRETO no usuário. Usuários e Grupos continuam `perfil:admin_tecnologia`.
+  **Liberação direta por usuário**: `usuario_permissoes` (Segurança › Usuários, "Páginas liberadas só para este usuário";
+  `Usuario::permissoesDiretas`/`definirPermissoesDiretas`; `permissoes()` = grupos ativos + diretas; exige perfil, como
+  os grupos). Middleware `RegistrarAcessoPagina` (grupo web) grava em `acessos_paginas` todo GET HTML 200 de usuário
+  logado (não JSON/AJAX/`?parcial=1`/API) e `usuarios.ultimo_acesso_em` (no máx. a cada 5 min, direto na tabela);
+  retenção `oee.acessos_paginas.dias_retencao` (180; 0 = para sempre) pelo `acessos:limpar-paginas` (diário 03:23, em
+  lotes, apaga SÓ dessa tabela — `registros_login` nunca é apagado). Tela nova de Segurança com dados de pessoas: use
+  `partials.usuario-seguranca` (link para o cadastro só para quem tem `podeSeguranca()`).
 - Todo cadastro tem **unidade** (`manutencao` | `tecnologia` | `ferramentaria` | `ambos` = "Todas", trait
   `App\Models\Concerns\TemUnidade`): escopo global mostra ao usuário logado só as unidades dele + "ambos" (quem tem
   perfis das três unidades vê tudo; sem usuário logado, sem filtro). No formulário use `@include('partials.campo-unidade')` e
@@ -143,7 +159,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Server): `whereIntegerInRaw` com `(int)` ou subconsulta, nunca `whereIn` com milhares de ids. Cabeçalhos de segurança no
   middleware `CabecalhosSeguranca` (global); limites: `throttle` em `auth/*` (por IP), API do app (por usuário) e
   assistente (+ trava por usuário no limite diário). Token do app vale `oee.app.dias_validade_token` (30) dias desde o
-  login; o administrador desconecta celulares em Segurança › Usuários. Locatário do Entra ID que não é GUID recusa todo
+  login; o administrador desconecta celulares em Segurança › Usuários ou › Sessões ativas. Locatário do Entra ID que não é GUID recusa todo
   login. Exportação CSV escapa células que começam com = + - @. Agendador (`routes/console.php`) roda no fuso LOCAL
   (`app.schedule_timezone`). Apontamento real que abriu SS/OS automática: ao excluir, o chamado vai junto
   (`App\Services\Manutencao\ExclusaoApontamento`, pedido do usuário em 23/11/2026): SS pendente e OS aberta sem

@@ -34,7 +34,7 @@
       @php($marcadas = old('permissoes', $permissoes))
       <div class="grade-opcoes largas">
       @foreach ($catalogo as $chave => $rotulo)
-        <label class="opcao"><input type="checkbox" name="permissoes[]" value="{{ $chave }}" @checked(in_array($chave, $marcadas))> <span>{{ $rotulo }}</span></label>
+        <label class="opcao"><input type="checkbox" name="permissoes[]" value="{{ $chave }}" @checked(in_array($chave, $marcadas))> <span>{{ $rotulo }}@if (in_array($chave, config('oee.permissoes_restritas', []), true)) <small class="erro">dados pessoais</small>@endif</span></label>
       @endforeach
       </div>
     </fieldset>

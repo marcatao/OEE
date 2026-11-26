@@ -26,7 +26,7 @@ class AdminTest extends TestCase
 
         $this->actingAs($admin)->get('/cadastros/logins/usuarios')->assertOk()
             ->assertSee('novo@empresa.com')->assertSee('1 usuário aguarda liberação')
-            ->assertSee('Administração')->assertSee('Segurança')->assertSee('Grupos')->assertSee('Histórico de acessos');
+            ->assertSee('Administração')->assertSee('Segurança')->assertSee('Grupos')->assertSee('Histórico de logins');
         $this->get('/cadastros/logins/grupos')->assertOk();
         $this->get('/cadastros/logins/grupos/novo')->assertOk();
         $this->get('/cadastros/logins/acessos')->assertOk();

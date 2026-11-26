@@ -39,8 +39,9 @@ return [
         explode(',', (string) env('PORTAL_ADMINS', 'marcato@alumbra.com.br'))
     ))),
 
-    // Catálogo de permissões (telas) que os grupos podem dar. Ao criar uma tela nova, acrescente aqui
-    // e proteja a rota com ->middleware('permissao:chave'). O administrador sempre tem todas.
+    // Catálogo de permissões (telas) que os grupos ou o próprio usuário (liberação direta, `usuario_permissoes`) podem
+    // dar. Ao criar uma tela nova, acrescente aqui e proteja a rota com ->middleware('permissao:chave'). O administrador
+    // sempre tem todas (exceto as de 'permissoes_restritas', só do Administrador de Tecnologia).
     'permissoes' => [
         'dashboard_maquina' => 'Dashboard por máquina',
         'timeline' => 'Timeline das máquinas',
@@ -71,7 +72,17 @@ return [
         'os_relatorios' => 'Ordens de serviço: relatórios de horas (intranet, contabilidade e diretoria)',
         // Tecnologia
         'inventario_ti' => 'Inventário de TI (equipamentos, licenças e linhas; consulta — os administradores da unidade cadastram)',
+        // Segurança › controle de acessos (dados PESSOAIS: veja 'permissoes_restritas'). O Administrador de Tecnologia
+        // sempre vê; os outros só com a permissão marcada num grupo ou direto no usuário.
+        'seguranca_painel' => 'Segurança: painel de logins (entradas, usuários ativos, sem uso, páginas mais abertas)',
+        'seguranca_historico' => 'Segurança: histórico de logins (todas as tentativas de entrada, com filtros)',
+        'seguranca_paginas' => 'Segurança: acesso às páginas (quem abriu qual tela e quando)',
+        'seguranca_sessoes' => 'Segurança: sessões ativas (quem está conectado no portal e no app; desconectar)',
     ],
+
+    // Permissões que o "*" dos perfis de administrador de área NÃO cobre: só o Administrador de Tecnologia (que pode
+    // tudo) ou quem as recebe num grupo ou direto no usuário (`usuario_permissoes`).
+    'permissoes_restritas' => ['seguranca_painel', 'seguranca_historico', 'seguranca_paginas', 'seguranca_sessoes'],
 
     // Prioridades da solicitação de material (código => descrição), na ordem da lista. "nivel" pinta a prioridade na tela:
     // critica (vermelho), alta (laranja) ou normal.
@@ -231,4 +242,14 @@ return [
 
     // Datas ficam em UTC no banco e são exibidas neste fuso.
     'fuso_exibicao' => env('FUSO_EXIBICAO', 'America/Sao_Paulo'),
+
+    // Controle de acessos (Segurança): cada página aberta no portal vai para `acessos_paginas`. Linhas mais antigas que
+    // `dias_retencao` são apagadas pelo `acessos:limpar-paginas` (diário; 0 = guarda para sempre). `minutos_ultimo_acesso`:
+    // de quanto em quanto tempo, no máximo, `usuarios.ultimo_acesso_em` é regravado. `dias_sem_uso`: padrão do painel.
+    'acessos_paginas' => [
+        'registrar' => (bool) env('ACESSOS_PAGINAS_REGISTRAR', true),
+        'dias_retencao' => (int) env('ACESSOS_PAGINAS_DIAS_RETENCAO', 180),
+        'minutos_ultimo_acesso' => 5,
+        'dias_sem_uso' => 60,
+    ],
 ];

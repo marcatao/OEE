@@ -6,6 +6,7 @@ use App\Http\Middleware\CabecalhosSeguranca;
 use App\Http\Middleware\ExigePerfil;
 use App\Http\Middleware\ExigePermissao;
 use App\Http\Middleware\RaizDaSubpasta;
+use App\Http\Middleware\RegistrarAcessoPagina;
 use App\Http\Middleware\UsuarioAtivo;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,7 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Antes do roteamento: ".../oee" (sem barra) vira ".../oee/" quando o portal está numa subpasta.
         $middleware->prepend(RaizDaSubpasta::class);
         $middleware->append(CabecalhosSeguranca::class);
-        $middleware->web(append: [UsuarioAtivo::class]);
+        // UsuarioAtivo derruba quem foi desativado; depois, cada página aberta vai para acessos_paginas (Segurança).
+        $middleware->web(append: [UsuarioAtivo::class, RegistrarAcessoPagina::class]);
         $middleware->alias([
             'perfil' => ExigePerfil::class,
             'permissao' => ExigePermissao::class,

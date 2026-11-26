@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **78** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **80** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -15,6 +15,14 @@ diagrama para ele ficar legível. Linha tracejada = ligação por código, sem c
 
 ```mermaid
 erDiagram
+    acessos_paginas {
+        bigint id PK
+        bigint usuario_id FK
+        datetime data_hora
+        nvarchar(120) rota
+        nvarchar(300) caminho
+        nvarchar(45) ip
+    }
     agendas_sincronizacao {
         bigint id PK
         nvarchar(40) chave UK
@@ -1196,6 +1204,12 @@ erDiagram
         datetime criado_em
         bigint criado_por_id FK
     }
+    usuario_permissoes {
+        bigint usuario_id PK, FK
+        nvarchar(60) permissao PK
+        datetime criado_em
+        bigint criado_por_id FK
+    }
     usuarios {
         bigint id PK
         nvarchar(36) entra_oid UK
@@ -1221,6 +1235,7 @@ erDiagram
         nvarchar(320) gerente_email
         nvarchar(25) usuario_protheus
         nvarchar(20) id_protheus
+        datetime ultimo_acesso_em
     }
     versoes_aplicativo {
         bigint id PK
@@ -1238,6 +1253,7 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
     }
+    usuarios ||--o{ acessos_paginas : "usuario_id"
     maquinas ||--o{ apontamentos : "maquina_id"
     turnos |o--o{ apontamentos : "turno_id"
     produtos |o--o{ apontamentos : "produto_id"
@@ -1353,6 +1369,7 @@ erDiagram
     usuarios |o--o{ ti_termos : "registrado_por_id"
     usuarios ||--o{ tokens_aplicativo : "usuario_id"
     usuarios ||--o{ usuario_perfis : "usuario_id"
+    usuarios ||--o{ usuario_permissoes : "usuario_id"
     centros_custo |o..o{ maquinas : "centro_custo (código)"
     produtos_protheus |o..o{ ordens_producao : "c2_produto (código)"
     centros_custo |o..o{ ordens_producao : "c2_cc (código)"
@@ -1410,6 +1427,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 | Tabela | Origem | Chave primária | Colunas | Ligações (FK) |
 |---|---|---|---|---|
+| [`acessos_paginas`](#acessos_paginas) | Sistema | `id` | 6 | 1 |
 | [`agendas_sincronizacao`](#agendas_sincronizacao) | Sistema | `id` | 10 | 2 |
 | [`apontamentos`](#apontamentos) | Sistema | `id` | 13 | 5 |
 | [`apontamentos_estado`](#apontamentos_estado) | Sistema | `id` | 20 | 7 |
@@ -1492,8 +1510,24 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`tokens_aplicativo`](#tokens_aplicativo) | Sistema | `id` | 8 | 1 |
 | [`turnos`](#turnos) | Sistema | `id` | 9 | 2 |
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
-| [`usuarios`](#usuarios) | Sistema | `id` | 24 | 0 |
+| [`usuario_permissoes`](#usuario_permissoes) | Sistema | `usuario_id, permissao` | 4 | 2 |
+| [`usuarios`](#usuarios) | Sistema | `id` | 25 | 0 |
 | [`versoes_aplicativo`](#versoes_aplicativo) | Sistema | `id` | 14 | 2 |
+
+### acessos_paginas
+
+**Origem:** Sistema OEE · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `usuario_id` | `bigint` | não |  | FK → `usuarios.id` |
+| `data_hora` | `datetime` | não |  |  |
+| `rota` | `nvarchar(120)` | sim |  |  |
+| `caminho` | `nvarchar(300)` | não |  |  |
+| `ip` | `nvarchar(45)` | sim |  |  |
+
+**Índices:** `acessos_paginas_data_hora_index` (data_hora) · `acessos_paginas_usuario_id_data_hora_index` (usuario_id, data_hora)
 
 ### agendas_sincronizacao
 
@@ -2931,7 +2965,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `ip` | `nvarchar(45)` | sim |  |  |
 | `navegador` | `nvarchar(400)` | sim |  |  |
 
-**Índices:** `registros_login_data_hora_index` (data_hora)
+**Índices:** `registros_login_data_hora_index` (data_hora) · `registros_login_usuario_id_data_hora_index` (usuario_id, data_hora)
 
 ### regras_etapa_pedido
 
@@ -3356,6 +3390,17 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 
 **Regras (CHECK, só no SQL Server):** `ck_usuario_perfis_perfil`: `perfil IN ('operador', 'admin_producao', 'admin_tecnologia', 'mantenedor_producao', 'mantenedor_tecnologia', 'solicitante_manutencao', 'solicitante_tecnologia', 'solicitante_ferramentaria', 'mantenedor_ferramentaria', 'admin_ferramentaria')`
 
+### usuario_permissoes
+
+**Origem:** Sistema OEE · **Chave primária:** `usuario_id, permissao`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `usuario_id` | `bigint` | não |  | PK; FK → `usuarios.id` |
+| `permissao` | `nvarchar(60)` | não |  | PK |
+| `criado_em` | `datetime` | sim |  |  |
+| `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+
 ### usuarios
 
 **Origem:** Sistema OEE · **Chave primária:** `id`
@@ -3386,6 +3431,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `gerente_email` | `nvarchar(320)` | sim |  |  |
 | `usuario_protheus` | `nvarchar(25)` | sim |  |  |
 | `id_protheus` | `nvarchar(20)` | sim |  |  |
+| `ultimo_acesso_em` | `datetime` | sim |  |  |
 
 **Índices:** `usuarios_entra_oid_unique` único (entra_oid) · `usuarios_email_index` (email) · `usuarios_usuario_protheus_index` (usuario_protheus) · `usuarios_id_protheus_index` (id_protheus)
 

@@ -11,6 +11,7 @@
     <div><dt>E-mail</dt><dd>{{ $usuario->email }}</dd></div>
     <div><dt>Cadastrado em</dt><dd>@dataHora($usuario->criado_em)</dd></div>
     <div><dt>Último login</dt><dd>@dataHora($usuario->ultimo_login_em)</dd></div>
+    <div><dt>Última página aberta</dt><dd>@dataHora($usuario->ultimo_acesso_em)@if ($usuario->ultimo_acesso_em) <a href="{{ route('cadastros.acessos-paginas', ['usuario' => $usuario->id]) }}">ver páginas</a>@endif</dd></div>
     <div><dt>Centro de custo</dt><dd>{{ $usuario->local_escritorio ?? '-' }}</dd></div>
     <div><dt>Departamento</dt><dd>{{ $usuario->departamento ?? '-' }}</dd></div>
     <div><dt>Gerente responsável</dt><dd>{{ $usuario->gerente_nome ?? '-' }}@if ($usuario->gerente_email) <small class="suave">{{ $usuario->gerente_email }}</small>@endif</dd></div>
@@ -65,6 +66,20 @@
       @empty
         <p class="suave">Nenhum grupo cadastrado. <a href="{{ route('cadastros.grupos.create') }}">Criar um grupo</a>.</p>
       @endforelse
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Páginas liberadas só para este usuário</legend>
+      <p class="suave">Além das páginas dos perfis e dos grupos. Vale só enquanto o usuário estiver ativo e com pelo menos um perfil.
+        As marcadas como <strong>dados pessoais</strong> (controle de acessos da Segurança) não vêm com nenhum perfil, exceto o
+        Administrador de Tecnologia: libere aqui ou num grupo.</p>
+      @php($diretas = old('permissoes', $permissoesDiretas))
+      <div class="grade-opcoes largas">
+      @foreach ($catalogo as $chave => $rotulo)
+        <label class="opcao"><input type="checkbox" name="permissoes[]" value="{{ $chave }}" @checked(in_array($chave, $diretas, true))>
+          <span>{{ $rotulo }}@if (in_array($chave, $restritas, true)) <small class="erro">dados pessoais</small>@endif</span></label>
+      @endforeach
       </div>
     </fieldset>
 

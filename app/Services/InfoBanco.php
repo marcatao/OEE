@@ -12,7 +12,7 @@ use Throwable;
 class InfoBanco
 {
     public const TABELAS = [
-        'usuarios', 'grupos', 'grupo_usuario', 'grupo_permissoes', 'registros_login', 'plantas', 'linhas', 'maquinas', 'turnos', 'produtos',
+        'usuarios', 'grupos', 'grupo_usuario', 'grupo_permissoes', 'registros_login', 'acessos_paginas', 'usuario_permissoes', 'plantas', 'linhas', 'maquinas', 'turnos', 'produtos',
         'motivos_parada', 'apontamentos', 'paradas', 'dispositivos_iot', 'legendas', 'apontamentos_estado', 'centros_custo', 'sincronizacoes', 'filtros_usuarios', 'produtos_protheus', 'ordens_producao',
         'movimentos_producao', 'notas_fiscais_op', 'estruturas_produto', 'roteiros_operacao', 'ferramentas',
     ];

@@ -19,6 +19,7 @@ use App\Services\MetaProducao;
 use App\Services\PecasProduzidas;
 use App\Services\Protheus\AgendaSincronizacoes;
 use App\Services\Protheus\SincronizadorProtheus;
+use App\Services\Seguranca\PainelAcessos;
 use App\Services\SituacaoMaquina;
 use App\Services\TurnoDaMaquina;
 use App\Support\ProceduresBanco;
@@ -230,6 +231,14 @@ Artisan::command('usuarios:importar-entra', function (ImportadorUsuariosEntra $i
     $this->info("Entra ID: {$r['lidos']} contas lidas, {$r['criados']} cadastradas bloqueadas, {$r['existentes']} já existiam, {$r['ignorados']} ignoradas.");
 })->purpose('Cadastra todas as contas do Entra ID que ainda não estão no portal, bloqueadas até a liberação');
 Schedule::command('usuarios:importar-entra')->dailyAt('04:47')->withoutOverlapping()->runInBackground();
+
+// Retenção do registro de páginas abertas (Segurança › Acesso às páginas): apaga SÓ as linhas de `acessos_paginas` mais
+// antigas que oee.acessos_paginas.dias_retencao (0 = guarda para sempre), em lotes. Nenhuma outra tabela é tocada.
+Artisan::command('acessos:limpar-paginas', function () {
+    $apagadas = app(PainelAcessos::class)->limparPaginasAntigas();
+    $this->info($apagadas === null ? 'Retenção desligada (dias_retencao = 0): nada apagado.' : "Acessos às páginas apagados (fora da retenção): {$apagadas}.");
+})->purpose('Apaga os registros de páginas abertas mais antigos que a retenção configurada');
+Schedule::command('acessos:limpar-paginas')->dailyAt('03:23')->withoutOverlapping()->runInBackground();
 
 // Preenche a situação (produzindo | parada) e a OP atual das máquinas pelo apontamento real mais recente de cada uma.
 // Opcional e só quando pedido: mexe em registros existentes (sem --confirmar só mostra).
