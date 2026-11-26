@@ -10,7 +10,8 @@
  *   os mais antigos ficam no portal como histórico, sem mexer. Com a tabela do portal VAZIA, faz a carga geral (tudo).
  * - A junção (item × cabeçalho × cliente) roda no servidor do Protheus (OPENQUERY): só vêm pela rede os itens não
  *   excluídos de pedidos não excluídos da janela, já com o cabeçalho;
- * - cliente: SA1 pelo C5_CLIENTE + C5_LOJACLI, na filial do pedido ou compartilhada (em branco);
+ * - cliente: SA1 pelo C5_CLIENTE + C5_LOJACLI, na filial do pedido ou compartilhada (em branco); cliente_id = o
+ *   cadastro em dbo.clientes (sp_sincronizar_clientes), ligado nos itens da janela;
  * - MERGE pelo R_E_C_N_O_ do item: inclui os novos e altera só os que mudaram algum campo;
  * - APAGA do portal os itens DA JANELA que não vieram (excluídos no Protheus, item ou cabeçalho, ou apagados de vez);
  * - situacao: eliminado (C6_BLQ = 'R', resíduo) > faturado (entregue >= vendido) > parcial (entregue > 0) > aberto.
@@ -248,6 +249,21 @@ BEGIN
         s.c9_blcred, s.c9_nfiscal, s.c9_serienf, s.extras, s.c5_emissao, s.r_e_c_n_o_, @agora
     )
     OUTPUT $action INTO @acoes (acao);
+
+    -- Liga os itens da janela ao cliente (dbo.clientes, de dbo.sp_sincronizar_clientes), filial do pedido ou
+    -- compartilhada; só os que mudaram. O pedido novo já nasce ligado; o histórico é ligado pela procedure dos clientes.
+    WITH vinculo AS (
+        SELECT p.id, p.cliente_id, c.id AS novo
+        FROM dbo.pedidos_venda p
+        OUTER APPLY (
+            SELECT TOP 1 c.id FROM dbo.clientes c
+            WHERE c.a1_cod = p.c5_cliente AND c.a1_loja = p.c5_lojacli AND (c.a1_filial = p.c5_filial OR c.a1_filial = '')
+            ORDER BY c.a1_filial DESC
+        ) c
+        WHERE p.c5_emissao >= @corte
+    )
+    UPDATE v SET cliente_id = novo FROM vinculo v
+    WHERE ISNULL(v.cliente_id, 0) <> ISNULL(v.novo, 0);
 
     COMMIT TRANSACTION;
 

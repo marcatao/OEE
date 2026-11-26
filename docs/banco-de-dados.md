@@ -3,7 +3,7 @@
 > Gerado por `php artisan banco:documentar` a partir das migrações (tipos do **SQL Server**). Não edite as
 > seções geradas: mude a migração e gere de novo. O trecho "Decisões e sugestões de modelagem" é mantido.
 
-- **76** tabelas do sistema e **6** de infraestrutura do Laravel.
+- **77** tabelas do sistema e **6** de infraestrutura do Laravel.
 - Origem: **Sistema OEE** (criada e mantida pelo portal), **Protheus** (copiada pela sincronização, só leitura no Protheus) ou
   **Mista** (parte dos campos vem do Protheus na primeira sincronização e o resto é do portal).
 - Todas as datas são gravadas em UTC. Cadastros têm auditoria (`criado_em`, `criado_por_id`, `atualizado_em`, `atualizado_por_id` → `usuarios`).
@@ -130,6 +130,30 @@ erDiagram
         datetime atualizado_em
         bigint atualizado_por_id FK
         nvarchar(20) unidade
+    }
+    clientes {
+        bigint id PK
+        nvarchar(8) a1_filial
+        nvarchar(10) a1_cod
+        nvarchar(4) a1_loja
+        nvarchar(60) a1_nome
+        nvarchar(40) a1_nreduz
+        nchar(1) a1_pessoa
+        nchar(1) a1_tipo
+        nvarchar(20) a1_cgc
+        nvarchar(20) a1_inscr
+        nvarchar(80) a1_end
+        nvarchar(40) a1_bairro
+        nvarchar(60) a1_mun
+        nchar(2) a1_est
+        nvarchar(10) a1_cep
+        nvarchar(5) a1_ddd
+        nvarchar(30) a1_tel
+        nvarchar(255) a1_email
+        nvarchar(10) a1_vend
+        nchar(1) a1_msblql
+        int r_e_c_n_o_ UK
+        datetime sincronizado_em
     }
     dispositivos_iot {
         bigint id PK
@@ -796,6 +820,7 @@ erDiagram
         int c5_recno
         int r_e_c_n_o_ UK
         datetime sincronizado_em
+        bigint cliente_id
     }
     pedidos_venda_etapas {
         bigint id PK
@@ -1384,6 +1409,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`calendario_dias`](#calendario_dias) | Sistema | `id` | 9 | 3 |
 | [`calendarios`](#calendarios) | Sistema | `id` | 10 | 2 |
 | [`centros_custo`](#centros_custo) | Protheus | `id` | 16 | 2 |
+| [`clientes`](#clientes) | Protheus | `id` | 22 | 0 |
 | [`dispositivos_iot`](#dispositivos_iot) | Sistema | `id` | 17 | 3 |
 | [`empenhos_op`](#empenhos_op) | Protheus | `id` | 15 | 0 |
 | [`estruturas_produto`](#estruturas_produto) | Protheus | `id` | 15 | 0 |
@@ -1428,7 +1454,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
 | [`pedidos_compra`](#pedidos_compra) | Sistema | `id` | 22 | 4 |
 | [`pedidos_compra_itens`](#pedidos_compra_itens) | Sistema | `id` | 17 | 4 |
-| [`pedidos_venda`](#pedidos_venda) | Protheus | `id` | 36 | 0 |
+| [`pedidos_venda`](#pedidos_venda) | Protheus | `id` | 37 | 0 |
 | [`pedidos_venda_etapas`](#pedidos_venda_etapas) | Sistema | `id` | 16 | 0 |
 | [`pedidos_venda_liberacoes`](#pedidos_venda_liberacoes) | Protheus | `id` | 17 | 0 |
 | [`perdas_op`](#perdas_op) | Sistema | `id` | 16 | 5 |
@@ -1662,6 +1688,37 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 **Índices:** `centros_custo_ctt_filial_ctt_custo_unique` único (ctt_filial, ctt_custo) · `centros_custo_ctt_custo_index` (ctt_custo) · `centros_custo_unidade_index` (unidade)
 
 **Regras (CHECK, só no SQL Server):** `ck_centros_custo_classe`: `ctt_classe IN ('1', '2')` · `ck_centros_custo_bloq`: `ctt_bloq IN ('1', '2')` · `ck_centros_custo_unidade`: `unidade IN ('manutencao', 'tecnologia', 'ferramentaria', 'ambos')`
+
+### clientes
+
+**Origem:** Protheus — sincronizada de `[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SA1010]` (procedure `dbo.sp_sincronizar_clientes`) · **Chave primária:** `id`
+
+| Coluna | Tipo (SQL Server) | Nulo | Padrão | Chave |
+|---|---|---|---|---|
+| `id` | `bigint` | não |  | PK (identity) |
+| `a1_filial` | `nvarchar(8)` | não | `''` |  |
+| `a1_cod` | `nvarchar(10)` | não | `''` |  |
+| `a1_loja` | `nvarchar(4)` | não | `''` |  |
+| `a1_nome` | `nvarchar(60)` | não | `''` |  |
+| `a1_nreduz` | `nvarchar(40)` | não | `''` |  |
+| `a1_pessoa` | `nchar(1)` | não | `''` |  |
+| `a1_tipo` | `nchar(1)` | não | `''` |  |
+| `a1_cgc` | `nvarchar(20)` | não | `''` |  |
+| `a1_inscr` | `nvarchar(20)` | não | `''` |  |
+| `a1_end` | `nvarchar(80)` | não | `''` |  |
+| `a1_bairro` | `nvarchar(40)` | não | `''` |  |
+| `a1_mun` | `nvarchar(60)` | não | `''` |  |
+| `a1_est` | `nchar(2)` | não | `''` |  |
+| `a1_cep` | `nvarchar(10)` | não | `''` |  |
+| `a1_ddd` | `nvarchar(5)` | não | `''` |  |
+| `a1_tel` | `nvarchar(30)` | não | `''` |  |
+| `a1_email` | `nvarchar(255)` | não | `''` |  |
+| `a1_vend` | `nvarchar(10)` | não | `''` |  |
+| `a1_msblql` | `nchar(1)` | não | `''` |  |
+| `r_e_c_n_o_` | `int` | não |  |  |
+| `sincronizado_em` | `datetime` | sim |  |  |
+
+**Índices:** `clientes_r_e_c_n_o__unique` único (r_e_c_n_o_) · `clientes_a1_cod_a1_loja_index` (a1_cod, a1_loja) · `clientes_a1_nome_index` (a1_nome)
 
 ### dispositivos_iot
 
@@ -2705,8 +2762,9 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `c5_recno` | `int` | sim |  |  |
 | `r_e_c_n_o_` | `int` | não |  |  |
 | `sincronizado_em` | `datetime` | sim |  |  |
+| `cliente_id` | `bigint` | sim |  |  |
 
-**Índices:** `pedidos_venda_r_e_c_n_o__unique` único (r_e_c_n_o_) · `pedidos_venda_c5_num_c5_filial_index` (c5_num, c5_filial) · `pedidos_venda_c6_produto_index` (c6_produto) · `pedidos_venda_situacao_c6_entreg_index` (situacao, c6_entreg) · `pedidos_venda_c5_cliente_index` (c5_cliente)
+**Índices:** `pedidos_venda_r_e_c_n_o__unique` único (r_e_c_n_o_) · `pedidos_venda_c5_num_c5_filial_index` (c5_num, c5_filial) · `pedidos_venda_c6_produto_index` (c6_produto) · `pedidos_venda_situacao_c6_entreg_index` (situacao, c6_entreg) · `pedidos_venda_c5_cliente_index` (c5_cliente) · `pedidos_venda_cliente_id_index` (cliente_id)
 
 ### pedidos_venda_etapas
 

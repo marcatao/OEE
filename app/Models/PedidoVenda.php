@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Item de pedido de venda do Protheus (SC6) com os dados do cabeçalho (SC5) e o nome do cliente (SA1), numa linha
@@ -30,6 +31,12 @@ class PedidoVenda extends Model
     }
 
     /** Quanto do item ainda falta entregar (0 se faturado ou eliminado). */
+    /** Cadastro do cliente (SA1), ligado pelas procedures pelo C5_CLIENTE + C5_LOJACLI. */
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class);
+    }
+
     public function saldo(): float
     {
         return in_array($this->situacao, ['faturado', 'eliminado'], true) ? 0.0 : max(0.0, $this->c6_qtdven - $this->c6_qtdent);

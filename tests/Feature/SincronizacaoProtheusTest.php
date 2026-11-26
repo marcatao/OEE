@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\CentroCusto;
+use App\Models\Cliente;
+use App\Models\PedidoVenda;
 use App\Models\Sincronizacao;
 use App\Models\Usuario;
 use App\Services\Protheus\ImportadorEmpenhos;
@@ -88,7 +90,7 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertSame(['1001', '1002'], CentroCusto::orderBy('ctt_custo')->pluck('ctt_custo')->all());
         $this->assertSame('USINAGEM', rtrim(CentroCusto::where('ctt_custo', '1001')->value('ctt_desc01')));
 
-        $this->assertSame(['centros_custo', 'maquinas', 'produtos', 'estruturas', 'ferramentas', 'roteiros', 'ordens_producao', 'empenhos_op', 'faltas_produto', 'movimentos_producao', 'pedidos_venda', 'notas_fiscais_op'],
+        $this->assertSame(['centros_custo', 'maquinas', 'produtos', 'estruturas', 'ferramentas', 'roteiros', 'ordens_producao', 'empenhos_op', 'faltas_produto', 'movimentos_producao', 'clientes', 'pedidos_venda', 'notas_fiscais_op'],
             Sincronizacao::orderBy('id')->pluck('chave')->all());
         $s = Sincronizacao::where('chave', 'centros_custo')->sole();
         $this->assertSame(['centros_custo', 'manual', 'sucesso', 3, 2, 0, 1, $admin->id],
@@ -289,6 +291,34 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertStringContainsString("IF NOT EXISTS (SELECT 1 FROM dbo.pedidos_venda) SET @corte = '00000000'", $sql);
         $this->assertStringContainsString('ON t.r_e_c_n_o_ = s.r_e_c_n_o_', $sql);
         $this->assertTrue(Schema::hasColumns('pedidos_venda', ['c5_num', 'c6_item', 'cliente_nome', 'situacao', 'c5_recno']));
+    }
+
+    public function test_clientes_da_sa1010_pela_procedure_e_ligados_aos_pedidos(): void
+    {
+        $this->assertSame('dbo.sp_sincronizar_clientes', config('protheus.sincronizacoes.clientes.procedure'));
+        // Antes dos pedidos de venda (o pedido novo já acha o cliente).
+        $chaves = array_keys(config('protheus.sincronizacoes'));
+        $this->assertLessThan(array_search('pedidos_venda', $chaves), array_search('clientes', $chaves));
+        // Só pela procedure: fora do SQL Server a sincronização é pulada, sem erro.
+        $r = app(SincronizadorProtheus::class)->sincronizar('clientes', 'comando');
+        $this->assertSame('sucesso', $r->situacao);
+
+        $sql = file_get_contents(database_path('procedures/sp_sincronizar_clientes.sql'));
+        $this->assertMatchesRegularExpression('/ALTER PROCEDURE dbo\.sp_sincronizar_clientes\s+AS\s+BEGIN/', $sql);
+        $this->assertStringContainsString('OPENQUERY(ALUMBRAPRD', $sql);
+        $this->assertStringContainsString('FROM CMT8F4_145045_PR_PD.dbo.SA1010 WHERE D_E_L_E_T_', $sql);
+        $this->assertStringContainsString('MERGE dbo.clientes', $sql);
+        $this->assertStringContainsString('ON t.r_e_c_n_o_ = s.r_e_c_n_o_', $sql);
+        $this->assertStringContainsString('UPDATE v SET cliente_id = novo', $sql);
+        // A procedure dos pedidos liga os pedidos da janela dela.
+        $this->assertStringContainsString('UPDATE v SET cliente_id = novo', file_get_contents(database_path('procedures/sp_sincronizar_pedidos_venda.sql')));
+
+        // Modelo: pedido → cliente.
+        $c = Cliente::create(['a1_cod' => '000123', 'a1_loja' => '01', 'a1_nome' => 'CLIENTE TESTE', 'r_e_c_n_o_' => 1]);
+        $p = PedidoVenda::create(['c5_num' => '091587', 'c6_item' => '01', 'c5_cliente' => '000123', 'c5_lojacli' => '01',
+            'cliente_id' => $c->id, 'r_e_c_n_o_' => 10]);
+        $this->assertSame('CLIENTE TESTE', $p->cliente->a1_nome);
+        $this->assertSame(1, $c->pedidos()->count());
     }
 
     public function test_ordens_de_producao_vao_pela_procedure_so_no_sql_server(): void

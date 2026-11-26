@@ -125,6 +125,18 @@ return [
             'procedure' => 'dbo.sp_sincronizar_movimentos_producao',
             'origem_procedure' => '[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SD3010]',
         ],
+        // Clientes: cópia da SA1010 do servidor vinculado ALUMBRAPRD, SÓ pela procedure (MERGE pelo R_E_C_N_O_, apaga os
+        // excluídos). Antes dos pedidos de venda: no fim, a procedure liga cada pedido ao cliente (pedidos_venda.cliente_id).
+        'clientes' => [
+            'descricao' => 'Clientes',
+            'tabela_origem' => 'SA1', // a procedure lê a SA1010 do ALUMBRAPRD
+            'tabela_destino' => 'clientes',
+            'importador' => null,
+            'modo' => 'espelho',
+            'via' => 'procedure',
+            'procedure' => 'dbo.sp_sincronizar_clientes',
+            'origem_procedure' => '[ALUMBRAPRD].[CMT8F4_145045_PR_PD].[dbo].[SA1010]',
+        ],
         // Pedidos de venda: SC5 (cabeçalho) + SC6 (itens) + nome do cliente (SA1) numa tabela só, uma linha por item,
         // e as liberações (SC9) em pedidos_venda_liberacoes, no MESMO sincronismo (Faturamento, 26/11/2026).
         // SÓ pela procedure (MERGE pelo R_E_C_N_O_, lendo o servidor vinculado ALUMBRAPRD): o portal NUNCA acessa o

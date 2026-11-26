@@ -254,6 +254,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (chave = R_E_C_N_O_ da SC6; `c5_recno` = do cabeçalho; `situacao` aberto | parcial | faturado | eliminado), SÓ pela
   procedure `dbo.sp_sincronizar_pedidos_venda` (junção no Protheus por OPENQUERY, MERGE, apaga os que não vieram; só os pedidos com C5_EMISSAO nos últimos 6 MESES, o resto fica como histórico; portal vazio = carga geral; sem
   importador em PHP: fora do SQL Server a sincronização é pulada com aviso).
+  `clientes` = cópia da SA1010 do mesmo servidor vinculado, SÓ pela procedure `dbo.sp_sincronizar_clientes` (inteira,
+  MERGE pelo R_E_C_N_O_, apaga os excluídos soltando os pedidos; leitura vazia = erro) — roda ANTES dos pedidos e liga
+  `pedidos_venda.cliente_id` (C5_CLIENTE + C5_LOJACLI, filial do pedido ou compartilhada); a dos pedidos liga os da janela.
   SD2 (e a SD3 pelo PHP) são incrementais (`ImportadorEspelho::primeiroRecno`: novos + últimos `protheus.reler_dias` dias);
   `--completa` (e `protheus.agenda_completa`, semanal) relê tudo.
 - **Regras de proteção da manutenção**: minutos normais + extras lançados à mão têm de somar a duração; cronômetro
