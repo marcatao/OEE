@@ -94,9 +94,11 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   um item por linha, ver abaixo) e `pedidos_venda_liberacoes` (SC9010 dos pedidos da janela de 6 meses, com o
   C5_EMISSAO; MERGE pelo R_E_C_N_O_; apaga as da janela que não vieram; `extras` JSON = campos do WMS
   `EtapasPedidoVenda::CAMPOS_WMS` + os das regras ativas, só os que existem na SC9010; FOR JSON = SQL Server 2016+).
-  Depois da procedure o sincronizador chama o item `depois` (`EtapasPedidoVenda::depoisDaSincronizacao`), que grava
-  `pedidos_venda_etapas` (uma linha por pedido: etapa, `etapa_desde`, valores, entrega prevista, faturado_em, cliente)
-  só com as tabelas do portal. Regra única em `App\Services\Faturamento\EtapasPedidoVenda`: liberação bloqueada
+  No fim, a própria procedure chama `dbo.sp_calcular_etapas_pedidos_venda` (pedido do usuário: "o portal só chama a
+  procedure"; o passo em PHP estourava o IIS), que calcula em SQL, de uma vez, TODOS os pedidos e grava
+  `pedidos_venda_etapas` (uma linha por pedido: etapa, `etapa_desde`, valores, entrega prevista, faturado_em, cliente;
+  MERGE só do que mudou). Salvar regra na tela = `EXEC` da mesma procedure. `App\Services\Faturamento\EtapasPedidoVenda`
+  é o ESPELHO em PHP (testes em SQLite) e guarda as constantes: mudou a regra, mude OS DOIS. Regra: liberação bloqueada
   (C9_BLCRED/C9_BLEST fora de vazio e "10") = carteira; senão a etapa do WMS da 1ª regra que vale (aguardando
   faturamento > logística > conferência > separação; `regras_etapa_pedido`, campo da SC9, tela Faturamento › Etapas
   dos pedidos, desativadas e não excluídas, sem unidade; salvar recalcula os em aberto); nenhuma = em expedição; item

@@ -5,16 +5,16 @@ namespace App\Services\Faturamento;
 use App\Models\Faturamento\PedidoVendaEtapa;
 use App\Models\Faturamento\RegraEtapaPedido;
 use App\Models\PedidoVenda;
-use App\Models\Sincronizacao;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Etapa de cada pedido de venda (Faturamento › Pedidos de venda), calculada pelo portal a partir das cópias
- * pedidos_venda (SC5 + SC6, uma linha por item) e pedidos_venda_liberacoes (SC9), gravadas pela procedure
- * dbo.sp_sincronizar_pedidos_venda; o resultado vai para pedidos_venda_etapas (uma linha por pedido). Só lê tabelas do
- * portal (o portal nunca acessa o Protheus direto). Regra única: a tela, o assistente e a sincronização usam esta classe.
+ * pedidos_venda (SC5 + SC6, uma linha por item) e pedidos_venda_liberacoes (SC9); o resultado vai para
+ * pedidos_venda_etapas (uma linha por pedido). NO SERVIDOR quem calcula é a procedure dbo.sp_calcular_etapas_pedidos_venda
+ * (chamada no fim de sp_sincronizar_pedidos_venda; o portal só faz EXEC). Esta classe é o ESPELHO em PHP da mesma regra
+ * (testes em SQLite) e guarda as constantes das etapas: mudou a regra aqui, mude a procedure (e vice-versa).
  *
  * Etapa de cada LIBERAÇÃO em aberto (SC9 não excluída e sem nota):
  * - bloqueada por crédito ou estoque (C9_BLCRED / C9_BLEST preenchidos, fora o "10" = faturado) = carteira;
@@ -272,30 +272,15 @@ class EtapasPedidoVenda
     // ------------------------------------------------------------------ gravação
 
     /**
-     * Depois da procedure sp_sincronizar_pedidos_venda (SincronizadorProtheus, item "depois"): recalcula os pedidos que
-     * a procedure mexeu (item ou liberação com sincronizado_em desde o início da execução), os que ainda não têm etapa
-     * e todos os em aberto. Só lê as tabelas do portal. Devolve o resumo para a mensagem da sincronização.
+     * Recalcula as etapas (ex.: depois de mudar as regras do WMS). No SQL Server o portal SÓ chama a procedure
+     * dbo.sp_calcular_etapas_pedidos_venda (a mesma que a sincronização chama no fim; recalcula todos os pedidos). O
+     * cálculo em PHP abaixo é o espelho dela para os testes em SQLite (em aberto + os que ainda não têm etapa).
      */
-    public function depoisDaSincronizacao(Sincronizacao $registro): string
-    {
-        $inicio = $registro->iniciado_em ?? now()->subMinutes(10);
-        $chaves = $this->chavesAbertasOuNovas();
-        foreach ([['pedidos_venda', 'c5_filial', 'c5_num'], ['pedidos_venda_liberacoes', 'c9_filial', 'c9_pedido']] as [$tabela, $filial, $num]) {
-            DB::table($tabela)->where('sincronizado_em', '>=', $inicio)->select([$filial, $num])->distinct()->orderBy($num)
-                ->chunk(1000, function ($linhas) use (&$chaves, $filial, $num) {
-                    foreach ($linhas as $l) {
-                        $chaves[rtrim((string) $l->{$filial}).'|'.rtrim((string) $l->{$num})] = true;
-                    }
-                });
-        }
-        $alterados = count($this->recalcularChaves(array_keys($chaves)));
-
-        return "Etapas recalculadas: {$alterados} ".($alterados === 1 ? 'pedido mudou' : 'pedidos mudaram').' de etapa, valor ou data.';
-    }
-
-    /** Recalcula os pedidos em aberto e os que ainda não têm etapa (ex.: depois de mudar as regras do WMS). */
     public function recalcularAbertos(): int
     {
+        if (DB::getDriverName() === 'sqlsrv') {
+            return (int) (DB::select('EXEC dbo.sp_calcular_etapas_pedidos_venda')[0]->alterados ?? 0);
+        }
         $this->esquecerRegras();
 
         return count($this->recalcularChaves(array_keys($this->chavesAbertasOuNovas())));

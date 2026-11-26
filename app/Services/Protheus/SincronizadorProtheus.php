@@ -277,13 +277,8 @@ class SincronizadorProtheus
         foreach (['lidos', 'novos', 'atualizados', 'ignorados', 'excluidos'] as $campo) {
             $totais[$campo] = (int) ($r[$campo] ?? 0);
         }
-        // Passo seguinte, só com as tabelas do portal (ex.: etapas dos pedidos de venda): item "depois" do config.
-        $aviso = null;
-        if (! empty($item['depois'])) {
-            $aviso = Cronometro::medir('depois', fn () => app($item['depois'])->depoisDaSincronizacao($registro));
-        }
 
-        return $this->terminar($registro, 'sucesso', $totais + ['ultimo_recno' => isset($r['ultimo_recno']) ? (int) $r['ultimo_recno'] : null], $aviso);
+        return $this->terminar($registro, 'sucesso', $totais + ['ultimo_recno' => isset($r['ultimo_recno']) ? (int) $r['ultimo_recno'] : null]);
     }
 
     /**

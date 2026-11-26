@@ -8,7 +8,6 @@ use App\Models\Faturamento\RegraEtapaPedido;
 use App\Models\FiltroUsuario;
 use App\Models\Grupo;
 use App\Models\PedidoVenda;
-use App\Models\Sincronizacao;
 use App\Models\Usuario;
 use App\Services\Assistente\FerramentasAssistente;
 use App\Services\Faturamento\EtapasPedidoVenda;
@@ -176,23 +175,23 @@ class PedidosVendaTest extends TestCase
         $this->get('/')->assertDontSee('Pedidos de venda');
     }
 
-    public function test_depois_da_procedure_recalcula_os_mexidos_sem_ler_o_protheus(): void
+    public function test_recalculo_e_sincronizacao_so_pela_procedure_no_servidor(): void
     {
-        // A procedure entregou o resto do 000001 (item com nota) e mexeu nele: vira faturado.
-        $registro = Sincronizacao::create(['chave' => 'pedidos_venda', 'origem' => 'x', 'disparo' => 'comando', 'situacao' => 'executando',
-            'iniciado_em' => now()->subMinute()]);
-        PedidoVenda::where('c5_num', '000001')->update(['c6_qtdent' => 10, 'c6_datfat' => '20261126', 'situacao' => 'faturado', 'sincronizado_em' => now()]);
-        PedidoVendaLiberacao::where('c9_pedido', '000001')->update(['c9_nfiscal' => '000123', 'sincronizado_em' => now()]);
-        $mensagem = app(EtapasPedidoVenda::class)->depoisDaSincronizacao($registro);
+        // A procedure entregou o resto do 000001 (item com nota): o recálculo (no SQLite, o espelho em PHP) vira faturado.
+        PedidoVenda::where('c5_num', '000001')->update(['c6_qtdent' => 10, 'c6_datfat' => '20261126', 'situacao' => 'faturado']);
+        PedidoVendaLiberacao::where('c9_pedido', '000001')->update(['c9_nfiscal' => '000123']);
+        $this->assertGreaterThan(0, app(EtapasPedidoVenda::class)->recalcularAbertos());
         $this->assertSame('faturado', $this->etapa('000001'));
-        $this->assertStringContainsString('Etapas recalculadas', $mensagem);
 
-        $registro->update(['situacao' => 'sucesso', 'terminado_em' => now()]);
-        // A sincronização pelo portal só chama a procedure: fora do SQL Server não lê nada (nem tenta o Protheus).
+        // A sincronização pelo portal só chama a procedure (que calcula as etapas no fim): fora do SQL Server não lê nada.
         $s = app(SincronizadorProtheus::class)->sincronizar('pedidos_venda', 'comando');
         $this->assertSame('sucesso', $s->situacao);
         $this->assertSame(0, $s->lidos);
-        $this->assertSame(EtapasPedidoVenda::class, config('protheus.sincronizacoes.pedidos_venda.depois'));
+        $this->assertArrayNotHasKey('depois', config('protheus.sincronizacoes.pedidos_venda'));
+        $sync = file_get_contents(database_path('procedures/sp_sincronizar_pedidos_venda.sql'));
+        $this->assertStringContainsString('EXEC dbo.sp_calcular_etapas_pedidos_venda @devolver = 0', $sync);
+        $this->assertStringContainsString('ALTER PROCEDURE dbo.sp_calcular_etapas_pedidos_venda',
+            file_get_contents(database_path('procedures/sp_calcular_etapas_pedidos_venda.sql')));
     }
 
     public function test_nenhum_codigo_do_faturamento_acessa_o_protheus(): void

@@ -21,8 +21,10 @@
  * - "extras" (JSON, FOR JSON: SQL Server 2016+): campos do WMS (C9_ORDSEP, C9_CARGA, C9_SEQCAR, C9_SERVIC, C9_STSERV,
  *   C9_ENDPAD = EtapasPedidoVenda::CAMPOS_WMS) e os das regras ativas de dbo.regras_etapa_pedido, só os que EXISTEM na
  *   SC9010 (nome validado: letras, números e _). As etapas são calculadas depois pelo PHP, só com as tabelas do portal.
- * O portal NUNCA lê o Protheus direto: esta procedure é o único caminho.
- * Devolve uma linha: lidos, novos, atualizados, excluidos, ignorados, ultimo_recno, corte (AAAAMMDD; 00000000 = tudo).
+ * ETAPAS: no fim, chama dbo.sp_calcular_etapas_pedidos_venda (etapa de cada pedido em dbo.pedidos_venda_etapas, só com
+ * as tabelas do portal). O portal NUNCA lê o Protheus direto e só faz EXEC desta procedure: tudo acontece aqui.
+ * Devolve uma linha: lidos, novos, atualizados, excluidos, ignorados, ultimo_recno, corte (AAAAMMDD; 00000000 = tudo),
+ * etapas (pedidos que mudaram de etapa, valor ou data).
  */
 ALTER PROCEDURE dbo.sp_sincronizar_pedidos_venda
 AS
@@ -36,7 +38,7 @@ BEGIN
     DECLARE @corte varchar(8) = CONVERT(varchar(8), DATEADD(MONTH, -6, CAST(GETDATE() AS date)), 112);
     IF NOT EXISTS (SELECT 1 FROM dbo.pedidos_venda) SET @corte = '00000000';
     DECLARE @lidos int, @ultimo int, @excluidos int = 0, @lidos9 int = 0;
-    DECLARE @extras9 nvarchar(max), @rem9 nvarchar(max);
+    DECLARE @extras9 nvarchar(max), @rem9 nvarchar(max), @etapas int = 0;
     DECLARE @acoes TABLE (acao nvarchar(10));
 
     IF NOT EXISTS (SELECT 1 FROM sys.servers WHERE name = N'ALUMBRAPRD')
@@ -249,11 +251,15 @@ BEGIN
 
     COMMIT TRANSACTION;
 
+    -- 6) Etapas dos pedidos (Faturamento), em SQL, sem devolver linha (o resumo abaixo é a única linha da procedure).
+    EXEC dbo.sp_calcular_etapas_pedidos_venda @devolver = 0, @alterados = @etapas OUTPUT;
+
     SELECT ISNULL(@lidos, 0) + @lidos9 AS lidos,
            (SELECT COUNT(*) FROM @acoes WHERE acao = 'INSERT') AS novos,
            (SELECT COUNT(*) FROM @acoes WHERE acao = 'UPDATE') AS atualizados,
            @excluidos AS excluidos,
            0 AS ignorados,
            @ultimo AS ultimo_recno,
-           @corte AS corte;
+           @corte AS corte,
+           @etapas AS etapas;
 END
