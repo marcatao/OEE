@@ -6,14 +6,16 @@
  * periodicidade). Instalada pelas migrações (só SQL Server); depois de mudar este arquivo, crie uma migração que chame
  * ProceduresBanco::instalar() ou rode "php artisan banco:procedures".
  *
+ * - Janela de 6 meses: só os pedidos com C5_EMISSAO nos últimos 6 meses são lidos, incluídos, alterados e apagados;
+ *   os mais antigos ficam no portal como histórico, sem mexer. Com a tabela do portal VAZIA, faz a carga geral (tudo).
  * - A junção (item × cabeçalho × cliente) roda no servidor do Protheus (OPENQUERY): só vêm pela rede os itens não
- *   excluídos de pedidos não excluídos, já com o cabeçalho;
+ *   excluídos de pedidos não excluídos da janela, já com o cabeçalho;
  * - cliente: SA1 pelo C5_CLIENTE + C5_LOJACLI, na filial do pedido ou compartilhada (em branco);
  * - MERGE pelo R_E_C_N_O_ do item: inclui os novos e altera só os que mudaram algum campo;
- * - APAGA do portal os itens que não vieram (excluídos no Protheus, item ou cabeçalho, ou apagados de vez);
+ * - APAGA do portal os itens DA JANELA que não vieram (excluídos no Protheus, item ou cabeçalho, ou apagados de vez);
  * - situacao: eliminado (C6_BLQ = 'R', resíduo) > faturado (entregue >= vendido) > parcial (entregue > 0) > aberto.
- * Por segurança, leitura vazia com pedidos no portal = erro (nada é apagado).
- * Devolve uma linha: lidos, novos, atualizados, excluidos, ignorados, ultimo_recno.
+ * Por segurança, leitura vazia com pedidos da janela no portal = erro (nada é apagado).
+ * Devolve uma linha: lidos, novos, atualizados, excluidos, ignorados, ultimo_recno, corte (AAAAMMDD; 00000000 = tudo).
  */
 ALTER PROCEDURE dbo.sp_sincronizar_pedidos_venda
 AS
@@ -23,6 +25,9 @@ BEGIN
 
     DECLARE @agora datetime = GETUTCDATE();
     DECLARE @sql nvarchar(max), @remota nvarchar(max);
+    -- Janela: pedidos emitidos a partir de hoje − 6 meses (AAAAMMDD, como o C5_EMISSAO). Portal vazio = carga geral.
+    DECLARE @corte varchar(8) = CONVERT(varchar(8), DATEADD(MONTH, -6, CAST(GETDATE() AS date)), 112);
+    IF NOT EXISTS (SELECT 1 FROM dbo.pedidos_venda) SET @corte = '00000000';
     DECLARE @lidos int, @ultimo int, @excluidos int = 0;
     DECLARE @acoes TABLE (acao nvarchar(10));
 
@@ -81,7 +86,7 @@ BEGIN
         + N'OUTER APPLY (SELECT TOP 1 A1_NOME FROM CMT8F4_145045_PR_PD.dbo.SA1010 SA1 '
         + N'WHERE SA1.A1_COD = C5.C5_CLIENTE AND SA1.A1_LOJA = C5.C5_LOJACLI AND SA1.D_E_L_E_T_ = '' '' '
         + N'AND (SA1.A1_FILIAL = C5.C5_FILIAL OR SA1.A1_FILIAL = '' '') ORDER BY SA1.A1_FILIAL DESC) A1 '
-        + N'WHERE C6.D_E_L_E_T_ = '' ''';
+        + N'WHERE C6.D_E_L_E_T_ = '' '' AND C5.C5_EMISSAO >= ''' + @corte + N'''';
     SET @sql = N'INSERT INTO #pv (c5_filial, c5_num, c5_tipo, c5_cliente, c5_lojacli, cliente_nome, c5_condpag, c5_emissao, '
         + N'c5_vend1, c5_transp, c5_nota, c5_serie, c5_liberok, c6_item, c6_produto, c6_descri, c6_um, c6_qtdven, c6_prcven, '
         + N'c6_valor, c6_qtdent, c6_entreg, c6_tes, c6_local, c6_nota, c6_serie, c6_datfat, c6_blq, c6_numop, c6_itemop, '
@@ -103,18 +108,20 @@ BEGIN
 
     SELECT @lidos = COUNT(*), @ultimo = MAX(r_e_c_n_o_) FROM #pv;
 
-    -- Leitura vazia com pedidos no portal: algo errado no servidor vinculado; não apaga nada.
-    IF @lidos = 0 AND EXISTS (SELECT 1 FROM dbo.pedidos_venda)
+    -- Leitura vazia com pedidos da janela no portal: algo errado no servidor vinculado; não apaga nada.
+    IF @lidos = 0 AND EXISTS (SELECT 1 FROM dbo.pedidos_venda WHERE c5_emissao >= @corte)
     BEGIN
-        RAISERROR(N'A leitura da SC5010/SC6010 no ALUMBRAPRD não trouxe nenhum item, mas o portal tem pedidos: nada foi apagado. Confira o acesso ao servidor vinculado.', 16, 1);
+        RAISERROR(N'A leitura da SC5010/SC6010 no ALUMBRAPRD não trouxe nenhum item dos últimos 6 meses, mas o portal tem: nada foi apagado. Confira o acesso ao servidor vinculado.', 16, 1);
         RETURN;
     END;
 
     BEGIN TRANSACTION;
 
-    -- 2) Itens que não vieram (excluídos no Protheus, item ou cabeçalho, ou apagados de vez): apaga do portal.
+    -- 2) Itens DA JANELA que não vieram (excluídos no Protheus, item ou cabeçalho, ou apagados de vez): apaga do portal.
+    --    O histórico (antes do corte) não é tocado.
     DELETE t FROM dbo.pedidos_venda t
-    WHERE NOT EXISTS (SELECT 1 FROM #pv s WHERE s.r_e_c_n_o_ = t.r_e_c_n_o_);
+    WHERE t.c5_emissao >= @corte
+      AND NOT EXISTS (SELECT 1 FROM #pv s WHERE s.r_e_c_n_o_ = t.r_e_c_n_o_);
     SET @excluidos = @@ROWCOUNT;
 
     -- 3) MERGE pelo R_E_C_N_O_ do item: novos e alterados (só os que mudaram algum campo).
@@ -158,5 +165,6 @@ BEGIN
            (SELECT COUNT(*) FROM @acoes WHERE acao = 'UPDATE') AS atualizados,
            @excluidos AS excluidos,
            0 AS ignorados,
-           @ultimo AS ultimo_recno;
+           @ultimo AS ultimo_recno,
+           @corte AS corte;
 END

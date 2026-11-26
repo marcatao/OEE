@@ -282,6 +282,11 @@ class SincronizacaoProtheusTest extends TestCase
         $this->assertStringContainsString('FROM CMT8F4_145045_PR_PD.dbo.SC6010 C6', $sql);
         $this->assertStringContainsString('JOIN CMT8F4_145045_PR_PD.dbo.SC5010 C5', $sql);
         $this->assertStringContainsString('MERGE dbo.pedidos_venda', $sql);
+        // Só os últimos 6 meses (o histórico fica); portal vazio = carga geral.
+        $this->assertStringContainsString('DATEADD(MONTH, -6', $sql);
+        $this->assertStringContainsString("AND C5.C5_EMISSAO >= ''' + @corte", $sql);
+        $this->assertStringContainsString('WHERE t.c5_emissao >= @corte', $sql);
+        $this->assertStringContainsString("IF NOT EXISTS (SELECT 1 FROM dbo.pedidos_venda) SET @corte = '00000000'", $sql);
         $this->assertStringContainsString('ON t.r_e_c_n_o_ = s.r_e_c_n_o_', $sql);
         $this->assertTrue(Schema::hasColumns('pedidos_venda', ['c5_num', 'c6_item', 'cliente_nome', 'situacao', 'c5_recno']));
     }
