@@ -1398,3 +1398,24 @@ a.kpi-link:hover { border-color:var(--primaria); }
 @media print {
   .assinatura-quadro, .aviso-termos { display:none !important; }
 }
+
+/* ---------- Ciclos da máquina (Dashboard por máquina, IOT001; dashboard._ciclos-iot) ---------- */
+.ciclos-filtro { display:flex; gap:.5rem; align-items:flex-end; margin:0; }
+.ciclos-filtro label, .ciclos-hora { display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--suave); }
+.ciclos-fonte { font-size:.85rem; margin:.4rem 0 .9rem; }
+.ciclos-numeros { margin-bottom:.9rem; }
+.ciclos-n-micro strong { color:var(--alerta); }
+.ciclos-n-parada strong { color:var(--erro); }
+.ciclos-legenda { display:flex; flex-wrap:wrap; gap:.5rem 1.25rem; align-items:flex-end; font-size:.85rem; color:var(--suave); margin-bottom:.6rem; }
+.ciclos-legenda > span { display:inline-flex; align-items:center; gap:.4rem; }
+.ciclos-hora { margin-left:auto; }
+.ciclos-cor { display:inline-block; width:.85rem; height:.85rem; border-radius:3px; }
+.ciclos-cor.normal { background:var(--primaria); }
+.ciclos-cor.micro { background:var(--alerta); }
+.ciclos-cor.parada { background:var(--erro); }
+.ciclos-grafico { position:relative; width:100%; }
+.ciclos-grafico canvas { display:block; width:100%; cursor:crosshair; }
+.ciclos-dica { position:absolute; z-index:5; pointer-events:none; background:var(--cartao); color:var(--texto); border:1px solid var(--borda-campo); border-radius:8px; box-shadow:var(--sombra-forte); padding:.45rem .65rem; font-size:.8rem; line-height:1.45; white-space:nowrap; }
+.ciclos-paradas { margin-top:.9rem; }
+.ciclos-paradas summary { cursor:pointer; color:var(--erro); font-weight:600; }
+.ciclos-paradas .rolagem { max-height:18rem; overflow-y:auto; margin-top:.5rem; }

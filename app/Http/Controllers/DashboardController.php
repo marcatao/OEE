@@ -7,6 +7,7 @@ use App\Models\ApontamentoEstado;
 use App\Models\Legenda;
 use App\Models\Maquina;
 use App\Models\Parada;
+use App\Services\CiclosIot;
 use App\Services\HorarioApontamento;
 use App\Services\IndicadoresOee;
 use App\Services\PanoramaMaquinas;
@@ -41,9 +42,10 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function maquina(Request $request, Maquina $maquina, IndicadoresOee $indicadores, PanoramaMaquinas $panorama, ProducaoPorHora $producaoHora): View
+    public function maquina(Request $request, Maquina $maquina, IndicadoresOee $indicadores, PanoramaMaquinas $panorama, ProducaoPorHora $producaoHora, CiclosIot $ciclosIot): View
     {
         $periodo = Periodo::de($request->query('periodo'));
+        [$diasCiclos, $diaCiclos] = $this->diasDosCiclos($periodo, $request->query('ciclos_dia'));
         HorarioApontamento::fecharAbertosAnteriores((int) $maquina->id); // só o mais recente fica em aberto
         $maquina->load(['linha.planta', 'iot1Dispositivo', 'iot2Dispositivo', 'iot3Dispositivo']);
 
@@ -75,7 +77,36 @@ class DashboardController extends Controller
             'apontamentos' => Apontamento::where('maquina_id', $maquina->id)
                 ->where('inicio', '>=', $periodo->inicio)->where('inicio', '<', $periodo->fim)
                 ->orderByDesc('inicio')->limit(15)->get(),
+            // Ciclo a ciclo do dia escolhido (dentro do período), lido da IOT001 (CiclosIot).
+            'diasCiclos' => $diasCiclos,
+            'ciclos' => $ciclosIot->doDia($maquina, $diaCiclos),
             'paradaAberta' => Parada::with('motivo')->where('maquina_id', $maquina->id)->whereNull('fim')->latest('inicio')->first(),
         ]);
+    }
+
+    /**
+     * Dias (locais) do período para o gráfico de ciclos, do mais recente ao mais antigo (sem o futuro), e o escolhido
+     * (`?ciclos_dia=AAAA-MM-DD`; fora do período ou inválido = o mais recente).
+     *
+     * @return array{0: list<CarbonImmutable>, 1: CarbonImmutable}
+     */
+    private function diasDosCiclos(Periodo $periodo, mixed $escolhido): array
+    {
+        $fuso = HorarioApontamento::fuso();
+        $hoje = CarbonImmutable::now($fuso)->startOfDay();
+        $dias = [];
+        for ($d = $periodo->fim->subSecond()->setTimezone($fuso)->startOfDay(); $d->greaterThanOrEqualTo($periodo->inicio->setTimezone($fuso)->startOfDay()); $d = $d->subDay()) {
+            if ($d->lessThanOrEqualTo($hoje)) {
+                $dias[] = $d;
+            }
+        }
+        $dias = $dias ?: [$hoje];
+        foreach ($dias as $d) {
+            if ($d->format('Y-m-d') === (string) $escolhido) {
+                return [$dias, $d];
+            }
+        }
+
+        return [$dias, $dias[0]];
     }
 }

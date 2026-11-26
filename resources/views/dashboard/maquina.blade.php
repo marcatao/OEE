@@ -170,6 +170,8 @@
   </section>
 </div>
 
+@include('dashboard._ciclos-iot')
+
 <section class="cartao" style="margin-top:1.25rem">
   <h3>Dispositivos IoT</h3>
   {{-- Os canais IoT do cadastro da máquina (iotN_dispositivo_id + canal + tipo), não o vínculo antigo dispositivos_iot.maquina_id --}}

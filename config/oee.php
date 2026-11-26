@@ -96,6 +96,14 @@ return [
 
     // Canais de cada dispositivo IoT. Os dados das máquinas virão da tabela MQTT.dbo.IOT001 (integração futura):
     // cada máquina usa dispositivo + canal, e um mesmo dispositivo + canal não pode estar em duas máquinas.
+    // Leituras do IoT gravadas pelo Integrador MQTT (gráfico de ciclos do Dashboard por máquina; só leitura). No SQL
+    // Server é outro banco da mesma instância: o login do portal precisa de SELECT nela
+    // (database/scripts/permissao_leitura_iot001.sql). Conexão vazia = a padrão do portal.
+    'iot_leituras' => [
+        'conexao' => env('IOT_LEITURAS_CONEXAO'),
+        'tabela' => env('IOT_LEITURAS_TABELA', 'MQTT.dbo.IOT001'),
+    ],
+
     'iot_canais' => ['chd1_value', 'chd2_value', 'chd3_value', 'chd4_value', 'chd5_value', 'chd6_value'],
 
     // Perfis de acesso (um usuário pode ter vários). "area" = em que área o perfil aparece no cadastro de usuários;

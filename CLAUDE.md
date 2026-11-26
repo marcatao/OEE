@@ -282,6 +282,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   a Timeline continua mostrando tudo. A tela da máquina mostra o OEE (IoT) D × P × Q do período (medidor + barras e
   tempos/peças/perdas; sem OEE explica o que falta: apontamentos ou meta). O "OEE completo" antigo das tabelas de peças
   do sistema anterior (`apontamentos`, `paradas`) saiu da tela da máquina (continua só como bloco "tabelas antigas" na lista).
+  **Ciclos da máquina** (26/11/2026, cartão acima de "Dispositivos IoT"; partial `dashboard._ciclos-iot`): ciclo a ciclo
+  de UM dia lido DIRETO da `MQTT.dbo.IOT001` (só leitura; `config('oee.iot_leituras')`, o login do portal precisa de
+  SELECT: `database/scripts/permissao_leitura_iot001.sql`; sem acesso = aviso, a tela não quebra) pelo 1º canal de
+  produção da máquina (`App\Services\CiclosIot`): cada mudança do contador = barra; intervalo desde a mudança anterior
+  (ts_unix), ciclo por peça = intervalo ÷ peças; micro efetiva ≥ 1,5 × passo das leituras (como o integrador), ≥ macro
+  = parada grande (vermelha, cortada com ▲; escala pelo percentil 98 dos ciclos normais). Dia escolhido entre os do
+  período (`?ciclos_dia=`); filtro de hora, dica e CSV no navegador (`[data-grafico-ciclos]` em `componentes.js`).
 - Canais IoT da máquina usam `iotN_dispositivo_id` (FK para `dispositivos_iot`). As colunas antigas `iotN_id`
   (texto) só são lidas, para mostrar o valor antigo; não grave nelas. O canal é um dos 6 de `config('oee.iot_canais')`
   (chd1_value…chd6_value; dados virão de MQTT.dbo.IOT001). Dispositivo + canal só em UMA máquina (todas as unidades).

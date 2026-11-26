@@ -241,6 +241,7 @@
     (raiz || document).querySelectorAll('[data-escolha]').forEach(montarEscolha);
     (raiz || document).querySelectorAll('[data-abas]').forEach(function (c) { if (!c.dataset.abasProntas) { c.dataset.abasProntas = '1'; montarAbas(c); } });
     (raiz || document).querySelectorAll('[data-assinatura]').forEach(montarAssinatura);
+    (raiz || document).querySelectorAll('[data-grafico-ciclos]').forEach(function (g) { if (!g.dataset.ciclosPronto) { g.dataset.ciclosPronto = '1'; montarGraficoCiclos(g); } });
     (raiz || document).querySelectorAll('[data-calculadora-pu]').forEach(function (f) { if (!f.dataset.calcPronta) { f.dataset.calcPronta = '1'; montarCalculadoraPu(f); } });
   }
 
@@ -311,6 +312,7 @@
       try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
       ctx.beginPath(); ctx.arc(ultimo.x, ultimo.y, 1.1, 0, Math.PI * 2); ctx.fillStyle = tinta; ctx.fill();
     });
+    canvas.addEventListener('pointerdown', function (e) { canvas.dispatchEvent(new PointerEvent('pointermove', e)); });
     canvas.addEventListener('pointermove', function (e) {
       if (!desenhando) return;
       e.preventDefault();
@@ -340,6 +342,110 @@
   }
 
   window.OeeComponentes = { iniciar: iniciar };
+  // ---------- Gráfico de ciclos da máquina (Dashboard por máquina, App\Services\CiclosIot) ----------
+  // Dados: [ts_unix, contador, peças, intervalo s, ciclo por peça s, nível 0 normal | 1 micro | 2 parada grande].
+  // Uma barra por mudança do contador; a escala vem dos ciclos normais e microparadas (percentil 98), então as paradas
+  // grandes (vermelhas) e o que passa do topo são CORTADOS e ganham uma marca, para não esconder os ciclos normais.
+  // Com mais barras que pixels, cada coluna mostra a maior barra dela (e a cor mais grave).
+  function montarGraficoCiclos(caixa) {
+    var todos = JSON.parse(caixa.querySelector('script[type="application/json"]').textContent || '[]');
+    var canvas = caixa.querySelector('canvas'), dica = caixa.querySelector('.ciclos-dica');
+    var cartao = caixa.closest('.ciclos-iot') || document, seletorHora = cartao.querySelector('[data-ciclos-hora]');
+    var fuso = caixa.dataset.fuso, dados = todos, colunas = [], escala = 1;
+    var fHora = new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+    var fH = new Intl.DateTimeFormat('pt-BR', { timeZone: fuso, hour: '2-digit', hourCycle: 'h23' });
+    function hora(ts) { return fHora.format(new Date(ts * 1000)); }
+    function horaDe(ts) { return parseInt(fH.format(new Date(ts * 1000)), 10); }
+    function seg(s) { return s === null ? '—' : numeroBr(s, s < 10 ? 3 : 1) + ' s'; }
+    function tempo(s) { if (s === null) return '—'; if (s < 60) return seg(s); var m = Math.floor(s / 60); return m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min ' + Math.round(s % 60) + ' s'; }
+    function cor(nome) { return getComputedStyle(caixa).getPropertyValue(nome).trim(); }
+    var NIVEL = ['Ciclo normal', 'Microparada', 'Parada grande'];
+
+    function desenhar() {
+      var largura = caixa.clientWidth, altura = Math.max(220, Math.min(340, Math.round(largura * 0.28)));
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = largura * dpr; canvas.height = altura * dpr; canvas.style.width = largura + 'px'; canvas.style.height = altura + 'px';
+      var ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, largura, altura);
+      var esq = 56, dir = 8, topo = 16, base = 26, w = largura - esq - dir, h = altura - topo - base;
+      var cores = [cor('--primaria'), cor('--alerta'), cor('--erro')], texto = cor('--suave'), grade = cor('--borda');
+      ctx.font = '11px ' + getComputedStyle(document.body).fontFamily; ctx.textBaseline = 'middle';
+      if (!dados.length) { ctx.fillStyle = texto; ctx.fillText('Nenhuma mudança do contador nesta hora.', esq, topo + h / 2); colunas = []; return; }
+      // Escala: percentil 98 dos ciclos NORMAIS (+ 15%); microparadas e paradas grandes passam do topo e são cortadas.
+      var vals = dados.filter(function (d) { return d[5] === 0 && d[4] !== null; }).map(function (d) { return d[4]; }).sort(function (a, b) { return a - b; });
+      escala = vals.length ? vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.98))] * 1.15 : 1;
+      if (!(escala > 0)) escala = 1;
+      // Linhas de grade e rótulos do eixo Y.
+      ctx.strokeStyle = grade; ctx.fillStyle = texto; ctx.lineWidth = 1; ctx.textAlign = 'right';
+      for (var i = 0; i <= 4; i++) {
+        var y = topo + h - h * i / 4; ctx.beginPath(); ctx.moveTo(esq, Math.round(y) + .5); ctx.lineTo(esq + w, Math.round(y) + .5); ctx.stroke();
+        ctx.fillText(seg(escala * i / 4), esq - 6, y);
+      }
+      // Colunas: uma por barra ou, com barras demais, uma por pixel.
+      var n = dados.length, porPixel = n > w, total = porPixel ? Math.floor(w) : n, larguraBarra = w / total;
+      colunas = [];
+      for (var c = 0; c < total; c++) {
+        var de = porPixel ? Math.floor(c * n / total) : c, ate = porPixel ? Math.max(de + 1, Math.floor((c + 1) * n / total)) : c + 1;
+        var maior = null, nivel = 0;
+        for (var k = de; k < ate; k++) { var d = dados[k]; nivel = Math.max(nivel, d[5]); if (d[4] !== null && (maior === null || d[4] > maior)) maior = d[4]; }
+        colunas.push({ x: esq + c * larguraBarra, de: de, ate: ate });
+        if (maior === null) continue;
+        var cortada = nivel === 2 || maior > escala, alt = cortada ? h : Math.max(1, h * maior / escala);
+        var x = esq + c * larguraBarra, bw = Math.max(nivel === 2 ? 3 : 1, larguraBarra - (larguraBarra > 3 ? 1 : 0));
+        ctx.fillStyle = cores[nivel]; ctx.fillRect(x, topo + h - alt, bw, alt);
+        if (nivel === 2) { // parada grande: barra cortada com um triângulo vermelho no topo
+          ctx.fillStyle = cores[2]; ctx.beginPath();
+          ctx.moveTo(x + bw / 2, topo - 9); ctx.lineTo(x + bw / 2 - 4, topo - 2); ctx.lineTo(x + bw / 2 + 4, topo - 2); ctx.fill();
+        }
+      }
+      // Eixo X: hora cheia onde a hora muda.
+      ctx.fillStyle = texto; ctx.textAlign = 'center'; var ultimaHora = null, ultimoX = -99;
+      colunas.forEach(function (col) {
+        var hh = horaDe(dados[col.de][0]);
+        if (hh !== ultimaHora) { ultimaHora = hh; if (col.x - ultimoX > 34) { ctx.fillText(String(hh).padStart(2, '0') + 'h', col.x, topo + h + 13); ultimoX = col.x; } }
+      });
+    }
+
+    function filtrar() {
+      var hh = seletorHora && seletorHora.value !== '' ? parseInt(seletorHora.value, 10) : null;
+      dados = hh === null ? todos : todos.filter(function (d) { return horaDe(d[0]) === hh; });
+      desenhar();
+    }
+
+    canvas.addEventListener('pointerdown', function (e) { canvas.dispatchEvent(new PointerEvent('pointermove', e)); });
+    canvas.addEventListener('pointermove', function (e) {
+      var r = canvas.getBoundingClientRect(), x = e.clientX - r.left, col = null;
+      for (var i = colunas.length - 1; i >= 0; i--) { if (colunas[i].x <= x) { col = colunas[i]; break; } }
+      if (!col) { dica.hidden = true; return; }
+      var linhas;
+      if (col.ate - col.de === 1) {
+        var d = dados[col.de];
+        linhas = ['<strong>' + hora(d[0]) + '</strong> · ' + NIVEL[d[5]] + (d[5] ? ': <strong>' + tempo(d[3]) + '</strong> sem produzir' : ''), 'Ciclo por peça: <strong>' + seg(d[4]) + '</strong>',
+          'Intervalo desde a mudança anterior: ' + tempo(d[3]), 'Contador (' + caixa.dataset.canal + '): ' + numeroBr(d[1], 0) + ' (+' + d[2] + ')'];
+      } else {
+        var grupo = dados.slice(col.de, col.ate), v = grupo.map(function (g) { return g[4]; }).filter(function (g) { return g !== null; });
+        linhas = ['<strong>' + hora(grupo[0][0]) + ' – ' + hora(grupo[grupo.length - 1][0]) + '</strong> · ' + grupo.length + ' ciclos',
+          'Menor / maior: ' + seg(v.length ? Math.min.apply(null, v) : null) + ' / ' + seg(v.length ? Math.max.apply(null, v) : null),
+          'Escolha uma hora para ver ciclo a ciclo.'];
+      }
+      dica.innerHTML = linhas.join('<br>'); dica.hidden = false;
+      var px = Math.min(x + 12, caixa.clientWidth - dica.offsetWidth - 4);
+      dica.style.left = Math.max(0, px) + 'px'; dica.style.top = Math.max(0, e.clientY - r.top - dica.offsetHeight - 10) + 'px';
+    });
+    canvas.addEventListener('pointerleave', function () { dica.hidden = true; });
+    if (seletorHora) seletorHora.addEventListener('change', filtrar);
+    var botaoCsv = cartao.querySelector('[data-ciclos-csv]');
+    if (botaoCsv) botaoCsv.addEventListener('click', function () {
+      var linhas = ['Hora;ts_unix;' + caixa.dataset.canal + ';Pecas;Intervalo (s);Ciclo por peca (s);Classificacao'];
+      todos.forEach(function (d) { linhas.push([hora(d[0]), d[0], String(d[1]).replace('.', ','), d[2], d[3] === null ? '' : d[3], d[4] === null ? '' : String(d[4]).replace('.', ','), NIVEL[d[5]]].join(';')); });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+      a.download = caixa.dataset.arquivo; document.body.appendChild(a); a.click(); a.remove();
+    });
+    var espera; window.addEventListener('resize', function () { clearTimeout(espera); espera = setTimeout(desenhar, 150); });
+    if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', desenhar);
+    desenhar();
+  }
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { iniciar(); });
   else iniciar();
   // ---------- 3) Abas ----------
