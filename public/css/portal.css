@@ -627,6 +627,13 @@ fieldset > p.suave:first-of-type { margin-top:.25rem; }
 /* Lista com busca (select[data-busca], public/js/componentes.js) */
 .busca-select { position:relative; display:block; width:100%; }
 .busca-select-original { display:none !important; }
+/* Aviso de campo obrigatório/inválido (componentes.js, item 6): borda e texto em vermelho embaixo do campo. */
+.campo-invalido, input.campo-invalido, select.campo-invalido, textarea.campo-invalido, .busca-select-botao.campo-invalido {
+  border-color:var(--erro) !important; box-shadow:0 0 0 1px var(--erro); }
+.aviso-campo { display:flex; align-items:center; gap:.35rem; margin-top:.3rem; color:var(--erro); font-size:.84rem; font-weight:600; }
+.aviso-campo::before { content:'!'; display:inline-grid; place-items:center; width:1rem; height:1rem; flex:none; border-radius:50%;
+  background:var(--erro); color:var(--cartao); font-size:.72rem; font-weight:700; }
+.aviso-formulario { margin:.75rem 0; }
 .busca-select-botao { width:100%; min-height:2.5rem; text-align:left; padding:.5rem 2rem .5rem .65rem; border:1px solid var(--borda-campo); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit; cursor:pointer; position:relative; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .busca-select-botao::after { content:'▾'; position:absolute; right:.7rem; top:50%; transform:translateY(-50%); color:var(--suave); }
 .busca-select-botao.vazio { color:var(--suave); }

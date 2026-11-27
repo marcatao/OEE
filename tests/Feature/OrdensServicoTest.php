@@ -29,7 +29,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\MessageBag;
 use Illuminate\Support\Str;
+use Illuminate\Support\ViewErrorBag;
 use Tests\Concerns\CalendarioDeTeste;
 use Tests\TestCase;
 
@@ -616,6 +618,20 @@ class OrdensServicoTest extends TestCase
         $this->assertSame('cancelada', $os->fresh()->status);
     }
 
+    public function test_erros_de_validacao_vao_para_cada_campo_da_tela(): void
+    {
+        // O layout entrega os erros por campo (o componentes.js mostra cada um embaixo do seu campo).
+        $erros = (new ViewErrorBag)->put('default', new MessageBag(['responsavel_id' => ['Escolha o mantenedor responsável pela preventiva.'],
+            'turno.2' => ['Turno 1 obrigatório.', 'segunda mensagem não vai']]));
+        $html = view('layouts.portal', ['errors' => $erros])->render();
+        $this->assertMatchesRegularExpression('#<script type="application/json" id="erros-campos">(.+)</script>#', $html);
+        preg_match('#id="erros-campos">(.+)</script>#', $html, $m);
+        $this->assertSame(['responsavel_id' => 'Escolha o mantenedor responsável pela preventiva.', 'turno.2' => 'Turno 1 obrigatório.'],
+            json_decode($m[1], true));
+        // Sem erros, nada.
+        $this->assertStringNotContainsString('erros-campos', view('layouts.portal', ['errors' => new ViewErrorBag])->render());
+    }
+
     public function test_preventiva_gera_os_com_checklist_uma_vez_por_data(): void
     {
         $admin = $this->usuario(['admin_producao'], 'adm@empresa.com');
@@ -628,6 +644,7 @@ class OrdensServicoTest extends TestCase
         ];
         // Responsável é obrigatório na abertura da preventiva.
         $this->actingAs($admin)->post('/ordens-de-servico/preventivas', $campos)->assertSessionHasErrors('responsavel_id');
+        // A tela recebe o erro por campo (o componentes.js mostra o aviso embaixo do "Responsável").
         $this->post('/ordens-de-servico/preventivas', $campos + ['responsavel_id' => $responsavel->id])->assertRedirect('/ordens-de-servico/preventivas');
         $plano = PlanoPreventiva::where('codigo', 'PREV-INJ')->firstOrFail();
         $this->assertSame(2, $plano->itens()->count());

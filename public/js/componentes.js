@@ -21,6 +21,11 @@
  *
  * 2) [data-escolha] — escolha de vários com busca (partial partials/escolha-multipla): <details> com o resumo do que
  *    está marcado; ao abrir, busca por nome e a lista de caixas de marcar.
+ *
+ * 6) Avisos nos campos obrigatórios (todo <form> sem novalidate): ao enviar, cada campo que falta (required, min, max…)
+ *    ganha o aviso em vermelho embaixo dele, o primeiro recebe o foco e um resumo aparece junto do botão; corrigir o
+ *    campo apaga o aviso. Funciona também na lista com busca (o <select> escondido). Os erros do servidor
+ *    (#erros-campos, do layout) também aparecem no campo. Rótulo do aviso: data-rotulo, aria-label ou o <label>.
  */
 (function () {
   'use strict';
@@ -246,6 +251,7 @@
     (raiz || document).querySelectorAll('[data-grafico-ciclos]').forEach(function (g) { if (!g.dataset.ciclosPronto) { g.dataset.ciclosPronto = '1'; montarGraficoCiclos(g); } });
     (raiz || document).querySelectorAll('[data-calculadora-pu]').forEach(function (f) { if (!f.dataset.calcPronta) { f.dataset.calcPronta = '1'; montarCalculadoraPu(f); } });
     (raiz || document).querySelectorAll('[data-expandir-linhas]').forEach(function (b) { if (!b.dataset.expandirPronto) { b.dataset.expandirPronto = '1'; montarExpandirLinhas(b); } });
+    prepararFormularios(raiz);
   }
 
   // Botão numa linha de tabela que mostra/esconde as linhas filhas (tr[data-linhas-de="<id>"]).
@@ -554,8 +560,207 @@
     desenhar();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { iniciar(); });
-  else iniciar();
+  // ---------- 6) Avisos nos campos obrigatórios ----------
+  // O navegador não consegue avisar campo escondido (ex.: o <select> da lista com busca) e só mostra um balão no
+  // primeiro campo. Aqui o portal valida ao enviar: cada campo que falta ganha o aviso embaixo dele (.aviso-campo),
+  // o primeiro recebe o foco e um resumo aparece junto do botão. Os erros do servidor (#erros-campos, JSON do
+  // layout) também vão para o campo. Formulário com novalidate (ou botão com formnovalidate) fica de fora.
+  var ROTULO_NEUTRO = 'este campo';
+
+  function controleVisivel(el) {
+    if (el.classList.contains('busca-select-original')) {
+      var caixa = el.closest('.busca-select');
+      return caixa ? caixa.querySelector('.busca-select-botao') : el;
+    }
+    var escolha = el.closest('[data-escolha]');
+    if (escolha && el.type === 'checkbox') return escolha.querySelector('summary') || el;
+    return el;
+  }
+
+  function rotuloDo(el) {
+    if (el.dataset.rotulo) return el.dataset.rotulo;
+    if (el.getAttribute('aria-label')) return el.getAttribute('aria-label');
+    var label = el.id && document.querySelector('label[for="' + el.id + '"]') || el.closest('label');
+    if (label) {
+      for (var i = 0; i < label.childNodes.length; i++) {
+        var t = label.childNodes[i].nodeType === 3 ? label.childNodes[i].textContent.trim() : '';
+        if (t) return t.replace(/[:*]\s*$/, '');
+      }
+    }
+    var grupo = el.closest('fieldset');
+    var legenda = grupo && grupo.querySelector('legend');
+    return legenda ? legenda.textContent.trim() : ROTULO_NEUTRO;
+  }
+
+  function mensagemDo(el) {
+    var v = el.validity, nome = rotuloDo(el), alvo = nome === ROTULO_NEUTRO ? nome : '"' + nome + '"';
+    if (v.valueMissing) {
+      if (el.tagName === 'SELECT' || el.type === 'radio') return 'Escolha ' + alvo + '.';
+      if (el.type === 'checkbox') return 'Marque ' + alvo + '.';
+      return 'Preencha ' + alvo + '.';
+    }
+    if (v.typeMismatch && el.type === 'email') return 'Informe um e-mail válido em ' + alvo + '.';
+    if (v.rangeUnderflow) return nome + ': o mínimo é ' + el.min + '.';
+    if (v.rangeOverflow) return nome + ': o máximo é ' + el.max + '.';
+    if (v.tooShort) return nome + ': use pelo menos ' + el.minLength + ' caracteres.';
+    if (v.badInput || v.typeMismatch || v.patternMismatch || v.stepMismatch) return 'Valor inválido em ' + alvo + '.';
+    return el.validationMessage || 'Confira ' + alvo + '.';
+  }
+
+  // Onde o aviso entra: depois da lista com busca, do grupo de opções ou do próprio campo (dentro do <label>).
+  function lugarDoAviso(el) {
+    if (el.classList.contains('busca-select-original')) return el.closest('.busca-select') || el;
+    if (el.type === 'radio' || el.type === 'checkbox') {
+      return el.closest('[data-escolha]') || el.closest('fieldset') || el.closest('.grade-opcoes') || el.closest('label') || el;
+    }
+    return el;
+  }
+
+  function idDoAviso(el) {
+    if (!el.dataset.avisoId) el.dataset.avisoId = 'aviso-' + Math.random().toString(36).slice(2, 9);
+    return el.dataset.avisoId;
+  }
+
+  function limparAviso(el) {
+    var chave = el.type === 'radio' && el.name ? el.form && el.form.querySelectorAll('[name="' + el.name + '"]') : [el];
+    Array.prototype.forEach.call(chave || [el], function (c) {
+      var vis = controleVisivel(c);
+      vis.classList.remove('campo-invalido');
+      c.removeAttribute('aria-invalid');
+      var aviso = c.dataset.avisoId && document.getElementById(c.dataset.avisoId);
+      if (aviso) aviso.remove();
+    });
+  }
+
+  function mostrarAviso(el, texto) {
+    // Radio: um aviso só para o grupo (no primeiro).
+    if (el.type === 'radio' && el.name && el.form) el = el.form.querySelector('[name="' + el.name + '"]') || el;
+    var id = idDoAviso(el);
+    var aviso = document.getElementById(id);
+    if (!aviso) {
+      aviso = document.createElement('small');
+      aviso.id = id;
+      aviso.className = 'aviso-campo';
+      aviso.setAttribute('role', 'alert');
+      var lugar = lugarDoAviso(el);
+      if (lugar.tagName === 'FIELDSET') lugar.appendChild(aviso);
+      else lugar.insertAdjacentElement('afterend', aviso);
+    }
+    aviso.textContent = texto;
+    var vis = controleVisivel(el);
+    vis.classList.add('campo-invalido');
+    el.setAttribute('aria-invalid', 'true');
+    var desc = (vis.getAttribute('aria-describedby') || '').split(/\s+/).filter(function (x) { return x && x !== id; });
+    desc.push(id);
+    vis.setAttribute('aria-describedby', desc.join(' '));
+  }
+
+  function resumoDoFormulario(form, quantos) {
+    var resumo = form.querySelector('.aviso-formulario');
+    if (!quantos) { if (resumo) resumo.remove(); return; }
+    if (!resumo) {
+      resumo = document.createElement('p');
+      resumo.className = 'aviso erro aviso-formulario';
+      resumo.setAttribute('role', 'alert');
+      var botao = form.querySelector('[type=submit]');
+      var acoes = botao && (botao.closest('.acoes') || botao.parentNode);
+      if (acoes && acoes !== form && form.contains(acoes)) acoes.insertAdjacentElement('beforebegin', resumo);
+      else form.appendChild(resumo);
+    }
+    resumo.textContent = quantos === 1 ? 'Falta 1 campo obrigatório: veja o aviso em vermelho.'
+      : 'Faltam ' + quantos + ' campos: veja os avisos em vermelho.';
+  }
+
+  function validarFormulario(form) {
+    var invalidos = [], grupos = {};
+    Array.prototype.forEach.call(form.elements, function (el) {
+      if (!el.willValidate || el.disabled) return;
+      if (el.checkValidity()) { limparAviso(el); return; }
+      if (el.type === 'radio' && el.name) { if (grupos[el.name]) return; grupos[el.name] = true; }
+      mostrarAviso(el, mensagemDo(el));
+      invalidos.push(el);
+    });
+    resumoDoFormulario(form, invalidos.length);
+    if (invalidos.length) {
+      var primeiro = controleVisivel(invalidos[0]);
+      primeiro.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      try { primeiro.focus({ preventScroll: true }); } catch (e) { /* sem foco */ }
+      // Escolha de vários fechada: abre para mostrar as opções.
+      var det = invalidos[0].closest && invalidos[0].closest('details');
+      if (det) det.open = true;
+    }
+    return invalidos.length === 0;
+  }
+
+  function prepararFormularios(raiz) {
+    (raiz || document).querySelectorAll('form').forEach(function (f) {
+      if (f.dataset.validacaoPronta || f.hasAttribute('novalidate')) return;
+      f.dataset.validacaoPronta = '1';
+      f.noValidate = true; // o portal valida (o balão do navegador não alcança campo escondido)
+    });
+  }
+
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!form.dataset || !form.dataset.validacaoPronta) return;
+    if (e.submitter && e.submitter.formNoValidate) return;
+    if (!validarFormulario(form)) {
+      e.preventDefault();
+      e.stopImmediatePropagation(); // não abre o confirm() do formulário com campos faltando
+    }
+  }, true);
+
+  // Corrigiu o campo: o aviso some na hora (e o resumo é recontado).
+  function aoMudar(e) {
+    var el = e.target;
+    if (!el.form || !el.form.dataset.validacaoPronta || el.getAttribute('aria-invalid') !== 'true' && !(el.type === 'radio')) return;
+    if (el.checkValidity()) {
+      limparAviso(el);
+      var restantes = el.form.querySelectorAll('[aria-invalid="true"]').length;
+      resumoDoFormulario(el.form, restantes);
+    }
+  }
+  document.addEventListener('input', aoMudar, true);
+  document.addEventListener('change', aoMudar, true);
+
+  // Erros do servidor (validação do Laravel): "campo.sub" → name="campo[sub]" (ou campo[sub][]).
+  function errosDoServidor() {
+    var bloco = document.getElementById('erros-campos');
+    if (!bloco) return;
+    var erros;
+    try { erros = JSON.parse(bloco.textContent); } catch (e) { return; }
+    var primeiro = null;
+    Object.keys(erros).forEach(function (chave) {
+      var partes = chave.split('.');
+      var nome = partes[0] + partes.slice(1).map(function (p) { return '[' + p + ']'; }).join('');
+      var el = document.querySelector('[name="' + CSS.escape(nome) + '"]')
+        || document.querySelector('[name="' + CSS.escape(nome) + '[]"]')
+        || document.querySelector('[name^="' + CSS.escape(nome) + '["]');
+      if (!el || el.type === 'hidden') return;
+      // A tela já mostra esta mensagem perto do campo (ex.: @error da grade de turnos)? Não repete.
+      var texto = erros[chave];
+      var jaTem = Array.prototype.some.call((el.form || document).querySelectorAll('.erro, .aviso-campo'), function (n) {
+        return n.textContent.trim() === texto && !n.classList.contains('aviso');
+      });
+      if (jaTem) return;
+      mostrarAviso(el, texto);
+      primeiro = primeiro || el;
+    });
+    if (primeiro) {
+      var vis = controleVisivel(primeiro);
+      vis.scrollIntoView({ block: 'center' });
+      try { vis.focus({ preventScroll: true }); } catch (e) { /* sem foco */ }
+    }
+  }
+
+  function iniciarTudo() {
+    iniciar();
+    errosDoServidor();
+  }
+  window.OeeValidacao = { prepararFormularios: prepararFormularios, validar: validarFormulario };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciarTudo);
+  else iniciarTudo();
   // ---------- 3) Abas ----------
   function montarAbas(caixa) {
     var botoes = Array.prototype.slice.call(caixa.querySelectorAll('[data-aba]'));

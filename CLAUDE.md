@@ -68,6 +68,13 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
 - Telas em Blade com `layouts.portal` e o CSS de `public/css/portal.css`. Sem etapa de build com Node.
   Listas longas (centro de custo, máquina, usuário, mantenedor): use `<select data-busca>` (lista com busca) e, para
   marcar vários, o partial `partials.escolha-multipla` (abre/fecha, com busca) — ambos em `public/js/componentes.js`.
+  **Avisos de campo obrigatório** (pedido do usuário em 27/11/2026, usabilidade): todo `<form>` é validado pelo
+  `componentes.js` (item 6; o formulário vira `novalidate` e o portal valida) — cada campo que falta (`required`, `min`,
+  `max`…) ganha o aviso em vermelho embaixo dele (`.aviso-campo`, `.campo-invalido`), o primeiro recebe o foco, um resumo
+  aparece junto do botão e o `confirm()` do formulário não abre; funciona na lista com busca (o `<select>` escondido,
+  que o navegador não consegue avisar). Erros do servidor vão para o campo pelo `#erros-campos` (JSON do layout).
+  Campo obrigatório novo: marque `required` no HTML (e valide no servidor); rótulo do aviso = `data-rotulo`,
+  `aria-label` ou o `<label>`. Para ficar de fora: `novalidate` no form ou `formnovalidate` no botão.
 - Toda rota interna fica no grupo `auth`. `tests/Feature/AcessoDiretoRotasTest.php` tenta TODAS as rotas sem a permissão (rota
   só com login precisa estar justificada em `SO_LOGIN`). Página nova: registre a chave em `config/oee.php` (`permissoes`), proteja a
   rota com `->middleware('permissao:chave')` e inclua o link no menu lateral (`layouts/portal.blade.php`) dentro de

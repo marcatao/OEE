@@ -268,5 +268,9 @@
     @yield('conteudo')
   </main>
 @endif
+@if (isset($errors) && $errors->any())
+  {{-- Erros de validação do servidor por campo: componentes.js mostra cada um embaixo do seu campo. --}}
+  <script type="application/json" id="erros-campos">@json(collect($errors->getMessages())->map(fn ($m) => $m[0]))</script>
+@endif
 </body>
 </html>
