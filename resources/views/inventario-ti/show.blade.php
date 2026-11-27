@@ -65,15 +65,34 @@
 <div class="ti-grade">
   @if ($i->temTermo())
     <section class="cartao">
-      <div class="titulo-com-acao">
-        <h2>Termos de responsabilidade</h2>
-        @if ($podeEditar && $i->responsavel_id)
-          <form method="post" action="{{ route('inventario-ti.gerar-termo', $i) }}" onsubmit="return confirm('Gerar um termo novo para {{ $i->responsavel?->nome }}? O pendente (se houver) é cancelado.')">
+      <h2>Termos de responsabilidade</h2>
+      @php($termoAtual = $termos->first(fn ($t) => $t->status !== 'cancelado' && (int) $t->usuario_id === (int) $i->responsavel_id))
+      @if ($i->responsavel_id && ! $termoAtual)
+        <p class="aviso">{{ $i->responsavel?->nome }} ainda não tem termo deste item. O Administrador de TI gera o termo escolhendo as duas testemunhas.</p>
+      @endif
+      @if ($podeGerarTermo)
+        {{-- Só o Administrador de TI gera o termo, e escolhe as testemunhas aqui. Cada pessoa assina com o próprio login. --}}
+        <details class="termo-presencial" @if (! $termoAtual || $errors->has('testemunhas') || $errors->has('testemunha_1') || $errors->has('testemunha_2')) open @endif>
+          <summary>{{ $termoAtual ? 'Gerar termo novo' : 'Gerar termo' }} para {{ $i->responsavel?->nome }}</summary>
+          <form method="post" action="{{ route('inventario-ti.gerar-termo', $i) }}" class="formulario-vertical termo-assinar"
+            @if ($termoAtual) onsubmit="return confirm('Gerar um termo novo para {{ $i->responsavel?->nome }}? O pendente (se houver) é cancelado.')" @endif>
             @csrf
-            <button class="botao pequeno secundario" type="submit">Gerar termo novo</button>
+            @include('manutencao._erros')
+            <div class="campos">
+              @foreach ([1, 2] as $ordem)
+                <label class="largo">Testemunha {{ $ordem }}
+                  <select name="testemunha_{{ $ordem }}" required data-busca="Buscar usuário…">
+                    <option value="">Escolha a testemunha {{ $ordem }}…</option>
+                    @foreach ($usuariosTestemunha as $usu)<option value="{{ $usu->id }}" @selected((int) old('testemunha_'.$ordem, $testemunhasSugeridas[$ordem - 1]) === $usu->id)>{{ $usu->nome }} — {{ $usu->email }}</option>@endforeach
+                  </select>
+                </label>
+              @endforeach
+            </div>
+            <p class="suave">O responsável e as testemunhas veem o aviso no portal e cada um assina com o próprio login (ninguém assina por outra pessoa).</p>
+            <div class="acoes"><button class="botao" type="submit">Gerar termo</button></div>
           </form>
-        @endif
-      </div>
+        </details>
+      @endif
       @forelse ($termos as $t)
         <p><a href="{{ route('inventario-ti.termos.show', $t) }}"><strong>{{ $t->numeroFormatado() }}</strong></a> · {{ $t->usuario?->nome }}
           <span class="etiqueta ti-termo-{{ $t->status }}">{{ $t->rotuloStatus() }}</span>
@@ -81,7 +100,7 @@
           <small class="suave">Gerado em @dataHora($t->criado_em)@if ($t->assinado_em) · assinado em @dataHora($t->assinado_em){{ $t->presencial ? ' (presencial, com '.$t->registradoPor?->nome.')' : '' }}@endif
             @if ($t->cancelado_em) · cancelado em @dataHora($t->cancelado_em) — {{ $t->motivo_cancelamento }}@endif</small></p>
       @empty
-        <p class="suave">Nenhum termo. Ao definir um responsável, o termo é gerado para ele assinar.</p>
+        <p class="suave">Nenhum termo.</p>
       @endforelse
     </section>
   @endif

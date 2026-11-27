@@ -280,7 +280,8 @@ Route::middleware('auth')->group(function () {
             Route::post('/', [InventarioTiController::class, 'store'])->name('store');
             Route::get('{item}/editar', [InventarioTiController::class, 'edit'])->whereNumber('item')->name('edit');
             Route::put('{item}', [InventarioTiController::class, 'update'])->whereNumber('item')->name('update');
-            Route::post('{item}/termo', [InventarioTiController::class, 'gerarTermo'])->whereNumber('item')->name('gerar-termo');
+            Route::post('{item}/termo', [InventarioTiController::class, 'gerarTermo'])->whereNumber('item')
+                ->middleware('perfil:admin_tecnologia')->name('gerar-termo');
             Route::post('{item}/licencas', [InventarioTiController::class, 'atribuirLicenca'])->whereNumber('item')->name('licencas.store');
             Route::post('{item}/licencas/{atribuicao}/remover', [InventarioTiController::class, 'removerAtribuicao'])->whereNumber(['item', 'atribuicao'])->name('licencas.remover');
             Route::get('tipos', [InventarioTiController::class, 'tipos'])->name('tipos');
@@ -289,9 +290,9 @@ Route::middleware('auth')->group(function () {
             Route::get('descricoes', [InventarioTiController::class, 'descricoes'])->name('descricoes');
             Route::post('descricoes', [InventarioTiController::class, 'salvarDescricao'])->name('descricoes.store');
             Route::put('descricoes/{descricao}', [InventarioTiController::class, 'salvarDescricao'])->whereNumber('descricao')->name('descricoes.update');
-            // Testemunhas do contrato de comodato (o controlador confere se é o administrador da unidade do item).
-            Route::post('termos/{termo}/testemunhas', [TermoResponsabilidadeController::class, 'definirTestemunhas'])->whereNumber('termo')->name('termos.testemunhas');
-            Route::post('termos/{termo}/anular', [TermoResponsabilidadeController::class, 'anular'])->whereNumber('termo')->name('termos.anular');
+            // Termo de responsabilidade: só o Administrador de TI gera (com as testemunhas) e anula.
+            Route::post('termos/{termo}/anular', [TermoResponsabilidadeController::class, 'anular'])->whereNumber('termo')
+                ->middleware('perfil:admin_tecnologia')->name('termos.anular');
         });
         Route::get('{item}', [InventarioTiController::class, 'show'])->whereNumber('item')->name('show');
     });

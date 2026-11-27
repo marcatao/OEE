@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Termo de responsabilidade de um item do inventário de TI. Nasce PENDENTE quando o item é entregue a um responsável;
- * ele assina no portal (pelo celular ou computador, com o dedo/mouse) ou na frente do administrador (presencial).
+ * ele assina no portal (pelo celular ou computador, com o dedo/mouse), só com o próprio login.
  * O conteúdo (dados do item na entrega) fica congelado em JSON; mudou o responsável, o pendente é cancelado.
  */
 class TermoResponsabilidade extends Model

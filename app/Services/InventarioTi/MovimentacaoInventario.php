@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Regra única de gravação do Inventário de TI: salva o item e registra no histórico cada mudança de responsável,
  * local, centro de custo, situação e aparelho do chip. Mudou o responsável: os termos pendentes do item são
- * cancelados e, se houver um novo responsável (equipamento ou linha), nasce um termo PENDENTE para ele assinar.
+ * cancelados; o termo do novo responsável é gerado pelo Administrador de TI, na tela do item (com as testemunhas).
  * Baixar o item tira o responsável e devolve as licenças que estavam instaladas nele.
  */
 class MovimentacaoInventario
@@ -71,10 +71,8 @@ class MovimentacaoInventario
                 $this->devolverLicencasDo($item, $por);
             }
             if ($trocouResponsavel) {
+                // O termo do novo responsável é gerado pelo Administrador de TI (que escolhe as testemunhas).
                 $this->termos->cancelarPendentes($item, 'Responsável trocado', $por);
-                if ($item->responsavel_id && $item->temTermo()) {
-                    $this->termos->gerar($item, $por);
-                }
             }
 
             return $item;

@@ -86,6 +86,11 @@ class InventarioTiController extends Controller
                 ->orderByDesc('criado_em')->limit(50)->get(),
             'ordens' => AcessoOs::filtrar(OrdemServico::query(), $u)->where('item_ti_id', $i->id)->orderByDesc('criado_em')->limit(50)->get(),
             'podeAbrirSs' => $this->podeAbrirSs($u, $i),
+            // Gerar termo: só o Administrador de TI, com as testemunhas (sugeridas as do último termo).
+            'podeGerarTermo' => TermosResponsabilidade::podeGerar($u) && $i->temTermo() && $i->responsavel_id && $i->situacao !== 'baixado',
+            'testemunhasSugeridas' => $this->termos->testemunhasSugeridas(),
+            'usuariosTestemunha' => TermosResponsabilidade::podeGerar($u) && $i->temTermo() && $i->responsavel_id
+                ? Usuario::where('ativo', true)->where('id', '<>', $i->responsavel_id)->orderBy('nome')->get(['id', 'nome', 'email']) : collect(),
             'equipamentos' => $i->ehLicenca() ? $this->equipamentos() : collect(),
             'usuarios' => $i->ehLicenca() ? $this->usuarios() : collect(),
         ]);
@@ -109,7 +114,7 @@ class InventarioTiController extends Controller
         $this->movimentacao->salvar($i, $this->validar($request, $i), $request->user(), $request->input('observacao_movimentacao'));
 
         return redirect()->route('inventario-ti.show', $i)->with('ok', "Item {$i->codigo()} cadastrado.".($i->responsavel_id && $i->temTermo()
-            ? ' O termo de responsabilidade ficou aguardando a assinatura de '.$i->responsavel?->nome.'.' : ''));
+            ? ' Gere o termo de responsabilidade de '.$i->responsavel?->nome.' (Administrador de TI, com as testemunhas).' : ''));
     }
 
     public function edit(Request $request, int $item): View
@@ -127,17 +132,21 @@ class InventarioTiController extends Controller
         $novoTermo = $i->responsavel_id && $responsavelAntes !== (int) $i->responsavel_id && $i->temTermo();
 
         return redirect()->route('inventario-ti.show', $i)->with('ok', "Item {$i->codigo()} salvo.".($novoTermo
-            ? ' Novo termo de responsabilidade aguardando a assinatura de '.$i->responsavel?->nome.'.' : ''));
+            ? ' Gere o termo de responsabilidade de '.$i->responsavel?->nome.' (Administrador de TI, com as testemunhas).' : ''));
     }
 
-    /** Gera de novo o termo para o responsável atual (ex.: o equipamento voltou do conserto, acessórios mudaram). */
+    /** Administrador de TI gera o termo do responsável atual, escolhendo as duas testemunhas. */
     public function gerarTermo(Request $request, int $item): RedirectResponse
     {
-        $i = $this->editavel($request, $item);
-        $termo = $this->termos->gerar($i, $request->user());
+        $i = ItemTi::findOrFail($item);
+        $dados = $request->validate([
+            'testemunha_1' => ['required', 'integer', Rule::exists('usuarios', 'id')],
+            'testemunha_2' => ['required', 'integer', Rule::exists('usuarios', 'id')],
+        ], ['testemunha_1.required' => 'Escolha a testemunha 1.', 'testemunha_2.required' => 'Escolha a testemunha 2.']);
+        $termo = $this->termos->gerar($i, $request->user(), (int) $dados['testemunha_1'], (int) $dados['testemunha_2']);
 
         return redirect()->route('inventario-ti.termos.show', $termo)->with('ok', "Termo {$termo->numeroFormatado()} gerado. ".
-            'O responsável assina pelo portal (aviso no topo da tela dele) ou aqui mesmo, na sua frente.');
+            'O responsável e as testemunhas veem o aviso no portal e cada um assina com o próprio login.');
     }
 
     public function atribuirLicenca(Request $request, int $item): RedirectResponse

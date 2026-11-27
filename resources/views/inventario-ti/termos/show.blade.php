@@ -9,7 +9,6 @@
 {{-- Termo de responsabilidade no modelo do CONTRATO PARTICULAR DE COMODATO da empresa (texto em App\Support\ContratoComodato). --}}
 @php
   $dados = $t->conteudo ?? [];
-  $presencial = (int) auth()->id() !== (int) $t->usuario_id;
   $quali = $dados['comodatario'] ?? [];
   $nome = mb_strtoupper($t->nome_assinante ?: ($dados['responsavel'] ?? (string) $t->usuario?->nome));
   $dia = \Carbon\Carbon::parse($t->assinado_em ?? $t->criado_em)->setTimezone(config('oee.fuso_exibicao'))->locale('pt_BR');
@@ -76,73 +75,35 @@
     @endforeach
   </div>
 
-  @if ($podeDefinirTestemunhas && $testemunhas->filter->assinou()->count() < 2)
-    <form method="post" action="{{ route('inventario-ti.termos.testemunhas', $t) }}" class="formulario-vertical nao-imprimir termo-assinar">
-      @csrf
-      <h2>Testemunhas</h2>
-      <p class="suave">Escolha as duas testemunhas (usuários do portal). Cada uma vê o aviso no topo do portal e assina pelo celular ou
-        computador; você também pode colher a assinatura na hora, aqui. Os próximos termos já nascem com as mesmas testemunhas.</p>
-      <div class="campos">
-        @foreach ([1, 2] as $ordem)
-          @php($te = $testemunhas->get($ordem))
-          <label class="largo">Testemunha {{ $ordem }}
-            @if ($te?->assinou())
-              <input value="{{ $te->nome }} (já assinou)" disabled><input type="hidden" name="testemunha_{{ $ordem }}" value="{{ $te->usuario_id }}">
-            @else
-              <select name="testemunha_{{ $ordem }}" data-busca="Buscar usuário…">
-                <option value="">Nenhuma</option>
-                @foreach ($usuarios as $usu)<option value="{{ $usu->id }}" @selected((int) old('testemunha_'.$ordem, $te?->usuario_id) === $usu->id)>{{ $usu->nome }} — {{ $usu->email }}</option>@endforeach
-              </select>
-            @endif
-          </label>
-        @endforeach
-      </div>
-      <div class="acoes"><button class="botao secundario" type="submit">Salvar testemunhas</button></div>
-    </form>
-  @endif
-
   @if ($t->status === 'cancelado')
     <p class="erro">Termo cancelado em @dataHora($t->cancelado_em){{ $t->motivo_cancelamento ? ' — '.$t->motivo_cancelamento : '' }}.</p>
   @else
-    @php($euComodatario = (int) $t->usuario_id === (int) auth()->id())
-    {{-- 1) O que é do usuário logado assinar vem primeiro e aberto: como comodatário ou como testemunha. --}}
-    @if ($t->status === 'pendente' && $euComodatario && $podeAssinar)
-      @include('inventario-ti.termos._form-comodatario', ['presencial' => false])
+    {{-- Cada pessoa assina SÓ por ela mesma, com o próprio login: o comodatário no lugar dele, cada testemunha no dela. --}}
+    @if ($podeAssinar)
+      @include('inventario-ti.termos._form-comodatario')
     @endif
     @foreach ($testemunhas as $te)
       @if (! $te->assinou() && (int) $te->usuario_id === (int) auth()->id())
-        @include('inventario-ti.termos._form-testemunha', ['ehEla' => true])
+        @include('inventario-ti.termos._form-testemunha')
       @endif
     @endforeach
-
-    {{-- 2) Assinatura presencial (o administrador colhe a de OUTRA pessoa no aparelho dele): recolhida, com confirmação. --}}
-    @if ($t->status === 'pendente' && ! $euComodatario && $podeAssinar)
-      <details class="termo-presencial nao-imprimir">
-        <summary>Colher na hora a assinatura de {{ $t->usuario?->nome }} (comodatário)</summary>
-        @include('inventario-ti.termos._form-comodatario', ['presencial' => true])
-      </details>
-    @elseif ($t->status === 'pendente' && ! $euComodatario)
-      <p class="suave nao-imprimir">Aguardando a assinatura de {{ $t->usuario?->nome }} (pelo portal, em "Meus equipamentos").</p>
+    @php($faltam = collect([$t->status === 'pendente' ? $t->usuario?->nome.' (comodatário)' : null])
+      ->merge($testemunhas->reject->assinou()->map(fn ($te) => $te->usuario?->nome.' (testemunha '.$te->ordem.')'))->filter())
+    @if ($faltam->isNotEmpty())
+      <p class="suave nao-imprimir">Aguardando a assinatura de {{ $faltam->implode(', ') }} — cada um assina pelo portal com o próprio login (aviso no topo e em "Meus equipamentos").</p>
     @endif
-    @if ($podeDefinirTestemunhas)
-      @foreach ($testemunhas as $te)
-        @if (! $te->assinou() && (int) $te->usuario_id !== (int) auth()->id())
-          <details class="termo-presencial nao-imprimir">
-            <summary>Colher na hora a assinatura de {{ $te->usuario?->nome }} (testemunha {{ $te->ordem }})</summary>
-            @include('inventario-ti.termos._form-testemunha', ['ehEla' => false])
-          </details>
-        @endif
-      @endforeach
-      {{-- 3) Anular (assinatura errada, dados errados): o termo fica cancelado com o motivo e nasce um novo. --}}
+
+    @if ($podeAnular)
+      {{-- Só o Administrador de TI anula; depois gera um termo novo na tela do item (escolhendo as testemunhas). --}}
       <details class="termo-presencial nao-imprimir">
         <summary>Anular este termo</summary>
         <form method="post" action="{{ route('inventario-ti.termos.anular', $t) }}" class="formulario-vertical termo-assinar"
-          onsubmit="return confirm('Anular o termo {{ $t->numeroFormatado() }}? Ele fica cancelado (com as assinaturas, para consulta) e um termo novo é gerado.')">
+          onsubmit="return confirm('Anular o termo {{ $t->numeroFormatado() }}? Ele fica cancelado, com as assinaturas, para consulta.')">
           @csrf
-          <p class="suave">Use quando alguém assinou no lugar errado ou os dados estão errados. Nada é apagado: este termo fica cancelado com o motivo
-            e, se o item continua com {{ $t->usuario?->nome }}, um termo novo (com as mesmas testemunhas) é gerado para assinar de novo.</p>
-          <label class="largo">Motivo <input name="motivo" maxlength="200" required placeholder="Ex.: assinatura da testemunha registrada no lugar do comodatário"></label>
-          <div class="acoes"><button class="botao secundario" type="submit">Anular e gerar termo novo</button></div>
+          <p class="suave">Use quando os dados estão errados ou alguém assinou errado. Nada é apagado: este termo fica cancelado com o motivo.
+            Depois, gere um termo novo na tela do item, escolhendo as testemunhas.</p>
+          <label class="largo">Motivo <input name="motivo" maxlength="200" required placeholder="Ex.: dados do equipamento errados"></label>
+          <div class="acoes"><button class="botao secundario" type="submit">Anular termo</button></div>
         </form>
       </details>
     @endif

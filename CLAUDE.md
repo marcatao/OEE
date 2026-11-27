@@ -380,16 +380,16 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   tira o responsável e libera as licenças instaladas). Só o administrador da unidade do item edita (`ItemTi::podeEditar`).
   Toda gravação pela regra única `App\Services\InventarioTi\MovimentacaoInventario` (histórico em `ti_movimentacoes`:
   responsável, local, centro de custo, situação, aparelho, licença, termo). **Termo de responsabilidade** (`ti_termos`,
-  `App\Services\InventarioTi\TermosResponsabilidade`): trocar o responsável de equipamento/linha cancela o pendente e
-  gera outro (dados do item congelados em `conteudo`); o termo é o CONTRATO PARTICULAR DE COMODATO da empresa (modelo do
-  usuário, texto em `App\Support\ContratoComodato` — NÃO no config, para não depender do `config:cache` do servidor: comodante,
-  cláusulas — as de `telefonia` só para celular/tablet/linha —; objeto por `TermosResponsabilidade::descricaoComodato`).
-  Duas TESTEMUNHAS por termo (`ti_termo_testemunhas`, usuários do portal; o administrador da unidade escolhe na tela do
-  termo, o termo novo herda as do último; testemunha que assinou não troca; o comodatário não é testemunha) assinam no
-  portal com RG (ou presencial), com aviso no topo e em "Meus equipamentos"; `completo()` = comodatário + 2. Na tela do
-  termo o que é do LOGADO assinar vem primeiro e aberto; assinatura presencial de outra pessoa fica recolhida e exige
-  `confirmo_presencial` (erro real de 25/11: testemunha logada assinou no quadro do comodatário). Anular termo (admin da
-  unidade, `TermosResponsabilidade::anular`): cancelado com motivo, nada apagado, e termo novo com as mesmas testemunhas. Descrição do
+  `App\Services\InventarioTi\TermosResponsabilidade`; regras do usuário em 27/11/2026): SÓ o Administrador de TI
+  (`TermosResponsabilidade::podeGerar`, perfil `admin_tecnologia`; rotas com `perfil:admin_tecnologia`) GERA o termo, na
+  tela do item, escolhendo as DUAS testemunhas (usuários ativos, diferentes, nenhuma o comodatário; o formulário sugere as
+  do último termo) e ANULA (cancelado com motivo, nada apagado; termo novo = gerar de novo). Trocar o responsável só
+  cancela o pendente (não gera sozinho). CADA PESSOA ASSINA SÓ POR ELA MESMA, com o próprio login: o comodatário no lugar
+  dele, cada testemunha (`ti_termo_testemunhas`) no dela; NÃO existe assinatura presencial no aparelho de outro (colunas
+  `presencial` ficam só para registros antigos). Dados do item congelados em `conteudo`; o termo é o CONTRATO PARTICULAR
+  DE COMODATO da empresa (texto em `App\Support\ContratoComodato` — NÃO no config, para não depender do `config:cache` do
+  servidor: comodante, cláusulas — as de `telefonia` só para celular/tablet/linha —; objeto por
+  `TermosResponsabilidade::descricaoComodato`); testemunha assina com RG; `completo()` = comodatário + 2. Descrição do
   item só das DESCRIÇÕES PADRÃO (`ti_descricoes`, `DescricaoItemTi`, tela Inventário › Descrições; com tipo = só daquele
   tipo, sem tipo = qualquer um; o item grava `descricao_id` + cópia do texto em `descricao`, renomear não muda itens;
   item antigo sem `descricao_id` pode manter a dele). Atributos
@@ -397,7 +397,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   o comodatário informa cargo, nacionalidade, RG, CPF (dígitos conferidos) e endereço (`conteudo.comodatario`, só no
   termo; o próximo termo dele já vem preenchido); o responsável assina no
   portal (celular ou computador, quadro `[data-assinatura]` de `componentes.js`; PNG conferido por `App\Support\AssinaturaPng`,
-  o mesmo do app) ou o administrador colhe na hora (`presencial`). Aviso no topo de todas as telas
+  o mesmo do app). Aviso no topo de todas as telas
   (`inventario-ti._aviso-termos`) e "Meus equipamentos": rotas só com login (SO_LOGIN; quem recebe pode não ter perfil;
   o termo só abre para o responsável ou quem vê o inventário da unidade, o resto 404). **SS/OS para item de TI**:
   `item_ti_id` na SS e na OS, só nas unidades de `oee.os_unidades_item_ti` (Tecnologia), nunca junto com máquina ou

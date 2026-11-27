@@ -14,69 +14,83 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Termo de responsabilidade do Inventário de TI: nasce pendente na entrega do item, o responsável assina no portal
- * (celular ou computador, com o dedo ou o mouse — o mesmo quadro de assinatura da avaliação da OS no aplicativo) ou
- * assina na frente do administrador da unidade, no aparelho dele (presencial). Assinado, não muda mais.
+ * Termo de responsabilidade do Inventário de TI (regras do usuário em 27/11/2026): só o Administrador de TI gera o termo
+ * e escolhe as duas testemunhas na geração; cada pessoa assina SÓ por ela mesma, com o próprio login (comodatário no
+ * lugar dele, cada testemunha no dela; nada de assinatura presencial no aparelho de outro), no portal pelo celular ou
+ * computador. Assinado, não muda mais; se estiver errado, o Administrador de TI anula e gera outro.
  */
 class TermosResponsabilidade
 {
-    /** Termo pendente para o responsável atual (os pendentes anteriores do item são cancelados). */
-    public function gerar(ItemTi $item, Usuario $por): TermoResponsabilidade
+    /** Só o Administrador de TI gera e anula termos (e escolhe as testemunhas ao gerar). */
+    public static function podeGerar(?Usuario $u): bool
     {
+        return (bool) $u?->temAcesso() && $u->temPerfil('admin_tecnologia');
+    }
+
+    /**
+     * Gera o termo para o responsável atual do item, com as DUAS testemunhas escolhidas pelo Administrador de TI
+     * (usuários ativos do portal, pessoas diferentes e nenhuma delas o comodatário). Os pendentes anteriores do item
+     * são cancelados.
+     */
+    public function gerar(ItemTi $item, Usuario $por, ?int $testemunha1, ?int $testemunha2): TermoResponsabilidade
+    {
+        abort_unless(self::podeGerar($por), 403, 'Só o Administrador de TI gera termos de responsabilidade.');
         if (! $item->responsavel_id) {
             throw ValidationException::withMessages(['termo' => 'O item não tem responsável.']);
         }
         if (! $item->temTermo()) {
             throw ValidationException::withMessages(['termo' => 'Licença de software não tem termo de responsabilidade.']);
         }
+        if (! $testemunha1 || ! $testemunha2) {
+            throw ValidationException::withMessages(['testemunhas' => 'Escolha as duas testemunhas.']);
+        }
+        if ($testemunha1 === $testemunha2) {
+            throw ValidationException::withMessages(['testemunhas' => 'As duas testemunhas têm de ser pessoas diferentes.']);
+        }
+        if (in_array((int) $item->responsavel_id, [$testemunha1, $testemunha2], true)) {
+            throw ValidationException::withMessages(['testemunhas' => 'O comodatário não pode ser testemunha do próprio contrato.']);
+        }
+        if (Usuario::whereIn('id', [$testemunha1, $testemunha2])->where('ativo', true)->count() !== 2) {
+            throw ValidationException::withMessages(['testemunhas' => 'Escolha testemunhas ativas no portal.']);
+        }
 
-        return DB::transaction(function () use ($item, $por) {
+        return DB::transaction(function () use ($item, $por, $testemunha1, $testemunha2) {
             $this->cancelarPendentes($item, 'Termo novo gerado', $por);
             $termo = TermoResponsabilidade::create(['item_id' => $item->id, 'usuario_id' => $item->responsavel_id, 'status' => 'pendente',
                 'conteudo' => $this->conteudo($item), 'gerado_por_id' => $por->id]);
-            $this->historico($item, null, "{$termo->numeroFormatado()} gerado para ".($item->responsavel?->nome ?? '—'), $por);
-            // As testemunhas costumam ser as mesmas: vêm do termo mais recente que tinha testemunhas (o administrador troca).
-            $anterior = TestemunhaTermo::where('termo_id', '<>', $termo->id)->orderByDesc('termo_id')->value('termo_id');
-            if ($anterior) {
-                foreach (TestemunhaTermo::where('termo_id', $anterior)->orderBy('ordem')->get() as $te) {
-                    if ((int) $te->usuario_id !== (int) $termo->usuario_id) {
-                        TestemunhaTermo::create(['termo_id' => $termo->id, 'ordem' => $te->ordem, 'usuario_id' => $te->usuario_id, 'definido_por_id' => $por->id]);
-                    }
-                }
+            foreach ([1 => $testemunha1, 2 => $testemunha2] as $ordem => $usuarioId) {
+                TestemunhaTermo::create(['termo_id' => $termo->id, 'ordem' => $ordem, 'usuario_id' => $usuarioId, 'definido_por_id' => $por->id]);
             }
+            $nomes = $termo->testemunhas()->with('usuario')->get()->map(fn ($t) => $t->usuario?->nome)->implode(' e ');
+            $this->historico($item, null, "{$termo->numeroFormatado()} gerado para ".($item->responsavel?->nome ?? '—').". Testemunhas: {$nomes}", $por);
 
             return $termo;
         });
     }
 
-    /**
-     * Anula o termo (pendente ou assinado) com o motivo — nada é apagado, as assinaturas ficam para consulta — e, se o
-     * item continua com o mesmo responsável, gera um termo novo (com as mesmas testemunhas) para assinar de novo.
-     */
-    public function anular(TermoResponsabilidade $termo, string $motivo, Usuario $por): ?TermoResponsabilidade
+    /** Testemunhas sugeridas no formulário de geração: as do último termo gerado. @return array{0: ?int, 1: ?int} */
+    public function testemunhasSugeridas(): array
     {
-        abort_unless((bool) $termo->item?->podeEditar($por), 403, 'Só o administrador da unidade do item anula o termo.');
+        $ultimo = TestemunhaTermo::orderByDesc('termo_id')->value('termo_id');
+        $ids = $ultimo ? TestemunhaTermo::where('termo_id', $ultimo)->orderBy('ordem')->pluck('usuario_id')->map(fn ($id) => (int) $id)->all() : [];
+
+        return [$ids[0] ?? null, $ids[1] ?? null];
+    }
+
+    /**
+     * Anula o termo (pendente ou assinado) com o motivo. Nada é apagado: as assinaturas ficam para consulta. O
+     * Administrador de TI gera um termo novo (escolhendo as testemunhas) se for preciso assinar de novo.
+     */
+    public function anular(TermoResponsabilidade $termo, string $motivo, Usuario $por): void
+    {
+        abort_unless(self::podeGerar($por), 403, 'Só o Administrador de TI anula termos.');
         if ($termo->status === 'cancelado') {
             throw ValidationException::withMessages(['motivo' => 'Este termo já está cancelado.']);
         }
-
-        return DB::transaction(function () use ($termo, $motivo, $por) {
+        DB::transaction(function () use ($termo, $motivo, $por) {
             $estava = $termo->rotuloStatus();
-            $testemunhas = $termo->testemunhas()->get();
             $termo->update(['status' => 'cancelado', 'cancelado_em' => now(), 'motivo_cancelamento' => mb_substr('Anulado: '.$motivo, 0, 255)]);
             $this->historico($termo->item, $termo->numeroFormatado().' '.mb_strtolower($estava), 'Anulado por '.$por->nome.': '.$motivo, $por);
-            $item = $termo->item;
-            if (! $item || (int) $item->responsavel_id !== (int) $termo->usuario_id || ! $item->temTermo()) {
-                return null;
-            }
-            $novo = $this->gerar($item, $por);
-            // As mesmas testemunhas do termo anulado (e não as do último termo com testemunhas).
-            TestemunhaTermo::where('termo_id', $novo->id)->delete();
-            foreach ($testemunhas as $te) {
-                TestemunhaTermo::create(['termo_id' => $novo->id, 'ordem' => $te->ordem, 'usuario_id' => $te->usuario_id, 'definido_por_id' => $por->id]);
-            }
-
-            return $novo;
         });
     }
 
@@ -88,92 +102,48 @@ class TermosResponsabilidade
         }
     }
 
-    /**
-     * Assina o termo. O próprio responsável assina no portal; o administrador da unidade pode colher a assinatura dele
-     * na hora (presencial, no aparelho do administrador).
-     */
-    public function assinar(TermoResponsabilidade $termo, Usuario $logado, ?string $assinatura, ?string $nome, ?string $ip, ?string $navegador, array $comodatario = []): TermoResponsabilidade
+    /** Assinatura do comodatário: SÓ ele, logado com o próprio login (ninguém assina por outra pessoa). */
+    public function assinar(TermoResponsabilidade $termo, Usuario $logado, ?string $assinatura, ?string $ip, ?string $navegador, array $comodatario = []): TermoResponsabilidade
     {
         if (! $this->podeAssinar($termo, $logado)) {
-            abort(403, 'Só o responsável pelo item (ou o administrador da unidade, na frente dele) assina este termo.');
+            abort(403, 'Só o próprio responsável pelo item, com o login dele, assina este termo.');
         }
         $png = AssinaturaPng::conferir($assinatura, 'assinatura', 'Assine no quadro antes de confirmar.');
 
-        return DB::transaction(function () use ($termo, $logado, $png, $nome, $ip, $navegador, $comodatario) {
+        return DB::transaction(function () use ($termo, $logado, $png, $ip, $navegador, $comodatario) {
             $termo = TermoResponsabilidade::lockForUpdate()->findOrFail($termo->id);
             if ($termo->status !== 'pendente') {
                 throw ValidationException::withMessages(['assinatura' => 'Este termo já foi '.($termo->status === 'assinado' ? 'assinado' : 'cancelado').'.']);
             }
-            $presencial = (int) $logado->id !== (int) $termo->usuario_id;
             // Qualificação do comodatário (nacionalidade, cargo, RG, CPF, endereço) fica no termo, como no contrato em papel.
             $conteudo = $termo->conteudo ?? [];
             $conteudo['comodatario'] = array_map(fn ($v) => mb_substr(trim((string) $v), 0, 255), $comodatario);
             $termo->update(['status' => 'assinado', 'conteudo' => $conteudo, 'assinado_em' => now(), 'imagem_png' => $png, 'registrado_por_id' => $logado->id,
-                'presencial' => $presencial, 'nome_assinante' => mb_substr(trim((string) $nome) ?: (string) $termo->usuario?->nome, 0, 120),
+                'presencial' => false, 'nome_assinante' => mb_substr((string) $logado->nome, 0, 120),
                 'assinado_ip' => $ip, 'assinado_navegador' => $navegador !== null ? mb_substr($navegador, 0, 255) : null]);
-            $this->historico($termo->item, $termo->numeroFormatado().' pendente',
-                'Assinado por '.$termo->nome_assinante.($presencial ? ' (presencial, no aparelho de '.$logado->nome.')' : ' no portal'), $logado);
+            $this->historico($termo->item, $termo->numeroFormatado().' pendente', 'Assinado por '.$termo->nome_assinante.' no portal', $logado);
 
             return $termo;
         });
     }
 
-    /**
-     * Define as duas testemunhas (usuários do portal). Só o administrador da unidade do item; testemunha que já assinou
-     * não muda; o comodatário não é testemunha; as duas são pessoas diferentes. @param array<int, int|null> $porOrdem
-     */
-    public function definirTestemunhas(TermoResponsabilidade $termo, array $porOrdem, Usuario $por): void
-    {
-        abort_unless((bool) $termo->item?->podeEditar($por), 403, 'Só o administrador da unidade do item define as testemunhas.');
-        if ($termo->status === 'cancelado') {
-            throw ValidationException::withMessages(['testemunhas' => 'Termo cancelado.']);
-        }
-        $ids = array_values(array_filter(array_map('intval', $porOrdem)));
-        if (count($ids) !== count(array_unique($ids))) {
-            throw ValidationException::withMessages(['testemunhas' => 'As duas testemunhas têm de ser pessoas diferentes.']);
-        }
-        if (in_array((int) $termo->usuario_id, $ids, true)) {
-            throw ValidationException::withMessages(['testemunhas' => 'O comodatário não pode ser testemunha do próprio contrato.']);
-        }
-        DB::transaction(function () use ($termo, $porOrdem, $por) {
-            foreach ([1, 2] as $ordem) {
-                $novo = (int) ($porOrdem[$ordem] ?? 0) ?: null;
-                $atual = TestemunhaTermo::where('termo_id', $termo->id)->where('ordem', $ordem)->lockForUpdate()->first();
-                if ((int) $atual?->usuario_id === (int) $novo) {
-                    continue;
-                }
-                if ($atual?->assinou()) {
-                    throw ValidationException::withMessages(['testemunhas' => "A testemunha {$ordem} já assinou e não pode ser trocada."]);
-                }
-                $atual?->delete();
-                if ($novo) {
-                    $te = TestemunhaTermo::create(['termo_id' => $termo->id, 'ordem' => $ordem, 'usuario_id' => $novo, 'definido_por_id' => $por->id]);
-                    $this->historico($termo->item, null, "{$termo->numeroFormatado()}: testemunha {$ordem} = ".$te->usuario?->nome, $por);
-                }
-            }
-        });
-    }
-
-    /** Assinatura de uma testemunha: ela mesma no portal, ou o administrador da unidade colhe na hora (presencial). */
-    public function assinarTestemunha(TermoResponsabilidade $termo, int $ordem, Usuario $logado, ?string $assinatura, ?string $nome, ?string $rg, ?string $ip): TestemunhaTermo
+    /** Assinatura de uma testemunha: SÓ ela mesma, logada com o próprio login, e só no lugar dela. */
+    public function assinarTestemunha(TermoResponsabilidade $termo, int $ordem, Usuario $logado, ?string $assinatura, ?string $rg, ?string $ip): TestemunhaTermo
     {
         $te = TestemunhaTermo::where('termo_id', $termo->id)->where('ordem', $ordem)->first();
         if (! $te || ! $this->podeAssinarComoTestemunha($termo, $te, $logado)) {
-            abort(403, 'Só a testemunha (ou o administrador da unidade, na frente dela) assina aqui.');
+            abort(403, 'Só a própria testemunha, com o login dela, assina aqui.');
         }
         $png = AssinaturaPng::conferir($assinatura, 'assinatura_testemunha', 'Assine no quadro antes de confirmar.');
 
-        return DB::transaction(function () use ($te, $termo, $logado, $png, $nome, $rg, $ip) {
+        return DB::transaction(function () use ($te, $termo, $logado, $png, $rg, $ip) {
             $te = TestemunhaTermo::lockForUpdate()->findOrFail($te->id);
             if ($te->assinou()) {
-                throw ValidationException::withMessages(['assinatura_testemunha' => 'Esta testemunha já assinou.']);
+                throw ValidationException::withMessages(['assinatura_testemunha' => 'Você já assinou como testemunha.']);
             }
-            $presencial = (int) $logado->id !== (int) $te->usuario_id;
-            $te->update(['assinado_em' => now(), 'imagem_png' => $png, 'registrado_por_id' => $logado->id, 'presencial' => $presencial,
-                'nome' => mb_substr(trim((string) $nome) ?: (string) $te->usuario?->nome, 0, 120), 'rg' => mb_substr(trim((string) $rg), 0, 30),
-                'assinado_ip' => $ip]);
-            $this->historico($termo->item, null, "{$termo->numeroFormatado()}: testemunha {$te->ordem} ({$te->nome}) assinou"
-                .($presencial ? ' (presencial, com '.$logado->nome.')' : ' no portal'), $logado);
+            $te->update(['assinado_em' => now(), 'imagem_png' => $png, 'registrado_por_id' => $logado->id, 'presencial' => false,
+                'nome' => mb_substr((string) $logado->nome, 0, 120), 'rg' => mb_substr(trim((string) $rg), 0, 30), 'assinado_ip' => $ip]);
+            $this->historico($termo->item, null, "{$termo->numeroFormatado()}: testemunha {$te->ordem} ({$te->nome}) assinou no portal", $logado);
 
             return $te;
         });
@@ -181,8 +151,7 @@ class TermosResponsabilidade
 
     public function podeAssinarComoTestemunha(TermoResponsabilidade $termo, TestemunhaTermo $te, Usuario $u): bool
     {
-        return $termo->status !== 'cancelado' && ! $te->assinou()
-            && ((int) $te->usuario_id === (int) $u->id || (bool) $termo->item?->podeEditar($u));
+        return $termo->status !== 'cancelado' && ! $te->assinou() && (int) $te->usuario_id === (int) $u->id;
     }
 
     /** RG que a testemunha informou da última vez (para não digitar de novo). */
@@ -204,8 +173,7 @@ class TermosResponsabilidade
 
     public function podeAssinar(TermoResponsabilidade $termo, Usuario $u): bool
     {
-        return $termo->status === 'pendente'
-            && ((int) $termo->usuario_id === (int) $u->id || (bool) $termo->item?->podeEditar($u));
+        return $termo->status === 'pendente' && (int) $termo->usuario_id === (int) $u->id;
     }
 
     /** Termos que o usuário ainda precisa assinar: como comodatário (pendentes) ou como testemunha (não cancelados). */
