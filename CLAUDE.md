@@ -440,7 +440,7 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   (`nao_aceita`, "SS não aceita por …").
   **Atualização pelo portal** (app 0.13.0+): Segurança › Aplicativo (`perfil:admin_tecnologia`,
   `Admin\AplicativoController`) publica o APK em `versoes_aplicativo` (versão lida do arquivo por `App\Support\LeitorApk`;
-  arquivo no disco `local`, pasta `aplicativo`; obrigatória/ativa); o app consulta `GET /api/app/versao` e baixa
+  arquivo no disco `local`, pasta `aplicativo`; obrigatória/ativa; versão DESATIVADA pode ser EXCLUÍDA — apaga o .apk do servidor e a linha fica como histórico com `excluido_em/por`, sem baixar nem reativar, pedido do usuário em 27/11/2026); o app consulta `GET /api/app/versao` e baixa
   `GET /api/app/versao/apk` (`App\Services\Aplicativo\VersoesAplicativo`), confere o SHA-256 e abre o instalador.
 
 ## Git

@@ -1252,6 +1252,8 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        datetime excluido_em
+        bigint excluido_por_id FK
     }
     usuarios ||--o{ acessos_paginas : "usuario_id"
     maquinas ||--o{ apontamentos : "maquina_id"
@@ -1370,6 +1372,7 @@ erDiagram
     usuarios ||--o{ tokens_aplicativo : "usuario_id"
     usuarios ||--o{ usuario_perfis : "usuario_id"
     usuarios ||--o{ usuario_permissoes : "usuario_id"
+    usuarios |o--o{ versoes_aplicativo : "excluido_por_id"
     centros_custo |o..o{ maquinas : "centro_custo (código)"
     produtos_protheus |o..o{ ordens_producao : "c2_produto (código)"
     centros_custo |o..o{ ordens_producao : "c2_cc (código)"
@@ -1512,7 +1515,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`usuario_perfis`](#usuario_perfis) | Sistema | `id` | 5 | 2 |
 | [`usuario_permissoes`](#usuario_permissoes) | Sistema | `usuario_id, permissao` | 4 | 2 |
 | [`usuarios`](#usuarios) | Sistema | `id` | 25 | 0 |
-| [`versoes_aplicativo`](#versoes_aplicativo) | Sistema | `id` | 14 | 2 |
+| [`versoes_aplicativo`](#versoes_aplicativo) | Sistema | `id` | 16 | 3 |
 
 ### acessos_paginas
 
@@ -3457,5 +3460,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `excluido_em` | `datetime` | sim |  |  |
+| `excluido_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 
 **Índices:** `versoes_aplicativo_codigo_unique` único (codigo)

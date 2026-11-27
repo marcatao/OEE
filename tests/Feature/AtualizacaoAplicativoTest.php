@@ -118,4 +118,41 @@ class AtualizacaoAplicativoTest extends TestCase
         // Sem token, nada.
         $this->getJson('/api/app/versao')->assertUnauthorized();
     }
+
+    public function test_excluir_so_versao_desativada_apaga_o_arquivo_e_mantem_o_historico(): void
+    {
+        $admin = $this->adminTecnologia();
+        $this->actingAs($admin)->post(route('admin.aplicativo.store'), ['apk' => $this->upload()])->assertSessionHas('ok');
+        $v = VersaoAplicativo::withoutGlobalScopes()->sole();
+        $arquivo = 'aplicativo/oee-alumbra-0.12.5-22.apk';
+
+        // Ativa: recusado, nada muda.
+        $this->delete(route('admin.aplicativo.destroy', $v->id))->assertSessionHas('erro');
+        Storage::disk('local')->assertExists($arquivo);
+        $this->assertNull($v->fresh()->excluido_em);
+
+        $this->put(route('admin.aplicativo.update', $v->id), ['ativo' => 0, 'obrigatoria' => 0]);
+        $this->delete(route('admin.aplicativo.destroy', $v->id))->assertSessionHas('ok');
+        Storage::disk('local')->assertMissing($arquivo);
+        $v = $v->fresh();
+        $this->assertNotNull($v->excluido_em);
+        $this->assertSame((int) $admin->id, (int) $v->excluido_por_id);
+
+        // Fica na lista como histórico, sem baixar nem reativar.
+        $this->get(route('admin.aplicativo'))->assertSee('Excluída')->assertSee('por TI');
+        $this->get(route('admin.aplicativo.baixar', $v->id))->assertNotFound();
+        $this->put(route('admin.aplicativo.update', $v->id), ['ativo' => 1, 'obrigatoria' => 0])->assertSessionHas('erro');
+        $this->assertFalse($v->fresh()->ativo);
+        $this->delete(route('admin.aplicativo.destroy', $v->id))->assertSessionHas('erro');
+    }
+
+    public function test_so_o_administrador_de_tecnologia_exclui(): void
+    {
+        $v = VersaoAplicativo::withoutGlobalScopes()->create(['codigo' => 5, 'nome' => '0.1.0', 'arquivo' => 'aplicativo/x.apk',
+            'tamanho' => 1, 'sha256' => str_repeat('a', 64), 'ativo' => false, 'unidade' => 'ambos']);
+        $u = Usuario::create(['entra_oid' => 'p', 'nome' => 'Prod', 'email' => 'p@alumbra.com.br']);
+        $u->definirPerfis(['admin_producao']);
+        $this->actingAs($u->fresh())->delete(route('admin.aplicativo.destroy', $v->id))->assertForbidden();
+        $this->assertNull($v->fresh()->excluido_em);
+    }
 }

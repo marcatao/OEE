@@ -43,8 +43,15 @@
         <td class="quebra"><small>{{ $v->observacao ?? '—' }}</small></td>
         <td>@dataHora($v->criado_em)<br><small class="suave">{{ $v->criadoPor?->nome }}</small></td>
         <td>{{ $v->obrigatoria ? 'Sim' : 'Não' }}</td>
-        <td><span class="etiqueta {{ $v->ativo ? 'situacao-online' : 'situacao-inativo' }}">{{ $v->ativo ? 'Ativa' : 'Desativada' }}</span></td>
+        <td>
+          @if ($v->excluida())
+            <span class="etiqueta situacao-inativo">Excluída</span><br><small class="suave">@dataHora($v->excluido_em){{ $v->excluidoPor ? ' por '.$v->excluidoPor->nome : '' }}</small>
+          @else
+            <span class="etiqueta {{ $v->ativo ? 'situacao-online' : 'situacao-inativo' }}">{{ $v->ativo ? 'Ativa' : 'Desativada' }}</span>
+          @endif
+        </td>
         <td style="white-space:nowrap">
+          @unless ($v->excluida())
           <a class="botao pequeno secundario" href="{{ route('admin.aplicativo.baixar', $v->id) }}">Baixar</a>
           <form method="post" action="{{ route('admin.aplicativo.update', $v->id) }}" style="display:inline">
             @csrf @method('put')
@@ -56,6 +63,14 @@
             <input type="hidden" name="ativo" value="{{ $v->ativo ? 1 : 0 }}"><input type="hidden" name="obrigatoria" value="{{ $v->obrigatoria ? 0 : 1 }}">
             <button class="botao pequeno secundario" type="submit">{{ $v->obrigatoria ? 'Tornar opcional' : 'Tornar obrigatória' }}</button>
           </form>
+          @unless ($v->ativo)
+          <form method="post" action="{{ route('admin.aplicativo.destroy', $v->id) }}" style="display:inline"
+            onsubmit="return confirm('Excluir a versão {{ $v->nome }} (build {{ $v->codigo }})? O arquivo .apk será APAGADO do servidor e não dá para desfazer.')">
+            @csrf @method('delete')
+            <button class="botao pequeno perigo" type="submit">@include('layouts.partials.icone', ['nome' => 'lixeira']) Excluir</button>
+          </form>
+          @endunless
+          @endunless
         </td>
       </tr>
     @empty
@@ -64,7 +79,9 @@
     </tbody>
   </table>
   </div>
-  <p class="suave"><small>Desativar uma versão (ex.: com defeito) faz os celulares voltarem a oferecer a anterior ativa. O
+  <p class="suave"><small>Desativar uma versão (ex.: com defeito) faz os celulares voltarem a oferecer a anterior ativa.
+    Para limpar o servidor, <strong>desative</strong> a versão velha e depois clique em <strong>Excluir</strong>: o arquivo .apk é
+    apagado e a versão fica na lista só como histórico (não dá para reativar). O
     Android só instala por cima um APK assinado com a mesma chave (a do repositório) e com build maior que o instalado.</small></p>
 </section>
 @endsection

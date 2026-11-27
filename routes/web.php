@@ -346,6 +346,8 @@ Route::middleware('auth')->group(function () {
         Route::post('aplicativo', [AplicativoController::class, 'store'])->name('aplicativo.store');
         Route::put('aplicativo/{versao}', [AplicativoController::class, 'update'])->whereNumber('versao')->name('aplicativo.update');
         Route::get('aplicativo/{versao}/apk', [AplicativoController::class, 'baixar'])->whereNumber('versao')->name('aplicativo.baixar');
+        // Excluir versão DESATIVADA: apaga o .apk do servidor; a linha fica como histórico.
+        Route::delete('aplicativo/{versao}', [AplicativoController::class, 'destroy'])->whereNumber('versao')->name('aplicativo.destroy');
     });
 
     // Administração / cadastros (Administrador de Produção ou de Tecnologia; cada um vê as unidades dele)

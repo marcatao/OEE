@@ -177,6 +177,8 @@ main.sozinho { max-width:min(100%, 62rem); margin:0 auto; }
 .botao:hover { background:var(--primaria-escura); border-color:var(--primaria-escura); }
 .botao.secundario { background:transparent; color:var(--primaria); border-color:var(--borda-forte); }
 .botao.secundario:hover { background:var(--primaria-suave); border-color:var(--primaria); }
+.botao.perigo { background:transparent; color:var(--erro); border-color:var(--erro); }
+.botao.perigo:hover { background:var(--erro-suave); }
 .botao.pequeno { padding:.3rem .75rem; font-size:.84rem; min-height:2rem; }
 .botao .icone { width:1.125rem; height:1.125rem; }
 .formulario { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 11.25rem), 1fr)); gap:1rem; align-items:end; }
