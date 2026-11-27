@@ -719,6 +719,8 @@ erDiagram
         bigint criado_por_id FK
         datetime atualizado_em
         bigint atualizado_por_id FK
+        datetime excluido_em
+        bigint excluido_por_id FK
     }
     os_recusas_aplicativo {
         bigint id PK
@@ -1324,6 +1326,7 @@ erDiagram
     maquinas |o--o{ os_planos_preventiva : "maquina_id"
     os_areas_executantes ||--o{ os_planos_preventiva : "area_executante_id"
     os_mantenedores |o--o{ os_planos_preventiva : "responsavel_id"
+    usuarios |o--o{ os_planos_preventiva : "excluido_por_id"
     solicitacoes_servico ||--o{ os_recusas_aplicativo : "solicitacao_id"
     usuarios ||--o{ os_recusas_aplicativo : "usuario_id"
     maquinas ||--o{ paradas : "maquina_id"
@@ -1480,7 +1483,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`os_materiais`](#os_materiais) | Sistema | `id` | 14 | 3 |
 | [`os_ordem_mantenedores`](#os_ordem_mantenedores) | Sistema | `id` | 5 | 3 |
 | [`os_planos_itens`](#os_planos_itens) | Sistema | `id` | 9 | 3 |
-| [`os_planos_preventiva`](#os_planos_preventiva) | Sistema | `id` | 19 | 5 |
+| [`os_planos_preventiva`](#os_planos_preventiva) | Sistema | `id` | 21 | 6 |
 | [`os_recusas_aplicativo`](#os_recusas_aplicativo) | Sistema | `id` | 4 | 2 |
 | [`os_sugestoes_descricao`](#os_sugestoes_descricao) | Sistema | `id` | 8 | 2 |
 | [`paradas`](#paradas) | Sistema | `id` | 10 | 4 |
@@ -2650,6 +2653,8 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `criado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `atualizado_em` | `datetime` | sim |  |  |
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
+| `excluido_em` | `datetime` | sim |  |  |
+| `excluido_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 
 **Índices:** `os_planos_preventiva_codigo_unique` único (codigo) · `os_planos_preventiva_unidade_index` (unidade) · `os_planos_preventiva_ativo_proxima_em_index` (ativo, proxima_em) · `os_planos_preventiva_maquina_id_index` (maquina_id)
 

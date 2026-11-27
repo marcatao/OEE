@@ -36,6 +36,19 @@ data class ApontamentoOs(
     val descricao: String?,
 )
 
+/** Item do checklist da preventiva (resposta: ok | nok | na | null = sem resposta). */
+data class ItemChecklist(
+    val id: Int,
+    val descricao: String,
+    val resposta: String?,
+    val observacao: String?,
+    val respondidoPor: String? = null,
+    val respondidoEm: String? = null,
+)
+
+/** Mantenedor da OS (principal = responsável) ou que pode ser incluído nela. */
+data class MantenedorOs(val id: Int, val nome: String, val principal: Boolean = false)
+
 data class OsApp(
     val id: Int,
     val numero: String,
@@ -62,6 +75,11 @@ data class OsApp(
     val acoes: List<Pair<String, String>> = emptyList(),
     val meuApontamento: ApontamentoOs? = null,
     val apontamentos: List<ApontamentoOs> = emptyList(),
+    val checklist: List<ItemChecklist> = emptyList(),
+    val respostasChecklist: List<Opcao> = emptyList(),
+    val podeResponderChecklist: Boolean = false,
+    val mantenedores: List<MantenedorOs> = emptyList(),
+    val mantenedoresDisponiveis: List<MantenedorOs> = emptyList(),
 )
 
 data class ResumoOs(
@@ -126,6 +144,14 @@ fun osDe(j: JSONObject) = OsApp(
     acoes = j.optJSONArray("acoes").lista { it.optString("acao") to it.optString("rotulo") },
     meuApontamento = apontamentoOsDe(j.optJSONObject("meu_apontamento")),
     apontamentos = j.optJSONArray("apontamentos").lista { apontamentoOsDe(it)!! },
+    checklist = j.optJSONArray("checklist").lista {
+        ItemChecklist(it.optInt("id"), it.optString("descricao"), it.texto("resposta"), it.texto("observacao"),
+            it.texto("respondido_por"), it.texto("respondido_em"))
+    },
+    respostasChecklist = j.optJSONArray("respostas_checklist").lista { Opcao(it.optString("valor"), it.optString("rotulo")) },
+    podeResponderChecklist = j.optBoolean("pode_responder_checklist"),
+    mantenedores = j.optJSONArray("mantenedores").lista { MantenedorOs(it.optInt("id"), it.optString("nome"), it.optBoolean("principal")) },
+    mantenedoresDisponiveis = j.optJSONArray("mantenedores_disponiveis").lista { MantenedorOs(it.optInt("id"), it.optString("nome")) },
 )
 
 fun resumoDe(j: JSONObject) = ResumoOs(

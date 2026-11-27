@@ -66,6 +66,8 @@ Route::prefix('app')->name('api.app.')->group(function () {
                 Route::get('avaliacoes', [OsApp::class, 'avaliacoes'])->name('avaliacoes');
                 Route::post('ordens/{ordem}/iniciar', [OsApp::class, 'iniciar'])->whereNumber('ordem')->name('iniciar');
                 Route::post('ordens/{ordem}/acao', [OsApp::class, 'acao'])->whereNumber('ordem')->name('acao');
+                Route::post('ordens/{ordem}/checklist', [OsApp::class, 'checklist'])->whereNumber('ordem')->name('checklist');
+                Route::post('ordens/{ordem}/mantenedores', [OsApp::class, 'adicionarMantenedor'])->whereNumber('ordem')->name('mantenedores');
                 Route::post('ordens/{ordem}/avaliar', [OsApp::class, 'avaliar'])->whereNumber('ordem')->name('avaliar');
                 Route::post('apontamentos/{apontamento}/encerrar', [OsApp::class, 'encerrar'])->whereNumber('apontamento')->name('encerrar');
             });

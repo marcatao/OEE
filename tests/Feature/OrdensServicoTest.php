@@ -601,14 +601,19 @@ class OrdensServicoTest extends TestCase
     public function test_preventiva_gera_os_com_checklist_uma_vez_por_data(): void
     {
         $admin = $this->usuario(['admin_producao'], 'adm@empresa.com');
-        $this->actingAs($admin)->post('/ordens-de-servico/preventivas', [
+        $responsavel = Mantenedor::create(['nome' => 'Lubrificador']);
+        $campos = [
             'unidade' => 'manutencao', 'codigo' => 'prev-inj', 'descricao' => 'Lubrificação da injetora', 'maquina_id' => $this->injetora->id,
             'area_executante_id' => $this->mecanica->id, 'prioridade' => 'baixa', 'periodicidade' => 'meses', 'meses' => range(1, 12),
             'dia_mes' => 10, 'antecedencia_dias' => 7, 'ativo' => '1',
             'itens' => [['descricao' => 'Verificar nível de óleo'], ['descricao' => 'Lubrificar guias'], ['descricao' => '']],
-        ])->assertRedirect('/ordens-de-servico/preventivas');
+        ];
+        // Responsável é obrigatório na abertura da preventiva.
+        $this->actingAs($admin)->post('/ordens-de-servico/preventivas', $campos)->assertSessionHasErrors('responsavel_id');
+        $this->post('/ordens-de-servico/preventivas', $campos + ['responsavel_id' => $responsavel->id])->assertRedirect('/ordens-de-servico/preventivas');
         $plano = PlanoPreventiva::where('codigo', 'PREV-INJ')->firstOrFail();
         $this->assertSame(2, $plano->itens()->count());
+        $this->assertSame($responsavel->id, (int) $plano->responsavel_id);
 
         $plano->forceFill(['proxima_em' => '2026-11-10'])->save();
         $gerador = app(GeradorPreventivas::class);
@@ -626,7 +631,20 @@ class OrdensServicoTest extends TestCase
         $this->post('/ordens-de-servico/preventivas/gerar')->assertRedirect();
         $this->assertSame(1, OrdemServico::where('plano_preventiva_id', $plano->id)->whereDate('prevista_para', '2026-11-10')->count());
 
-        $this->get('/ordens-de-servico/preventivas')->assertOk()->assertSee('PREV-INJ');
+        $this->get('/ordens-de-servico/preventivas')->assertOk()->assertSee('PREV-INJ')->assertSee('Excluir');
+
+        // Excluir: some da lista, não gera mais OS nem se edita; nada é apagado e a OS já gerada continua.
+        $this->delete("/ordens-de-servico/preventivas/{$plano->id}")->assertRedirect('/ordens-de-servico/preventivas');
+        $plano->refresh();
+        $this->assertTrue($plano->excluida());
+        $this->assertFalse($plano->ativo);
+        $this->assertSame($admin->id, (int) $plano->excluido_por_id);
+        $this->get('/ordens-de-servico/preventivas')->assertOk()->assertSee('Preventiva PREV-INJ excluída')->assertDontSee('Lubrificação da injetora');
+        $this->get("/ordens-de-servico/preventivas/{$plano->id}/editar")->assertNotFound();
+        $this->delete("/ordens-de-servico/preventivas/{$plano->id}")->assertNotFound();
+        $plano->forceFill(['ativo' => true])->save(); // mesmo reativada por engano, a excluída não gera
+        $this->assertCount(0, $gerador->gerar(CarbonImmutable::parse('2026-12-05', config('oee.fuso_exibicao'))));
+        $this->assertSame(1, OrdemServico::where('plano_preventiva_id', $plano->id)->count());
     }
 
     public function test_telas_de_relatorio_e_cadastros(): void

@@ -7,6 +7,7 @@ use App\Models\Linha;
 use App\Models\Manutencao\ApontamentoHoras;
 use App\Models\Manutencao\AreaExecutante;
 use App\Models\Manutencao\AssinaturaOs;
+use App\Models\Manutencao\ChecklistOs;
 use App\Models\Manutencao\HistoricoOs;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\OrdemServico;
@@ -267,6 +268,49 @@ class AplicativoOrdensServicoTest extends TestCase
         $this->api($rafa, 'GET', 'solicitacoes')->assertOk()->assertJsonCount(0, 'pendentes');
         $this->api($rafa, 'POST', "solicitacoes/{$ss->id}/assumir")->assertNotFound();
         $this->api($this->joao, 'GET', 'resumo')->assertOk()->assertJsonCount(1, 'pendentes'); // o da Manutenção é alertado
+    }
+
+    public function test_checklist_da_preventiva_e_adicionar_mantenedor_no_app(): void
+    {
+        $os = OrdemServico::create(['unidade' => 'manutencao', 'tipo' => 'preventiva', 'titulo' => 'Lubrificação', 'area_executante_id' => $this->mecanica->id,
+            'maquina_id' => $this->injetora->id, 'prioridade' => 'baixa', 'descricao' => 'Preventiva', 'status' => 'aberta', 'responsavel_id' => $this->mJoao->id]);
+        $os->mantenedores()->attach($this->mJoao->id, ['criado_em' => now()]);
+        $oleo = ChecklistOs::create(['ordem_servico_id' => $os->id, 'ordem' => 10, 'descricao' => 'Verificar nível de óleo']);
+        $guias = ChecklistOs::create(['ordem_servico_id' => $os->id, 'ordem' => 20, 'descricao' => 'Lubrificar guias']);
+
+        // O detalhe traz o checklist, os mantenedores da OS e quem pode ser incluído.
+        $this->api($this->joao, 'GET', "ordens/{$os->id}")->assertOk()
+            ->assertJsonPath('checklist.0.descricao', 'Verificar nível de óleo')->assertJsonPath('checklist.0.resposta', null)
+            ->assertJsonPath('pode_responder_checklist', true)->assertJsonPath('respostas_checklist.1.valor', 'nok')
+            ->assertJsonPath('mantenedores.0.nome', 'Joao')->assertJsonPath('mantenedores.0.principal', true)
+            ->assertJsonPath('pode_adicionar_mantenedor', true)->assertJsonPath('mantenedores_disponiveis.0.nome', 'Pedro');
+        // Pedro ainda não vê a OS em "Minhas OS" (já tem dono).
+        $this->assertSame([], collect($this->api($this->pedro, 'GET', 'ordens')->json('ordens'))->pluck('id')->all());
+
+        // Concluir com checklist em branco é recusado; responde um item e depois o outro.
+        $this->api($this->joao, 'POST', "ordens/{$os->id}/acao", ['acao' => 'concluir'])->assertStatus(422)->assertJsonValidationErrors('checklist');
+        $this->api($this->joao, 'POST', "ordens/{$os->id}/checklist", ['respostas' => [['id' => $oleo->id, 'resposta' => 'xx']]])
+            ->assertStatus(422);
+        $this->api($this->joao, 'POST', "ordens/{$os->id}/checklist", ['respostas' => [['id' => $oleo->id, 'resposta' => 'ok']]])
+            ->assertOk()->assertJsonPath('checklist.0.resposta', 'ok')->assertJsonPath('checklist.0.respondido_por', 'Joao')
+            ->assertJsonPath('checklist.1.resposta', null);
+        $this->api($this->joao, 'POST', "ordens/{$os->id}/checklist", ['respostas' => [['id' => $guias->id, 'resposta' => 'nok', 'observacao' => 'Guia riscada']]])
+            ->assertOk()->assertJsonPath('checklist.0.resposta', 'ok')->assertJsonPath('checklist.1.observacao', 'Guia riscada');
+
+        // João inclui o Pedro: a OS aparece em "Minhas OS" dele e o histórico registra quem incluiu.
+        $this->api($this->joao, 'POST', "ordens/{$os->id}/mantenedores", [])->assertStatus(422)->assertJsonValidationErrors('mantenedor_id');
+        $this->api($this->joao, 'POST', "ordens/{$os->id}/mantenedores", ['mantenedor_id' => $this->mPedro->id])->assertOk()
+            ->assertJsonPath('mantenedores.1.nome', 'Pedro')->assertJsonPath('pode_adicionar_mantenedor', false);
+        $this->api($this->joao, 'POST', "ordens/{$os->id}/mantenedores", ['mantenedor_id' => $this->mPedro->id])->assertStatus(422);
+        $this->assertSame([$os->id], collect($this->api($this->pedro, 'GET', 'ordens')->json('ordens'))->pluck('id')->map(fn ($i) => (int) $i)->all());
+        $this->assertTrue(HistoricoOs::where('ordem_servico_id', $os->id)->where('observacao', 'like', '%Pedro incluído por Joao (aplicativo)%')->exists());
+        // Mantenedor inativo ou de outra área não entra.
+        $inativo = Mantenedor::create(['nome' => 'Inativo', 'ativo' => false] + $this->jornadaGravada());
+        $this->api($this->joao, 'POST', "ordens/{$os->id}/mantenedores", ['mantenedor_id' => $inativo->id])->assertStatus(422);
+
+        // Agora o Pedro também responde e conclui.
+        $this->api($this->pedro, 'POST', "ordens/{$os->id}/acao", ['acao' => 'concluir'])->assertOk()->assertJsonPath('status', 'concluida');
+        $this->api($this->pedro, 'POST', "ordens/{$os->id}/checklist", ['respostas' => [['id' => $oleo->id, 'resposta' => 'na']]])->assertStatus(422);
     }
 
     /** PNG válido com mais de 100 bytes (uma imagem 20x20). */

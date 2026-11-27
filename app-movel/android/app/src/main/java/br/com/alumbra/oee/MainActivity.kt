@@ -175,6 +175,11 @@ class MainActivity : ComponentActivity() {
                                     erroEncerramento = null
                                     atualizarResumo++
                                 },
+                                checklist = if (rodando != null) {
+                                    { br.com.alumbra.oee.os.ChecklistDaOs(repositorioOs, rodando.osId) }
+                                } else {
+                                    null
+                                },
                             )
                         } else if (atualizacao?.info?.obrigatoria == true) {
                             // Versão obrigatória no portal: só volta a usar o app depois de atualizar.

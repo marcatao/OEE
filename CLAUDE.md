@@ -435,7 +435,12 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Função Ordens de serviço (mantenedor): `App\Services\Aplicativo\OrdensServicoAplicativo` sobre `AcessoOs` e
   `FluxoOrdemServico` — "assumir" SS = aprovar com o mantenedor como principal (só o primeiro leva), apontamento de
   horas com a tela travada no cronômetro, avaliação do solicitante no celular do mantenedor com assinatura
-  (`os_assinaturas`, PNG base64). Alerta de SS: a cada toque o app consulta `/api/app/os/alerta` (para quando outro
+  (`os_assinaturas`, PNG base64). Checklist da preventiva no detalhe da OS e na tela travada do cronômetro
+  (`POST /api/app/os/ordens/{id}/checklist`) e "Adicionar mantenedor" em toda OS aberta (`POST .../mantenedores`: só
+  mantenedor ATIVO da área da OS; entra em "Minhas OS" dele) — regras únicas em `FluxoOrdemServico::responderChecklist`
+  e `adicionarMantenedor` (o checklist do portal usa a mesma). Plano de preventiva (pedido do usuário em 27/11/2026):
+  responsável OBRIGATÓRIO; "Excluir" não apaga (`excluido_em/por`, inativa, some da lista e não gera OS; as OS já
+  geradas ficam). Alerta de SS: a cada toque o app consulta `/api/app/os/alerta` (para quando outro
   assume); "Recusar" grava em `os_recusas_aplicativo` (só aquela SS para de tocar para ele) e no histórico
   (`nao_aceita`, "SS não aceita por …").
   **Atualização pelo portal** (app 0.13.0+): Segurança › Aplicativo (`perfil:admin_tecnologia`,

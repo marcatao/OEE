@@ -46,6 +46,20 @@ class RepositorioOs(private val token: () -> String?) {
     suspend fun acao(osId: Int, acao: String, obs: String?): OsApp =
         osDe(ApiPortal.post("os/ordens/$osId/acao", token(), JSONObject().put("acao", acao).put("observacao", obs ?: JSONObject.NULL)))
 
+    /** Grava as respostas do checklist (só os itens enviados). Devolve a OS atualizada. */
+    suspend fun responderChecklist(osId: Int, itens: List<ItemChecklist>): OsApp {
+        val respostas = org.json.JSONArray()
+        itens.forEach {
+            respostas.put(JSONObject().put("id", it.id).put("resposta", it.resposta ?: JSONObject.NULL)
+                .put("observacao", it.observacao?.takeIf { o -> o.isNotBlank() } ?: JSONObject.NULL))
+        }
+        return osDe(ApiPortal.post("os/ordens/$osId/checklist", token(), JSONObject().put("respostas", respostas)))
+    }
+
+    /** "Adicionar mantenedor": inclui outro mantenedor da área na OS. Devolve a OS atualizada. */
+    suspend fun adicionarMantenedor(osId: Int, mantenedorId: Int): OsApp =
+        osDe(ApiPortal.post("os/ordens/$osId/mantenedores", token(), JSONObject().put("mantenedor_id", mantenedorId)))
+
     suspend fun avaliar(osId: Int, avaliacao: String, obs: String?, assinaturaPng: String, nome: String): String =
         ApiPortal.post(
             "os/ordens/$osId/avaliar", token(),

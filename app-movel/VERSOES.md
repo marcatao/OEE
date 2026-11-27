@@ -1,5 +1,15 @@
 # Versões do aplicativo
 
+## 0.16.0 (build 30)
+
+- Ordens de serviço, OS **preventiva**: o **checklist** do plano aparece no detalhe da OS e na tela travada do
+  cronômetro (durante o apontamento). Cada item tem OK / Não OK / N/A e uma observação; "Salvar checklist" envia só os
+  itens alterados (`POST /api/app/os/ordens/{id}/checklist`). O contador "X de Y" mostra o que falta: concluir a OS
+  continua exigindo todos os itens respondidos (a mesma regra do portal).
+- Em todas as OS abertas: seção **Mantenedores** (o principal marcado) e botão **"Adicionar mantenedor"**, que lista os
+  mantenedores ativos da área executante da OS que ainda não estão nela. O escolhido passa a ver a OS em "Minhas OS"
+  (`POST /api/app/os/ordens/{id}/mantenedores`); o histórico da OS registra quem incluiu.
+
 ## 0.15.0 (build 29)
 
 - Tela da máquina, máquina **PARADA**: botão **"Trocar motivo"** (ou toque no motivo) no primeiro cartão. Depois da

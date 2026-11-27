@@ -42,7 +42,14 @@
             @if (empty($calendario[$p->id][$mes]) && $p->ativo && $p->periodicidade === 'meses' && $p->temNoMes($mes))<span class="marca programada">P</span>@endif
           </td>
         @endfor
-        <td><a class="botao pequeno secundario" href="{{ route('os.preventivas.edit', $p) }}">Editar</a></td>
+        <td class="acoes-linha">
+          <a class="botao pequeno secundario" href="{{ route('os.preventivas.edit', $p) }}">Editar</a>
+          <form method="post" action="{{ route('os.preventivas.destroy', $p) }}" style="display:inline-block;margin:.25rem 0 0"
+            onsubmit="return confirm('Excluir a preventiva {{ $p->codigo }}? Ela some da lista e não gera mais OS. As OS já geradas continuam como estão.')">
+            @csrf @method('delete')
+            <button class="botao pequeno perigo" type="submit">Excluir</button>
+          </form>
+        </td>
       </tr>
     @empty
       <tr><td colspan="18" class="suave">Nenhuma preventiva cadastrada.</td></tr>

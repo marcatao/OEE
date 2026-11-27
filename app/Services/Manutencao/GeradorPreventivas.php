@@ -35,7 +35,7 @@ final class GeradorPreventivas
     {
         $hoje ??= CarbonImmutable::now(HorasManutencao::fuso())->startOfDay();
         $criadas = [];
-        $planos = PlanoPreventiva::withoutGlobalScopes()->where('ativo', true)->with(['itens' => fn ($q) => $q->where('ativo', true)->orderBy('ordem')])->get();
+        $planos = PlanoPreventiva::withoutGlobalScopes()->where('ativo', true)->whereNull('excluido_em')->with(['itens' => fn ($q) => $q->where('ativo', true)->orderBy('ordem')])->get();
         foreach ($planos as $plano) {
             if ($plano->proxima_em === null) {
                 $plano->proxima_em = self::proximaData($plano, $hoje->subDay());

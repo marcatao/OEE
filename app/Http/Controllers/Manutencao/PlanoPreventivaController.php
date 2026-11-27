@@ -28,7 +28,7 @@ class PlanoPreventivaController extends Controller
         $ano = max(2000, min(2100, $request->integer('ano') ?: (int) now(config('oee.fuso_exibicao'))->year));
         // Filtro de unidade: só as do login; escolhida uma, os planos dela e os de "Todas".
         [$unidades, $unidade] = AcessoOs::filtroUnidade($request->user(), $request->query('unidade'));
-        $planos = PlanoPreventiva::when($unidade !== '', fn ($q) => $q->whereIn('unidade', [$unidade, 'ambos']))->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
+        $planos = PlanoPreventiva::naoExcluidas()->when($unidade !== '', fn ($q) => $q->whereIn('unidade', [$unidade, 'ambos']))->with(['maquina' => fn ($q) => $q->withoutGlobalScopes(), 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes(),
             'responsavel' => fn ($q) => $q->withoutGlobalScopes()])->withCount('itens')
             ->orderByDesc('ativo')->orderBy('codigo')->get();
 
@@ -61,15 +61,27 @@ class PlanoPreventivaController extends Controller
 
     public function edit(int $preventiva): View
     {
-        return view('manutencao.preventivas.form', $this->dados(PlanoPreventiva::with('itens')->findOrFail($preventiva)));
+        return view('manutencao.preventivas.form', $this->dados(PlanoPreventiva::naoExcluidas()->with('itens')->findOrFail($preventiva)));
     }
 
     public function update(Request $request, int $preventiva): RedirectResponse
     {
-        $plano = PlanoPreventiva::findOrFail($preventiva);
+        $plano = PlanoPreventiva::naoExcluidas()->findOrFail($preventiva);
         $this->salvar($request, $plano);
 
         return redirect()->route('os.preventivas.index')->with('ok', "Preventiva {$plano->codigo} atualizada.");
+    }
+
+    /**
+     * Excluir a preventiva: some da lista e não gera mais OS. Nada é apagado — a linha fica como histórico (com quem
+     * excluiu e quando) e as OS já geradas por ela continuam como estão.
+     */
+    public function destroy(Request $request, int $preventiva): RedirectResponse
+    {
+        $plano = PlanoPreventiva::naoExcluidas()->findOrFail($preventiva);
+        $plano->forceFill(['ativo' => false, 'excluido_em' => now(), 'excluido_por_id' => $request->user()->id])->save();
+
+        return redirect()->route('os.preventivas.index')->with('ok', "Preventiva {$plano->codigo} excluída. As OS já geradas por ela continuam como estão.");
     }
 
     public function gerar(GeradorPreventivas $gerador): RedirectResponse
@@ -98,7 +110,7 @@ class PlanoPreventivaController extends Controller
             'descricao' => ['required', 'string', 'max:200'],
             'maquina_id' => ['nullable', 'integer', Rule::exists('maquinas', 'id')],
             'area_executante_id' => ['required', 'integer', Rule::exists('os_areas_executantes', 'id')],
-            'responsavel_id' => ['nullable', 'integer', Rule::exists('os_mantenedores', 'id')],
+            'responsavel_id' => ['required', 'integer', Rule::exists('os_mantenedores', 'id')],
             'prioridade' => ['required', Rule::in(array_keys(SolicitacaoServico::PRIORIDADES))],
             'periodicidade' => ['required', Rule::in(array_keys(PlanoPreventiva::PERIODICIDADES))],
             'meses' => ['array'], 'meses.*' => ['integer', 'between:1,12'],
@@ -112,6 +124,7 @@ class PlanoPreventivaController extends Controller
         ], [
             'codigo.required' => 'Informe o código da preventiva.', 'codigo.unique' => 'Já existe uma preventiva com esse código.',
             'descricao.required' => 'Informe a descrição.', 'area_executante_id.required' => 'Escolha a área executante.',
+            'responsavel_id.required' => 'Escolha o mantenedor responsável pela preventiva.',
         ]);
         $marcados = array_map('intval', $dados['meses'] ?? []);
         $mascara = implode('', array_map(fn ($m) => in_array($m, $marcados, true) ? '1' : '0', range(1, 12)));
@@ -128,7 +141,7 @@ class PlanoPreventivaController extends Controller
             $plano->fill([
                 'unidade' => $dados['unidade'], 'codigo' => mb_strtoupper(trim($dados['codigo'])), 'descricao' => $dados['descricao'],
                 'maquina_id' => $dados['maquina_id'] ?? null, 'area_executante_id' => $dados['area_executante_id'],
-                'responsavel_id' => $dados['responsavel_id'] ?? null, 'prioridade' => $dados['prioridade'],
+                'responsavel_id' => (int) $dados['responsavel_id'], 'prioridade' => $dados['prioridade'],
                 'periodicidade' => $dados['periodicidade'], 'meses' => $mascara, 'dia_mes' => (int) ($dados['dia_mes'] ?? 1),
                 'antecedencia_dias' => (int) ($dados['antecedencia_dias'] ?? 7), 'duracao_prevista_min' => $dados['duracao_prevista_min'] ?? null,
                 'ativo' => (bool) $dados['ativo'],

@@ -246,13 +246,11 @@ class OrdemServicoController extends Controller
         abort_unless(AcessoOs::podeExecutar($request->user(), $os), 403, 'Esta OS não é de uma área executante que você atende.');
         $dados = $request->validate(['resposta' => ['array'], 'resposta.*' => ['nullable', Rule::in(['ok', 'nok', 'na'])],
             'observacao' => ['array'], 'observacao.*' => ['nullable', 'string', 'max:300']]);
-        foreach ($os->checklist as $item) {
-            $resposta = $dados['resposta'][$item->id] ?? null;
-            $obs = $dados['observacao'][$item->id] ?? null;
-            if ($resposta !== $item->resposta || $obs !== $item->observacao) {
-                $item->forceFill(['resposta' => $resposta, 'observacao' => $obs, 'respondido_por_id' => $request->user()->id, 'respondido_em' => now()])->save();
-            }
-        }
+        // A tela manda o checklist inteiro: item sem resposta = limpo.
+        $respostas = $os->checklist->mapWithKeys(fn ($item) => [(int) $item->id => [
+            'resposta' => $dados['resposta'][$item->id] ?? null, 'observacao' => $dados['observacao'][$item->id] ?? null,
+        ]])->all();
+        $this->fluxo->responderChecklist($os, $respostas, $request->user());
 
         return back()->with('ok', 'Checklist salvo.');
     }

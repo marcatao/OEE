@@ -29,7 +29,7 @@
           @foreach ($areas as $a)<option value="{{ $a->id }}" @selected((int) old('area_executante_id', $plano->area_executante_id) === $a->id)>{{ $a->nome }}</option>@endforeach
         </select></label>
       <label>Responsável
-        <select name="responsavel_id" data-busca><option value="">Definir na OS</option>
+        <select name="responsavel_id" data-busca required><option value="">Escolha…</option>
           @foreach ($mantenedores as $m)<option value="{{ $m->id }}" @selected((int) old('responsavel_id', $plano->responsavel_id) === $m->id)>{{ $m->nome }}</option>@endforeach
         </select></label>
       <label>Prioridade

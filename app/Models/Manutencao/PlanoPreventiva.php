@@ -36,7 +36,19 @@ class PlanoPreventiva extends Model
     protected function casts(): array
     {
         return ['ativo' => 'boolean', 'proxima_em' => 'date', 'dia_mes' => 'integer', 'antecedencia_dias' => 'integer',
-            'duracao_prevista_min' => 'integer'];
+            'duracao_prevista_min' => 'integer', 'excluido_em' => 'datetime'];
+    }
+
+    /** Excluída pelo botão "Excluir": fica só como histórico (some da lista, não gera OS, não se edita). */
+    public function excluida(): bool
+    {
+        return $this->excluido_em !== null;
+    }
+
+    /** Só as não excluídas. */
+    public function scopeNaoExcluidas($consulta)
+    {
+        return $consulta->whereNull('os_planos_preventiva.excluido_em');
     }
 
     /** Tem preventiva no mês (1 = janeiro ... 12 = dezembro)? Semanal e quinzenal valem para todos os meses. */

@@ -241,6 +241,7 @@ Route::middleware('auth')->group(function () {
             Route::post('preventivas', [PlanoPreventivaController::class, 'store'])->name('preventivas.store');
             Route::get('preventivas/{preventiva}/editar', [PlanoPreventivaController::class, 'edit'])->whereNumber('preventiva')->name('preventivas.edit');
             Route::put('preventivas/{preventiva}', [PlanoPreventivaController::class, 'update'])->whereNumber('preventiva')->name('preventivas.update');
+            Route::delete('preventivas/{preventiva}', [PlanoPreventivaController::class, 'destroy'])->whereNumber('preventiva')->name('preventivas.destroy');
             Route::post('preventivas/gerar', [PlanoPreventivaController::class, 'gerar'])->name('preventivas.gerar');
         });
         Route::middleware('permissao:os_relatorios')->group(function () {

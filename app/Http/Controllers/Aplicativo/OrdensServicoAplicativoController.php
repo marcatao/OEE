@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Aplicativo;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Manutencao\SolicitacaoController;
+use App\Models\Manutencao\ChecklistOs;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
 use App\Services\Aplicativo\OrdensServicoAplicativo;
@@ -117,6 +118,29 @@ class OrdensServicoAplicativoController extends Controller
     {
         $dados = $request->validate(['acao' => ['required', 'string'], 'observacao' => ['nullable', 'string', 'max:2000']]);
         $this->os->acao($request->user(), $ordem, $dados['acao'], $dados['observacao'] ?? null);
+
+        return $this->show($request, $ordem);
+    }
+
+    /** Checklist da preventiva: respostas dos itens informados ({respostas: [{id, resposta, observacao}]}). */
+    public function checklist(Request $request, int $ordem): JsonResponse
+    {
+        $dados = $request->validate([
+            'respostas' => ['required', 'array'],
+            'respostas.*.id' => ['required', 'integer'],
+            'respostas.*.resposta' => ['nullable', Rule::in(array_keys(ChecklistOs::RESPOSTAS))],
+            'respostas.*.observacao' => ['nullable', 'string', 'max:300'],
+        ]);
+        $this->os->responderChecklist($request->user(), $ordem, $dados['respostas']);
+
+        return $this->show($request, $ordem);
+    }
+
+    /** "Adicionar mantenedor": inclui outro mantenedor da área na OS (aparece em "Minhas OS" dele). */
+    public function adicionarMantenedor(Request $request, int $ordem): JsonResponse
+    {
+        $dados = $request->validate(['mantenedor_id' => ['required', 'integer']], ['mantenedor_id.required' => 'Escolha o mantenedor.']);
+        $this->os->adicionarMantenedor($request->user(), $ordem, (int) $dados['mantenedor_id']);
 
         return $this->show($request, $ordem);
     }

@@ -3,6 +3,7 @@
 namespace App\Services\Manutencao;
 
 use App\Models\Manutencao\ApontamentoHoras;
+use App\Models\Manutencao\ChecklistOs;
 use App\Models\Manutencao\HistoricoOs;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\OrdemServico;
@@ -41,6 +42,48 @@ final class FluxoOrdemServico
             'observacao' => $obs !== null ? mb_substr($obs, 0, 1000) : null,
             'usuario_id' => $usuario?->id,
         ]);
+    }
+
+    /**
+     * Respostas do checklist (preventiva), regra única do portal e do aplicativo: para cada item informado (id => [resposta,
+     * observação]), grava só o que mudou, com quem respondeu e quando. Item fora da lista fica como está; resposta vazia
+     * limpa o item. @param array<int, array{resposta: ?string, observacao: ?string}> $respostas
+     */
+    public function responderChecklist(OrdemServico $os, array $respostas, Usuario $usuario): int
+    {
+        $mudou = 0;
+        foreach ($os->checklist()->get() as $item) {
+            if (! array_key_exists((int) $item->id, $respostas)) {
+                continue;
+            }
+            $resposta = $respostas[(int) $item->id]['resposta'] ?? null;
+            $resposta = in_array($resposta, array_keys(ChecklistOs::RESPOSTAS), true) ? $resposta : null;
+            $obs = trim((string) ($respostas[(int) $item->id]['observacao'] ?? '')) ?: null;
+            if ($resposta !== $item->resposta || $obs !== $item->observacao) {
+                $item->forceFill(['resposta' => $resposta, 'observacao' => $obs !== null ? mb_substr($obs, 0, 300) : null,
+                    'respondido_por_id' => $usuario->id, 'respondido_em' => now()])->save();
+                $mudou++;
+            }
+        }
+
+        return $mudou;
+    }
+
+    /**
+     * Um mantenedor inclui outro na OS (sem tirar ninguém): o incluído passa a ver a OS em "Minhas OS". Só mantenedor
+     * ATIVO que atende a área executante da OS (ou já estava nela); o histórico registra quem incluiu.
+     */
+    public function adicionarMantenedor(OrdemServico $os, Mantenedor $mantenedor, Usuario $usuario, string $origem = 'portal'): void
+    {
+        if ($os->mantenedores()->where('os_mantenedores.id', $mantenedor->id)->exists()) {
+            throw ValidationException::withMessages(['mantenedor_id' => $mantenedor->nomeExibicao().' já está nesta OS.']);
+        }
+        if (! $mantenedor->ativo || ! AcessoOs::mantenedoresDaArea($os)->contains('id', (int) $mantenedor->id)) {
+            throw ValidationException::withMessages(['mantenedor_id' => 'Escolha um mantenedor ativo que atende a área executante desta OS.']);
+        }
+        $os->incluirMantenedor((int) $mantenedor->id);
+        $this->registrar($os, null, 'distribuida', $os->status, $os->status,
+            'Mantenedor '.$mantenedor->nomeExibicao().' incluído por '.$usuario->nome.($origem === 'aplicativo' ? ' (aplicativo).' : '.'), $usuario);
     }
 
     /** Só SS aguardando análise pode ser revisada/aprovada. */

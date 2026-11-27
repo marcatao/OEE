@@ -62,6 +62,8 @@ fun TelaApontamentoTravado(
     aoReenviar: () -> Unit,
     aoDesfazer: () -> Unit = {},
     agoraFixo: Long? = null,
+    /** Checklist da preventiva (preenchido durante o apontamento); nulo = não mostra. */
+    checklist: (@Composable () -> Unit)? = null,
 ) {
     BackHandler(enabled = true) {} // travada: o voltar não sai
     val vista = LocalView.current
@@ -116,6 +118,7 @@ fun TelaApontamentoTravado(
             Info("Solicitante", os?.solicitante?.let { "$it (vai avaliar o atendimento)" })
             Info("Máquina", os?.maquina)
         }
+        if (pendente == null) checklist?.invoke()
 
         when {
             pendente != null -> {

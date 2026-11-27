@@ -43,7 +43,10 @@ import br.com.alumbra.oee.ui.Situacao
 import br.com.alumbra.oee.ui.TituloSecao
 import kotlinx.coroutines.launch
 
-/** Detalhe da OS: dados, apontamentos, iniciar apontamento (cronômetro), aguardar material/retomar/concluir e avaliar. */
+/**
+ * Detalhe da OS: dados, checklist da preventiva, mantenedores (com "Adicionar mantenedor"), apontamentos, iniciar
+ * apontamento (cronômetro), aguardar material/retomar/concluir e avaliar.
+ */
 @Composable
 fun TelaDetalheOs(
     repositorio: RepositorioOs,
@@ -58,6 +61,7 @@ fun TelaDetalheOs(
     var erro by remember { mutableStateOf<String?>(null) }
     var ocupado by remember { mutableStateOf(false) }
     var acaoConfirmar by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var escolherMantenedor by remember { mutableStateOf(false) }
     val escopo = rememberCoroutineScope()
 
     fun executar(bloco: suspend () -> OsApp, depois: (OsApp) -> Unit = {}) {
@@ -128,6 +132,28 @@ fun TelaDetalheOs(
                 BotaoPrincipal("Avaliação do solicitante", { aoAvaliar(d.id) })
             }
 
+            if (d.checklist.isNotEmpty()) {
+                CartaoChecklist(d.checklist, d.respostasChecklist, d.podeResponderChecklist, ocupado) { alterados ->
+                    executar({ repositorio.responderChecklist(d.id, alterados) })
+                }
+            }
+
+            TituloSecao("Mantenedores")
+            Cartao {
+                if (d.mantenedores.isEmpty()) Text("Nenhum mantenedor na OS ainda.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                d.mantenedores.forEach { m ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(m.nome, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        if (m.principal) Selo("Principal", Situacao.NEUTRA)
+                    }
+                }
+                if (d.podeExecutar && d.status in listOf("aberta", "em_execucao", "aguardando_material")) {
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedButton(onClick = { escolherMantenedor = true }, enabled = !ocupado,
+                        modifier = Modifier.fillMaxWidth().height(50.dp), shape = MaterialTheme.shapes.medium) { Text("Adicionar mantenedor") }
+                }
+            }
+
             TituloSecao("Apontamentos de horas")
             if (d.apontamentos.isEmpty()) Text("Nenhum apontamento ainda.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             d.apontamentos.forEach { a ->
@@ -141,6 +167,35 @@ fun TelaDetalheOs(
                 }
             }
         }
+    }
+
+    if (escolherMantenedor) {
+        val disponiveis = os?.mantenedoresDisponiveis.orEmpty()
+        AlertDialog(
+            onDismissRequest = { escolherMantenedor = false },
+            title = { Text("Adicionar mantenedor") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    if (disponiveis.isEmpty()) {
+                        Text("Nenhum outro mantenedor ativo atende a área desta OS.")
+                    } else {
+                        Text("A OS vai aparecer em \"Minhas OS\" do mantenedor escolhido.",
+                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        disponiveis.forEach { m ->
+                            OutlinedButton(
+                                onClick = {
+                                    escolherMantenedor = false
+                                    executar({ repositorio.adicionarMantenedor(osId, m.id) })
+                                },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), shape = MaterialTheme.shapes.medium,
+                            ) { Text(m.nome) }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { escolherMantenedor = false }) { Text("Fechar") } },
+        )
     }
 
     acaoConfirmar?.let { (acao, rotulo) ->

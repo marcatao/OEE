@@ -5,6 +5,7 @@ namespace App\Services\Aplicativo;
 use App\Models\CentroCusto;
 use App\Models\Manutencao\ApontamentoHoras;
 use App\Models\Manutencao\AssinaturaOs;
+use App\Models\Manutencao\ChecklistOs;
 use App\Models\Manutencao\Mantenedor;
 use App\Models\Manutencao\OrdemServico;
 use App\Models\Manutencao\SolicitacaoServico;
@@ -223,7 +224,7 @@ class OrdensServicoAplicativo
     public function buscarOs(Usuario $u, int $id): OrdemServico
     {
         return $this->visiveis(OrdemServico::query(), $u)
-            ->with([...$this->relacoes(), 'apontamentos.mantenedor', 'solicitacao'])->findOrFail($id);
+            ->with([...$this->relacoes(), 'apontamentos.mantenedor', 'solicitacao', 'mantenedores.usuario'])->findOrFail($id);
     }
 
     /** Tudo da OS para a tela do app (e para a tela travada do apontamento e a avaliação). */
@@ -235,6 +236,10 @@ class OrdensServicoAplicativo
         $acoes = $os->estaAberta() && $podeExecutar ? FluxoOrdemServico::acoesPossiveis($os) : [];
         unset($acoes['cancelar'], $acoes['reabrir'], $acoes['iniciar']); // cancelar/reabrir: só no portal; iniciar = apontamento
         $meu = $m ? $os->apontamentos->first(fn ($a) => (int) $a->mantenedor_id === (int) $m->id && $a->fim === null) : null;
+        $aberta = $os->estaAberta();
+        $naOs = $os->mantenedoresAtribuidos();
+        $disponiveis = $aberta && $podeExecutar
+            ? AcessoOs::mantenedoresDaArea($os)->reject(fn ($mt) => $naOs->contains('id', (int) $mt->id))->values() : collect();
 
         return $this->osResumo($os) + [
             'servidor_agora' => now()->toIso8601String(),
@@ -249,7 +254,41 @@ class OrdensServicoAplicativo
             'acoes' => collect($acoes)->map(fn ($rotulo, $acao) => ['acao' => $acao, 'rotulo' => $rotulo])->values()->all(),
             'meu_apontamento' => $meu ? $this->apontamento($meu) : null,
             'apontamentos' => $os->apontamentos->sortBy('inicio')->map(fn ($a) => $this->apontamento($a))->values()->all(),
+            // Checklist da preventiva: o mantenedor responde no app (concluir exige todos respondidos).
+            'checklist' => $os->checklist()->with('respondidoPor')->orderBy('ordem')->orderBy('id')->get()->map(fn ($i) => [
+                'id' => (int) $i->id, 'descricao' => $i->descricao, 'resposta' => $i->resposta, 'observacao' => $i->observacao,
+                'respondido_por' => $i->respondidoPor?->nome, 'respondido_em' => $this->hora($i->respondido_em, $fuso),
+            ])->values()->all(),
+            'respostas_checklist' => $this->opcoes(ChecklistOs::RESPOSTAS),
+            'pode_responder_checklist' => $aberta && $podeExecutar,
+            // Mantenedores da OS e os que este mantenedor pode incluir ("Adicionar mantenedor").
+            'mantenedores' => $naOs->map(fn ($mt) => ['id' => (int) $mt->id, 'nome' => $mt->nomeExibicao(),
+                'principal' => (int) $mt->id === (int) $os->responsavel_id])->values()->all(),
+            'pode_adicionar_mantenedor' => $disponiveis->isNotEmpty(),
+            'mantenedores_disponiveis' => $disponiveis->map(fn ($mt) => ['id' => (int) $mt->id, 'nome' => $mt->nomeExibicao()])->values()->all(),
         ];
+    }
+
+    /** Respostas do checklist enviadas pelo app (só os itens informados): a mesma regra do portal. */
+    public function responderChecklist(Usuario $u, int $osId, array $respostas): void
+    {
+        $os = $this->buscarOs($u, $osId);
+        AcessoOs::exigirAberta($os);
+        abort_unless(AcessoOs::podeExecutar($u, $os), 403, 'Esta OS não é de uma área executante que você atende.');
+        $this->fluxo->responderChecklist($os, collect($respostas)->mapWithKeys(fn ($r) => [(int) $r['id'] => [
+            'resposta' => $r['resposta'] ?? null, 'observacao' => $r['observacao'] ?? null,
+        ]])->all(), $u);
+    }
+
+    /** "Adicionar mantenedor": quem executa a OS inclui outro mantenedor da área; ela passa a aparecer em "Minhas OS" dele. */
+    public function adicionarMantenedor(Usuario $u, int $osId, int $mantenedorId): void
+    {
+        $os = $this->buscarOs($u, $osId);
+        AcessoOs::exigirAberta($os);
+        abort_unless(AcessoOs::podeExecutar($u, $os), 403, 'Esta OS não é de uma área executante que você atende.');
+        $mantenedor = Mantenedor::withoutGlobalScopes()->find($mantenedorId)
+            ?? throw ValidationException::withMessages(['mantenedor_id' => 'Mantenedor não encontrado.']);
+        $this->fluxo->adicionarMantenedor($os, $mantenedor, $u, 'aplicativo');
     }
 
     public function iniciar(Usuario $u, int $osId): ApontamentoHoras
