@@ -35,6 +35,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -114,6 +115,9 @@ fun TelaMaquina(
     var recarregar by remember { mutableIntStateOf(0) }
     var trocarOp by remember { mutableStateOf(false) }
     var molde by remember { mutableStateOf<MoldeApp?>(null) }
+    var confirmarTrocaMotivo by remember { mutableStateOf(false) }
+    // 98 aberto pelo próprio operador ("Trocar motivo"): pede o motivo sem o alarme de parada sem motivo.
+    var semAlarmePara by remember { mutableStateOf<Int?>(null) }
     val alarme = remember { Alarme(contexto) }
     val ciclo = LocalLifecycleOwner.current.lifecycle
 
@@ -155,7 +159,7 @@ fun TelaMaquina(
 
     // Alarme: parada sem motivo apita sem parar; sem OP avisa algumas vezes.
     LaunchedEffect(pendente?.id, podeAlterar) {
-        if (pendente != null) {
+        if (pendente != null && pendente.id != semAlarmePara) {
             ciclo.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 while (true) {
                     alarme.urgente()
@@ -234,6 +238,7 @@ fun TelaMaquina(
         aoDetalhesOp = aoDetalhesOp,
         aoAbrirApontamento = aoAbrirApontamento,
         aoPerdas = aoPerdas,
+        aoTrocarMotivo = { erroAcao = null; confirmarTrocaMotivo = true },
     )
     if (esmaecida && !alerta) {
         // Tela escura: o primeiro toque só acende.
@@ -249,6 +254,26 @@ fun TelaMaquina(
 
     if (d != null && podeAlterar) {
         when {
+            confirmarTrocaMotivo -> DialogoTrocarMotivo(d, ocupado, erroAcao,
+                aoConfirmar = {
+                    escopo.launch {
+                        ocupado = true
+                        erroAcao = null
+                        try {
+                            val (novo, idMotivo) = repositorio.dividirParada(d.id)
+                            semAlarmePara = idMotivo
+                            detalhe = novo
+                            atualizadoEm = System.currentTimeMillis()
+                            confirmarTrocaMotivo = false
+                        } catch (e: ErroApi) {
+                            if (e.semAcesso) aoPerderAcesso(e.message ?: "") else erroAcao = e.message
+                        } finally {
+                            ocupado = false
+                        }
+                    }
+                },
+                aoCancelar = { if (!ocupado) confirmarTrocaMotivo = false },
+            )
             pendente != null -> DialogoMotivo(pendente, d.legendasMotivo, d.semMotivo.size, ocupado, erroAcao) { legenda ->
                 executar({ repositorio.informarMotivo(pendente.id, legenda) })
             }
@@ -285,6 +310,7 @@ fun ConteudoMaquina(
     aoDetalhesOp: (OpResumo) -> Unit = {},
     aoAbrirApontamento: (ApontamentoApp) -> Unit = {},
     aoPerdas: (OpResumo) -> Unit = {},
+    aoTrocarMotivo: () -> Unit = {},
     agora: Long = System.currentTimeMillis(),
 ) {
     val hora = SimpleDateFormat("HH:mm:ss", Locale("pt", "BR"))
@@ -311,7 +337,7 @@ fun ConteudoMaquina(
             if (detalhe.semMotivo.isNotEmpty()) FaixaPiscante("${detalhe.semMotivo.size} parada(s) sem motivo — informe o motivo", Situacao.ERRO)
             if (detalhe.op == null) FaixaPiscante("Máquina sem ordem de produção — informe a OP", Situacao.ALERTA)
 
-            CartaoSituacao(detalhe, atualizadoEm, hora)
+            CartaoSituacao(detalhe, atualizadoEm, hora, podeAlterar, aoTrocarMotivo)
             CartaoLinhaDoTempo(detalhe, agora)
             detalhe.producao?.let { CartaoProducao(it, agora, detalhe.situacao == "produzindo") }
 
@@ -352,10 +378,21 @@ private fun FaixaPiscante(texto: String, situacao: Situacao) {
 }
 
 @Composable
-private fun CartaoSituacao(d: DetalheMaquina, atualizadoEm: Long, hora: SimpleDateFormat) {
+private fun CartaoSituacao(
+    d: DetalheMaquina,
+    atualizadoEm: Long,
+    hora: SimpleDateFormat,
+    podeAlterar: Boolean = false,
+    aoTrocarMotivo: () -> Unit = {},
+) {
     val produzindo = d.situacao == "produzindo"
     val cor = corDaLegenda(d.legenda?.cor, if (produzindo) CoresOee.atual.ok else CoresOee.atual.erro)
+    // Trocar o motivo só com a máquina PARADA (o IoT apontando produção normal não deixa).
+    val podeTrocar = podeAlterar && d.situacao == "parada" && d.legenda?.tipo != "produzindo"
     Cartao(preenchimento = PaddingValues(0.dp)) {
+      androidx.compose.foundation.layout.BoxWithConstraints {
+        // Tablet ou celular deitado: sobra espaço para as barras de D, P e Q ao lado do medidor.
+        val largo = maxWidth >= 560.dp
         Row(Modifier.height(IntrinsicSize.Min)) {
             Box(Modifier.width(8.dp).fillMaxHeight().background(cor))
             Column(Modifier.weight(1f).padding(16.dp)) {
@@ -369,9 +406,22 @@ private fun CartaoSituacao(d: DetalheMaquina, atualizadoEm: Long, hora: SimpleDa
                     style = MaterialTheme.typography.headlineMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = if (podeTrocar) Modifier.clickable(onClick = aoTrocarMotivo) else Modifier,
                 )
                 if (d.situacaoDesde != null) {
                     Text("Desde ${d.situacaoDesde}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (podeTrocar) {
+                    Spacer(Modifier.height(8.dp))
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = aoTrocarMotivo,
+                        shape = MaterialTheme.shapes.medium,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    ) {
+                        Icon(Icons.Filled.Edit, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Trocar motivo", maxLines = 1)
+                    }
                 }
                 // Parada com SS/OS aberta pela legenda: o operador acompanha o número e a situação.
                 d.chamado?.let {
@@ -385,8 +435,60 @@ private fun CartaoSituacao(d: DetalheMaquina, atualizadoEm: Long, hora: SimpleDa
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (largo) d.oee?.let { BarrasOee(it, Modifier.width(240.dp).padding(start = 8.dp, end = 20.dp, top = 16.dp, bottom = 16.dp)) }
             // Termômetro do OEE (IoT) do turno de hoje, no canto direito.
             d.oee?.let { MedidorOee(it, Modifier.padding(top = 14.dp, end = 14.dp, bottom = 14.dp)) }
+        }
+      }
+    }
+}
+
+/** Barras de disponibilidade, performance e qualidade (só em tela larga), na cor do nível de cada uma. */
+@Composable
+private fun BarrasOee(o: OeeApp, modifier: Modifier = Modifier) {
+    val c = CoresOee.atual
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
+        listOf("Disponibilidade" to o.disponibilidade, "Performance" to o.performance, "Qualidade" to o.qualidade).forEach { (rotulo, v) ->
+            val cor = when {
+                v == null -> MaterialTheme.colorScheme.outline
+                v >= .85 -> c.ok
+                v >= .6 -> c.alerta
+                else -> c.erro
+            }
+            Column {
+                Row {
+                    Text(rotulo, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    Text(v?.let { "${Math.round(it * 100)}%" } ?: "—", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = cor)
+                }
+                LinearProgressIndicator(
+                    progress = { (v ?: 0.0).coerceIn(0.0, 1.0).toFloat() },
+                    modifier = Modifier.fillMaxWidth().height(8.dp).clip(MaterialTheme.shapes.small),
+                    color = cor,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** Confirmação de "Trocar motivo": encerra a parada atual agora e abre um 98 para escolher o novo motivo. */
+@Composable
+private fun DialogoTrocarMotivo(d: DetalheMaquina, ocupado: Boolean, erro: String?, aoConfirmar: () -> Unit, aoCancelar: () -> Unit) {
+    JanelaMaquina(obrigatorio = ocupado, aoFechar = aoCancelar) {
+        Column {
+            CabecalhoDialogo("Trocar o motivo da parada", d.legenda?.let { "Parada atual: ${it.codigo} · ${it.descricao}" }, Situacao.ALERTA)
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "A parada atual será encerrada agora (o tempo até aqui fica com o motivo de hoje) e começa uma nova parada. " +
+                        "Em seguida você escolhe o motivo da nova parada.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                if (erro != null) Aviso(erro, Situacao.ERRO)
+                br.com.alumbra.oee.ui.BotaoPrincipal(texto = "Encerrar e escolher o novo motivo", aoTocar = aoConfirmar, carregando = ocupado)
+                androidx.compose.material3.TextButton(onClick = aoCancelar, enabled = !ocupado, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    Text("Cancelar")
+                }
+            }
         }
     }
 }

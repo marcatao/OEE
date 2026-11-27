@@ -493,4 +493,32 @@ class AplicativoMaquinasTest extends TestCase
         $this->api('POST', "ops/{$this->op2->id}/perdas", ['peso' => 3, 'maquina_id' => $this->maquina->id])->assertStatus(422)->assertJsonPath('errors.quantidade.0', fn ($m) => str_contains($m, 'B1_PESO'));
         $this->api('POST', "ops/{$this->op2->id}/perdas", ['quantidade' => 7, 'maquina_id' => $this->maquina->id])->assertCreated()->assertJsonPath('peso_unitario', null);
     }
+
+    public function test_trocar_motivo_da_parada_divide_e_abre_um_98(): void
+    {
+        $this->travar('10:00');
+        $this->maquina->update(['situacao' => 'parada', 'ordem_producao_id' => $this->op1->id]);
+        $quebra = ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->quebra->id,
+            'ordem_producao_id' => $this->op1->id, 'inicio' => now()->subMinutes(30)]);
+
+        $json = $this->api('POST', "maquinas/{$this->maquina->id}/dividir-parada")->assertOk()->json();
+        $novo = ApontamentoEstado::findOrFail($json['apontamento_motivo_id']);
+        $this->assertSame([(int) $this->semMotivo->id, (int) $this->op1->id, null], [(int) $novo->legenda_id, (int) $novo->ordem_producao_id, $novo->fim]);
+        $this->assertSame(now()->subSecond()->format('H:i:s'), $quebra->fresh()->fim->format('H:i:s')); // encerrada 1 s antes
+        $this->assertContains((int) $novo->id, array_map(fn ($a) => (int) $a['id'], $json['sem_motivo'])); // o app abre o popup
+
+        // Escolhe o motivo: só o novo trecho muda; a parada anterior fica como estava.
+        $this->api('POST', "apontamentos/{$novo->id}/motivo", ['legenda_id' => $this->quebra->id])->assertOk();
+        $this->assertSame((int) $this->quebra->id, (int) $novo->fresh()->legenda_id);
+
+        // Já é 98: não divide de novo, devolve o mesmo.
+        $novo->fresh()->update(['legenda_id' => $this->semMotivo->id]);
+        $r = $this->api('POST', "maquinas/{$this->maquina->id}/dividir-parada");
+        $this->assertSame((int) $novo->id, $r->json('apontamento_motivo_id'));
+
+        // IoT apontando produção normal: recusa.
+        $this->travar('10:05');
+        ApontamentoEstado::create(['maquina_id' => $this->maquina->id, 'legenda_id' => $this->produzindo->id, 'inicio' => now()->subMinute()]);
+        $this->api('POST', "maquinas/{$this->maquina->id}/dividir-parada")->assertStatus(422)->assertJsonValidationErrors('maquina');
+    }
 }

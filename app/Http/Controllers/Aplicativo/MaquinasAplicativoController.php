@@ -89,4 +89,10 @@ class MaquinasAplicativoController extends Controller
 
         return response()->json($this->maquinas->alterarOpDoApontamento($apontamento, $dados['numero']));
     }
+
+    /** Máquina parada: encerra a parada atual e começa um 98 "sem motivo" para o operador escolher o motivo. */
+    public function dividirParada(int $maquina): JsonResponse
+    {
+        return response()->json($this->maquinas->dividirParada($this->maquinas->conferirMaquina($maquina)));
+    }
 }

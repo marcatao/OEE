@@ -69,6 +69,15 @@ class RepositorioMaquinas(private val pastaGuardada: java.io.File? = null, priva
 
     suspend fun excluirPerda(id: Int): PerdasOp = perdasOpDe(ApiPortal.delete("perdas/$id", token()))
 
+    /**
+     * Máquina parada: encerra a parada atual e começa um 98 "sem motivo" (o operador escolhe o motivo em seguida).
+     * Devolve o detalhe e o id do apontamento em que o motivo vai ser escolhido.
+     */
+    suspend fun dividirParada(maquinaId: Int): Pair<DetalheMaquina, Int> {
+        val json = ApiPortal.post("maquinas/$maquinaId/dividir-parada", token())
+        return detalheDe(json) to json.optInt("apontamento_motivo_id")
+    }
+
     suspend fun buscarOps(busca: String): List<OpResumo> =
         opsDe(ApiPortal.get("ops?busca=" + URLEncoder.encode(busca, "UTF-8"), token()))
 }

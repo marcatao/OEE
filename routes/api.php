@@ -29,6 +29,7 @@ Route::prefix('app')->name('api.app.')->group(function () {
             Route::get('maquinas/{maquina}', [MaquinasAplicativoController::class, 'show'])->whereNumber('maquina')->name('maquinas.show');
             Route::get('ops', [MaquinasAplicativoController::class, 'ops'])->name('ops');
             Route::post('maquinas/{maquina}/op', [MaquinasAplicativoController::class, 'op'])->whereNumber('maquina')->name('maquinas.op');
+            Route::post('maquinas/{maquina}/dividir-parada', [MaquinasAplicativoController::class, 'dividirParada'])->whereNumber('maquina')->name('maquinas.dividir-parada');
             Route::post('apontamentos/{apontamento}/motivo', [MaquinasAplicativoController::class, 'motivo'])->whereNumber('apontamento')->name('apontamentos.motivo');
             Route::get('apontamentos/{apontamento}', [MaquinasAplicativoController::class, 'apontamento'])->whereNumber('apontamento')->name('apontamentos.show');
             Route::post('apontamentos/{apontamento}/op', [MaquinasAplicativoController::class, 'opDoApontamento'])->whereNumber('apontamento')->name('apontamentos.op');

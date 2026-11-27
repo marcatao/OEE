@@ -429,6 +429,9 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   Toque num apontamento real da tela da máquina = detalhe (`GET /api/app/apontamentos/{id}`,
   `MaquinasAplicativo::detalheApontamento`); o operador altera SÓ a OP dele (`POST /api/app/apontamentos/{id}/op`;
   regra única `App\Services\OpDoApontamento`, a mesma do "INFORMAR OP" da Timeline).
+  Máquina PARADA: "Trocar motivo" (`POST /api/app/maquinas/{id}/dividir-parada`, regra única `App\Services\DivisaoParada`):
+  encerra a parada em andamento 1 s antes de agora e abre um 98 (observação "Divisão da parada (aplicativo)", ponto de
+  corte para o integrador; leva o chamado da parada) para escolher o motivo; recusado se o apontamento atual é de produção.
   Função Ordens de serviço (mantenedor): `App\Services\Aplicativo\OrdensServicoAplicativo` sobre `AcessoOs` e
   `FluxoOrdemServico` — "assumir" SS = aprovar com o mantenedor como principal (só o primeiro leva), apontamento de
   horas com a tela travada no cronômetro, avaliação do solicitante no celular do mantenedor com assinatura

@@ -229,4 +229,15 @@ class CapturasMaquinasTest {
             ) { perdas.perdas.forEach { LinhaPerda(it) {} } }
         }
     }
+
+    /** Tablet deitado: barras de D, P e Q ao lado do medidor do OEE. */
+    @Test
+    fun maquina_tablet() {
+        paparazzi.unsafeUpdateConfig(deviceConfig = app.cash.paparazzi.DeviceConfig.NEXUS_10)
+        paparazzi.snapshot {
+            TemaOee(escuro = false) {
+                ConteudoMaquina("Injetora 01", detalhe(comOp = true, pendente = false), null, agora, true, {}, {}, {}, {}, agora = agora)
+            }
+        }
+    }
 }

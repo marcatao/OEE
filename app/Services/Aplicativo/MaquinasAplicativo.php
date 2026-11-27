@@ -9,6 +9,7 @@ use App\Models\Maquina;
 use App\Models\OrdemProducao;
 use App\Services\Calendario\DiasUteis;
 use App\Services\CustoOrdemProducao;
+use App\Services\DivisaoParada;
 use App\Services\EngenhariaOrdemProducao;
 use App\Services\HorarioApontamento;
 use App\Services\Manutencao\ChamadoDaParada;
@@ -249,6 +250,14 @@ class MaquinasAplicativo
         app(OpDoApontamento::class)->alterar($a, $numero, 'numero');
 
         return $this->detalheApontamento($id);
+    }
+
+    /** Trocar o motivo da parada atual: encerra a parada e começa um 98 para escolher o motivo (App\Services\DivisaoParada). */
+    public function dividirParada(Maquina $maquina): array
+    {
+        $novo = app(DivisaoParada::class)->dividir($maquina);
+
+        return $this->detalhe($maquina) + ['apontamento_motivo_id' => (int) $novo->id];
     }
 
     public function conferirMaquina(int $maquinaId): Maquina

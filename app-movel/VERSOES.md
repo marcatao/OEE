@@ -1,5 +1,14 @@
 # Versões do aplicativo
 
+## 0.15.0 (build 29)
+
+- Tela da máquina, máquina **PARADA**: botão **"Trocar motivo"** (ou toque no motivo) no primeiro cartão. Depois da
+  confirmação, a parada atual é encerrada agora (o tempo até aqui fica com o motivo anterior), começa uma nova parada
+  98 "sem motivo" e o app já abre a escolha do motivo — dá para corrigir ou dividir a parada. Não aparece (e o portal
+  recusa) quando o IoT está apontando produção normal. Essa parada aberta pelo operador pede o motivo sem o alarme.
+- Tablet ou celular deitado: o primeiro cartão mostra, ao lado do termômetro do OEE, as barras de **Disponibilidade,
+  Performance e Qualidade** com os percentuais (verde ≥ 85%, amarela ≥ 60%, vermelha abaixo).
+
 ## 0.14.2 (build 28)
 
 - Perdas: cada perda da lista mostra o **turno** em que foi lançada ("T1", "T2", "T3" ou "fora de turno"). O turno
