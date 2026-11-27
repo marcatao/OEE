@@ -1,10 +1,13 @@
 {{--
-  Dias da semana em que a MÁQUINA trabalha, com até 3 turnos por dia (pedido do usuário em 25/11/2026): turno 1
-  (obrigatório no dia marcado), turno 2 e turno 3 (opcionais), cada um com o horário em que começa e termina. A soma
-  dos turnos = horas disponíveis do dia. Campos: dias[] e turno[dia][n][inicio|fim]. Parâmetro: $registro.
+  Dias da semana em que a MÁQUINA (ou o MANTENEDOR, desde 27/11/2026) trabalha, com até 3 turnos por dia (pedido do
+  usuário em 25/11/2026): turno 1 (obrigatório no dia marcado), turno 2 e turno 3 (opcionais), cada um com o horário
+  em que começa e termina. A soma dos turnos = horas do dia. Campos: dias[] e turno[dia][n][inicio|fim].
+  Parâmetros: $registro; opcionais $rotuloHoras (coluna de horas) e $ajuda (texto abaixo da grade).
   Marcar um dia sem horários copia os turnos do dia marcado mais próximo acima (ou abaixo).
 --}}
 @php
+  $rotuloHoras ??= 'Horas disponíveis';
+  $ajuda ??= 'Turno 1 obrigatório no dia marcado; turnos 2 e 3 só se a máquina trabalhar neles. Termina antes de começar = vira o dia (ex.: turno 3 das 22:00 às 06:00). O intervalo entre turnos não conta como hora disponível (vira "fora de turno").';
   $gravados = \App\Support\JornadaSemanal::turnos($registro);
   $marcados = array_map('intval', old('dias', array_keys($gravados)));
   $velho = old('turno', []);
@@ -16,7 +19,7 @@
     <thead>
       <tr><th rowspan="2">Dia</th>
         @for ($n = 1; $n <= \App\Support\JornadaSemanal::MAX_TURNOS; $n++)<th colspan="2" class="turno-cab">Turno {{ $n }}</th>@endfor
-        <th rowspan="2" class="num" title="Soma dos turnos do dia">Horas disponíveis</th></tr>
+        <th rowspan="2" class="num" title="Soma dos turnos do dia">{{ $rotuloHoras }}</th></tr>
       <tr>@for ($n = 1; $n <= \App\Support\JornadaSemanal::MAX_TURNOS; $n++)<th>Começa</th><th>Termina</th>@endfor</tr>
     </thead>
     <tbody>
@@ -33,11 +36,10 @@
       @error("turno.$d")<tr><td colspan="8" class="erro">{{ $message }}</td></tr>@enderror
     @endforeach
     </tbody>
-    <tfoot><tr><th colspan="7" class="num">Horas disponíveis na semana</th><th class="num" data-horas-semana></th></tr></tfoot>
+    <tfoot><tr><th colspan="7" class="num">{{ $rotuloHoras }} na semana</th><th class="num" data-horas-semana></th></tr></tfoot>
   </table>
   </div>
-  <small class="suave">Turno 1 obrigatório no dia marcado; turnos 2 e 3 só se a máquina trabalhar neles. Termina antes de começar = vira o dia
-    (ex.: turno 3 das 22:00 às 06:00). O intervalo entre turnos não conta como hora disponível (vira "fora de turno").</small>
+  <small class="suave">{{ $ajuda }}</small>
   @error('dias')<p class="erro">{{ $message }}</p>@enderror
 </fieldset>
 <script>

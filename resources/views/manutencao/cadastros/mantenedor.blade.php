@@ -74,7 +74,8 @@
         <small>Obrigatório para ativar: dias úteis, feriados e pontes (Administração › Calendários).</small></label>
       <label>Intervalo (min) <input type="number" name="intervalo_min" min="0" max="600" required value="{{ old('intervalo_min', $m->intervalo_min) }}"></label>
     </div>
-    @include('partials.jornada-semanal', ['registro' => $m])
+    @include('partials.turnos-semana', ['registro' => $m, 'rotuloHoras' => 'Horas de trabalho',
+      'ajuda' => 'Turno 1 obrigatório no dia marcado; turnos 2 e 3 só se o mantenedor trabalhar neles. Termina antes de começar = vira o dia (ex.: turno das 22:00 às 06:00). Dentro dos turnos = hora NORMAL; fora deles = hora EXTRA. O intervalo (almoço) acima sai das horas disponíveis do dia.'])
     <fieldset class="opcoes-linha">
       <legend>Situação</legend>
       <label class="opcao"><input type="radio" name="ativo" value="1" @checked(old('ativo', (int) $m->ativo) == 1)> <span>Ativo</span></label>

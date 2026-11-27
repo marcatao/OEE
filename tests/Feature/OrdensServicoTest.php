@@ -19,8 +19,10 @@ use App\Models\Planta;
 use App\Models\Usuario;
 use App\Services\Manutencao\FluxoOrdemServico;
 use App\Services\Manutencao\GeradorPreventivas;
+use App\Services\Manutencao\HorasManutencao;
 use App\Services\Manutencao\PainelManutencao;
 use App\Support\AcessoOs;
+use App\Support\JornadaSemanal;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -290,6 +292,22 @@ class OrdensServicoTest extends TestCase
         $this->put("/ordens-de-servico/cadastros/mantenedores/{$m->id}", ['unidade' => 'manutencao', 'usuario_id' => $maria->id, 'jornada_inicio' => '07:00',
             'jornada_fim' => '17:00', 'intervalo_min' => 60, 'dias' => [1, 2, 3, 4, 5], 'areas' => [$this->mecanica->id], 'ativo' => '1'])->assertRedirect();
         $this->assertNull($multimetro->fresh()->mantenedor_id);
+
+        // A tela usa a grade de turnos da máquina: o horário antigo aparece como turno 1; até 3 turnos por dia.
+        $this->get("/ordens-de-servico/cadastros/mantenedores/{$m->id}/editar")->assertOk()
+            ->assertSee('Dias e turnos de trabalho')->assertSee('name="turno[1][1][inicio]" value="07:00"', false)
+            ->assertSee('name="turno[1][3][fim]"', false);
+        $turnos = ['turno' => [1 => [1 => ['inicio' => '05:00', 'fim' => '13:30'], 2 => ['inicio' => '13:30', 'fim' => '22:00']],
+            2 => [2 => ['inicio' => '13:30', 'fim' => '22:00']]]];
+        $base = ['unidade' => 'manutencao', 'usuario_id' => $maria->id, 'intervalo_min' => 60, 'areas' => [$this->mecanica->id], 'ativo' => '0'];
+        $this->put("/ordens-de-servico/cadastros/mantenedores/{$m->id}", $base + ['dias' => [1, 2]] + $turnos)->assertSessionHasErrors('turno.2');
+        $this->put("/ordens-de-servico/cadastros/mantenedores/{$m->id}", $base + ['dias' => [1]] + $turnos)->assertSessionHasNoErrors();
+        $m->refresh();
+        $this->assertSame([1 => [1 => ['05:00', '13:30'], 2 => ['13:30', '22:00']]], JornadaSemanal::turnos($m));
+        $this->assertSame(['05:00', '22:00', '1'], [$m->jornada_inicio, $m->jornada_fim, $m->dias_semana]); // envelope p/ quem lê a jornada antiga
+        $this->assertSame(17 * 60 - 60, HorasManutencao::de($m)->minutosPorDia());
+        $this->get('/ordens-de-servico/cadastros/mantenedores')->assertOk()->assertSee('T1 05:00–13:30, T2 13:30–22:00');
+
         $this->put("/ordens-de-servico/cadastros/equipamentos/{$multimetro->id}", ['unidade' => 'manutencao', 'codigo' => 'FER-01', 'descricao' => 'Multímetro',
             'mantenedor_id' => $m->id, 'ativo' => '1'])->assertRedirect();
         $this->assertSame($m->id, $multimetro->fresh()->mantenedor_id);

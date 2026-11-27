@@ -130,6 +130,10 @@ class CadastroManutencaoController extends Controller
             'jornada_fim' => ['nullable', 'date_format:H:i'],
             'intervalo_min' => ['required', 'integer', 'between:0,600'],
             ...JornadaSemanal::regras(),
+            // Até 3 turnos por dia (turno[dia][n][inicio|fim]), como as máquinas; o turno 1 é obrigatório no dia marcado.
+            'turno' => ['nullable', 'array'],
+            'turno.*.*.inicio' => ['nullable', 'date_format:H:i'],
+            'turno.*.*.fim' => ['nullable', 'date_format:H:i'],
             'dias' => ['required', 'array', 'min:1'],
             'ferramentas' => ['nullable', 'array'], 'ferramentas.*' => ['integer', Rule::exists('os_ferramentas', 'id')],
             'ativo' => ['required', 'boolean'],
@@ -149,8 +153,10 @@ class CadastroManutencaoController extends Controller
         if ($dados['ativo'] && ! $calendarioId) {
             throw ValidationException::withMessages(['calendario_id' => 'Para ativar o mantenedor, escolha o calendário.']);
         }
-        // Cada dia marcado com o horário em que começa e termina.
-        $jornada = JornadaSemanal::colunas(JornadaSemanal::doFormulario($dados));
+        // Cada dia marcado com até 3 turnos (a tela); o formulário antigo (horario[dia] / jornada_*) = só o turno 1.
+        $jornada = $request->has('turno')
+            ? JornadaSemanal::colunasDosTurnos(JornadaSemanal::turnosDoFormulario($dados))
+            : JornadaSemanal::colunas(JornadaSemanal::doFormulario($dados)) + ['turnos_semana' => null];
         $usuario = ! empty($dados['usuario_id']) ? Usuario::find($dados['usuario_id']) : null;
 
         DB::transaction(function () use ($m, $dados, $jornada, $usuario, $calendarioId) {

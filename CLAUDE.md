@@ -368,8 +368,10 @@ SQL Server. Escreva código, textos de tela, comentários e mensagens de commit 
   `colunasDosTurnos`), horas disponíveis = soma dos turnos; `horarios_semana` continua gravada como o ENVELOPE do dia
   (início do T1 ao fim do último) para quem só lê a jornada antiga. `TurnoDaMaquina`: período do dia = envelope,
   `intervalos()` = cada turno, `turnoEm()` = turno num instante; a meta da hora só conta DENTRO dos turnos
-  (`MetaPorHora::completar(..., $turnos)`); o integrador lê `turnos_semana` e o intervalo entre turnos vira 96. Mantenedor
-  continua com 1 horário por dia (`partials.jornada-semanal`). Perda tem `turno` (portal: escolhido; app: `turnoEm` no
+  (`MetaPorHora::completar(..., $turnos)`); o integrador lê `turnos_semana` e o intervalo entre turnos vira 96.
+  **Mantenedor também com até 3 turnos** (27/11/2026; a MESMA grade `partials.turnos-semana`, `os_mantenedores.turnos_semana`;
+  sem ela o horário antigo do dia é o turno 1): `HorasManutencao` conta hora NORMAL dentro de qualquer turno e EXTRA
+  fora deles (inclusive entre turnos); disponível do dia = soma dos turnos − intervalo. Perda tem `turno` (portal: escolhido; app: `turnoEm` no
   horário do lançamento).
 - **Inventário de TI** (Tecnologia › Inventário de TI, permissão `inventario_ti`, no perfil `mantenedor_tecnologia`;
   pedido do usuário em 25/11/2026): tudo cadastrado no portal (sem SN1). `ti_itens` (`App\Models\InventarioTi\ItemTi`,

@@ -9,8 +9,8 @@ use Carbon\CarbonInterface;
 
 /**
  * Horas da mão de obra da manutenção pela JORNADA do mantenedor (no fuso local, config oee.fuso_exibicao):
- * - dividir(): separa um apontamento em minutos NORMAIS (dentro da jornada, num dia de trabalho) e EXTRAS (o resto:
- *   antes/depois da jornada ou em dia sem jornada);
+ * - dividir(): separa um apontamento em minutos NORMAIS (dentro da jornada — ou de qualquer um dos até 3 turnos do dia —
+ *   num dia de trabalho) e EXTRAS (o resto: antes/depois, entre turnos ou em dia sem jornada);
  * - minutosDisponiveis(): horas que o colaborador fica na fábrica no período (jornada − intervalo, nos dias de trabalho),
  *   base do aproveitamento "apontado ÷ disponível" (meta > 90%).
  * Jornada que termina antes de começar (ex.: 22:00–06:00) vai até o dia seguinte. Dias: ISO 1 = segunda … 7 = domingo.
@@ -27,11 +27,18 @@ final class HorasManutencao
         public readonly array $horarios = [],
         /** Exceções do calendário do mantenedor: 'Y-m-d' => true (compensação/útil) | false (feriado, ponte, folga). */
         public readonly array $excecoes = [],
+        /**
+         * Até 3 turnos por dia (dia ISO => [nº => [início, fim]], JornadaSemanal::turnos): quando vem, vale mais que os
+         * horários — dentro de QUALQUER turno é hora normal; o intervalo entre turnos é extra e não é hora disponível.
+         */
+        public readonly array $turnos = [],
     ) {}
 
-    /** Jornada de um mantenedor (jornada_inicio, jornada_fim, intervalo_min, dias_semana e o horário de cada dia). */
+    /** Jornada de um mantenedor (jornada_inicio, jornada_fim, intervalo_min, dias_semana, o horário e os turnos de cada dia). */
     public static function de(object $mantenedor): self
     {
+        $temTurnos = is_string($mantenedor->turnos_semana ?? null) && $mantenedor->turnos_semana !== '';
+
         return new self(
             (string) ($mantenedor->jornada_inicio ?: '07:00'),
             (string) ($mantenedor->jornada_fim ?: '17:00'),
@@ -39,6 +46,7 @@ final class HorasManutencao
             (string) ($mantenedor->dias_semana ?? '12345'),
             JornadaSemanal::de($mantenedor),
             self::excecoesDoCalendario($mantenedor->calendario_id ?? null),
+            $temTurnos ? JornadaSemanal::turnos($mantenedor) : [],
         );
     }
 
@@ -75,14 +83,12 @@ final class HorasManutencao
         $dentro = 0;
         // Começa no dia anterior para pegar a jornada que vira a noite.
         for ($dia = $ini->subDay()->startOfDay(); $dia <= $fi; $dia = $dia->addDay()) {
-            [$janelaIni, $janelaFim] = $this->janela($dia);
-            if ($janelaIni === null) {
-                continue;
-            }
-            $a = max($ini->getTimestamp(), $janelaIni->getTimestamp());
-            $b = min($fi->getTimestamp(), $janelaFim->getTimestamp());
-            if ($b > $a) {
-                $dentro += $b - $a;
+            foreach ($this->janelas($dia) as [$janelaIni, $janelaFim]) {
+                $a = max($ini->getTimestamp(), $janelaIni->getTimestamp());
+                $b = min($fi->getTimestamp(), $janelaFim->getTimestamp());
+                if ($b > $a) {
+                    $dentro += $b - $a;
+                }
             }
         }
         $normais = min($total, (int) round($dentro / 60));
@@ -97,9 +103,8 @@ final class HorasManutencao
         $ultimo = CarbonImmutable::parse($ate->format('Y-m-d'), self::fuso());
         $minutos = 0;
         for (; $dia <= $ultimo; $dia = $dia->addDay()) {
-            [$janelaIni, $janelaFim] = $this->janela($dia);
-            if ($janelaIni !== null) {
-                $minutos += max(0, intdiv($janelaFim->getTimestamp() - $janelaIni->getTimestamp(), 60) - $this->intervaloMin);
+            if ($janelas = $this->janelas($dia)) {
+                $minutos += max(0, $this->minutosDas($janelas) - $this->intervaloMin);
             }
         }
 
@@ -109,6 +114,14 @@ final class HorasManutencao
     /** Minutos de jornada num dia de trabalho (sem o intervalo); com horários diferentes por dia, a média dos dias. */
     public function minutosPorDia(): int
     {
+        if ($this->turnos) {
+            $total = 0;
+            foreach ($this->turnos as $doDia) {
+                $total += max(0, JornadaSemanal::minutosDoDia($doDia) - $this->intervaloMin);
+            }
+
+            return intdiv($total, count($this->turnos));
+        }
         if (! $this->horarios) {
             [$a, $b] = $this->janela(CarbonImmutable::parse('2026-01-05', self::fuso()), true);
 
@@ -124,7 +137,49 @@ final class HorasManutencao
         return intdiv($total, count($this->horarios));
     }
 
-    /** @return array{0: ?CarbonImmutable, 1: ?CarbonImmutable} */
+    /**
+     * Faixas de trabalho do dia (cada turno; sem turnos, a jornada única do dia). Feriado/ponte/folga do calendário: nenhuma;
+     * compensação em dia sem jornada: os turnos do primeiro dia de trabalho. Turno que começa antes do turno 1 é do dia
+     * seguinte (ex.: turno 3 às 00:30); fim antes do início = vira o dia.
+     *
+     * @return list<array{0: CarbonImmutable, 1: CarbonImmutable}>
+     */
+    private function janelas(CarbonImmutable $dia): array
+    {
+        if (! $this->turnos) {
+            [$a, $b] = $this->janela($dia);
+
+            return $a === null ? [] : [[$a, $b]];
+        }
+        $excecao = $this->excecoes[$dia->format('Y-m-d')] ?? null;
+        if ($excecao === false) {
+            return [];
+        }
+        $doDia = $this->turnos[$dia->isoWeekday()] ?? ($excecao === true ? reset($this->turnos) : null);
+        if (! $doDia) {
+            return [];
+        }
+        $faixas = [];
+        $base = null;
+        foreach ($doDia as $t) {
+            $ini = $dia->setTimeFromTimeString($t[0]);
+            $base ??= $ini;
+            if ($ini < $base) {
+                $ini = $ini->addDay();
+            }
+            $faixas[] = [$ini, $ini->addMinutes(JornadaSemanal::minutosDoTurno($t))];
+        }
+
+        return $faixas;
+    }
+
+    /** Soma das faixas, em minutos. */
+    private function minutosDas(array $janelas): int
+    {
+        return array_sum(array_map(fn ($j) => intdiv($j[1]->getTimestamp() - $j[0]->getTimestamp(), 60), $janelas));
+    }
+
+    /** Jornada única do dia (cadastro sem turnos). @return array{0: ?CarbonImmutable, 1: ?CarbonImmutable} */
     private function janela(CarbonImmutable $dia, bool $qualquerDia = false): array
     {
         // Calendário do mantenedor: feriado/ponte/folga não tem jornada (tudo é extra); compensação tem, mesmo no fim de semana.

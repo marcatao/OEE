@@ -29,7 +29,7 @@
         <td>{{ $m->areas->pluck('nome')->join(', ') ?: '—' }}</td>
         <td>@if ($m->ferramentas->isNotEmpty())<a href="{{ route('os.cadastros.ferramentas', ['mantenedor' => $m->id]) }}" title="{{ $m->ferramentas->map(fn ($f) => $f->codigo.' — '.$f->descricao)->join("\n") }}">{{ $m->ferramentas->count() }} {{ $m->ferramentas->count() === 1 ? 'equipamento' : 'equipamentos' }}</a>@else<span class="suave">—</span>@endif</td>
         <td>{{ $m->matricula }}</td>
-        <td><small>{{ \App\Support\JornadaSemanal::texto(\App\Support\JornadaSemanal::de($m)) }}</small></td>
+        <td><small>{{ \App\Support\JornadaSemanal::textoTurnos(\App\Support\JornadaSemanal::turnos($m)) }}</small></td>
         <td class="num">{{ HorasManutencao::hhmm(HorasManutencao::de($m)->minutosPorDia()) }}</td>
         <td><span class="etiqueta {{ $m->ativo ? 'situacao-online' : 'situacao-inativo' }}">{{ $m->ativo ? 'Ativo' : 'Inativo' }}</span></td>
         <td><a class="botao pequeno secundario" href="{{ route('os.cadastros.mantenedores.edit', $m) }}">Editar</a></td>

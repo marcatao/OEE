@@ -664,6 +664,7 @@ erDiagram
         bigint atualizado_por_id FK
         bigint calendario_id FK
         nvarchar(200) horarios_semana
+        nvarchar(max) turnos_semana
     }
     os_materiais {
         bigint id PK
@@ -1479,7 +1480,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | [`os_interacoes`](#os_interacoes) | Sistema | `id` | 5 | 2 |
 | [`os_justificativas_setor`](#os_justificativas_setor) | Sistema | `id` | 9 | 2 |
 | [`os_mantenedor_areas`](#os_mantenedor_areas) | Sistema | `id` | 5 | 3 |
-| [`os_mantenedores`](#os_mantenedores) | Sistema | `id` | 18 | 5 |
+| [`os_mantenedores`](#os_mantenedores) | Sistema | `id` | 19 | 5 |
 | [`os_materiais`](#os_materiais) | Sistema | `id` | 14 | 3 |
 | [`os_ordem_mantenedores`](#os_ordem_mantenedores) | Sistema | `id` | 5 | 3 |
 | [`os_planos_itens`](#os_planos_itens) | Sistema | `id` | 9 | 3 |
@@ -2566,6 +2567,7 @@ Mantido pelo agente `arquiteto-banco-dados`. Cada item diz se já foi aplicado o
 | `atualizado_por_id` | `bigint` | sim |  | FK → `usuarios.id` |
 | `calendario_id` | `bigint` | sim |  | FK → `calendarios.id` |
 | `horarios_semana` | `nvarchar(200)` | sim |  |  |
+| `turnos_semana` | `nvarchar(max)` | sim |  |  |
 
 **Índices:** `ux_os_mantenedores_usuario` único (usuario_id) filtrado `WHERE usuario_id IS NOT NULL` (só SQL Server) · `os_mantenedores_unidade_index` (unidade) · `os_mantenedores_area_executante_id_index` (area_executante_id)
 

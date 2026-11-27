@@ -63,6 +63,27 @@ class HorasManutencaoTest extends TestCase
         $this->assertSame('1,50', HorasManutencao::decimal(90));
     }
 
+    public function test_turnos_do_mantenedor_normal_em_qualquer_turno_e_extra_entre_eles(): void
+    {
+        // Seg–Sex: T1 05:00–13:30 e T2 14:00–22:00 (meia hora entre eles); T3 22:00–02:00 só na sexta (vira o dia).
+        $turnos = array_fill_keys([1, 2, 3, 4], [1 => ['05:00', '13:30'], 2 => ['14:00', '22:00']])
+            + [5 => [1 => ['05:00', '13:30'], 2 => ['14:00', '22:00'], 3 => ['22:00', '02:00']]];
+        $h = new HorasManutencao('05:00', '22:00', 60, '12345', [], [], $turnos);
+        // Quarta 13:00–14:30: 30 min no T1 + 30 no T2 = normais; os 30 entre os turnos = extra.
+        $this->assertSame(['normais' => 60, 'extras' => 30], $h->dividir($this->local('2026-11-11 13:00'), $this->local('2026-11-11 14:30')));
+        // Quarta 21:00–23:00: 1 h no T2, 1 h depois do último turno = extra.
+        $this->assertSame(['normais' => 60, 'extras' => 60], $h->dividir($this->local('2026-11-11 21:00'), $this->local('2026-11-11 23:00')));
+        // Sexta 23:00 até sábado 03:00: o T3 vai até as 02:00 do sábado.
+        $this->assertSame(['normais' => 180, 'extras' => 60], $h->dividir($this->local('2026-11-13 23:00'), $this->local('2026-11-14 03:00')));
+        // Disponível: (8:30 + 8:00) − 60 min de intervalo = 930 min; na sexta + 4 h do T3 = 1170.
+        $this->assertSame(930, $h->minutosDisponiveis(CarbonImmutable::parse('2026-11-11'), CarbonImmutable::parse('2026-11-11')));
+        $this->assertSame(1170, $h->minutosDisponiveis(CarbonImmutable::parse('2026-11-13'), CarbonImmutable::parse('2026-11-13')));
+        $this->assertSame(intdiv(4 * 930 + 1170, 5), $h->minutosPorDia());
+        // Feriado: nenhum turno vale.
+        $feriado = new HorasManutencao('05:00', '22:00', 60, '12345', [], ['2026-11-11' => false], $turnos);
+        $this->assertSame(['normais' => 0, 'extras' => 90], $feriado->dividir($this->local('2026-11-11 13:00'), $this->local('2026-11-11 14:30')));
+    }
+
     public function test_feriado_do_calendario_e_todo_extra_e_compensacao_tem_jornada(): void
     {
         // 2026-11-02 (segunda) é feriado; 2026-11-07 (sábado) é compensação.

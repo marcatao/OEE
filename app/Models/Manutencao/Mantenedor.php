@@ -25,7 +25,7 @@ class Mantenedor extends Model
     protected $table = 'os_mantenedores';
 
     protected $fillable = ['calendario_id', 'unidade', 'usuario_id', 'nome', 'matricula', 'area_executante_id', 'centro_custo',
-        'jornada_inicio', 'jornada_fim', 'intervalo_min', 'dias_semana', 'horarios_semana', 'ativo'];
+        'jornada_inicio', 'jornada_fim', 'intervalo_min', 'dias_semana', 'horarios_semana', 'turnos_semana', 'ativo'];
 
     protected $attributes = ['unidade' => 'manutencao', 'jornada_inicio' => '07:00', 'jornada_fim' => '17:00',
         'intervalo_min' => 60, 'dias_semana' => '12345', 'ativo' => true];
