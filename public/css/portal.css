@@ -1203,6 +1203,13 @@ a.tl-chamado.chamado-pendente { animation:tl-chamado-pisca 1.6s ease-in-out infi
 .tempo-sit-dentro { color:var(--ok); }
 .tempo-sit-fora { color:var(--erro); font-weight:650; }
 .tempos-areas td { white-space:nowrap; }
+.tempos-expandir { display:inline-flex; align-items:center; gap:.4rem; padding:0; border:0; background:none; color:var(--primaria); font:inherit; font-weight:600; cursor:pointer; text-align:left; }
+.tempos-expandir:hover { text-decoration:underline; }
+.tempos-expandir:focus-visible { outline:2px solid var(--primaria); outline-offset:2px; border-radius:4px; }
+.tempos-seta { display:inline-block; width:.8rem; transition:transform .15s; }
+.tempos-expandir[aria-expanded="true"] .tempos-seta { transform:rotate(90deg); }
+.tempos-mantenedor td { font-size:.9rem; }
+.tempos-mantenedor td:first-child { padding-left:2rem; }
 .grafico-legenda { display:flex; flex-wrap:wrap; gap:.5rem 1.25rem; font-size:.85rem; color:var(--suave); margin:.25rem 0 .5rem; }
 .grafico-legenda span { display:inline-flex; align-items:center; gap:.4rem; }
 .leg-barra { width:.8rem; height:.8rem; border-radius:3px; display:inline-block; }

@@ -245,6 +245,18 @@
     (raiz || document).querySelectorAll('[data-notificacoes]').forEach(function (n) { if (!n.dataset.notifPronto) { n.dataset.notifPronto = '1'; montarNotificacoes(n); } });
     (raiz || document).querySelectorAll('[data-grafico-ciclos]').forEach(function (g) { if (!g.dataset.ciclosPronto) { g.dataset.ciclosPronto = '1'; montarGraficoCiclos(g); } });
     (raiz || document).querySelectorAll('[data-calculadora-pu]').forEach(function (f) { if (!f.dataset.calcPronta) { f.dataset.calcPronta = '1'; montarCalculadoraPu(f); } });
+    (raiz || document).querySelectorAll('[data-expandir-linhas]').forEach(function (b) { if (!b.dataset.expandirPronto) { b.dataset.expandirPronto = '1'; montarExpandirLinhas(b); } });
+  }
+
+  // Botão numa linha de tabela que mostra/esconde as linhas filhas (tr[data-linhas-de="<id>"]).
+  function montarExpandirLinhas(botao) {
+    var id = botao.getAttribute('data-expandir-linhas');
+    var tabela = botao.closest('table') || document;
+    botao.addEventListener('click', function () {
+      var abrir = botao.getAttribute('aria-expanded') !== 'true';
+      botao.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+      tabela.querySelectorAll('tr[data-linhas-de="' + id + '"]').forEach(function (tr) { tr.hidden = !abrir; });
+    });
   }
 
   // ---------- 4) Calculadora de perdas pelo PU ----------

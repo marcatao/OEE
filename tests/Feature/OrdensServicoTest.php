@@ -861,6 +861,21 @@ class OrdensServicoTest extends TestCase
             ->assertSee('Tempos de atendimento e reparo')->assertSee('Por área executante acionada')->assertSee('acima da meta')
             ->assertSee('Tempos mês a mês × meta')->assertSee('class="grafico-tempos"', false)->getContent();
         $this->assertStringContainsString('Mecânica', substr($pagina, strpos($pagina, 'Por área executante acionada')));
+        $this->assertStringContainsString('data-expandir-linhas="tempos-area-0"', $pagina);
+        $this->assertStringContainsString('Mecânico', $pagina);
+
+        // Clicar na área lista os mantenedores: um 2º entra 1 h depois (atendimento dele 1 h 30, reparo 1 h 30, 60 min apontados).
+        $m2 = Mantenedor::create(['nome' => 'Ajudante']);
+        ApontamentoHoras::create(['ordem_servico_id' => $os->id, 'mantenedor_id' => $m2->id,
+            'inicio' => $mesPassado->copy()->addMinutes(90), 'fim' => $mesPassado->copy()->addMinutes(150), 'minutos_normais' => 60, 'minutos_extras' => 0]);
+        $dados = app(PainelManutencao::class)->dados($adm, 'manutencao', CarbonImmutable::parse($de, config('oee.fuso_exibicao')));
+        $area = $dados['temposPorArea']->first();
+        $this->assertSame(30.0, (float) $area['atendimento']); // a área continua pelo 1º apontamento da OS
+        $porNome = $area['mantenedores']->keyBy('nome');
+        $this->assertSame(['Ajudante', 'Mecânico'], $porNome->keys()->all());
+        $this->assertSame([30.0, 150.0, 150], [(float) $porNome['Mecânico']['atendimento'], (float) $porNome['Mecânico']['reparo'], $porNome['Mecânico']['minutos']]);
+        $this->assertSame([90.0, 90.0, 60], [(float) $porNome['Ajudante']['atendimento'], (float) $porNome['Ajudante']['reparo'], $porNome['Ajudante']['minutos']]);
+        $this->assertSame(0, $porNome['Ajudante']['dentro_atendimento']); // 90 min > meta de 20
         // Só o mês atual: sem o gráfico mês a mês.
         $this->get('/ordens-de-servico/painel?unidade=manutencao')->assertOk()->assertDontSee('Tempos mês a mês × meta');
 

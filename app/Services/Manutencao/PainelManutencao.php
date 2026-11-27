@@ -69,12 +69,19 @@ final class PainelManutencao
         $fechadas = $os()->where('status', 'encerrada')->where('aceite_em', '>=', $desde)->where('aceite_em', '<', $ateExclusivo)
             ->get(['id', 'avaliacao']);
         $avaliacoes = collect(OrdemServico::AVALIACOES)->map(fn ($r, $k) => $fechadas->where('avaliacao', $k)->count());
-        $linhas = $this->linhasDeTempo($os()->whereIn('status', ['concluida', 'encerrada'])
+        [$linhas, $linhasMantenedor] = $this->linhasDeTempo($os()->whereIn('status', ['concluida', 'encerrada'])
             ->where('concluida_em', '>=', $desde)->where('concluida_em', '<', $ateExclusivo));
         $resumoTempos = self::indicadores($linhas);
         // Por área executante acionada no período (com a meta de cada uma) e, com mais de um mês, mês a mês.
+        // Cada área traz os mantenedores que apontaram horas nas OS dela (abre ao clicar na área).
         $areas = AreaExecutante::withoutGlobalScopes()->whereIn('id', $linhas->pluck('area_id')->unique())->get()->keyBy('id');
-        $temposPorArea = $linhas->groupBy('area_id')->map(fn ($g, $id) => ['area' => $areas[$id] ?? null] + self::indicadores($g))
+        $mantenedores = Mantenedor::withoutGlobalScopes()->with('usuario')
+            ->whereIntegerInRaw('id', $linhasMantenedor->pluck('mantenedor_id')->unique()->map(fn ($id) => (int) $id)->all())->get()->keyBy('id');
+        $temposPorArea = $linhas->groupBy('area_id')->map(fn ($g, $id) => ['area' => $areas[$id] ?? null] + self::indicadores($g)
+            + ['mantenedores' => $linhasMantenedor->where('area_id', (int) $id)->groupBy('mantenedor_id')
+                ->map(fn ($gm, $mid) => ['mantenedor' => $mantenedores[$mid] ?? null, 'nome' => ($mantenedores[$mid] ?? null)?->nomeExibicao() ?? '—']
+                    + self::indicadores($gm) + ['minutos' => (int) $gm->sum('minutos')])
+                ->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE)->values()])
             ->sortBy(fn ($l) => $l['area']?->nome)->values();
         $meses = [];
         for ($m = $deLocal->startOfMonth(); $m->lte($ateLocal); $m = $m->addMonth()) {
@@ -141,36 +148,54 @@ final class PainelManutencao
      * reparo = 1º apontamento → conclusão. OS sem apontamento ficam fora. Uma linha por OS, com a área executante
      * (e as metas dela) e o mês (local) da conclusão.
      *
-     * @return Collection<int, array{area_id: int, mes: string, atendimento: float, reparo: ?float, meta_atendimento: ?int, meta_reparo: ?int}>
+     * Também devolve uma linha por OS + MANTENEDOR que apontou horas nela: atendimento = abertura → 1º apontamento DELE;
+     * reparo = 1º apontamento dele → conclusão da OS; minutos = horas apontadas por ele (normais + extras); metas da área.
+     *
+     * @return array{0: Collection<int, array{area_id: int, mes: string, atendimento: float, reparo: ?float, meta_atendimento: ?int, meta_reparo: ?int}>, 1: Collection<int, array<string, mixed>>}
      */
-    private function linhasDeTempo($consulta): Collection
+    private function linhasDeTempo($consulta): array
     {
         $ordens = $consulta->with(['solicitacao:id,criado_em', 'areaExecutante' => fn ($q) => $q->withoutGlobalScopes()])
             ->get(['id', 'solicitacao_id', 'area_executante_id', 'criado_em', 'concluida_em']);
         if ($ordens->isEmpty()) {
-            return collect();
+            return [collect(), collect()];
         }
-        $primeiros = ApontamentoHoras::whereIntegerInRaw('ordem_servico_id', $ordens->pluck('id')->map(fn ($id) => (int) $id)->all()) // sem parâmetros: período longo passa de 2100 OS
-            ->groupBy('ordem_servico_id')->selectRaw('ordem_servico_id, MIN(inicio) as primeiro')->pluck('primeiro', 'ordem_servico_id');
+        // Por OS e mantenedor (o 1º da OS = o menor deles). Sem parâmetros: período longo passa de 2100 OS.
+        $porMantenedor = ApontamentoHoras::whereIntegerInRaw('ordem_servico_id', $ordens->pluck('id')->map(fn ($id) => (int) $id)->all())
+            ->groupBy('ordem_servico_id', 'mantenedor_id')
+            ->selectRaw('ordem_servico_id, mantenedor_id, MIN(inicio) as primeiro, SUM(COALESCE(minutos_normais, 0) + COALESCE(minutos_extras, 0)) as minutos')
+            ->get()->groupBy(fn ($a) => (int) $a->ordem_servico_id);
         $fuso = HorasManutencao::fuso();
         $linhas = collect();
+        $linhasMantenedor = collect();
         foreach ($ordens as $o) {
             $abertura = $o->solicitacao?->criado_em ?? $o->criado_em;
-            if (! isset($primeiros[$o->id]) || ! $abertura) {
+            $deles = $porMantenedor[(int) $o->id] ?? collect();
+            if ($deles->isEmpty() || ! $abertura) {
                 continue;
             }
-            $primeiro = CarbonImmutable::parse($primeiros[$o->id], 'UTC');
-            $linhas->push([
+            $inicio = fn ($a) => CarbonImmutable::parse($a->primeiro, 'UTC');
+            $primeiro = $deles->map($inicio)->sort()->first();
+            $base = [
                 'area_id' => (int) $o->area_executante_id,
                 'mes' => $o->concluida_em ? $o->concluida_em->copy()->setTimezone($fuso)->format('Y-m') : $primeiro->setTimezone($fuso)->format('Y-m'),
-                'atendimento' => max(0, $primeiro->getTimestamp() - $abertura->getTimestamp()) / 60,
-                'reparo' => $o->concluida_em ? max(0, $o->concluida_em->getTimestamp() - $primeiro->getTimestamp()) / 60 : null,
                 'meta_atendimento' => $o->areaExecutante?->meta_atendimento_min,
                 'meta_reparo' => $o->areaExecutante?->meta_reparo_min,
-            ]);
+            ];
+            $tempos = fn (CarbonImmutable $p) => [
+                'atendimento' => max(0, $p->getTimestamp() - $abertura->getTimestamp()) / 60,
+                'reparo' => $o->concluida_em ? max(0, $o->concluida_em->getTimestamp() - $p->getTimestamp()) / 60 : null,
+            ];
+            $linhas->push($base + $tempos($primeiro));
+            foreach ($deles as $a) {
+                if ($a->mantenedor_id === null) {
+                    continue;
+                }
+                $linhasMantenedor->push($base + $tempos($inicio($a)) + ['mantenedor_id' => (int) $a->mantenedor_id, 'minutos' => (int) $a->minutos]);
+            }
         }
 
-        return $linhas;
+        return [$linhas, $linhasMantenedor];
     }
 
     /**

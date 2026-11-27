@@ -25,15 +25,27 @@
   </div>
 
   <h3>Por área executante acionada</h3>
-  <div class="rolagem">
+  <p class="suave">Clique na área para ver os mantenedores: atendimento = da abertura ao 1º apontamento <em>dele</em> na OS;
+    reparo = desse apontamento à conclusão da OS.</p>
+  <div class="rolagem" tabindex="0" role="region" aria-label="Tempos por área executante e mantenedor">
   <table class="tabela tempos-areas">
     <thead><tr><th>Área executante</th><th class="num">OS</th>
       <th class="num">Atendimento</th><th class="num">Meta</th><th class="num">Dentro</th>
       <th class="num">Reparo</th><th class="num">Meta</th><th class="num">Dentro</th></tr></thead>
     <tbody>
-    @forelse ($temposPorArea as $l)
-      <tr>
-        <td>{{ $l['area']?->nome ?? '—' }}</td>
+    @forelse ($temposPorArea as $i => $l)
+      @php($idLinhas = 'tempos-area-'.$i)
+      <tr class="tempos-area">
+        <td>
+          @if (! empty($l['mantenedores']) && count($l['mantenedores']))
+            <button type="button" class="tempos-expandir" data-expandir-linhas="{{ $idLinhas }}" aria-expanded="false"
+              aria-label="{{ $l['area']?->nome ?? '—' }}: mostrar os mantenedores">
+              <span class="tempos-seta" aria-hidden="true">▸</span>{{ $l['area']?->nome ?? '—' }}
+            </button>
+          @else
+            {{ $l['area']?->nome ?? '—' }}
+          @endif
+        </td>
         <td class="num">{{ $l['os'] }}</td>
         @foreach (['atendimento', 'reparo'] as $chave)
           @php($sit = $situacao($l[$chave], $l['meta_'.$chave]))
@@ -43,6 +55,19 @@
           <td class="num">{{ $p !== null ? $p.'%' : '—' }}</td>
         @endforeach
       </tr>
+      @foreach ($l['mantenedores'] ?? [] as $mt)
+        <tr class="tempos-mantenedor" data-linhas-de="{{ $idLinhas }}" hidden>
+          <td>{{ $mt['nome'] }} <small class="suave">· {{ $tempo($mt['minutos']) }} apontadas</small></td>
+          <td class="num">{{ $mt['os'] }}</td>
+          @foreach (['atendimento', 'reparo'] as $chave)
+            @php($sit = $situacao($mt[$chave], $mt['meta_'.$chave]))
+            @php($p = $pct($mt['dentro_'.$chave], $mt['com_meta_'.$chave]))
+            <td class="num"><span @class(['tempo-sit-'.$sit => $sit])>{{ $tempo($mt[$chave]) }}</span></td>
+            <td class="num suave">{{ $mt['meta_'.$chave] !== null ? $tempo($mt['meta_'.$chave]) : '—' }}</td>
+            <td class="num">{{ $p !== null ? $p.'%' : '—' }}</td>
+          @endforeach
+        </tr>
+      @endforeach
     @empty
       <tr><td colspan="8" class="suave">Nenhuma OS concluída com apontamento de horas no período.</td></tr>
     @endforelse
